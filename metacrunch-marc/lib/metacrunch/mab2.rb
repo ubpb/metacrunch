@@ -1,5 +1,6 @@
 require "metacrunch"
 require "ox"
+require "htmlentities"
 
 begin
   require "pry"
