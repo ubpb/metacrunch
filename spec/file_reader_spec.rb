@@ -17,7 +17,7 @@ describe Metacrunch::Utils::FileReader do
     end
   end
 
-  it "can read compressed regular giles" do
+  it "can read compressed regular files" do
     reader.read_files(compressed_regular_file) do |result|
       expect(result).not_to be_nil
       expect(result).to be_instance_of(Metacrunch::Utils::FileReaderResult)
