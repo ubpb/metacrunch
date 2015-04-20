@@ -1,12 +1,11 @@
-require_relative "./document/control_field"
-require_relative "./document/data_field"
-require_relative "./document/data_field_set"
-require_relative "./document/sub_field"
-require_relative "./document/sub_field_set"
-
 module Metacrunch
   module Mab2
     class Document
+      require_relative "./document/control_field"
+      require_relative "./document/data_field"
+      require_relative "./document/data_field_set"
+      require_relative "./document/sub_field"
+      require_relative "./document/sub_field_set"
 
       # ------------------------------------------------------------------------------
       # Parsing
