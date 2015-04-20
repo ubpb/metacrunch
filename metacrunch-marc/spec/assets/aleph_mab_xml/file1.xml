@@ -47,7 +47,7 @@
             <subfield code="9">(DE-588)124010938</subfield>
           </datafield>
           <datafield tag="331" ind1="-" ind2="1">
-            <subfield code="a">Linux für Studenten</subfield>
+            <subfield code="a">&lt;&lt;Das&gt;&gt; Linux für Studenten</subfield>
           </datafield>
           <datafield tag="359" ind1="-" ind2="1">
             <subfield code="a">Michael Kofler ; Jürgen Plate</subfield>
