@@ -49,10 +49,14 @@ module Metacrunch
 
       def add_sub_field(data_field, node)
         name      = node["code"]
-        value     = node.text
+        value     = html_entities_coder.decode(node.text)
         sub_field = Document::DataField::SubField.new(name, value)
 
         data_field.add_sub_field(sub_field)
+      end
+
+      def html_entities_coder
+        @html_entities_coder ||= HTMLEntities.new
       end
 
     end
