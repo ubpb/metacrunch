@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = ">= 2.2.0"
 
-  s.add_dependency "activesupport", "~> 4.2.0"
-  s.add_dependency "parallel",      "~> 1.4.1"
+  s.add_dependency "activesupport", "~> 4.2", ">= 4.2.0"
+  s.add_dependency "parallel",      "~> 1.4", ">= 1.4.1"
   s.add_dependency "thor",          "~> 0.19"
 end
