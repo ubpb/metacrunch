@@ -4,7 +4,6 @@ require "parallel"
 require "rubygems"
 require "rubygems/package"
 require "thor"
-require "thor/group"
 
 begin
   require "pry"
