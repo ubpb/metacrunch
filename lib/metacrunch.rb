@@ -4,12 +4,18 @@ require "parallel"
 require "rubygems"
 require "rubygems/package"
 require "thor"
+require "ox"
 
 begin
   require "pry"
 rescue LoadError ; end
 
 module Metacrunch
+  require_relative "./metacrunch/version"
+  require_relative "./metacrunch/cli"
+  require_relative "./metacrunch/command"
+  require_relative "./metacrunch/utils"
+  require_relative "./metacrunch/snr"
 
   def self.load_plugins
     Gem.find_latest_files("metacrunch_plugin.rb").each do |path|
@@ -18,8 +24,3 @@ module Metacrunch
   end
 
 end
-
-require "metacrunch/version"
-require "metacrunch/cli"
-require "metacrunch/command"
-require "metacrunch/utils"
