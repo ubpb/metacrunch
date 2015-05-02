@@ -3,15 +3,24 @@ module Metacrunch
 
     attr_reader :shell
     attr_reader :options
+    attr_reader :params
 
-    def initialize(shell:, options:)
+    def initialize(shell, options = {}, params = [])
       @shell   = shell
       @options = options
-      setup if self.respond_to?(:setup)
+      @params  = params
     end
 
-    def call(command_params = {})
-      raise NotImplementedError, "implement in subclass"
+    def pre_perform
+      # can be implemented in sub-class
+    end
+
+    def perform
+      raise NotImplementedError, "You must implement .perform() in your command sub-class"
+    end
+
+    def post_perform
+      # can be implemented in sub-class
     end
 
   end
