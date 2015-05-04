@@ -19,4 +19,5 @@ Gem::Specification.new do |s|
 
   s.add_dependency "metacrunch",   ">= 2.1.0.pre1"
   s.add_dependency "htmlentities", "~> 4.3"
+  s.add_dependency "ox",           "~> 2.1"
 end
