@@ -10,12 +10,12 @@ Benchmark.ips do |x|
   x.report("reference") do
     data_fields_struct = @document.send(:data_fields_struct)
     data_fields_set = data_fields_struct["PPE"]
-    data_fields = data_fields_set.__getobj__
+    data_fields = data_fields_set.to_a
 
     data_fields.each do |data_field|
       sub_fields_struct = data_field.send(:sub_fields_struct)
       sub_fields_set = sub_fields_struct["p"]
-      sub_fields = sub_fields_set.__getobj__
+      sub_fields = sub_fields_set.to_a
 
       sub_fields.each do |sub_field|
         sub_field.value
