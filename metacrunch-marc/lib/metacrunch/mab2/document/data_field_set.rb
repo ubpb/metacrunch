@@ -19,11 +19,11 @@ module Metacrunch
             self.class.new(self.select{ |data_field| data_field.matches?(ind1: ind1, ind2: ind2) })
           end
 
-           # @return [Array<Metacrunch::Mab2::Document::DataField::SubField::Set>]
+           # @return [Metacrunch::Mab2::Document::DataField::SubField::Set]
           def sub_fields(name)
             set = SubField::Set.new
 
-            self.each do |data_field|
+            @data_fields.each do |data_field|
               set.concat(data_field.sub_fields(name))
             end
 
