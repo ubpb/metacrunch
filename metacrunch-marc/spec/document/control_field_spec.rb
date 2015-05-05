@@ -12,16 +12,6 @@ describe Metacrunch::Mab2::Document::Controlfield do
       expect(field.tag).to eq("050")
       expect(field.values).to eq(["a", nil, nil, "b"])
     end
-
-    it "raises error if tag is blank" do
-      expect {
-        Metacrunch::Mab2::Document::Controlfield.new(nil, ["a", nil, nil, "b"])
-      }.to raise_error(ArgumentError)
-
-      expect {
-        Metacrunch::Mab2::Document::Controlfield.new("", ["a", nil, nil, "b"])
-      }.to raise_error(ArgumentError)
-    end
   end
 
   describe ".values=" do
