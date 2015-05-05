@@ -66,14 +66,23 @@ module Metacrunch
       private :datafields_struct
 
       #
-      # Returns the data fields matching the given tag.
+      # Returns the data fields matching the given tag and ind1/ind2.
       #
       # @param [String] tag of the data field
-      # @return [Metacrunch::Mab2::Document::Datafield::Set] data field with the given tag. The set
-      #  is empty if the data field doesn't exists.
+      # @param [String, nil] ind1 filter for ind1. Can be nil to match any.
+      # @param [String, nil] ind2 filter for ind2. Can be nil to match any.
+      # @return [Metacrunch::Mab2::Document::Datafield::Set] data field with the given tag and ind1/ind2.
+      #  The set is empty if a matching field with the tag and/or ind1/ind2 doesn't exists.
       #
-      def datafields(tag)
-        datafields_struct[tag] || Datafield::Set.new
+      def datafields(tag, ind1: nil, ind2: nil)
+        set = datafields_struct[tag] || Datafield::Set.new
+        return set if set.empty?
+
+        if ind1 || ind2
+          set = set.filter(ind1: ind1, ind2: ind2)
+        end
+
+        set
       end
 
       #
