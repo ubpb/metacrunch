@@ -8,6 +8,8 @@ Benchmark.ips do |x|
   @document = Metacrunch::Mab2::Document.from_aleph_mab_xml(@xml)
 
   x.report("reference") do
+    a = []
+
     data_fields_struct = @document.send(:data_fields_struct)
     data_fields_set = data_fields_struct["PPE"]
     data_fields = data_fields_set.to_a
@@ -18,7 +20,7 @@ Benchmark.ips do |x|
       sub_fields = sub_fields_set.to_a
 
       sub_fields.each do |sub_field|
-        sub_field.value
+        a << sub_field.value
       end
     end
   end
