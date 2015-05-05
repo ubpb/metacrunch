@@ -30,6 +30,42 @@ describe Metacrunch::Mab2::Document do
     end
   end
 
+  describe ".datafields" do
+    let(:document) { default_test_document }
+
+    context "given tag=100" do
+      subject { document.datafields("100") }
+
+      it "returns only datafields with tag=100" do
+        expect(subject.count).to eq(2)
+      end
+    end
+
+    context "given tag=100 and ind1=-" do
+      subject { document.datafields("100", ind1: "-") }
+
+      it "returns only datafields with tag=100 and ind1=-" do
+        expect(subject.count).to eq(1)
+      end
+    end
+
+    context "given tag=100 and ind2=2" do
+      subject { document.datafields("100", ind2: "2") }
+
+      it "returns only datafields with tag=100 and ind2=2" do
+        expect(subject.count).to eq(1)
+      end
+    end
+
+    context "given tag=100 and ind1=a and ind2=2" do
+      subject { document.datafields("100", ind2: "2") }
+
+      it "returns only datafields with tag=100 and ind1=a and ind2=2" do
+        expect(subject.count).to eq(1)
+      end
+    end
+  end
+
 private
 
   def empty_document
@@ -41,6 +77,21 @@ private
     document.add_controlfield(create_controlfield("LDR", "01234"))
     document.add_controlfield(create_controlfield("050", "a|a|"))
     document.add_controlfield(create_controlfield("052", ["a", nil, "b"]))
+
+    datafield = create_datafield("100", ind1: "-", ind2: "1")
+    datafield.add_subfield(create_subfield("p", "Doe, John"))
+    datafield.add_subfield(create_subfield("9", "123456789"))
+    document.add_datafield(datafield)
+
+    datafield = create_datafield("100", ind1: "a", ind2: "2")
+    datafield.add_subfield(create_subfield("p", "Sprotte, René"))
+    datafield.add_subfield(create_subfield("9", "123456789"))
+    document.add_datafield(datafield)
+
+    datafield = create_datafield("331", ind1: "-", ind2: "1")
+    datafield.add_subfield(create_subfield("a", "<<The>> art of MAB processing"))
+    document.add_datafield(datafield)
+
     document
   end
 
@@ -48,8 +99,16 @@ private
     File.read(File.join(RSpec.root, "assets", "aleph_mab_xml", "file1.xml"))
   end
 
-  def create_controlfield(name, values)
-    Metacrunch::Mab2::Document::Controlfield.new(name, values)
+  def create_controlfield(tag, values)
+    Metacrunch::Mab2::Document::Controlfield.new(tag, values)
+  end
+
+  def create_datafield(tag, ind1:nil, ind2:nil)
+    Metacrunch::Mab2::Document::Datafield.new(tag, ind1: ind1, ind2: ind2)
+  end
+
+  def create_subfield(code, value)
+    Metacrunch::Mab2::Document::Datafield::Subfield.new(code, value)
   end
 
 end
