@@ -79,10 +79,11 @@ module Metacrunch
         return set if set.empty?
 
         if ind1 || ind2
-          set.select do |_datafield|
-            # http://stackoverflow.com/questions/23701244/how-to-make-a-logical-implication-condition
+          filtered_datafields = set.select do |_datafield|
             (!ind1 || _datafield.ind1 == ind1) && (!ind2 || _datafield.ind2 == ind2)
           end
+          
+          Datafield::Set.new(filtered_datafields)
         else
           set
         end
