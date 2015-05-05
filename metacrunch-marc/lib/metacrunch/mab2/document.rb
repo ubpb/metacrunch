@@ -33,13 +33,6 @@ module Metacrunch
       private :controlfields_struct
 
       #
-      # @return [Array<Metacrunch::Mab2::Document::Controlfield>]
-      #
-      def all_controlfields
-        controlfields_struct.values
-      end
-
-      #
       # Returns the control field matching the given tag.
       #
       # @param [String] tag of the control field
@@ -73,14 +66,7 @@ module Metacrunch
       private :datafields_struct
 
       #
-      # @return [Array<Metacrunch::Mab2::Document::Datafield>]
-      #
-      def all_datafields
-        datafields_struct.values
-      end
-
-      #
-      # Returns the data field matching the given tag.
+      # Returns the data fields matching the given tag.
       #
       # @param [String] tag of the data field
       # @return [Metacrunch::Mab2::Document::Datafield::Set] data field with the given tag. The set

@@ -19,17 +19,6 @@ describe Metacrunch::Mab2::Document do
     end
   end
 
-  describe ".controlfields" do
-    let(:document) { default_test_document }
-    subject { document.all_controlfields }
-
-    it { is_expected.to be_instance_of(Array) }
-    it { is_expected.not_to be_empty }
-    it "should return all control fields" do
-      expect(subject.count).to be(3)
-    end
-  end
-
   describe ".controlfield" do
     let(:document) { default_test_document }
     subject { document.controlfield("050") }

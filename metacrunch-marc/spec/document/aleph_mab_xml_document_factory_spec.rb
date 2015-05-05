@@ -10,14 +10,6 @@ describe Metacrunch::Mab2::AlephMabXmlDocumentFactory do
         expect(subject).to be_instance_of(Metacrunch::Mab2::Document)
       end
 
-      it "should find 27 data fields" do
-        expect(subject.all_datafields.count).to be(27)
-      end
-
-      it "should find 6 control fields" do
-        expect(subject.all_controlfields.count).to be(6)
-      end
-
       it "should find 2 data fields with tag 070" do
         expect(subject.datafields("070").count).to be(2)
       end
