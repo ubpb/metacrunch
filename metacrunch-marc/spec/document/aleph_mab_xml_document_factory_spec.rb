@@ -11,31 +11,31 @@ describe Metacrunch::Mab2::AlephMabXmlDocumentFactory do
       end
 
       it "should find 27 data fields" do
-        expect(subject.all_data_fields.count).to be(27)
+        expect(subject.all_datafields.count).to be(27)
       end
 
       it "should find 6 control fields" do
-        expect(subject.all_control_fields.count).to be(6)
+        expect(subject.all_controlfields.count).to be(6)
       end
 
       it "should find 2 data fields with tag 070" do
-        expect(subject.data_fields("070").count).to be(2)
+        expect(subject.datafields("070").count).to be(2)
       end
 
       it "should find 1 data field with tag 100" do
-        expect(subject.data_fields("100").first).not_to be_nil
+        expect(subject.datafields("100").first).not_to be_nil
       end
 
       it "should find 3 sub fields of data field with tag 100" do
-        expect(subject.data_fields("100").first.all_sub_fields.count).to be(3)
+        expect(subject.datafields("100").first.all_subfields.count).to be(3)
       end
 
       it "sub field p of data field 100 is not nil" do
-        expect(subject.data_fields("100").first.sub_fields("p").first.value).not_to be_nil
+        expect(subject.datafields("100").first.subfields("p").first.value).not_to be_nil
       end
 
       it "decodes html entities" do
-        expect(subject.values(data_field: "331", sub_field: "a").first).to eq("<<Das>> Linux für Studenten")
+        expect(subject.datafields("331").subfields("a").values.first).to eq("<<Das>> Linux für Studenten")
       end
     end
   end

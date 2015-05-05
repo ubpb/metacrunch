@@ -1,11 +1,11 @@
 module Metacrunch
   module Mab2
     class Document
-      require_relative "./document/control_field"
-      require_relative "./document/data_field"
-      require_relative "./document/data_field_set"
-      require_relative "./document/sub_field"
-      require_relative "./document/sub_field_set"
+      require_relative "./document/controlfield"
+      require_relative "./document/datafield"
+      require_relative "./document/datafield_set"
+      require_relative "./document/subfield"
+      require_relative "./document/subfield_set"
 
       # ------------------------------------------------------------------------------
       # Parsing
@@ -24,39 +24,39 @@ module Metacrunch
       # ------------------------------------------------------------------------------
 
       #
-      # @return [Hash{String => Metacrunch::Mab2::Document::ControlField}]
+      # @return [Hash{String => Metacrunch::Mab2::Document::Controlfield}]
       # @private
       #
-      def control_fields_struct
-        @control_fields_struct ||= {}
+      def controlfields_struct
+        @controlfields_struct ||= {}
       end
-      private :control_fields_struct
+      private :controlfields_struct
 
       #
-      # @return [Array<Metacrunch::Mab2::Document::ControlField>]
+      # @return [Array<Metacrunch::Mab2::Document::Controlfield>]
       #
-      def all_control_fields
-        control_fields_struct.values
+      def all_controlfields
+        controlfields_struct.values
       end
 
       #
-      # Returns the control field matching the given name.
+      # Returns the control field matching the given tag.
       #
-      # @param [String] name of the control field
-      # @return [ControlField, nil] control field with the given name. Is nil
+      # @param [String] tag of the control field
+      # @return [Controlfield, nil] control field with the given tag. Is nil
       #  if the control field doesn't exists.
       #
-      def control_field(name)
-        control_fields_struct[name]
+      def controlfield(tag)
+        controlfields_struct[tag]
       end
 
       #
       # Adds a new control field.
       #
-      # @param [Metacrunch::Mab2::Document::ControlField] control_field
+      # @param [Metacrunch::Mab2::Document::Controlfield] controlfield
       #
-      def add_control_field(control_field)
-        control_fields_struct[control_field.name] = control_field
+      def add_controlfield(controlfield)
+        controlfields_struct[controlfield.tag] = controlfield
       end
 
       # ------------------------------------------------------------------------------
@@ -64,50 +64,42 @@ module Metacrunch
       # ------------------------------------------------------------------------------
 
       #
-      # @return [Hash{String => Metacrunch::Mab2::Document::DataField::Set}]
+      # @return [Hash{String => Metacrunch::Mab2::Document::Datafield::Set}]
       # @private
       #
-      def data_fields_struct
-        @data_fields_struct ||= {}
+      def datafields_struct
+        @datafields_struct ||= {}
       end
-      private :data_fields_struct
+      private :datafields_struct
 
       #
-      # @return [Array<Metacrunch::Mab2::Document::DataField>]
+      # @return [Array<Metacrunch::Mab2::Document::Datafield>]
       #
-      def all_data_fields
-        data_fields_struct.values
+      def all_datafields
+        datafields_struct.values
       end
 
       #
-      # Returns the data field matching the given name.
+      # Returns the data field matching the given tag.
       #
-      # @param [String] name of the data field
-      # @return [Metacrunch::Mab2::Document::DataField::Set] data field with the given name. The set
+      # @param [String] tag of the data field
+      # @return [Metacrunch::Mab2::Document::Datafield::Set] data field with the given tag. The set
       #  is empty if the data field doesn't exists.
       #
-      def data_fields(name)
-        data_fields_struct[name] || DataField::Set.new
+      def datafields(tag)
+        datafields_struct[tag] || Datafield::Set.new
       end
 
       #
       # Adds a new data field.
       #
-      # @param [Metacrunch::Mab2::Document::DataField] data_field
+      # @param [Metacrunch::Mab2::Document::Datafield] datafield
       #
-      def add_data_field(data_field)
-        data_field_set  = data_fields_struct[data_field.name] ||= DataField::Set.new
-        data_field_set << data_field
+      def add_datafield(datafield)
+        datafield_set  = datafields_struct[datafield.tag] || Datafield::Set.new
+        datafield_set << datafield
 
-        data_fields_struct[data_field.name] = data_field_set
-      end
-
-      # ------------------------------------------------------------------------------
-      # Query
-      # ------------------------------------------------------------------------------
-
-      def values(data_field:, ind1:nil, ind2:nil, sub_field:)
-        data_fields(data_field).filter(ind1: ind1, ind2: ind2).sub_fields(sub_field).values
+        datafields_struct[datafield.tag] = datafield_set
       end
 
     end

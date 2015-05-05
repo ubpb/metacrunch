@@ -1,14 +1,14 @@
 module Metacrunch
   module Mab2
     class Document
-      class ControlField
+      class Controlfield
 
         # @return [String]
-        attr_reader :name
+        attr_reader :tag
 
-        def initialize(name, values)
-          raise ArgumentError, "required ControlField#name not given" if name.blank?
-          @name = name.to_s
+        def initialize(tag, values = [])
+          raise ArgumentError, "required ControlField#tag not given" if tag.blank?
+          @tag = tag.to_s
           self.values = values
         end
 
@@ -42,7 +42,7 @@ module Metacrunch
         # @return [Array<String>]
         #
         def values
-          @values || []
+          @values
         end
 
         #
@@ -63,7 +63,7 @@ module Metacrunch
           values.map do |v|
             if v.present?
               v = v.to_s
-              raise ArgumentError, "invalid value of controlfield #{name}: #{values}" if v.length > 1
+              raise ArgumentError, "invalid value of controlfield #{tag}: #{values}" if v.length > 1
               v
             else
               nil

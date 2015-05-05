@@ -10,18 +10,18 @@ describe Metacrunch::Mab2::Document do
     end
   end
 
-  describe ".add_control_field" do
+  describe ".add_controlfield" do
     let(:document) { empty_document }
 
     it "should add control fields" do
-      document.add_control_field(create_control_field("001", "a|a|"))
-      expect(document.control_field("001").values).to eq(["a", nil, "a", nil])
+      document.add_controlfield(create_controlfield("001", "a|a|"))
+      expect(document.controlfield("001").values).to eq(["a", nil, "a", nil])
     end
   end
 
-  describe ".control_fields" do
+  describe ".controlfields" do
     let(:document) { default_test_document }
-    subject { document.all_control_fields }
+    subject { document.all_controlfields }
 
     it { is_expected.to be_instance_of(Array) }
     it { is_expected.not_to be_empty }
@@ -30,12 +30,12 @@ describe Metacrunch::Mab2::Document do
     end
   end
 
-  describe ".control_field" do
+  describe ".controlfield" do
     let(:document) { default_test_document }
-    subject { document.control_field("050") }
+    subject { document.controlfield("050") }
 
     it { is_expected.not_to be_nil }
-    it { is_expected.to be_instance_of(Metacrunch::Mab2::Document::ControlField) }
+    it { is_expected.to be_instance_of(Metacrunch::Mab2::Document::Controlfield) }
     it "should contain the correct values" do
       expect(subject.values).to eq(["a", nil, "a", nil])
     end
@@ -49,9 +49,9 @@ private
 
   def default_test_document
     document = Metacrunch::Mab2::Document.new
-    document.add_control_field(create_control_field("LDR", "01234"))
-    document.add_control_field(create_control_field("050", "a|a|"))
-    document.add_control_field(create_control_field("052", ["a", nil, "b"]))
+    document.add_controlfield(create_controlfield("LDR", "01234"))
+    document.add_controlfield(create_controlfield("050", "a|a|"))
+    document.add_controlfield(create_controlfield("052", ["a", nil, "b"]))
     document
   end
 
@@ -59,8 +59,8 @@ private
     File.read(File.join(RSpec.root, "assets", "aleph_mab_xml", "file1.xml"))
   end
 
-  def create_control_field(name, values)
-    Metacrunch::Mab2::Document::ControlField.new(name, values)
+  def create_controlfield(name, values)
+    Metacrunch::Mab2::Document::Controlfield.new(name, values)
   end
 
 end

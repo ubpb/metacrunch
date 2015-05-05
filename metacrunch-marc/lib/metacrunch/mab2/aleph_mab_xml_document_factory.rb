@@ -18,41 +18,41 @@ module Metacrunch
 
         oxdoc.locate("OAI-PMH/ListRecords/record/metadata/record/*").each do |oxnode|
           case oxnode.name
-          when "controlfield" then add_control_field(document, oxnode)
-          when "datafield"    then add_data_field(document, oxnode)
+          when "controlfield" then add_controlfield(document, oxnode)
+          when "datafield"    then add_datafield(document, oxnode)
           end
         end
 
         document
       end
 
-      def add_control_field(document, oxnode)
-        name          = oxnode["tag"]
-        values        = oxnode.text
-        control_field = Document::ControlField.new(name, values)
+      def add_controlfield(document, oxnode)
+        tag          = oxnode["tag"]
+        values       = oxnode.text
+        controlfield = Document::Controlfield.new(tag, values)
 
-        document.add_control_field(control_field)
+        document.add_controlfield(controlfield)
       end
 
-      def add_data_field(document, node)
-        name       = node["tag"]
+      def add_datafield(document, node)
+        tag        = node["tag"]
         ind1       = node["ind1"]
         ind2       = node["ind2"]
-        data_field = Document::DataField.new(name, ind1: ind1, ind2: ind2)
+        datafield  = Document::Datafield.new(tag, ind1: ind1, ind2: ind2)
 
         node.locate("subfield").each do |sub_node|
-          add_sub_field(data_field, sub_node)
+          add_subfield(datafield, sub_node)
         end
 
-        document.add_data_field(data_field)
+        document.add_datafield(datafield)
       end
 
-      def add_sub_field(data_field, node)
-        name      = node["code"]
+      def add_subfield(datafield, node)
+        code      = node["code"]
         value     = html_entities_coder.decode(node.text)
-        sub_field = Document::DataField::SubField.new(name, value)
+        subfield  = Document::Datafield::Subfield.new(code, value)
 
-        data_field.add_sub_field(sub_field)
+        datafield.add_subfield(subfield)
       end
 
       def html_entities_coder

@@ -10,23 +10,23 @@ Benchmark.ips do |x|
   x.report("reference") do
     a = []
 
-    data_fields_struct = @document.send(:data_fields_struct)
-    data_fields_set = data_fields_struct["PPE"]
-    data_fields = data_fields_set.to_a
+    datafields_struct = @document.send(:datafields_struct)
+    datafields_set    = datafields_struct["PPE"]
+    datafields        = datafields_set.to_a
 
-    data_fields.each do |data_field|
-      sub_fields_struct = data_field.send(:sub_fields_struct)
-      sub_fields_set = sub_fields_struct["p"]
-      sub_fields = sub_fields_set.to_a
+    datafields.each do |datafield|
+      subfields_struct = datafield.send(:subfields_struct)
+      subfields_set    = subfields_struct["p"]
+      subfields        = subfields_set.to_a
 
-      sub_fields.each do |sub_field|
-        a << sub_field.value
+      subfields.each do |subfield|
+        a << subfield.value
       end
     end
   end
 
   x.report("implementation") do
-    @document.values(data_field: "PPE", sub_field: "p")
+    @document.datafields("PPE").subfields("p").values
   end
 
   x.compare!
