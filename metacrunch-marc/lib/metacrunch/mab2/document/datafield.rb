@@ -3,12 +3,10 @@ module Metacrunch
     class Document
       class Datafield
 
-        attr_reader :tag
-        attr_reader :ind1, :ind2
+        attr_accessor :tag
+        attr_accessor :ind1, :ind2
 
-        def initialize(tag, ind1:nil, ind2:nil)
-          raise ArgumentError, "required Datafield#tag not given" if tag.nil?
-
+        def initialize(tag = nil, ind1:nil, ind2:nil)
           @tag  = tag
           @ind1 = ind1
           @ind2 = ind2

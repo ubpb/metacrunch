@@ -3,13 +3,15 @@ module Metacrunch
     class Document
       class Controlfield
 
-        # @return [String]
-        attr_reader :tag
+        attr_accessor :tag
 
-        def initialize(tag, values = [])
-          raise ArgumentError, "required ControlField#tag not given" if tag.blank?
-          @tag = tag.to_s
+        def initialize(tag = nil, values = [])
+          self.tag    = tag
           self.values = values
+        end
+
+        def tag=(value)
+          @tag = value.to_s if value
         end
 
         #

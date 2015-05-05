@@ -4,12 +4,10 @@ module Metacrunch
       class Datafield
         class Subfield
 
-          attr_reader :code
-          attr_reader :value
+          attr_accessor :code
+          attr_accessor :value
 
-          def initialize(code, value)
-            raise ArgumentError, "required Subfield#code not given" if code.nil?
-
+          def initialize(code = nil, value = nil)
             @code  = code
             @value = value
           end
