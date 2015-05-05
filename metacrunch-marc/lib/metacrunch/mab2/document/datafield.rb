@@ -9,9 +9,9 @@ module Metacrunch
         def initialize(tag, ind1:nil, ind2:nil)
           raise ArgumentError, "required Datafield#tag not given" if tag.nil?
 
-          @tag       = tag
-          @ind1       = ind1
-          @ind2       = ind2
+          @tag  = tag
+          @ind1 = ind1
+          @ind2 = ind2
         end
 
         def matches?(ind1: nil, ind2: nil)
