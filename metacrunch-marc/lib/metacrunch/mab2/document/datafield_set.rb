@@ -25,6 +25,10 @@ module Metacrunch
             @datafields
           end
 
+          def empty?
+            @datafields.empty?
+          end
+
           def filter(ind1: nil, ind2: nil)
             if ind1 || ind2
               self.class.new(self.select{ |datafield| datafield.matches?(ind1: ind1, ind2: ind2) })

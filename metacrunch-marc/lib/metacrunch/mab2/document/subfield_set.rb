@@ -26,6 +26,10 @@ module Metacrunch
               @subfields
             end
 
+            def empty?
+              @subfields.empty?
+            end
+
             def values
               @subfields.map{ |subfield| subfield.value }
             end
