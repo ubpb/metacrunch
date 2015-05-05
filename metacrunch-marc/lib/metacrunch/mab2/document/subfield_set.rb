@@ -10,8 +10,8 @@ module Metacrunch
               @subfields = subfields
             end
 
-            def each(&block)
-              @subfields.each(&block)
+            def each
+              block_given? ? @subfields.each { |_subfield| yield _subfield } : to_enum
             end
 
             def <<(subfield)

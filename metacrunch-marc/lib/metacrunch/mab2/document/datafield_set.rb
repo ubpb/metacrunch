@@ -9,8 +9,8 @@ module Metacrunch
             @datafields = datafields
           end
 
-          def each(&block)
-            @datafields.each(&block)
+          def each
+            block_given? ? @datafields.each { |_datafield| yield _datafield } : to_enum
           end
 
           def <<(datafield)
