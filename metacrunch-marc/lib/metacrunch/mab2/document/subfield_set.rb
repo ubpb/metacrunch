@@ -6,9 +6,6 @@ module Metacrunch
           class Set
             include Enumerable
 
-            # @return [Array<Metacrunch::Mab2::Document::Subfield>]
-            attr_reader :subfields
-
             def initialize(subfields = [])
               @subfields = subfields
             end
