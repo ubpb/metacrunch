@@ -29,15 +29,7 @@ module Metacrunch
             @datafields.empty?
           end
 
-          def filter(ind1: nil, ind2: nil)
-            if ind1 || ind2
-              self.class.new(self.select{ |datafield| datafield.matches?(ind1: ind1, ind2: ind2) })
-            else
-              self
-            end
-          end
-
-           # @return [Metacrunch::Mab2::Document::Datafield::Subfield::Set]
+          # @return [Metacrunch::Mab2::Document::Datafield::Subfield::Set]
           def subfields(name)
             set = Subfield::Set.new
 
