@@ -5,9 +5,6 @@ module Metacrunch
         class Set
           include Enumerable
 
-          # @return [Array<Metacrunch::Mab2::Document::Datafield>]
-          attr_reader :datafields
-
           def initialize(datafields = [])
             @datafields = datafields
           end
