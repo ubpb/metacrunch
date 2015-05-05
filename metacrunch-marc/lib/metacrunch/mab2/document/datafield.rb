@@ -55,7 +55,7 @@ module Metacrunch
         # @param [Metacrunch::Mab2::Document::Datafield::Subfield] subfield
         #
         def add_subfield(subfield)
-          subfield_set  = subfields_struct[subfield.code] ||= Subfield::Set.new
+          subfield_set  = subfields(subfield.code)
           subfield_set << subfield
 
           subfields_struct[subfield.code] = subfield_set
