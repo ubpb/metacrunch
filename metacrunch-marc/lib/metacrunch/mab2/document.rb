@@ -96,7 +96,7 @@ module Metacrunch
       # @param [Metacrunch::Mab2::Document::Datafield] datafield
       #
       def add_datafield(datafield)
-        datafield_set  = datafields_struct[datafield.tag] || Datafield::Set.new
+        datafield_set  = datafields(datafield.tag)
         datafield_set << datafield
 
         datafields_struct[datafield.tag] = datafield_set
