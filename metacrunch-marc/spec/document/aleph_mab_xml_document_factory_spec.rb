@@ -18,10 +18,6 @@ describe Metacrunch::Mab2::AlephMabXmlDocumentFactory do
         expect(subject.datafields("100").first).not_to be_nil
       end
 
-      it "should find 3 sub fields of data field with tag 100" do
-        expect(subject.datafields("100").first.all_subfields.count).to be(3)
-      end
-
       it "sub field p of data field 100 is not nil" do
         expect(subject.datafields("100").first.subfields("p").first.value).not_to be_nil
       end

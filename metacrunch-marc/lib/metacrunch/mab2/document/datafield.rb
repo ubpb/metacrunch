@@ -15,7 +15,7 @@ module Metacrunch
         end
 
         def matches?(ind1: nil, ind2: nil)
-          (ind1.nil? or @ind1 == ind1) and (ind2.nil? or @ind2 == ind2)
+          (ind1.nil? || @ind1 == ind1) && (ind2.nil? || @ind2 == ind2)
         end
 
         # ------------------------------------------------------------------------------
@@ -32,17 +32,7 @@ module Metacrunch
         private :subfields_struct
 
         #
-        # @return [Array<Metacrunch::Mab2::Document::Datafield::Subfield::Set>]
         #
-        def all_subfields
-          subfields_struct.values
-        end
-
-        #
-        # Returns the sub field matching the given tag.
-        #
-        # @param [String] tag of the sub field
-        # @return [Metacrunch::Mab2::Document::Datafield::Subfield::Set] sub field with the given tag. The set
         #  is empty if the sub field doesn't exists.
         #
         def subfields(tag)
