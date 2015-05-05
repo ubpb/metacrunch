@@ -30,7 +30,7 @@ module Metacrunch
             end
 
             def values
-              self.map(&:value)
+              @sub_fields.map{ |sub_field| sub_field.value }
             end
 
           end
