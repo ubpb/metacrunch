@@ -32,11 +32,14 @@ module Metacrunch
         private :subfields_struct
 
         #
+        # Returns the sub field matching the given code.
         #
+        # @param [String] code of the sub field
+        # @return [Metacrunch::Mab2::Document::Datafield::Subfield::Set] sub field with the given code. The set
         #  is empty if the sub field doesn't exists.
         #
-        def subfields(tag)
-          subfields_struct[tag] || Subfield::Set.new
+        def subfields(code)
+          subfields_struct[code] || Subfield::Set.new
         end
 
         #
