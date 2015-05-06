@@ -3,7 +3,7 @@ require File.expand_path("../lib/metacrunch/version", __FILE__)
 Gem::Specification.new do |s|
   s.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
   s.email         = "r.sprotte@ub.uni-paderborn.de"
-  s.summary       = %q{Metadata processing toolkit for Ruby}
+  s.summary       = %q{Data processing toolkit for Ruby}
   s.description   = s.summary
   s.homepage      = "http://github.com/ubpb/metacrunch"
   s.licenses      = ["MIT"]
