@@ -1,7 +1,7 @@
 require File.expand_path("../lib/metacrunch/mab2/version", __FILE__)
 
 Gem::Specification.new do |s|
-  s.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
+  s.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
   s.email         = "r.sprotte@ub.uni-paderborn.de"
   s.summary       = %q{MAB2 tools for metacrunch}
   s.description   = s.summary
