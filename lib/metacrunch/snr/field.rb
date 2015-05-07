@@ -18,8 +18,10 @@ module Metacrunch
         # ------------------------------------------------------------------------------
 
         def to_xml(builder)
-          builder.tag!(self.name) do
-            value.to_xml(builder: builder, skip_instruct: true)
+          if value.respond_to?(:to_xml)
+            value.to_xml(root: self.name, builder: builder, skip_instruct: true)
+          else
+            builder.tag!(self.name, self.value)
           end
         end
 

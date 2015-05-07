@@ -59,15 +59,15 @@ describe Metacrunch::SNR do
   describe ".to_xml" do
     before {
       snr.add("section1", "title", "Foo Bar")
-      snr.add("section1", "artist", "Doe, John")
-      snr.add("section2", "artist", "John Doe")
+      snr.add("section1", "artists", ["Sievers, Michael", "Sprotte, René"])
+      snr.add("section2", "link", {label: "Click here", url: "http://example.com"})
     }
 
     subject { snr.to_xml }
 
     it { is_expected.not_to be_nil }
     it { is_expected.not_to be_empty }
-    it { is_expected.to eq("\n<snr>\n  <section1>\n    <title>Foo Bar</title>\n    <artist>Doe, John</artist>\n  </section1>\n  <section2>\n    <artist>John Doe</artist>\n  </section2>\n</snr>\n") }
+    it { is_expected.to eq("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<snr>\n  <section1>\n    <title>Foo Bar</title>\n    <artists type=\"array\">\n      <artist>Sievers, Michael</artist>\n      <artist>Sprotte, René</artist>\n    </artists>\n  </section1>\n  <section2>\n    <link>\n      <label>Click here</label>\n      <url>http://example.com</url>\n    </link>\n  </section2>\n</snr>\n") }
   end
 
 end
