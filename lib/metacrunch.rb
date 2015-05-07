@@ -17,6 +17,7 @@ module Metacrunch
   require_relative "./metacrunch/command"
   require_relative "./metacrunch/utils"
   require_relative "./metacrunch/snr"
+  require_relative "./metacrunch/transformer"
 
   def self.load_plugins
     Gem.find_latest_files("metacrunch_plugin.rb").each do |path|
