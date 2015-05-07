@@ -46,6 +46,18 @@ module Metacrunch
         field
       end
 
+      # ------------------------------------------------------------------------------
+      # Serialization
+      # ------------------------------------------------------------------------------
+
+      def to_xml(builder)
+        builder.tag!(self.name) do
+          @fields.each do |_field|
+            _field.to_xml(builder)
+          end
+        end
+      end
+
     end
   end
 end

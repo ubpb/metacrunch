@@ -88,24 +88,13 @@ module Metacrunch
     # @return [String] The SNR as XML string.
     #
     def to_xml
-      doc  = Ox::Document.new(version: "1.0")
-      root = Ox::Element.new("snr")
-
-      sections.each do |section|
-        section_node = Ox::Element.new(section.name)
-
-        section.fields.each do |field|
-          field_node = Ox::Element.new(field.name)
-          field_node << field.value
-          section_node << field_node
+      builder = Builder::XmlMarkup.new(indent: 2)
+      builder.instruct!(:xml, :encoding => "UTF-8")
+      builder.snr do
+        sections.each do |_section|
+          _section.to_xml(builder)
         end
-
-        root << section_node
       end
-
-      doc << root
-
-      Ox.dump(doc)
     end
 
   end

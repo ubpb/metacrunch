@@ -13,6 +13,16 @@ module Metacrunch
           @value = value
         end
 
+        # ------------------------------------------------------------------------------
+        # Serialization
+        # ------------------------------------------------------------------------------
+
+        def to_xml(builder)
+          builder.tag!(self.name) do
+            value.to_xml(builder: builder, skip_instruct: true)
+          end
+        end
+
       end
     end
   end
