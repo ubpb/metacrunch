@@ -18,7 +18,8 @@ module Metacrunch
   private
 
     def io
-      @io ||=  Gem::Package::TarWriter.new(super)
+      @io     ||= super
+      @tar_io ||= Gem::Package::TarWriter.new(@io)
     end
 
   end
