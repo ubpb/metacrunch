@@ -13,11 +13,11 @@ module Metacrunch
       end
     end
 
-    def write(content = "", &block)
+    def write(data, options = {})
       if block_given?
         yield(io)
       else
-        [*content].map{|_content| io.write(_content)}.sum
+        io.write(data)
       end
     end
 
