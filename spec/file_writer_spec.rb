@@ -11,24 +11,24 @@ describe Metacrunch::FileWriter do
   it "can write a file" do
     writer = Metacrunch::FileWriter.new(regular_file)
     writer.write("FOO")
-    writer.write(["BAR", "BAZ"])
+    writer.write("BAR")
     writer.close
 
     content = File.read(regular_file)
-    expect(content).to eq("FOOBARBAZ")
+    expect(content).to eq("FOOBAR")
   end
 
   it "can write a compressed file" do
     writer = Metacrunch::FileWriter.new(compressed_file, compress: true)
     writer.write("FOO")
-    writer.write(["BAR", "BAZ"])
+    writer.write("BAR")
     writer.close
 
     io      = Zlib::GzipReader.open(compressed_file)
     content = io.read
     io.close
 
-    expect(content).to eq("FOOBARBAZ")
+    expect(content).to eq("FOOBAR")
   end
 
   it "can override existing file" do
