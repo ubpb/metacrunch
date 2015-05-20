@@ -22,28 +22,18 @@ module Metacrunch
     end
 
     def flush
-      file_io.flush if file_io
-      gzip_io.flush if gzip_io
+      @io.flush if @io
     end
 
     def close
       flush
-      file_io.close if file_io
-      gzip_io.close if gzip_io
+      @io.close if @io
     end
 
   private
 
     def io
-      @io ||= (@compressed == true) ? gzip_io : file_io
-    end
-
-    def file_io
-      @file_io ||= File.open(@path, "w")
-    end
-
-    def gzip_io
-      @gzip_io ||= Zlib::GzipWriter.open(@path)
+      @io ||= (@compressed == true) ? Zlib::GzipWriter.open(@path) : File.open(@path, "w")
     end
 
   end
