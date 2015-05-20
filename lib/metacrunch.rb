@@ -15,7 +15,8 @@ module Metacrunch
   require_relative "./metacrunch/version"
   require_relative "./metacrunch/cli"
   require_relative "./metacrunch/command"
-  require_relative "./metacrunch/readers"
+  require_relative "./metacrunch/file_reader"
+  require_relative "./metacrunch/file_reader_entry"
   require_relative "./metacrunch/snr"
   require_relative "./metacrunch/transformer"
 
