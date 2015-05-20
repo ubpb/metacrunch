@@ -18,6 +18,7 @@ module Metacrunch
   require_relative "./metacrunch/file_reader"
   require_relative "./metacrunch/file_reader_entry"
   require_relative "./metacrunch/file_writer"
+  require_relative "./metacrunch/tar_writer"
   require_relative "./metacrunch/snr"
   require_relative "./metacrunch/transformer"
 
