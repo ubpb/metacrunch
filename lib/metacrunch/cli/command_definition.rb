@@ -14,9 +14,9 @@ module Metacrunch
         @klass
       end
 
-      def name
-        name = @klass.to_s.demodulize.underscore
-        name.gsub!(/_command\Z/, "")
+      def name(value = nil)
+        @name = value if value.present?
+        @name || @klass.to_s.demodulize.underscore.gsub!(/_command\Z/, "")
       end
 
       def usage(value = nil)
