@@ -3,7 +3,7 @@ source 'https://rubygems.org'
 gemspec
 
 gem "rake"
-gem "rspec",      "~> 3.2.0"
+gem "rspec", "~> 3.2.0"
 
 if !ENV["CI"]
   group :development do
