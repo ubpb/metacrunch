@@ -21,7 +21,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency "activesupport", "~> 4.2", ">= 4.2.0"
   s.add_dependency "builder",       "~> 3.2", ">= 3.2.2"
-  s.add_dependency "parallel",      "~> 1.4", ">= 1.4.1"
+  s.add_dependency "parallel",      "~> 1.6", ">= 1.6.0"
   s.add_dependency "thor",          "~> 0.19"
   s.add_dependency "ox",            "~> 2.1"
 end
