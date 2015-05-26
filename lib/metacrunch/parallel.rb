@@ -1,34 +1,53 @@
 module Metacrunch
   class Parallel
 
-    def initialize(enumerator, &block)
-      @callable   = block
-      @enumerator = enumerator
+    module DSL
+      def parallel(enumerable, options = {}, &block)
+        Parallel.each(enumerable, options, &block)
+      end
     end
 
-    def call(options = {})
-      number_of_processes = options[:in_processes] || 0
-      options[:on_process_finished] ||= -> {}
+    def self.each(enumerable, options = {}, &block)
+      self.new(enumerable, options, &block).call
+    end
 
-      begin
-        @enumerator.each do |enumerator_value|
-          if number_of_processes == 0
-            @callable.call(enumerator_value)
-            options[:on_process_finished].call
-          else
-            fork_process do
-              @callable.call(enumerator_value)
-            end
+    def initialize(enumerable, options = {}, &block)
+      @enumerable          = enumerable
+      @callable            = block
+      @no_of_procs         = options[:in_processes] || 0
+      @on_process_finished = options[:on_process_finished] || -> {}
 
-            if processes_limit_reached?(number_of_processes)
-              wait_for_some_process_to_terminate
-              options[:on_process_finished].call
-            end
+      unless block_given?
+        raise ArgumentError, "you must provide a block"
+      end
+
+      unless @enumerable.respond_to?(:each)
+        raise ArgumentError, "enumerable must respond to each"
+      end
+
+      unless @on_process_finished.respond_to?(:call)
+        raise ArgumentError, "on_process_finished must respond to call"
+      end
+    end
+
+    def call
+      @enumerable.each do |_value|
+        if @no_of_procs == 0
+          @callable.call(_value)
+          @on_process_finished.call
+        else
+          fork_process do
+            @callable.call(_value)
+          end
+
+          if processes_limit_reached?
+            wait_for_some_process_to_terminate
+            @on_process_finished.call
           end
         end
-      ensure
-        Process.waitall.each { options[:on_process_finished].call }
       end
+    ensure
+      Process.waitall.each { options[:on_process_finished].call }
     end
 
   private
@@ -37,8 +56,8 @@ module Metacrunch
       (@pids ||= []).push(fork(&block))
     end
 
-    def processes_limit_reached?(number_of_processes)
-      (@pids || []).length >= number_of_processes
+    def processes_limit_reached?
+      (@pids || []).length >= @no_of_procs
     end
 
     def wait_for_some_process_to_terminate
