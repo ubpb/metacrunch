@@ -21,6 +21,7 @@ module Metacrunch
   require_relative "./metacrunch/tar_writer"
   require_relative "./metacrunch/snr"
   require_relative "./metacrunch/transformer"
+  require_relative "./metacrunch/parallel"
 
   def self.load_plugins
     Gem.find_latest_files("metacrunch_plugin.rb").each do |path|
