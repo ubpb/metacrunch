@@ -47,7 +47,7 @@ module Metacrunch
         end
       end
     ensure
-      Process.waitall.each { options[:on_process_finished].call }
+      Process.waitall.each { @on_process_finished.call }
     end
 
   private
