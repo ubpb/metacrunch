@@ -3,10 +3,10 @@ module Metacrunch
     require_relative "./transformer/step"
     require_relative "./transformer/helper"
 
-    attr_reader :source, :target, :options
+    attr_accessor :source, :target, :options
 
 
-    def initialize(source:, target:, options: {})
+    def initialize(source:nil, target:nil, options: {})
       @source  = source
       @target  = target
       @options = options
@@ -26,6 +26,7 @@ module Metacrunch
     end
 
     def register_helper(helper_module)
+      raise ArgumentError, "Must be a module" unless helper_module.is_a?(Module)
       helper.class.send(:include, helper_module) # TODO: Benchmark this
     end
 
