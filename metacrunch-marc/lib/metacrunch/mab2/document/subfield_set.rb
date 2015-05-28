@@ -34,6 +34,10 @@ module Metacrunch
               @subfields.map{ |subfield| subfield.value }
             end
 
+            def first_value
+              values.find{ |v| v.present? }
+            end
+
           end
         end
       end
