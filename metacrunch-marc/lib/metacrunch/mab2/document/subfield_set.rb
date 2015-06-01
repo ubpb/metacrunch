@@ -38,6 +38,16 @@ module Metacrunch
               values.find{ |v| v.present? }
             end
 
+            # ------------------------------------------------------------------------------
+            # Serialization
+            # ------------------------------------------------------------------------------
+
+            def to_xml(builder)
+              self.each do |_subfield|
+                _subfield.to_xml(builder)
+              end
+            end
+
           end
         end
       end

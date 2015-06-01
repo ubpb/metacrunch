@@ -82,7 +82,7 @@ module Metacrunch
           filtered_datafields = set.select do |_datafield|
             (!ind1 || _datafield.ind1 == ind1) && (!ind2 || _datafield.ind2 == ind2)
           end
-          
+
           Datafield::Set.new(filtered_datafields)
         else
           set
@@ -99,6 +99,24 @@ module Metacrunch
         datafield_set << datafield
 
         datafields_struct[datafield.tag] = datafield_set
+      end
+
+      # ------------------------------------------------------------------------------
+      # Serialization
+      # ------------------------------------------------------------------------------
+
+      def to_xml
+        builder = Builder::XmlMarkup.new(indent: 2)
+        builder.instruct!(:xml, :encoding => "UTF-8")
+        builder.mab_xml do
+          controlfields_struct.values.each do |_controlfield|
+            _controlfield.to_xml(builder)
+          end
+
+          datafields_struct.values.each do |_datafield_set|
+            _datafield_set.to_xml(builder)
+          end
+        end
       end
 
     end

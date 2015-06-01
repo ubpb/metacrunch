@@ -12,6 +12,14 @@ module Metacrunch
             @value = value
           end
 
+          # ------------------------------------------------------------------------------
+          # Serialization
+          # ------------------------------------------------------------------------------
+
+          def to_xml(builder)
+            builder.subfield(code: code, value: value)
+          end
+
         end
       end
     end

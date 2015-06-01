@@ -48,6 +48,18 @@ module Metacrunch
           subfields_struct[subfield.code] = subfield_set
         end
 
+        # ------------------------------------------------------------------------------
+        # Serialization
+        # ------------------------------------------------------------------------------
+
+        def to_xml(builder)
+          builder.datafield(tag: tag, ind1: ind1, ind2: ind2) do
+            subfields_struct.values.each do |_subfield_set|
+              _subfield_set.to_xml(builder)
+            end
+          end
+        end
+
       end
     end
   end
