@@ -37,7 +37,7 @@ describe Metacrunch::Mab2::Document do
       subject { document.datafields("100") }
 
       it "returns only datafields with tag=100" do
-        expect(subject.count).to eq(2)
+        expect(subject.count).to eq(3)
       end
     end
 
@@ -64,6 +64,14 @@ describe Metacrunch::Mab2::Document do
         expect(subject.count).to eq(1)
       end
     end
+
+    context "given tag=100 and ind1=:blank" do
+      subject { document.datafields("100", ind1: :blank) }
+
+      it "returns only datafields with tag=100 and ind1=' ' or ind1=-" do
+        expect(subject.count).to eq(2)
+      end
+    end
   end
 
 private
@@ -85,6 +93,11 @@ private
 
     datafield = create_datafield("100", ind1: "a", ind2: "2")
     datafield.add_subfield(create_subfield("p", "Sprotte, René"))
+    datafield.add_subfield(create_subfield("9", "123456789"))
+    document.add_datafield(datafield)
+
+    datafield = create_datafield("100", ind1: " ", ind2: "1")
+    datafield.add_subfield(create_subfield("p", "Sievers, Michael"))
     datafield.add_subfield(create_subfield("9", "123456789"))
     document.add_datafield(datafield)
 

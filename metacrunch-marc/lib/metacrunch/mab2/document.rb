@@ -79,8 +79,9 @@ module Metacrunch
         return set if set.empty?
 
         if ind1 || ind2
-          filtered_datafields = set.select do |_datafield|
-            (!ind1 || _datafield.ind1 == ind1) && (!ind2 || _datafield.ind2 == ind2)
+          filtered_datafields = set.select do |datafield|
+            (!ind1 || (ind1 == :blank ? datafield.ind1 == " " || datafield.ind1 == "-" : datafield.ind1 == ind1)) &&
+            (!ind2 || (ind2 == :blank ? datafield.ind2 == " " || datafield.ind2 == "-" : datafield.ind2 == ind2))
           end
 
           Datafield::Set.new(filtered_datafields)
