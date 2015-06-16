@@ -4,6 +4,7 @@ module Metacrunch
     require_relative "./transformer/helper"
 
     attr_accessor :source, :target, :options
+    attr_reader   :step
 
 
     def initialize(source:nil, target:nil, options: {})
@@ -14,11 +15,13 @@ module Metacrunch
 
     def transform(step_class = nil, &block)
       if block_given?
-        Step.new(self).instance_eval(&block)
+        @step = Step.new(self)
+        @step.instance_eval(&block)
       else
         raise ArgumentError, "You need to provide a STEP or a block" if step_class.nil?
         clazz = step_class.is_a?(Class) ? step_class : step_class.to_s.constantize
-        clazz.new(self).perform
+        @step = clazz.new(self)
+        @step.perform
       end
     end
 
