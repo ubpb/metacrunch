@@ -17,7 +17,8 @@ module Metacrunch
         Step.new(self).instance_eval(&block)
       else
         raise ArgumentError, "You need to provide a STEP or a block" if step_class.nil?
-        step_class.new(self).perform
+        clazz = step_class.is_a?(Class) ? step_class : step_class.to_s.constantize
+        clazz.new(self).perform
       end
     end
 
