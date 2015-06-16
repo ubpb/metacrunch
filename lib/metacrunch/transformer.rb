@@ -14,7 +14,7 @@ module Metacrunch
 
     def transform(step_class = nil, &block)
       if block_given?
-        Step.new(self).instance_eval(&block) # TODO: Benchmark this
+        Step.new(self).instance_eval(&block)
       else
         raise ArgumentError, "You need to provide a STEP or a block" if step_class.nil?
         step_class.new(self).perform
