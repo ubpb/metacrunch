@@ -33,6 +33,22 @@ module Metacrunch
       add_section(section)
     end
 
+    #
+    # Returns field values for a given path.
+    #
+    # @param [String] path A path to the fields seperated by /. E.g. section/field
+    # @return [Array<*>]
+    #
+    def values(path)
+      section_name, field_name = path.split("/")
+      section = self.section(section_name)
+      if section && field_name
+        section.fields(field_name).map{|field| field.value}
+      else
+        []
+      end
+    end
+
     # ------------------------------------------------------------------------------
     # Sections
     # ------------------------------------------------------------------------------

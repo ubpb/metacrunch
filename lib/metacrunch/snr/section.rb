@@ -27,12 +27,17 @@ module Metacrunch
       # ------------------------------------------------------------------------------
 
       #
-      # Return all fields.
+      # Return all fields. A name can be provided to filter fields by name.
       #
+      # @param [String, nil] name
       # @return [Array<Metacrunch::SNR::Section::Field>]
       #
-      def fields
-        @fields
+      def fields(name = nil)
+        if name
+          @fields.select{|field| field.name == name}
+        else
+          @fields
+        end
       end
 
       #
