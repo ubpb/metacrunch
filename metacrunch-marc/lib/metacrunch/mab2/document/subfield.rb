@@ -17,9 +17,7 @@ module Metacrunch
           # ------------------------------------------------------------------------------
 
           def to_xml(builder)
-            builder.subfield(code: code) do
-              builder.text!(value)
-            end
+            builder.subfield(value, code: code)
           end
 
         end
