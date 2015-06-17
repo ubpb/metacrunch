@@ -19,7 +19,9 @@ module Metacrunch
       # Adds a field
       #
       def add(field_name, value)
-        add_field(Field.new(field_name, value))
+        [*value].each do |_value|
+          add_field(Field.new(field_name, _value))
+        end
       end
 
       # ------------------------------------------------------------------------------
