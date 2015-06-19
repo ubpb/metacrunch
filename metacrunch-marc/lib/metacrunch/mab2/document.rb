@@ -36,11 +36,10 @@ module Metacrunch
       # Returns the control field matching the given tag.
       #
       # @param [String] tag of the control field
-      # @return [Controlfield, nil] control field with the given tag. Is nil
-      #  if the control field doesn't exists.
+      # @return [Controlfield] control field with the given tag.
       #
       def controlfield(tag)
-        controlfields_struct[tag]
+        controlfields_struct[tag] || Controlfield.new(tag)
       end
 
       #
