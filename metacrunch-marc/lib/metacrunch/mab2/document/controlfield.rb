@@ -60,7 +60,7 @@ module Metacrunch
         # ------------------------------------------------------------------------------
 
         def to_xml(builder)
-          builder.controlfield(values.join("|"), tag: tag)
+          builder.controlfield(values2string, tag: tag)
         end
 
       private
@@ -69,16 +69,20 @@ module Metacrunch
           string.chars.to_a.map{ |e| (e=="|") ? nil : e }
         end
 
-        def array2values(values)
-          values.map do |v|
+        def array2values(array)
+          array.map do |v|
             if v.present?
               v = v.to_s
-              raise ArgumentError, "invalid value of controlfield #{tag}: #{values}" if v.length > 1
+              raise ArgumentError, "invalid value of controlfield #{tag}: #{array}" if v.length > 1
               v
             else
               nil
             end
           end
+        end
+
+        def values2string
+          values.map{|c| c.blank? ? "|" : c}.join
         end
 
       end
