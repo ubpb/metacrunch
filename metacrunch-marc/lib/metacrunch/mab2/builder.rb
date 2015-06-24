@@ -33,6 +33,10 @@ module Metacrunch
         @document
       end
 
+      def superorder!
+        controlfield("051", "n")
+      end
+
 
       class SubfieldBuilder
         def initialize(datafield)
