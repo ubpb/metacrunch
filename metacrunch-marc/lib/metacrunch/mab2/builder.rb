@@ -8,7 +8,8 @@ module Metacrunch
 
       def self.build(&block)
         builder = new
-        builder.instance_eval(&block)
+        document = builder.instance_eval(&block) if block_given?
+        document || Document.new
       end
 
       def initialize
