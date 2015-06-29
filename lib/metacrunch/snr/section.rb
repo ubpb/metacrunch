@@ -19,8 +19,12 @@ module Metacrunch
       # Adds a field
       #
       def add(field_name, value)
-        [*value].each do |_value|
-          add_field(Field.new(field_name, _value))
+        if value.is_a?(Array)
+          value.each do |_value|
+            add_field(Field.new(field_name, _value))
+          end
+        else
+          add_field(Field.new(field_name, value))
         end
       end
 

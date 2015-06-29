@@ -67,7 +67,7 @@ describe Metacrunch::SNR do
 
     it { is_expected.not_to be_nil }
     it { is_expected.not_to be_empty }
-    it { is_expected.to eq("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<snr>\n  <section1>\n    <title>Foo Bar</title>\n    <artist>Sievers, Michael</artist>\n    <artist>Sprotte, René</artist>\n  </section1>\n  <section2>\n    <link type=\"array\">\n      <link type=\"symbol\">label</link>\n      <link>Click here</link>\n    </link>\n    <link type=\"array\">\n      <link type=\"symbol\">url</link>\n      <link>http://example.com</link>\n    </link>\n  </section2>\n</snr>\n") }
+    it { is_expected.to eq("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<snr>\n  <section1>\n    <title>Foo Bar</title>\n    <artist>Sievers, Michael</artist>\n    <artist>Sprotte, René</artist>\n  </section1>\n  <section2>\n    <link>\n      <label>Click here</label>\n      <url>http://example.com</url>\n    </link>\n  </section2>\n</snr>\n") }
   end
 
 end
