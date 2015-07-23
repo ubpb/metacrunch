@@ -29,6 +29,10 @@ module Metacrunch
             @datafields.empty?
           end
 
+          def present?
+            !empty?
+          end
+
           # @return [Metacrunch::Mab2::Document::Datafield::Subfield::Set]
           def subfields(name)
             set = Subfield::Set.new
