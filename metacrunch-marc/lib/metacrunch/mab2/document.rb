@@ -106,7 +106,7 @@ module Metacrunch
       # ------------------------------------------------------------------------------
 
       def to_xml
-        builder = Builder::XmlMarkup.new(indent: 2)
+        builder = ::Builder::XmlMarkup.new(indent: 2)
         builder.instruct!(:xml, :encoding => "UTF-8")
         builder.mab_xml do
           controlfields_struct.values.each do |_controlfield|
