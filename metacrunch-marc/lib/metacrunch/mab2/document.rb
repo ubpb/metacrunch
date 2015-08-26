@@ -75,17 +75,43 @@ module Metacrunch
       #
       def datafields(tag, ind1: nil, ind2: nil)
         set = datafields_struct[tag] || Datafield::Set.new
-        return set if set.empty?
+        return set if set.empty? || (ind1.nil? && ind2.nil?)
 
-        if ind1 || ind2
-          filtered_datafields = set.select do |datafield|
-            (!ind1 || (ind1 == :blank ? datafield.ind1 == " " || datafield.ind1 == "-" : datafield.ind1 == ind1)) &&
-            (!ind2 || (ind2 == :blank ? datafield.ind2 == " " || datafield.ind2 == "-" : datafield.ind2 == ind2))
+        ind1 = ind1.is_a?(Array) ? ind1.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind1
+        ind2 = ind2.is_a?(Array) ? ind2.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind2
+
+        # not dry but combining these two does make the code harder to read
+        set.select do |_datafield|
+          ind1_check =
+          if !ind1
+            true
+          elsif ind1 == :blank && _datafield.ind1 == " " || _datafield.ind1 == "-"
+            true
+          elsif _datafield.ind1 == ind1
+            true
+          elsif ind1.is_a?(Array) && ind1.include?(_datafield.ind1)
+            true
+          else
+            false
           end
 
-          Datafield::Set.new(filtered_datafields)
-        else
-          set
+          ind2_check =
+          if !ind2
+            true
+          elsif ind2 == :blank && _datafield.ind2 == " " || _datafield.ind2 == "-"
+            true
+          elsif _datafield.ind2 == ind2
+            true
+          elsif ind2.is_a?(Array) && ind2.include?(_datafield.ind2)
+            true
+          else
+            false
+          end
+
+          ind1_check && ind2_check
+        end
+        .try do |_array|
+          Datafield::Set.new(_array)
         end
       end
 

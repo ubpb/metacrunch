@@ -72,6 +72,14 @@ describe Metacrunch::Mab2::Document do
         expect(subject.count).to eq(2)
       end
     end
+
+    context "given tag=100 and ind1=[:blank, 'a']" do
+      subject { document.datafields("100", ind1: [:blank, "a"]) }
+
+      it "returns only datafield with tag=100 and ind1=(:blank || 'a')" do
+        expect(subject.count).to eq(3)
+      end
+    end
   end
 
 private
