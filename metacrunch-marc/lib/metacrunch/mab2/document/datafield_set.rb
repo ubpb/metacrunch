@@ -21,6 +21,10 @@ module Metacrunch
             @datafields.concat(datafield_set.to_a)
           end
 
+          def first_value
+            subfields.first_value
+          end
+
           def to_a
             @datafields
           end
@@ -34,11 +38,17 @@ module Metacrunch
           end
 
           # @return [Metacrunch::Mab2::Document::Datafield::Subfield::Set]
-          def subfields(name)
+          def subfields(codes = nil)
             set = Subfield::Set.new
 
             @datafields.each do |datafield|
-              set.concat(datafield.subfields(name))
+              if codes.nil?
+                set.concat(datafield.subfields)
+              else
+                [codes].flatten(1).each do |_code|
+                  set.concat(datafield.subfields(_code))
+                end
+              end
             end
 
             set

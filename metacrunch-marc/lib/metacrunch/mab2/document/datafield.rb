@@ -32,8 +32,13 @@ module Metacrunch
         # @return [Metacrunch::Mab2::Document::Datafield::Subfield::Set] sub field with the given code. The set
         #  is empty if the sub field doesn't exists.
         #
-        def subfields(code)
-          subfields_struct[code] || Subfield::Set.new
+        def subfields(code = nil)
+          if code.nil?
+            @subfields_struct.values.map(&:to_a).flatten(1)
+          else
+            subfields_struct[code]
+          end ||
+          Subfield::Set.new
         end
 
         #
