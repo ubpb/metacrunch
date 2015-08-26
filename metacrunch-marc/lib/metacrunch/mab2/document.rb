@@ -85,7 +85,7 @@ module Metacrunch
           ind1_check =
           if !ind1
             true
-          elsif ind1 == :blank && _datafield.ind1 == " " || _datafield.ind1 == "-"
+          elsif ind1 == :blank && (_datafield.ind1 == " " || _datafield.ind1 == "-")
             true
           elsif _datafield.ind1 == ind1
             true
@@ -98,7 +98,7 @@ module Metacrunch
           ind2_check =
           if !ind2
             true
-          elsif ind2 == :blank && _datafield.ind2 == " " || _datafield.ind2 == "-"
+          elsif ind2 == :blank && (_datafield.ind2 == " " || _datafield.ind2 == "-")
             true
           elsif _datafield.ind2 == ind2
             true
