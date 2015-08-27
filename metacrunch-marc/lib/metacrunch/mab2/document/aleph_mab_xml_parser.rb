@@ -1,22 +1,15 @@
 require "htmlentities"
 require "ox"
-require_relative "./document"
+require_relative "../document"
 
 module Metacrunch
   module Mab2
-    class AlephMabXmlDocumentFactory
+    class Document
+      class AlephMabXmlParser < Ox::Sax
+        def self.parse(aleph_mab_xml)
+          new.parse(aleph_mab_xml)
+        end
 
-      def initialize(aleph_mab_xml)
-        @aleph_mab_xml = aleph_mab_xml
-      end
-
-      def to_document
-        @document ||= Parser.new.parse(@aleph_mab_xml)
-      end
-
-    private
-
-      class Parser < Ox::Sax
         def parse(io_or_string)
           # initialize state machine
           @in_controlfield = @in_datafield = @in_subfield = false
@@ -37,13 +30,13 @@ module Metacrunch
         def start_element(name)
           if name == :subfield
             @in_subfield = true
-            @subfield = Document::Datafield::Subfield.new
+            @subfield = Metacrunch::Mab2::Document::Datafield::Subfield.new
           elsif name == :datafield
             @in_datafield = true
-            @datafield = Document::Datafield.new
+            @datafield = Metacrunch::Mab2::Document::Datafield.new
           elsif name == :controlfield
             @in_controlfield = true
-            @controlfield = Document::Controlfield.new
+            @controlfield = Metacrunch::Mab2::Document::Controlfield.new
           end
         end
 

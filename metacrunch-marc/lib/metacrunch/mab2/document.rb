@@ -1,6 +1,7 @@
 module Metacrunch
   module Mab2
     class Document
+      require_relative "./document/aleph_mab_xml_parser"
       require_relative "./document/controlfield"
       require_relative "./document/datafield"
       require_relative "./document/datafield_set"
@@ -16,7 +17,7 @@ module Metacrunch
       # @return [Metacrunch::Mab2::Document]
       #
       def self.from_aleph_mab_xml(xml)
-        AlephMabXmlDocumentFactory.new(xml).to_document
+        AlephMabXmlParser.parse(xml)
       end
 
       # ------------------------------------------------------------------------------
