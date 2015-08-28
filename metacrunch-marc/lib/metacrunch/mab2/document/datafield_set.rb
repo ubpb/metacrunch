@@ -18,6 +18,7 @@ module Metacrunch
 
         def concat(datafield_set)
           @datafields.concat(datafield_set.to_a)
+          self
         end
 
         def first_value

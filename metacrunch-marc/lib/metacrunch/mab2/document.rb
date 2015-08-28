@@ -74,45 +74,51 @@ module Metacrunch
       # @return [Metacrunch::Mab2::Document::DatafieldSet] data field with the given tag and ind1/ind2.
       #  The set is empty if a matching field with the tag and/or ind1/ind2 doesn't exists.
       #
-      def datafields(tag, ind1: nil, ind2: nil)
-        set = datafields_struct[tag] || DatafieldSet.new
-        return set if set.empty? || (ind1.nil? && ind2.nil?)
-
-        ind1 = ind1.is_a?(Array) ? ind1.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind1
-        ind2 = ind2.is_a?(Array) ? ind2.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind2
-
-        # not dry but combining these two does make the code harder to read
-        set.select do |_datafield|
-          ind1_check =
-          if !ind1
-            true
-          elsif ind1 == :blank && (_datafield.ind1 == " " || _datafield.ind1 == "-")
-            true
-          elsif _datafield.ind1 == ind1
-            true
-          elsif ind1.is_a?(Array) && ind1.include?(_datafield.ind1)
-            true
-          else
-            false
+      def datafields(tag = nil, ind1: nil, ind2: nil)
+        if tag.nil?
+          datafields_struct.values.inject(DatafieldSet.new) do |_memo, _datafield_set|
+            _memo.concat(_datafield_set)
           end
+        else
+          set = datafields_struct[tag] || DatafieldSet.new
+          return set if set.empty? || (ind1.nil? && ind2.nil?)
 
-          ind2_check =
-          if !ind2
-            true
-          elsif ind2 == :blank && (_datafield.ind2 == " " || _datafield.ind2 == "-")
-            true
-          elsif _datafield.ind2 == ind2
-            true
-          elsif ind2.is_a?(Array) && ind2.include?(_datafield.ind2)
-            true
-          else
-            false
+          ind1 = ind1.is_a?(Array) ? ind1.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind1
+          ind2 = ind2.is_a?(Array) ? ind2.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind2
+
+          # not dry but combining these two does make the code harder to read
+          set.select do |_datafield|
+            ind1_check =
+            if !ind1
+              true
+            elsif ind1 == :blank && (_datafield.ind1 == " " || _datafield.ind1 == "-")
+              true
+            elsif _datafield.ind1 == ind1
+              true
+            elsif ind1.is_a?(Array) && ind1.include?(_datafield.ind1)
+              true
+            else
+              false
+            end
+
+            ind2_check =
+            if !ind2
+              true
+            elsif ind2 == :blank && (_datafield.ind2 == " " || _datafield.ind2 == "-")
+              true
+            elsif _datafield.ind2 == ind2
+              true
+            elsif ind2.is_a?(Array) && ind2.include?(_datafield.ind2)
+              true
+            else
+              false
+            end
+
+            ind1_check && ind2_check
           end
-
-          ind1_check && ind2_check
-        end
-        .try do |_array|
-          DatafieldSet.new(_array)
+          .try do |_array|
+            DatafieldSet.new(_array)
+          end
         end
       end
 
