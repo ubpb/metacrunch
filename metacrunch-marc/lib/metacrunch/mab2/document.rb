@@ -101,9 +101,6 @@ module Metacrunch
 
             ind1_check && ind2_check
           end
-          .try do |_array|
-            DatafieldSet.new(_array)
-          end
         end
       end
 
