@@ -28,7 +28,7 @@ module Metacrunch
           result =  Metacrunch::Mab2::Document::SubfieldSet.new
 
           if code.nil?
-            @subfields.values.map(&:to_a).flatten(1)
+            result.concat(@subfields.values.flatten(1))
           elsif _subfields = @subfields[code]
             result.concat(_subfields)
           elsif (codes = code).is_a?(Array)
