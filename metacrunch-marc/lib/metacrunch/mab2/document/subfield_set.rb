@@ -1,8 +1,10 @@
+require "self_enumerable"
+
 module Metacrunch
   module Mab2
     class Document
       class SubfieldSet
-        include Enumerable
+        include SelfEnumerable
 
         def initialize(subfields = [])
           @subfields = subfields

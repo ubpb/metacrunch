@@ -20,4 +20,5 @@ Gem::Specification.new do |s|
   s.add_dependency "metacrunch",   "~> 2.1"
   s.add_dependency "htmlentities", "~> 4.3"
   s.add_dependency "ox",           "~> 2.1"
+  s.add_dependency "self_enumerable"
 end
