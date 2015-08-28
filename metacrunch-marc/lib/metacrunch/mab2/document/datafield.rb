@@ -17,7 +17,7 @@ module Metacrunch
         # ------------------------------------------------------------------------------
 
         #
-        # @return [Hash{String => Metacrunch::Mab2::Document::Datafield::Subfield::Set}]
+        # @return [Hash{String => Metacrunch::Mab2::Document::SubfieldSet}]
         # @private
         #
         def subfields_struct
@@ -29,7 +29,7 @@ module Metacrunch
         # Returns the sub field matching the given code.
         #
         # @param [String] code of the sub field
-        # @return [Metacrunch::Mab2::Document::Datafield::Subfield::Set] sub field with the given code. The set
+        # @return [Metacrunch::Mab2::Document::SubfieldSet] sub field with the given code. The set
         #  is empty if the sub field doesn't exists.
         #
         def subfields(code = nil)
@@ -38,13 +38,13 @@ module Metacrunch
           else
             subfields_struct[code]
           end ||
-          Subfield::Set.new
+          Metacrunch::Mab2::Document::SubfieldSet.new
         end
 
         #
         # Adds a new sub field.
         #
-        # @param [Metacrunch::Mab2::Document::Datafield::Subfield] subfield
+        # @param [Metacrunch::Mab2::Document::Subfield] subfield
         #
         def add_subfield(subfield)
           subfield_set  = subfields(subfield.code)

@@ -30,7 +30,7 @@ module Metacrunch
         def start_element(name)
           if name == :subfield
             @in_subfield = true
-            @subfield = Metacrunch::Mab2::Document::Datafield::Subfield.new
+            @subfield = Metacrunch::Mab2::Document::Subfield.new
           elsif name == :datafield
             @in_datafield = true
             @datafield = Metacrunch::Mab2::Document::Datafield.new

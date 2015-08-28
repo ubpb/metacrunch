@@ -57,7 +57,7 @@ module Metacrunch
       # ------------------------------------------------------------------------------
 
       #
-      # @return [Hash{String => Metacrunch::Mab2::Document::Datafield::Set}]
+      # @return [Hash{String => Metacrunch::Mab2::Document::DatafieldSet}]
       # @private
       #
       def datafields_struct
@@ -71,11 +71,11 @@ module Metacrunch
       # @param [String] tag of the data field
       # @param [String, nil] ind1 filter for ind1. Can be nil to match any.
       # @param [String, nil] ind2 filter for ind2. Can be nil to match any.
-      # @return [Metacrunch::Mab2::Document::Datafield::Set] data field with the given tag and ind1/ind2.
+      # @return [Metacrunch::Mab2::Document::DatafieldSet] data field with the given tag and ind1/ind2.
       #  The set is empty if a matching field with the tag and/or ind1/ind2 doesn't exists.
       #
       def datafields(tag, ind1: nil, ind2: nil)
-        set = datafields_struct[tag] || Datafield::Set.new
+        set = datafields_struct[tag] || DatafieldSet.new
         return set if set.empty? || (ind1.nil? && ind2.nil?)
 
         ind1 = ind1.is_a?(Array) ? ind1.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind1
@@ -112,7 +112,7 @@ module Metacrunch
           ind1_check && ind2_check
         end
         .try do |_array|
-          Datafield::Set.new(_array)
+          DatafieldSet.new(_array)
         end
       end
 

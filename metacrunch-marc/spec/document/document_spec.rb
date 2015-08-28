@@ -146,7 +146,7 @@ private
   end
 
   def create_subfield(code, value)
-    Metacrunch::Mab2::Document::Datafield::Subfield.new(code, value)
+    Metacrunch::Mab2::Document::Subfield.new(code, value)
   end
 
 end
