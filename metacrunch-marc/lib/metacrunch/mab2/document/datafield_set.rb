@@ -23,9 +23,10 @@ module Metacrunch
           self
         end
 
-        def first_value
-          subfields.first_value
+        def value
+          @datafields.find { |_datafield| _datafield.value }.try(:value)
         end
+        alias_method :first_value, :value
 
         def to_a
           @datafields

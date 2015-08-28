@@ -34,12 +34,13 @@ module Metacrunch
           !empty?
         end
 
+        def value
+          values.find{ |v| v.present? }
+        end
+        alias_method :first_value, :value
+
         def values
           @subfields.map{ |subfield| subfield.value }
-        end
-
-        def first_value
-          values.find{ |v| v.present? }
         end
 
         # ------------------------------------------------------------------------------
