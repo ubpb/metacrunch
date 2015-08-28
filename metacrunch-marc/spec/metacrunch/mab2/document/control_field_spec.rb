@@ -1,6 +1,6 @@
 describe Metacrunch::Mab2::Document::Controlfield do
 
-  describe ".initialize" do
+  describe "#initialize" do
     it "creates a new control field when using String values" do
       field = Metacrunch::Mab2::Document::Controlfield.new("050", "a||b")
       expect(field.tag).to eq("050")
@@ -14,7 +14,7 @@ describe Metacrunch::Mab2::Document::Controlfield do
     end
   end
 
-  describe ".values=" do
+  describe "#values=" do
     let(:field) { Metacrunch::Mab2::Document::Controlfield.new("050", nil) }
 
     it "sets field values using String" do

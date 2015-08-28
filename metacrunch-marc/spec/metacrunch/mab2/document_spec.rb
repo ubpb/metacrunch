@@ -27,7 +27,7 @@ describe Metacrunch::Mab2::Document do
     end
   end
 
-  describe ".add_controlfield" do
+  describe "#add_controlfield" do
     let(:document) { empty_document }
 
     it "should add control fields" do
@@ -36,7 +36,7 @@ describe Metacrunch::Mab2::Document do
     end
   end
 
-  describe ".controlfield" do
+  describe "#controlfield" do
     let(:document) { default_test_document }
     subject { document.controlfield("050") }
 
@@ -47,7 +47,7 @@ describe Metacrunch::Mab2::Document do
     end
   end
 
-  describe ".datafields" do
+  describe "#datafields" do
     let(:document) { default_test_document }
 
     context "given tag=100" do
