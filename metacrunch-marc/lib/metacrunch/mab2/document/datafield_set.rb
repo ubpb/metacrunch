@@ -40,20 +40,14 @@ module Metacrunch
         end
 
         # @return [Metacrunch::Mab2::Document::SubfieldSet]
-        def subfields(codes = nil)
-          set = Metacrunch::Mab2::Document::SubfieldSet.new
+        def subfields(code = nil)
+          result = Metacrunch::Mab2::Document::SubfieldSet.new
 
-          @datafields.each do |datafield|
-            if codes.nil?
-              set.concat(datafield.subfields)
-            else
-              [codes].flatten(1).each do |_code|
-                set.concat(datafield.subfields(_code))
-              end
-            end
+          @datafields.each do |_datafield|
+            result.concat(_datafield.subfields(code))
           end
 
-          set
+          result
         end
 
         # ------------------------------------------------------------------------------

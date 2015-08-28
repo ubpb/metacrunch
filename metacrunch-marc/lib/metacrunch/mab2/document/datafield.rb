@@ -10,20 +10,12 @@ module Metacrunch
           @tag  = tag
           @ind1 = ind1
           @ind2 = ind2
+          @subfields = {}
         end
 
         # ------------------------------------------------------------------------------
         # Sub fields
         # ------------------------------------------------------------------------------
-
-        #
-        # @return [Hash{String => Metacrunch::Mab2::Document::SubfieldSet}]
-        # @private
-        #
-        def subfields_struct
-          @subfields_struct ||= {}
-        end
-        private :subfields_struct
 
         #
         # Returns the sub field matching the given code.
@@ -33,12 +25,17 @@ module Metacrunch
         #  is empty if the sub field doesn't exists.
         #
         def subfields(code = nil)
+          result =  Metacrunch::Mab2::Document::SubfieldSet.new
+
           if code.nil?
-            @subfields_struct.values.map(&:to_a).flatten(1)
-          else
-            subfields_struct[code]
-          end ||
-          Metacrunch::Mab2::Document::SubfieldSet.new
+            @subfields.values.map(&:to_a).flatten(1)
+          elsif _subfields = @subfields[code]
+            result.concat(_subfields)
+          elsif (codes = code).is_a?(Array)
+            result.concat(codes.map { |_code| @subfields[_code] }.compact.flatten(1))
+          end
+
+          result
         end
 
         #
@@ -47,10 +44,7 @@ module Metacrunch
         # @param [Metacrunch::Mab2::Document::Subfield] subfield
         #
         def add_subfield(subfield)
-          subfield_set  = subfields(subfield.code)
-          subfield_set << subfield
-
-          subfields_struct[subfield.code] = subfield_set
+          (@subfields[subfield.code] ||= []) << subfield
         end
 
         # ------------------------------------------------------------------------------
@@ -59,7 +53,7 @@ module Metacrunch
 
         def to_xml(builder)
           builder.datafield(tag: tag, ind1: ind1, ind2: ind2) do
-            subfields_struct.values.each do |_subfield_set|
+            @subfields.values.each do |_subfield_set|
               _subfield_set.to_xml(builder)
             end
           end

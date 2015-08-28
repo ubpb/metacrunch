@@ -20,18 +20,14 @@ module Metacrunch
         AlephMabXmlParser.parse(xml)
       end
 
+      def initialize
+        @controlfields = {}
+        @datafields = {}
+      end
+
       # ------------------------------------------------------------------------------
       # Control fields
       # ------------------------------------------------------------------------------
-
-      #
-      # @return [Hash{String => Metacrunch::Mab2::Document::Controlfield}]
-      # @private
-      #
-      def controlfields_struct
-        @controlfields_struct ||= {}
-      end
-      private :controlfields_struct
 
       #
       # Returns the control field matching the given tag.
@@ -40,7 +36,7 @@ module Metacrunch
       # @return [Controlfield] control field with the given tag.
       #
       def controlfield(tag)
-        controlfields_struct[tag] || Controlfield.new(tag)
+        @controlfields[tag] || Controlfield.new(tag)
       end
 
       #
@@ -49,21 +45,12 @@ module Metacrunch
       # @param [Metacrunch::Mab2::Document::Controlfield] controlfield
       #
       def add_controlfield(controlfield)
-        controlfields_struct[controlfield.tag] = controlfield
+        @controlfields[controlfield.tag] = controlfield
       end
 
       # ------------------------------------------------------------------------------
       # Data fields
       # ------------------------------------------------------------------------------
-
-      #
-      # @return [Hash{String => Metacrunch::Mab2::Document::DatafieldSet}]
-      # @private
-      #
-      def datafields_struct
-        @datafields_struct ||= {}
-      end
-      private :datafields_struct
 
       #
       # Returns the data fields matching the given tag and ind1/ind2.
@@ -76,11 +63,9 @@ module Metacrunch
       #
       def datafields(tag = nil, ind1: nil, ind2: nil)
         if tag.nil?
-          datafields_struct.values.inject(DatafieldSet.new) do |_memo, _datafield_set|
-            _memo.concat(_datafield_set)
-          end
+          DatafieldSet.new(@datafields.values.flatten(1))
         else
-          set = datafields_struct[tag] || DatafieldSet.new
+          set = DatafieldSet.new(@datafields[tag] || [])
           return set if set.empty? || (ind1.nil? && ind2.nil?)
 
           ind1 = ind1.is_a?(Array) ? ind1.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind1
@@ -128,10 +113,7 @@ module Metacrunch
       # @param [Metacrunch::Mab2::Document::Datafield] datafield
       #
       def add_datafield(datafield)
-        datafield_set  = datafields(datafield.tag)
-        datafield_set << datafield
-
-        datafields_struct[datafield.tag] = datafield_set
+        (@datafields[datafield.tag] ||= []) << datafield
       end
 
       # ------------------------------------------------------------------------------
@@ -146,7 +128,7 @@ module Metacrunch
             _controlfield.to_xml(builder)
           end
 
-          datafields_struct.values.each do |_datafield_set|
+          @datafields.values.each do |_datafield_set|
             _datafield_set.to_xml(builder)
           end
         end
