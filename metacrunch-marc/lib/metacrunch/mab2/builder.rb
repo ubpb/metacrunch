@@ -41,7 +41,7 @@ module Metacrunch
         end
 
         def subfield(code, value)
-          subfield = Document::Datafield::Subfield.new(code, value)
+          subfield = Document::Subfield.new(code, value)
           @datafield.add_subfield(subfield)
           subfield
         end
