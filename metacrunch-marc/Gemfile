@@ -22,4 +22,4 @@ group :development do
 end
 
 # for benchmarking
-gem "mabmapper", github: "ubpb/mabmapper", branch: "master"
+# gem "mabmapper", github: "ubpb/mabmapper", branch: "master"

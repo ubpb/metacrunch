@@ -68,15 +68,15 @@ module Metacrunch
           set = DatafieldSet.new(@datafields[tag] || [])
           return set if set.empty? || (ind1.nil? && ind2.nil?)
 
-          ind1 = ind1.is_a?(Array) ? ind1.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind1
-          ind2 = ind2.is_a?(Array) ? ind2.map { |_el| _el == :blank ? [" ", "-"] : _el }.flatten(1) : ind2
+          ind1 = ind1.is_a?(Array) ? ind1.map { |_el| _el == :blank ? [" ", "-", nil] : _el }.flatten(1) : ind1
+          ind2 = ind2.is_a?(Array) ? ind2.map { |_el| _el == :blank ? [" ", "-", nil] : _el }.flatten(1) : ind2
 
           # not dry but combining these two does make the code harder to read
           set.select do |_datafield|
             ind1_check =
             if !ind1
               true
-            elsif ind1 == :blank && (_datafield.ind1 == " " || _datafield.ind1 == "-")
+            elsif ind1 == :blank && (_datafield.ind1 == " " || _datafield.ind1 == "-" || _datafield.ind1.nil?)
               true
             elsif _datafield.ind1 == ind1
               true
@@ -89,7 +89,7 @@ module Metacrunch
             ind2_check =
             if !ind2
               true
-            elsif ind2 == :blank && (_datafield.ind2 == " " || _datafield.ind2 == "-")
+            elsif ind2 == :blank && (_datafield.ind2 == " " || _datafield.ind2 == "-" || _datafield.ind2.nil?)
               true
             elsif _datafield.ind2 == ind2
               true
