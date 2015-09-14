@@ -55,9 +55,9 @@ module Metacrunch
       #
       # Returns the data fields matching the given tag and ind1/ind2.
       #
-      # @param [String] tag of the data field
-      # @param [String, nil] ind1 filter for ind1. Can be nil to match any.
-      # @param [String, nil] ind2 filter for ind2. Can be nil to match any.
+      # @param [String, nil] tag of the data field. Can be nil to match any data field.
+      # @param [String, nil] ind1 filter for ind1. Can be nil to match any indicator 1.
+      # @param [String, nil] ind2 filter for ind2. Can be nil to match any indicator 2.
       # @return [Metacrunch::Mab2::Document::DatafieldSet] data field with the given tag and ind1/ind2.
       #  The set is empty if a matching field with the tag and/or ind1/ind2 doesn't exists.
       #
@@ -68,38 +68,11 @@ module Metacrunch
           set = DatafieldSet.new(@datafields[tag] || [])
           return set if set.empty? || (ind1.nil? && ind2.nil?)
 
-          ind1 = ind1.is_a?(Array) ? ind1.map { |_el| _el == :blank ? [" ", "-", nil] : _el }.flatten(1) : ind1
-          ind2 = ind2.is_a?(Array) ? ind2.map { |_el| _el == :blank ? [" ", "-", nil] : _el }.flatten(1) : ind2
+          ind1 = map_indicator(ind1)
+          ind2 = map_indicator(ind2)
 
-          # not dry but combining these two does make the code harder to read
           set.select do |_datafield|
-            ind1_check =
-            if !ind1
-              true
-            elsif ind1 == :blank && (_datafield.ind1 == " " || _datafield.ind1 == "-" || _datafield.ind1.nil?)
-              true
-            elsif _datafield.ind1 == ind1
-              true
-            elsif ind1.is_a?(Array) && ind1.include?(_datafield.ind1)
-              true
-            else
-              false
-            end
-
-            ind2_check =
-            if !ind2
-              true
-            elsif ind2 == :blank && (_datafield.ind2 == " " || _datafield.ind2 == "-" || _datafield.ind2.nil?)
-              true
-            elsif _datafield.ind2 == ind2
-              true
-            elsif ind2.is_a?(Array) && ind2.include?(_datafield.ind2)
-              true
-            else
-              false
-            end
-
-            ind1_check && ind2_check
+            check_indicator(ind1, _datafield.ind1) && check_indicator(ind2, _datafield.ind2)
           end
         end
       end
@@ -128,6 +101,26 @@ module Metacrunch
           @datafields.values.each do |_datafield_set|
             _datafield_set.to_xml(builder)
           end
+        end
+      end
+
+    private
+
+      def map_indicator(ind)
+        ind.is_a?(Array) ? ind.map { |_el| _el == :blank ? [" ", "-", nil] : _el }.flatten(1) : ind
+      end
+
+      def check_indicator(requested_ind, datafield_ind)
+        if !requested_ind
+          true
+        elsif requested_ind == :blank && (datafield_ind == " " || datafield_ind == "-" || datafield_ind.nil?)
+          true
+        elsif requested_ind == datafield_ind
+          true
+        elsif requested_ind.is_a?(Array) && requested_ind.include?(datafield_ind)
+          true
+        else
+          false
         end
       end
 
