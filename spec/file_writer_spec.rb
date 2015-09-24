@@ -4,8 +4,8 @@ describe Metacrunch::FileWriter do
   let(:compressed_file) { "/tmp/metacrunch_spec_regular_file.txt.gz" }
 
   before do
-    File.unlink(regular_file)    if File.exist?(regular_file)
-    File.unlink(compressed_file) if File.exist?(compressed_file)
+    ::File.unlink(regular_file)    if ::File.exist?(regular_file)
+    ::File.unlink(compressed_file) if ::File.exist?(compressed_file)
   end
 
   it "can write a file" do
@@ -32,7 +32,7 @@ describe Metacrunch::FileWriter do
   end
 
   it "can override existing file" do
-    File.write(regular_file, "FOO")
+    ::File.write(regular_file, "FOO")
 
     expect {
       Metacrunch::FileWriter.new(regular_file)

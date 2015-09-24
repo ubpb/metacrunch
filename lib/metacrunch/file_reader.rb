@@ -31,14 +31,14 @@ module Metacrunch
     end
 
     def read_regular_file(filename, &block)
-      if File.file?(filename)
-        io = is_gzip_file?(filename) ? Zlib::GzipReader.open(filename) : File.open(filename, "r")
+      if ::File.file?(filename)
+        io = is_gzip_file?(filename) ? Zlib::GzipReader.open(filename) : ::File.open(filename, "r")
         yield Entry.new(filename: filename, archive_filename: nil, contents: io.read)
       end
     end
 
     def read_archive(filename, &block)
-      io        = is_gzip_file?(filename) ? Zlib::GzipReader.open(filename) : File.open(filename, "r")
+      io        = is_gzip_file?(filename) ? Zlib::GzipReader.open(filename) : ::File.open(filename, "r")
       tarReader = Gem::Package::TarReader.new(io)
 
       tarReader.each do |_tar_entry|

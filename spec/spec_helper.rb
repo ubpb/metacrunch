@@ -34,6 +34,10 @@ module ::RSpec
   end
 end
 
+def asset_dir
+  File.expand_path(File.join(File.dirname(__FILE__), "assets"))
+end
+
 def read_asset(path_to_file)
-  File.read(File.expand_path(File.join(File.dirname(__FILE__), "assets", path_to_file)))
+  File.read(File.expand_path(File.join(asset_dir, path_to_file)))
 end
