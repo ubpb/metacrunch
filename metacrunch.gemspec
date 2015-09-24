@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.licenses      = ["MIT"]
 
   s.files         = `git ls-files`.split($\)
-  s.executables   = s.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
+  s.executables   = s.files.grep(%r{^bin/metacrunch}) { |f| File.basename(f) }
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.name          = "metacrunch"
   s.require_paths = ["lib"]
