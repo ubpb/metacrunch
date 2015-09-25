@@ -2,10 +2,6 @@ require "metacrunch"
 require "ox"
 require "htmlentities"
 
-begin
-  require "pry"
-rescue LoadError ; end
-
 module Metacrunch
   module Mab2
     require_relative "./mab2/builder"
