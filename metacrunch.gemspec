@@ -1,31 +1,28 @@
-require File.expand_path("../lib/metacrunch/version", __FILE__)
+# coding: utf-8
+lib = File.expand_path("../lib", __FILE__)
+$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require "metacrunch/version"
 
-Gem::Specification.new do |s|
-  s.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
-  s.email         = "r.sprotte@ub.uni-paderborn.de"
-  s.summary       = %q{Data processing toolkit for Ruby}
-  s.description   = s.summary
-  s.homepage      = "http://github.com/ubpb/metacrunch"
-  s.licenses      = ["MIT"]
+Gem::Specification.new do |spec|
+  spec.name          = "metacrunch"
+  spec.version       = Metacrunch::VERSION
+  spec.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
+  spec.summary       = %q{Data processing toolkit for Ruby}
+  spec.homepage      = "http://github.com/ubpb/metacrunch"
+  spec.license       = "MIT"
 
-  s.files         = `git ls-files`.split($\)
-  s.executables   = s.files.grep(%r{^bin/metacrunch}) { |f| File.basename(f) }
-  s.test_files    = s.files.grep(%r{^(test|spec|features)/})
-  s.name          = "metacrunch"
-  s.require_paths = ["lib"]
-  s.version       = Metacrunch::VERSION
-  s.bindir        = "bin"
-  s.executables   = ["metacrunch"]
+  spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
+  spec.bindir        = "exe"
+  spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
+  spec.require_paths = ["lib"]
 
-  s.required_ruby_version = ">= 2.0.0"
-
-  s.add_dependency "activesupport", "~> 4.2", ">= 4.2.0"
-  s.add_dependency "builder",       "~> 3.2", ">= 3.2.2"
-  s.add_dependency "highline",      "~> 1.7"
-  s.add_dependency "net-scp",       "~> 1.2"
-  s.add_dependency "net-ssh",       "~> 2.9"
-  s.add_dependency "parallel",      "~> 1.6", ">= 1.6.0"
-  s.add_dependency "rubyzip",       ">= 1.0.0"
-  s.add_dependency "thor",          "~> 0.19"
-  s.add_dependency "ox",            "~> 2.1"
+  spec.add_dependency "activesupport", "~> 4.2", ">= 4.2.0"
+  spec.add_dependency "builder",       "~> 3.2", ">= 3.2.2"
+  spec.add_dependency "highline",      "~> 1.7"
+  spec.add_dependency "net-scp",       "~> 1.2"
+  spec.add_dependency "net-ssh",       "~> 2.9"
+  spec.add_dependency "parallel",      "~> 1.6", ">= 1.6.0"
+  spec.add_dependency "rubyzip",       ">= 1.0.0"
+  spec.add_dependency "thor",          "~> 0.19"
+  spec.add_dependency "ox",            "~> 2.1"
 end
