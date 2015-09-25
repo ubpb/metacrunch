@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
   s.bindir        = "bin"
   s.executables   = ["metacrunch"]
 
-  s.required_ruby_version = ">= 2.2.0"
+  s.required_ruby_version = ">= 2.0.0"
 
   s.add_dependency "activesupport", "~> 4.2", ">= 4.2.0"
   s.add_dependency "builder",       "~> 3.2", ">= 3.2.2"
