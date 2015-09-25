@@ -1,25 +1,25 @@
-require File.expand_path("../lib/metacrunch/mab2/version", __FILE__)
+# coding: utf-8
+lib = File.expand_path("../lib", __FILE__)
+$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require "metacrunch/mab2/version"
 
-Gem::Specification.new do |s|
-  s.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
-  s.email         = "r.sprotte@ub.uni-paderborn.de"
-  s.summary       = %q{MAB2 tools for metacrunch}
-  s.description   = s.summary
-  s.homepage      = "http://github.com/ubpb/metacrunch-mab2"
-  s.licenses      = ["MIT"]
+Gem::Specification.new do |spec|
+  spec.name          = "metacrunch-mab2"
+  spec.version       = Metacrunch::Mab2::VERSION
+  spec.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
+  spec.summary       = %q{MAB2 tools for metacrunch}
+  spec.homepage      = "http://github.com/ubpb/metacrunch-mab2"
+  spec.license       = "MIT"
 
-  s.files         = `git ls-files`.split($\)
-  s.executables   = s.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
-  s.test_files    = s.files.grep(%r{^(test|spec|features)/})
-  s.name          = "metacrunch-mab2"
-  s.require_paths = ["lib"]
-  s.version       = Metacrunch::Mab2::VERSION
+  spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
+  spec.bindir        = "exe"
+  spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
+  spec.require_paths = ["lib"]
 
-  s.required_ruby_version = ">= 2.0.0"
-
-  s.add_dependency "metacrunch",   "~> 2.1"
-  s.add_dependency "htmlentities", "~> 4.3"
-  s.add_dependency "nokogiri",     "~> 1.6"
-  s.add_dependency "ox",           "~> 2.1"
-  s.add_dependency "self_enumerable"
+  spec.add_dependency "metacrunch",   "~> 2.1"
+  spec.add_dependency "htmlentities", "~> 4.3"
+  spec.add_dependency "nokogiri",     "~> 1.6"
+  spec.add_dependency "ox",           "~> 2.1"
+  spec.add_dependency "self_enumerable"
 end
+
