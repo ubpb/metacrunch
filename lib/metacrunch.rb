@@ -7,10 +7,6 @@ require "rubygems/package"
 require "thor"
 require "ox"
 
-begin
-  require "pry"
-rescue LoadError ; end
-
 module Metacrunch
   require_relative "./metacrunch/version"
   require_relative "./metacrunch/cli"
