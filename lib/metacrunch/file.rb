@@ -2,6 +2,7 @@ require_relative "../metacrunch"
 
 class Metacrunch::File
   require_relative "./file/reader"
+  require_relative "./file/writer"
 
   attr_accessor :content
   attr_accessor :entry_name # equals file_name for plain files
