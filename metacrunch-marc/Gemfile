@@ -20,6 +20,3 @@ group :development do
     gem "pry-syntax-hacks",   "~> 0.0.6"
   end
 end
-
-# for benchmarking
-# gem "mabmapper", github: "ubpb/mabmapper", branch: "master"
