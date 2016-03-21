@@ -14,7 +14,7 @@ module Metacrunch
     def initialize(enumerable, options = {}, &block)
       @enumerable          = enumerable
       @callable            = block
-      @no_of_procs         = options[:in_processes] || 0
+      @no_of_procs         = options[:in_processes].to_i
       @on_process_finished = options[:on_process_finished] || -> {}
 
       unless block_given?
