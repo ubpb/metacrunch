@@ -36,9 +36,7 @@ module Metacrunch
           @callable.call(_value)
           @on_process_finished.call
         else
-          fork_process do
-            @callable.call(_value)
-          end
+          fork_process { @callable.call(_value) }
 
           if processes_limit_reached?
             wait_for_some_process_to_terminate
