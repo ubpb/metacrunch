@@ -21,7 +21,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "highline",      "~> 1.7"
   spec.add_dependency "net-scp",       "~> 1.2"
   spec.add_dependency "net-ssh",       "~> 2.9"
-  spec.add_dependency "parallel",      "~> 1.6", ">= 1.6.0"
   spec.add_dependency "rubyzip",       ">= 1.0.0"
   spec.add_dependency "thor",          "~> 0.19"
   spec.add_dependency "ox",            "~> 2.1"

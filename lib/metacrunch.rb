@@ -1,7 +1,6 @@
 require "active_support"
 require "active_support/core_ext"
 require "active_support/builder"
-require "parallel"
 require "rubygems"
 require "rubygems/package"
 require "thor"
