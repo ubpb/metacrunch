@@ -17,7 +17,6 @@ module Metacrunch
   require_relative "./metacrunch/hash"
   require_relative "./metacrunch/parallel"
   require_relative "./metacrunch/processor"
-  require_relative "./metacrunch/snr"
   require_relative "./metacrunch/tar_writer"
   require_relative "./metacrunch/transformator"
   require_relative "./metacrunch/transformer"
