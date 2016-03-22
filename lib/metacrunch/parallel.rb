@@ -32,7 +32,7 @@ module Metacrunch
 
     def call
       @enumerable.each do |_value|
-        if @no_of_procs <= 0
+        if @no_of_procs <= 1
           @callable.call(_value)
           @on_process_finished.call
         else
