@@ -1,4 +1,4 @@
 #!/usr/bin/env ruby
 require "metacrunch"
 Metacrunch.load_plugins
-Metacrunch::Cli.start(ARGV)
+Metacrunch::Cli.new.run if $0 == __FILE__
