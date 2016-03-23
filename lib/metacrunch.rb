@@ -3,8 +3,6 @@ require "active_support/core_ext"
 require "active_support/builder"
 require "rubygems"
 require "rubygems/package"
-require "thor"
-require "ox"
 
 module Metacrunch
   require_relative "./metacrunch/version"
