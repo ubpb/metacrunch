@@ -3,7 +3,7 @@ module Metacrunch
     include Commander::Methods
 
     def run
-      program :name, "Metacrunch"
+      program :name, "metacrunch"
       program :version, Metacrunch::VERSION
       program :description, "Data processing and ETL toolkit for Ruby."
 
