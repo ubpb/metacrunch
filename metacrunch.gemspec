@@ -17,10 +17,4 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "activesupport", "~> 4.2", ">= 4.2.0"
-  spec.add_dependency "builder",       "~> 3.2", ">= 3.2.2"
-  spec.add_dependency "net-scp",       "~> 1.2"
-  spec.add_dependency "net-ssh",       "~> 2.9"
-  spec.add_dependency "rubyzip",       ">= 1.0.0"
-  spec.add_dependency "thor",          "~> 0.19"
-  spec.add_dependency "ox",            "~> 2.1"
 end
