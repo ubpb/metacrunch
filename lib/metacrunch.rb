@@ -4,6 +4,10 @@ require "rubygems"
 require "rubygems/package"
 require "commander"
 
+begin
+  require "pry"
+rescue LoadError ; end
+
 module Metacrunch
   require_relative "./metacrunch/version"
 
