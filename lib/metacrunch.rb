@@ -2,6 +2,7 @@ require "active_support"
 require "active_support/core_ext"
 require "rubygems"
 require "rubygems/package"
+require "commander"
 
 module Metacrunch
   require_relative "./metacrunch/version"
