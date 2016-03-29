@@ -19,7 +19,7 @@ module Metacrunch
     def setup_run_command
       command :run do |c|
         c.syntax = "metacrunch run <file>"
-        c.description = "Runs a metacrunch job description"
+        c.description = "Runs a metacrunch job description."
         c.action do |args, options|
           say "TODO"
         end
