@@ -40,7 +40,7 @@ describe Metacrunch::Job do
         row[:number].odd? ? row : nil
       end
 
-      # Add 10 to each row
+      # Add 10 to each row's number field
       transformation do |row|
         row[:number] = row[:number] + 10
         row
