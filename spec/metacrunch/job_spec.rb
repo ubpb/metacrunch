@@ -59,6 +59,11 @@ describe Metacrunch::Job do
     expect(context.instance_variable_get("@some_method_called")).to eq(true)
 
     expect(job.options).to eq({foo: "bar"})
+    expect(job.sources.size).to eq(1)
+    expect(job.destinations.size).to eq(1)
+    expect(job.pre_processes.size).to eq(1)
+    expect(job.post_processes.size).to eq(1)
+    expect(job.transformations.size).to eq(2)
     expect(job.destinations.first.data).to eq([{:number=>11}, {:number=>13}, {:number=>15}, {:number=>17}, {:number=>19}])
   end
 
