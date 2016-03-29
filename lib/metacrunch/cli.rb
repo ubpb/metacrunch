@@ -21,7 +21,15 @@ module Metacrunch
         c.syntax = "metacrunch run <file>"
         c.description = "Runs a metacrunch job description."
         c.action do |args, options|
-          say "TODO"
+          if args.empty?
+            say "You need to provide a job description file."
+            exit(1)
+          elsif args.size > 1
+            say "You can't run more than one job description at once."
+            exit(1)
+          else
+            say "TODO"
+          end
         end
       end
     end
