@@ -19,8 +19,8 @@ module Metacrunch
       @job.destinations << destination if destination
     end
 
-    def pre_process(&block)
-      @job.pre_processes << block if block_given?
+    def pre_process(callable = nil, &block)
+      add_callable_or_block(@job.pre_processes, callable, &block)
     end
 
     def post_process(&block)
@@ -29,6 +29,16 @@ module Metacrunch
 
     def transformation(&block)
       @job.transformations << block if block_given?
+    end
+
+  private
+
+    def add_callable_or_block(array, callable, &block)
+      if block_given?
+        array << block
+      elsif callable
+        array << callable
+      end
     end
 
   end
