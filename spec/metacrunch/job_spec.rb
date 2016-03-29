@@ -23,6 +23,12 @@ describe Metacrunch::Job do
         end
       end
 
+      class SomeCallable
+        def call
+          @call_called = true
+        end
+      end
+
       def some_method
         @some_method_called = true
       end
@@ -31,9 +37,13 @@ describe Metacrunch::Job do
       destination MyDummyDestination.new
 
       pre_process do
-        @pre_process_called = true
+        @pre_process_block_called = true
         some_method
       end
+
+      pre_process Proc.new{ @pre_process_callable_called = true }
+
+      pre_process SomeCallable.new
 
       # Delete all even numbers
       transformation do |row|
@@ -54,16 +64,19 @@ describe Metacrunch::Job do
 
     job = Metacrunch::Job.run(context, {foo: "bar"})
 
-    expect(context.instance_variable_get("@pre_process_called")).to eq(true)
+    expect(context.instance_variable_get("@pre_process_block_called")).to eq(true)
+    expect(context.instance_variable_get("@pre_process_callable_called")).to eq(true)
     expect(context.instance_variable_get("@post_process_called")).to eq(true)
     expect(context.instance_variable_get("@some_method_called")).to eq(true)
+    expect(job.pre_processes.last.instance_variable_get("@call_called")).to eq(true)
 
     expect(job.options).to eq({foo: "bar"})
     expect(job.sources.size).to eq(1)
     expect(job.destinations.size).to eq(1)
-    expect(job.pre_processes.size).to eq(1)
+    expect(job.pre_processes.size).to eq(3)
     expect(job.post_processes.size).to eq(1)
     expect(job.transformations.size).to eq(2)
+
     expect(job.destinations.first.data).to eq([{:number=>11}, {:number=>13}, {:number=>15}, {:number=>17}, {:number=>19}])
   end
 
