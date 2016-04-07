@@ -1,34 +1,32 @@
 module Metacrunch
   class Job::Context
 
-    attr_reader :job
-
     def initialize(job)
-      @job = job
+      @_job = job
     end
 
-    def options
-      @job.options
+    def run
+      @_job.run
     end
 
     def source(source)
-      @job.sources << source if source
+      @_job.sources << source if source
     end
 
     def destination(destination)
-      @job.destinations << destination if destination
+      @_job.destinations << destination if destination
     end
 
     def pre_process(callable = nil, &block)
-      add_callable_or_block(@job.pre_processes, callable, &block)
+      add_callable_or_block(@_job.pre_processes, callable, &block)
     end
 
-    def post_process(&block)
-      @job.post_processes << block if block_given?
+    def post_process(callable = nil, &block)
+      add_callable_or_block(@_job.post_processes, callable, &block)
     end
 
-    def transformation(&block)
-      @job.transformations << block if block_given?
+    def transformation(callable = nil, &block)
+      add_callable_or_block(@_job.transformations, callable, &block)
     end
 
   private

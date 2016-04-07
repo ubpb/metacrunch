@@ -2,30 +2,20 @@ module Metacrunch
   class Job
     require_relative "job/context"
 
-    attr_reader :options
+    class << self
+      def define(file_content = nil, filename: "", &block)
+        job = Job.new
+        context = Context.new(job)
 
-    def self.define(&block)
-      raise ArgumentError, "No block given" unless block_given?
+        if file_content
+          context.instance_eval(file_content, filename)
+        else
+          raise ArgumentError, "No block given" unless block_given?
+          context.instance_eval(&block)
+        end
 
-      job     = Job.new
-      context = Context.new(job)
-
-      context.instance_eval(&block)
-      context
-    end
-
-    def self.run(context, options = {})
-      context.job.run(options)
-    end
-
-    def run(options = {})
-      @options = options
-
-      run_pre_processes
-      run_main_processes
-      run_post_processes
-
-      self
+        context
+      end
     end
 
     def pre_processes
@@ -48,6 +38,14 @@ module Metacrunch
       @transformations ||= []
     end
 
+    def run
+      run_pre_processes
+      run_transformations
+      run_post_processes
+
+      self
+    end
+
   private
 
     def run_pre_processes
@@ -58,7 +56,7 @@ module Metacrunch
       post_processes.each(&:call)
     end
 
-    def run_main_processes
+    def run_transformations
       sources.each do |source|
         source.each do |row| # source implementations are expected to respond to `each`
           transformations.each do |transformation|
