@@ -15,7 +15,6 @@ rescue LoadError
 end
 
 RSpec.configure do |config|
-  # begin --- rspec 3.1 generator
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
   end
@@ -23,7 +22,6 @@ RSpec.configure do |config|
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
   end
-  # end --- rspec 3.1 generator
 end
 
 # Helper to provide RSpec.root
