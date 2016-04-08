@@ -24,11 +24,11 @@ module Metacrunch
           if args.empty?
             say "You need to provide a job description file."
             exit(1)
-          elsif args.size > 1
-            say "You can't run more than one job description at once."
-            exit(1)
           else
-            say "TODO"
+            args.each do |filename|
+              contents = File.read(filename)
+              Metacrunch::Job.define(contents, filename: filename).run
+            end
           end
         end
       end
