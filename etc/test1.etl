@@ -1,0 +1,16 @@
+require "metacrunch/test_utils"
+
+source Metacrunch::TestUtils::DummySource.new
+destination Metacrunch::TestUtils::DummyDestination.new
+
+pre_process ->() do
+  puts "pre_process called"
+end
+
+post_process ->() do
+  puts "post_process called"
+end
+
+transformation ->(row) {
+  puts "transformation called: #{row}"
+}
