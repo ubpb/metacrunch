@@ -1,8 +1,9 @@
 module Metacrunch
   class Job::Context
 
-    def initialize(job)
+    def initialize(job, args: nil)
       @_job = job
+      @_args = args
     end
 
     def run
@@ -29,6 +30,26 @@ module Metacrunch
       add_callable_or_block(@_job.transformations, callable, &block)
     end
 
+    def register_options(&block)
+      registry = OptionRegistry.new
+      yield(registry)
+
+      OptionParser.new do |parser|
+        parser.banner = "Job specific options:"
+
+        registry.each do |key, opt_def|
+          options[key] = opt_def[:default]
+          parser.on(*opt_def[:args]) do |value|
+            options[key] = value
+          end
+        end
+      end.parse(@_args)
+    end
+
+    def options
+      @_options ||= {}
+    end
+
   private
 
     def add_callable_or_block(array, callable, &block)
@@ -36,6 +57,26 @@ module Metacrunch
         array << block
       elsif callable
         array << callable
+      end
+    end
+
+    class OptionRegistry
+
+      def add(name, *args, default:)
+        options[name.to_sym] = {
+          args: args,
+          default: default
+        }
+      end
+
+      def each(&block)
+        options.each(&block)
+      end
+
+    private
+
+      def options
+        @options ||= {}
       end
     end
 

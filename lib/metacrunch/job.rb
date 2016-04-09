@@ -3,9 +3,9 @@ module Metacrunch
     require_relative "job/context"
 
     class << self
-      def define(file_content = nil, filename: "", &block)
+      def define(file_content = nil, filename: "", args: nil, &block)
         job = Job.new
-        context = Context.new(job)
+        context = Context.new(job, args: args)
 
         if file_content
           context.instance_eval(file_content, filename)
