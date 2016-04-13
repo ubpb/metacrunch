@@ -10,9 +10,9 @@ group :development do
 
   if !ENV["CI"]
     gem "hashdiff",   ">= 0.3.0"
-    gem "pry-byebug", "~> 3.3.0"
-    gem "pry-rescue", "~> 1.4.2"
-    gem "pry-state",  "~> 0.1.7"
+    gem "pry-byebug", ">= 3.3.0"
+    gem "pry-rescue", ">= 1.4.2"
+    gem "pry-state",  ">= 0.1.7"
   end
 end
 
