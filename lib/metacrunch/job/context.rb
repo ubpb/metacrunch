@@ -50,6 +50,20 @@ module Metacrunch
       @_options ||= {}
     end
 
+    def row_buffer(id, row, size: 1)
+      buffer = row_buffers[id] ||= []
+      buffer << row
+
+      if buffer.count >= size
+        row_buffers[id] = []
+        buffer
+      end
+    end
+
+    def row_buffers
+      @__row_buffers ||= {}
+    end
+
   private
 
     def add_callable_or_block(array, callable, &block)
