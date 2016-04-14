@@ -1,0 +1,12 @@
+# Include some helpers (dummy utils) to play with
+require "metacrunch/test_utils"
+
+# You can define your dependencies inline with the dependency method
+# using Bundler / Gemfile syntax.
+# To install the gems defined call `metacrunch run` with the
+# --install option first. E.g. `metacrunch run --install THIS_FILE`
+dependencies do
+  gem "colorize", ">= 0.7"
+end
+
+puts "Now we can output colorful text. Yeah.".colorize(:green)

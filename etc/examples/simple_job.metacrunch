@@ -1,0 +1,14 @@
+# Include some helpers (dummy utils) to play with
+require "metacrunch/test_utils"
+
+# The DummySource emits hash objects of the following form: {number: x}
+# x counts from 1 to 10 by default.
+source Metacrunch::TestUtils::DummySource.new
+
+# In this example, the following transformation step is called 10 times.
+# row contains the object that has been read from the source.
+transformation ->(row) do
+  # row: {number: x}
+  puts "transformation called: #{row}"
+end
+

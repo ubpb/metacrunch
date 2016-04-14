@@ -1,0 +1,33 @@
+# Include some helpers (dummy utils) to play with
+require "metacrunch/test_utils"
+
+# Let's define some options (configurable variables), we
+# would like to use. You can use the command line to override
+# the defaults. E.g. metacrunch run THIS_FILE @@ -c 20
+# To get a list of all available options on the command line
+# use --help. E.g metacrunch run THIS_FILE @@ --help
+# The @@ seperates the job options from the options available
+# to the metacrunch command. Therefore it is important to define
+# the job options after the @@ seperator.
+register_options do |options|
+  # Note: Args 2..n-1 are OptionParser compatible. To learn about
+  # OptionParser look here: http://ruby-doc.org/stdlib/libdoc/optparse/rdoc/OptionParser.html
+  options.add :count_until, "-c", "--count NUMBER", "Count until NUMBER", Integer, default: 15
+end
+
+# Note: Options get evaluated and instantiated during parsing phase.
+# This way they can be referenced right after the register_options
+# block.
+puts "Options: #{options}"
+
+# The DummySource emits hash objects of the following form: {number: x}
+# x counts from 1 to `options[:count_until]` by default.
+source Metacrunch::TestUtils::DummySource.new(count_until: options[:count_until])
+
+# In this example, the following transformation step is called `options[:count_until]` times.
+# row contains the object that has been read from the source.
+transformation ->(row) do
+  # row: {number: x}
+  puts "transformation called: #{row}"
+end
+
