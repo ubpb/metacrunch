@@ -3,17 +3,17 @@ describe Metacrunch::Job do
   describe ".define" do
 
     context "when called with a block" do
-      let(:job_context) do
+      let(:job) do
          Metacrunch::Job.define {}
       end
 
-      it "creates a job context" do
-        expect(job_context).to be_a(Metacrunch::Job::Context)
+      it "creates a job" do
+        expect(job).to be_a(Metacrunch::Job)
       end
     end
 
-    context "when called with a valid string (a string containing valid job context ruby code)" do
-      let(:job_context) do
+    context "when called with a valid string (a string containing valid job DSL ruby code)" do
+      let(:job) do
         script = <<-EOT
           require "metacrunch/test_utils"
           source Metacrunch::TestUtils::DummySource.new
@@ -26,13 +26,13 @@ describe Metacrunch::Job do
         Metacrunch::Job.define(script)
       end
 
-      it "creates a job context" do
-        expect(job_context).to be_a(Metacrunch::Job::Context)
+      it "creates a job" do
+        expect(job).to be_a(Metacrunch::Job)
       end
     end
 
-    context "when called with an invalid string (a string containing invalid job context ruby code)" do
-      let(:job_context) do
+    context "when called with an invalid string (a string containing invalid job DSL ruby code)" do
+      let(:job) do
         script = <<-EOT
           This a not valid ruby code
         EOT
@@ -41,7 +41,7 @@ describe Metacrunch::Job do
       end
 
       it "throws an exception" do
-        expect{job_context}.to raise_error(SyntaxError)
+        expect{job}.to raise_error(SyntaxError)
       end
     end
 
@@ -182,7 +182,7 @@ describe Metacrunch::Job do
 
   describe "#run" do
     context "when source is defined" do
-      let!(:job_context) do
+      let!(:job) do
         Metacrunch::Job.define do
           require "metacrunch/test_utils"
           source Metacrunch::TestUtils::DummySource.new
@@ -190,23 +190,19 @@ describe Metacrunch::Job do
           pre_process ->() { @pre_process_called = true }
           transformation ->(row) { @transformation_called = true }
           post_process ->() { @post_process_called = true }
-        end
-      end
-
-      let!(:job) do
-        job_context.run
+        end.run
       end
 
       it "runs pre processes" do
-        expect(job_context.instance_variable_get("@pre_process_called")).to be(true)
+        expect(job.builder.instance_variable_get("@pre_process_called")).to be(true)
       end
 
       it "runs post processes" do
-        expect(job_context.instance_variable_get("@post_process_called")).to be(true)
+        expect(job.builder.instance_variable_get("@post_process_called")).to be(true)
       end
 
       it "runs transformations" do
-        expect(job_context.instance_variable_get("@transformation_called")).to be(true)
+        expect(job.builder.instance_variable_get("@transformation_called")).to be(true)
       end
 
       it "writes to a destination" do
@@ -219,29 +215,25 @@ describe Metacrunch::Job do
     end
 
     context "when source is not defined" do
-      let!(:job_context) do
+      let!(:job) do
         Metacrunch::Job.define do
           destination Metacrunch::TestUtils::DummyDestination.new
           pre_process ->() { @pre_process_called = true }
           transformation ->() { @transformation_called = true }
           post_process ->() { @post_process_called = true }
-        end
-      end
-
-      let!(:job) do
-        job_context.run
+        end.run
       end
 
       it "runs pre processes" do
-        expect(job_context.instance_variable_get("@pre_process_called")).to be(true)
+        expect(job.builder.instance_variable_get("@pre_process_called")).to be(true)
       end
 
       it "runs post processes" do
-        expect(job_context.instance_variable_get("@post_process_called")).to be(true)
+        expect(job.builder.instance_variable_get("@post_process_called")).to be(true)
       end
 
       it "does not run transformations" do
-        expect(job_context.instance_variable_get("@transformation_called")).to be_nil
+        expect(job.builder.instance_variable_get("@transformation_called")).to be_nil
       end
 
       it "does not run write to a destination" do

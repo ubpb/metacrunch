@@ -1,5 +1,5 @@
 module Metacrunch
-  class Job::Context
+  class Job::Dsl
 
     def initialize(job, args: nil)
       @_job = job

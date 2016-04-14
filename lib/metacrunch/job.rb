@@ -1,20 +1,23 @@
 module Metacrunch
   class Job
-    require_relative "job/context"
+    require_relative "job/dsl"
+
+    attr_reader :builder
 
     class << self
-      def define(file_content = nil, filename: "", args: nil, &block)
-        job = Job.new
-        context = Context.new(job, args: args)
+      def define(file_content = nil, filename: nil, args: nil, &block)
+        self.new(file_content, filename: filename, args: args, &block)
+      end
+    end
 
-        if file_content
-          context.instance_eval(file_content, filename)
-        else
-          raise ArgumentError, "No block given" unless block_given?
-          context.instance_eval(&block)
-        end
+    def initialize(file_content = nil, filename: nil, args: nil, &block)
+      @builder = Dsl.new(self, args: args)
 
-        context
+      if file_content
+        @builder.instance_eval(file_content, filename || "")
+      else
+        raise ArgumentError, "No block given" unless block_given?
+        @builder.instance_eval(&block)
       end
     end
 
