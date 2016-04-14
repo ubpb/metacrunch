@@ -1,22 +1,23 @@
 require "metacrunch/test_utils"
 
-register_options do |registry|
-  registry.add :url, "-u", "--url URL", "Foo bar baz", default: "http://foo.de"
+dependencies do
+  gem "nokogiri", "~> 1.6.7.2"
 end
 
-puts "OPTIONS: #{options}"
-
-source Metacrunch::TestUtils::DummySource.new
-destination Metacrunch::TestUtils::DummyDestination.new
-
-pre_process ->() do
-  puts "pre_process called #{options}"
+register_options do |options|
+  options.add :count_until, "-c", "--count NUMBER", "Count until NUMBER", Integer, default: 10
 end
 
-post_process ->() do
-  puts "post_process called"
+puts "Nokogiri Version: #{Nokogiri::VERSION}"
+puts "Options: #{options}"
+
+source Metacrunch::TestUtils::DummySource.new(count_until: options[:count_until])
+
+transformation ->(row) do
+  puts "transformation 1 called: #{row}"
+  row_buffer(:buffer1, row, size: 5)
 end
 
 transformation ->(row) do
-  puts "transformation called: #{row}"
+  puts "transformation 2 called: #{row}"
 end
