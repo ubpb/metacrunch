@@ -1,7 +1,8 @@
-require "active_support"
-require "active_support/core_ext"
 require "rubygems"
 require "rubygems/package"
+
+require "active_support"
+require "active_support/core_ext"
 require "commander"
 
 begin
