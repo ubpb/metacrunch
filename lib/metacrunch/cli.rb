@@ -3,32 +3,37 @@ module Metacrunch
     ARGS_SEPERATOR = "@@"
 
     def run
-      runner = create_runner(program_args)
-      setup_run_command(runner, job_args)
-      runner.run!
+      init_commander!
+      init_run_command!
+      run_commander!
     end
 
   private
-
-    def create_runner(program_args)
-      runner = Commander::Runner.new(program_args)
-
-      runner.program :name, "metacrunch"
-      runner.program :version, Metacrunch::VERSION
-      runner.program :description, "Data processing and ETL toolkit for Ruby."
-      runner.default_command :help
-
-      runner
+    def commander
+      @commander ||= Commander::Runner.new(metacrunch_args)
     end
 
-    def setup_run_command(runner, job_args)
-      runner.command :run do |c|
+    def init_commander!
+      commander.program :name, "metacrunch"
+      commander.program :version, Metacrunch::VERSION
+      commander.program :description, "Data processing and ETL toolkit for Ruby."
+      commander.default_command :help
+    end
+
+    def run_commander!
+      commander.run!
+    end
+
+    def init_run_command!
+      commander.command :run do |c|
         c.syntax = "metacrunch run [options] FILE [@@ job_options]"
         c.description = "Runs a metacrunch job description."
         c.action do |args, program_options|
           if args.empty?
             say "You need to provide a job description file."
             exit(1)
+          elsif filenames.count > 1
+            say "You must provide exactly one job description file."
           else
             args.each do |filename|
               contents = File.read(filename)
@@ -40,14 +45,14 @@ module Metacrunch
       end
     end
 
-    def program_args
+    def metacrunch_args
       index = ARGV.index(ARGS_SEPERATOR)
-      index ? ARGV[0..index-1] : ARGV
+      @metacrunch_args ||= index ? ARGV[0..index-1] : ARGV
     end
 
     def job_args
       index = ARGV.index(ARGS_SEPERATOR)
-      index ? ARGV[index+1..-1] : ARGV
+      @job_args ||= index ? ARGV[index+1..-1] : nil
     end
 
   end
