@@ -1,13 +1,11 @@
 module Metacrunch
   class Job::Dsl
+    require_relative "dsl/bundler_support"
 
-    def initialize(job, args: nil)
+    def initialize(job, args: nil, install_dependencies: false)
       @_job = job
       @_args = args
-    end
-
-    def run
-      @_job.run
+      @_install_dependencies = install_dependencies
     end
 
     def source(source)
@@ -30,13 +28,17 @@ module Metacrunch
       add_callable_or_block(@_job.transformations, callable, &block)
     end
 
+    def dependencies(&gemfile)
+      BundlerSupport.new(install: @_install_dependencies, &gemfile)
+      exit(0) if @_install_dependencies
+    end
+
     def register_options(&block)
       registry = OptionRegistry.new
       yield(registry)
 
       OptionParser.new do |parser|
         parser.banner = "Job specific options:"
-
         registry.each do |key, opt_def|
           options[key] = opt_def[:default]
           parser.on(*opt_def[:args]) do |value|

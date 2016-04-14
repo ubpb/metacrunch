@@ -28,18 +28,19 @@ module Metacrunch
       commander.command :run do |c|
         c.syntax = "metacrunch run [options] FILE [@@ job_options]"
         c.description = "Runs a metacrunch job description."
-        c.action do |args, program_options|
-          if args.empty?
+        c.option "--install", "Install job dependencies using Bundler"
+
+        c.action do |filenames, program_options|
+          if filenames.empty?
             say "You need to provide a job description file."
             exit(1)
           elsif filenames.count > 1
             say "You must provide exactly one job description file."
           else
-            args.each do |filename|
-              contents = File.read(filename)
-              context = Metacrunch::Job.define(contents, filename: filename, args: job_args)
-              context.run
-            end
+            filename = filenames.first
+            contents = File.read(filename)
+            context = Metacrunch::Job.define(contents, filename: filename, args: job_args, install_dependencies: program_options.install)
+            context.run
           end
         end
       end
