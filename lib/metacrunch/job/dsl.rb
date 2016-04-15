@@ -1,5 +1,6 @@
 module Metacrunch
   class Job::Dsl
+    require_relative "dsl/helper"
     require_relative "dsl/bundler_support"
     require_relative "dsl/option_support"
 
@@ -40,18 +41,8 @@ module Metacrunch
       end
     end
 
-    def row_buffer(id, row, size: 1)
-      buffer = row_buffers[id] ||= []
-      buffer << row
-
-      if buffer.count >= size
-        row_buffers[id] = []
-        buffer
-      end
-    end
-
-    def row_buffers
-      @__row_buffers ||= {}
+    def helper
+      @_helper ||= Helper.new
     end
 
   end
