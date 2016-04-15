@@ -7,6 +7,7 @@ Gem::Specification.new do |spec|
   spec.name          = "metacrunch"
   spec.version       = Metacrunch::VERSION
   spec.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
+  spec.email         = "r.sprotte@ub.uni-paderborn.de"
   spec.summary       = %q{Data processing and ETL toolkit for Ruby}
   spec.homepage      = "http://github.com/ubpb/metacrunch"
   spec.license       = "MIT"
