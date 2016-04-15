@@ -15,7 +15,7 @@ module Metacrunch
             options[key] = value
           end
         end
-      end.parse(args)
+      end.parse!(args)
 
       options
     end
