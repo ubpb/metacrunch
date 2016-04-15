@@ -28,7 +28,8 @@ module Metacrunch
     end
 
     def add_source(source)
-      sources << source if source
+      ensure_source!(source)
+      sources << source
     end
 
     def destinations
@@ -36,7 +37,8 @@ module Metacrunch
     end
 
     def add_destination(destination)
-      destinations << destination if destination
+      ensure_destination!(destination)
+      destinations << destination
     end
 
     def pre_processes
@@ -76,8 +78,22 @@ module Metacrunch
       if block_given?
         array << block
       elsif callable
-        array << callable if callable
+        ensure_callable!(callable)
+        array << callable
       end
+    end
+
+    def ensure_callable!(object)
+      raise ArgumentError, "#{object} does't respond to #call." unless object.respond_to?(:call)
+    end
+
+    def ensure_source!(object)
+      raise ArgumentError, "#{object} does't respond to #each." unless object.respond_to?(:each)
+    end
+
+    def ensure_destination!(object)
+      raise ArgumentError, "#{object} does't respond to #write." unless object.respond_to?(:write)
+      raise ArgumentError, "#{object} does't respond to #close." unless object.respond_to?(:close)
     end
 
     def run_pre_processes
@@ -90,7 +106,8 @@ module Metacrunch
 
     def run_transformations
       sources.each do |source|
-        source.each do |row| # source implementations are expected to respond to `each`
+        # sources are expected to respond to `each`
+        source.each do |row|
           transformations.each do |transformation|
             row = transformation.call(row) if row
             break unless row
@@ -99,12 +116,14 @@ module Metacrunch
           next unless row
 
           destinations.each do |destination|
-            destination.write(row) # destination implementations are expected to respond to `write(row)`
+            # destinations are expected to respond to `write(row)`
+            destination.write(row)
           end
         end
       end
 
-      destinations.each(&:close) # destination implementations are expected to respond to `close`
+      # destination implementations are expected to respond to `close`
+      destinations.each(&:close)
     end
 
   end
