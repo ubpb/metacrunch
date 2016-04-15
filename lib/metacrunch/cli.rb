@@ -38,7 +38,7 @@ module Metacrunch
             say "You must provide exactly one job description file."
           else
             filename = filenames.first
-            contents = File.read(filename)
+            contents = ::File.read(filename)
             context = Metacrunch::Job.define(contents, filename: filename, args: job_args, install_dependencies: program_options.install)
             context.run
           end
