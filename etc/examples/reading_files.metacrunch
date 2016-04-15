@@ -1,0 +1,19 @@
+# To read content from files, Metacrunch comes with a build in file reader.
+# Just create an instance of `Metacrunch::File::Reader` and provide an array of
+# filenames you like to process. `args` contains the filenames if called from the
+# commandline. E.g. `metacrunch run THIS_FILE @@ /some/file/to/process/*`
+#
+# The file reader can process regular files (*), compressed files (*.gz),
+# archives (*.tar) and compressed archives (*.tar.gz, *.tgz).
+source Metacrunch::File::Reader.new(args)
+
+# The file reader emits a `Metacrunch::File::Entry` for each regular file or
+# for each file that is contained in an archive.
+transformation ->(file_entry) do
+  puts "** Got file entry (Metacrunch::File::Entry)"
+  puts "  Filename: #{file_entry.filename}"
+  puts "  From archive?: #{file_entry.from_archive?}"
+  puts "  Name in archive: #{file_entry.archive_filename || '-'}"
+  puts "  Contents: #{file_entry.contents}"
+end
+
