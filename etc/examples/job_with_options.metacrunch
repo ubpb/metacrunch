@@ -16,7 +16,7 @@ options do
 end
 
 # Note: Options get evaluated and instantiated during parsing phase.
-# This way they can be referenced right after the register_options
+# This way they can be referenced right after the options
 # block.
 puts "Options: #{options}"
 
