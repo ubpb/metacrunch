@@ -4,7 +4,7 @@ dependencies do
 end
 
 options do
-  add :database_url, "-d", "--database URL", "Database connection URL", default: "sqlite://etc/examples/dummy.sqlite"
+  add :database_url, "-d", "--database URL", "Database connection URL", default: "sqlite://#{::File.expand_path(__dir__)}/dummy.sqlite"
 end
 
 source Metacrunch::Db::Reader.new(options[:database_url], "select * from users")
