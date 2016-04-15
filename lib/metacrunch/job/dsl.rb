@@ -8,23 +8,23 @@ module Metacrunch
     end
 
     def source(source)
-      @_job.sources << source if source
+      @_job.add_source(source)
     end
 
     def destination(destination)
-      @_job.destinations << destination if destination
+      @_job.add_destination(destination)
     end
 
     def pre_process(callable = nil, &block)
-      add_callable_or_block(@_job.pre_processes, callable, &block)
+      @_job.add_pre_process(callable, &block)
     end
 
     def post_process(callable = nil, &block)
-      add_callable_or_block(@_job.post_processes, callable, &block)
+      @_job.add_post_process(callable, &block)
     end
 
     def transformation(callable = nil, &block)
-      add_callable_or_block(@_job.transformations, callable, &block)
+      @_job.add_transformation(callable, &block)
     end
 
     def dependencies(&gemfile)
@@ -52,16 +52,6 @@ module Metacrunch
 
     def row_buffers
       @__row_buffers ||= {}
-    end
-
-  private
-
-    def add_callable_or_block(array, callable, &block)
-      if block_given?
-        array << block
-      elsif callable
-        array << callable
-      end
     end
 
   end

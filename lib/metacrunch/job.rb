@@ -23,35 +23,62 @@ module Metacrunch
       end
     end
 
-    def pre_processes
-      @pre_processes ||= []
-    end
-
-    def post_processes
-      @post_processes ||= []
-    end
-
     def sources
       @sources ||= []
+    end
+
+    def add_source(source)
+      sources << source if source
     end
 
     def destinations
       @destinations ||= []
     end
 
+    def add_destination(destination)
+      destinations << destination if destination
+    end
+
+    def pre_processes
+      @pre_processes ||= []
+    end
+
+    def add_pre_process(callable = nil, &block)
+      add_callable_or_block(pre_processes, callable, &block)
+    end
+
+    def post_processes
+      @post_processes ||= []
+    end
+
+    def add_post_process(callable = nil, &block)
+      add_callable_or_block(post_processes, callable, &block)
+    end
+
     def transformations
       @transformations ||= []
+    end
+
+    def add_transformation(callable = nil, &block)
+      add_callable_or_block(transformations, callable, &block)
     end
 
     def run
       run_pre_processes
       run_transformations
       run_post_processes
-
       self
     end
 
   private
+
+    def add_callable_or_block(array, callable, &block)
+      if block_given?
+        array << block
+      elsif callable
+        array << callable if callable
+      end
+    end
 
     def run_pre_processes
       pre_processes.each(&:call)
