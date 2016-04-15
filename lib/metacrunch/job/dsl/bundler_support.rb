@@ -2,7 +2,7 @@ module Metacrunch
   class Job::Dsl::BundlerSupport
 
     #
-    # This is a customization of bundler/inline for use with metacrunch jobs.
+    # This is a customization of bundler/inline for use with metacrunch.
     # @see https://github.com/bundler/bundler/blob/master/lib/bundler/inline.rb
     #
     def initialize(install: false, &gemfile)
@@ -42,14 +42,18 @@ module Metacrunch
 
       if install
         Bundler.ui = Bundler::UI::Shell.new
-        Bundler::Installer.install(Bundler.root, definition, :system => true)
+        Bundler::Installer.install(Bundler.root, definition, "system" => true, "update" => true)
         Bundler::Installer.post_install_messages.each do |name, message|
           Bundler.ui.info "Post-install message from #{name}:\n#{message}"
         end
       end
 
-      runtime = Bundler::Runtime.new(nil, definition)
-      runtime.setup.require
+      begin
+        runtime = Bundler::Runtime.new(nil, definition)
+        runtime.setup.require
+      rescue Bundler::GemNotFound => e
+        raise Bundler::GemNotFound, "#{e.message} Use 'metacrunch run --install FILE' to install the missing dependencies."
+      end
 
       bundler_module = class << Bundler; self; end
       bundler_module.send(:define_method, :root, old_root)
