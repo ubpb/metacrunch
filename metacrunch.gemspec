@@ -20,4 +20,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "bundler",       "~> 1.11"
   spec.add_dependency "activesupport", "~> 4.2"
   spec.add_dependency "commander",     "~> 4.4"
+  spec.add_dependency "sequel",        "~> 4.33"
 end

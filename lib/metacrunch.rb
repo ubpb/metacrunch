@@ -5,6 +5,7 @@ require "active_support"
 require "active_support/core_ext"
 require "bundler"
 require "commander"
+require "sequel"
 
 begin
   require "pry"
@@ -15,6 +16,7 @@ module Metacrunch
   require_relative "metacrunch/cli"
   require_relative "metacrunch/job"
   require_relative "metacrunch/file"
+  require_relative "metacrunch/db"
 
   def self.load_plugins
     Gem.find_latest_files("metacrunch_plugin.rb").each do |path|
