@@ -9,10 +9,10 @@ require "metacrunch/test_utils"
 # The @@ seperates the job options from the options available
 # to the metacrunch command. Therefore it is important to define
 # the job options after the @@ seperator.
-register_options do |options|
+options do
   # Note: Args 2..n-1 are OptionParser compatible. To learn about
   # OptionParser look here: http://ruby-doc.org/stdlib/libdoc/optparse/rdoc/OptionParser.html
-  options.add :count_until, "-c", "--count NUMBER", "Count until NUMBER", Integer, default: 15
+  add :count_until, "-c", "--count NUMBER", "Count until NUMBER", Integer, default: 15
 end
 
 # Note: Options get evaluated and instantiated during parsing phase.

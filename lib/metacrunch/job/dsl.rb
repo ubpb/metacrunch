@@ -1,6 +1,7 @@
 module Metacrunch
   class Job::Dsl
     require_relative "dsl/bundler_support"
+    require_relative "dsl/option_support"
 
     def initialize(job, args: nil, install_dependencies: false)
       @_job = job
@@ -33,23 +34,12 @@ module Metacrunch
       exit(0) if @_install_dependencies
     end
 
-    def register_options(&block)
-      registry = OptionRegistry.new
-      yield(registry)
-
-      OptionParser.new do |parser|
-        parser.banner = "Job specific options:"
-        registry.each do |key, opt_def|
-          options[key] = opt_def[:default]
-          parser.on(*opt_def[:args]) do |value|
-            options[key] = value
-          end
-        end
-      end.parse(@_args)
-    end
-
-    def options
-      @_options ||= {}
+    def options(&block)
+      if block_given?
+        @_options = OptionSupport.new.register_options(@_args, &block)
+      else
+        @_options ||= {}
+      end
     end
 
     def row_buffer(id, row, size: 1)
@@ -73,26 +63,6 @@ module Metacrunch
         array << block
       elsif callable
         array << callable
-      end
-    end
-
-    class OptionRegistry
-
-      def add(name, *args, default:)
-        options[name.to_sym] = {
-          args: args,
-          default: default
-        }
-      end
-
-      def each(&block)
-        options.each(&block)
-      end
-
-    private
-
-      def options
-        @options ||= {}
       end
     end
 
