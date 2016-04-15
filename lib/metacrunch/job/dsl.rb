@@ -3,10 +3,8 @@ module Metacrunch
     require_relative "dsl/bundler_support"
     require_relative "dsl/option_support"
 
-    def initialize(job, args: nil, install_dependencies: false)
+    def initialize(job)
       @_job = job
-      @_args = args
-      @_install_dependencies = install_dependencies
     end
 
     def source(source)
@@ -30,13 +28,13 @@ module Metacrunch
     end
 
     def dependencies(&gemfile)
-      BundlerSupport.new(install: @_install_dependencies, &gemfile)
-      exit(0) if @_install_dependencies
+      BundlerSupport.new(install: @_job.install_dependencies, &gemfile)
+      exit(0) if @_job.install_dependencies
     end
 
     def options(&block)
       if block_given?
-        @_options = OptionSupport.new.register_options(@_args, &block)
+        @_options = OptionSupport.new.register_options(@_job.args, &block)
       else
         @_options ||= {}
       end
