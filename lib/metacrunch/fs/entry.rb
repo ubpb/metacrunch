@@ -1,5 +1,5 @@
 module Metacrunch
-  class File::Entry
+  class Fs::Entry
 
     attr_reader :filename, :archive_filename, :contents
 
