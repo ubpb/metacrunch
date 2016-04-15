@@ -6,6 +6,7 @@ require "metacrunch/test_utils"
 # To install the gems defined call `metacrunch run` with the
 # --install option first. E.g. `metacrunch run --install THIS_FILE`
 dependencies do
+  source "https://rubygems.org"
   gem "colorize", ">= 0.7"
 end
 
