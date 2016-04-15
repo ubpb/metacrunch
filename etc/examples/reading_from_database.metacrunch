@@ -1,0 +1,18 @@
+dependencies do
+  source "https://rubygems.org"
+  gem "sqlite3"
+end
+
+options do
+  add :database_url, "-d", "--database URL", "Database connection URL", default: "sqlite://etc/examples/dummy.sqlite"
+end
+
+source Metacrunch::Db::Reader.new(options[:database_url], "select * from users")
+
+transformation ->(row) do
+  row if row[:name].starts_with?("A")
+end
+
+transformation ->(row) do
+  puts row[:name]
+end
