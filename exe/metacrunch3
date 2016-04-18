@@ -1,4 +1,3 @@
 #!/usr/bin/env ruby
 require "metacrunch"
-#Metacrunch.load_plugins
 Metacrunch::Cli.new.run
