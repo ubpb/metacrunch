@@ -47,6 +47,31 @@ describe Metacrunch::Job do
 
   end
 
+  describe "#add_pre_process" do
+    let!(:job) { Metacrunch::Job.new }
+
+    context "when called with a callable" do
+      it "adds the callable as a pre_process" do
+        job.add_pre_process(Metacrunch::TestUtils::DummyCallable.new)
+        expect(job.pre_processes.count).to eq(1)
+      end
+    end
+
+    context "when called with a block" do
+      it "adds the block as a pre_process" do
+        job.add_pre_process do ; end
+        expect(job.pre_processes.count).to eq(1)
+      end
+    end
+
+    context "when called with an object that does't respond to #call" do
+      it "raises an error" do
+        expect{
+          job.add_pre_process(Metacrunch::TestUtils::DummyNonCallable.new)
+        }.to raise_error(ArgumentError)
+      end
+    end
+  end
 
   describe "#pre_processes" do
     context "when no pre processes are defined" do
