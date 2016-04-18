@@ -1,18 +1,32 @@
+# Metacrunch comes with a build in database reader based on the Sequel gem.
+# For more information about Sequel: https://github.com/jeremyevans/sequel
+# Sequel support many databases. For this example we will use SQLite3.
+# So lets declare the dependency to sqlite3.
 dependencies do
   source "https://rubygems.org"
   gem "sqlite3"
 end
 
+# To connect to the database Sequel support common connection URLs.
+# Here we define a option that allows us to overwrite the connection
+# URL default (sqlite://THIS_DIR/dummy.sqlite) from the command line.
 options do
   add :database_url, "-d", "--database URL", "Database connection URL", default: "sqlite://#{File.expand_path(__dir__)}/dummy.sqlite"
 end
 
+# The provided dummy.sqlite database has one table (users) with one column (name) and holds 100
+# dummy user records. To read from a database instatiate the build in database reader with a
+# connection URL and the SQL select statement you like.
 source Metacrunch::Db::Reader.new(options[:database_url], "select * from users")
 
+# For every row that matches the SQL query the transformation is called.
 transformation ->(row) do
+  # For this example, we select the rows where the user name starts with "A".
+  # Only these rows are passed to the next transformation.
   row if row[:name].starts_with?("A")
 end
 
+# Called for every row where the user name starts with "A".
 transformation ->(row) do
   puts row[:name]
 end
