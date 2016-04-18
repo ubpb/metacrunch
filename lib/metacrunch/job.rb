@@ -17,8 +17,7 @@ module Metacrunch
 
       if file_content
         @builder.instance_eval(file_content, filename || "")
-      else
-        raise ArgumentError, "No block given" unless block_given?
+      elsif block_given?
         @builder.instance_eval(&block)
       end
     end
