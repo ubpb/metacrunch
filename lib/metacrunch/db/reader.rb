@@ -9,7 +9,9 @@ module Metacrunch
     def each(&block)
       return enum_for(__method__) unless block_given?
 
-      @db[@sql].each(&block)
+      @db[@sql].each do |row|
+        yield(row)
+      end
     end
 
   end
