@@ -7,6 +7,7 @@ else
 end
 
 require "metacrunch"
+require "metacrunch/test_utils"
 
 begin
   require "pry"
