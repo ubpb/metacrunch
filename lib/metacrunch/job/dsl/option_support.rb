@@ -11,8 +11,10 @@ module Metacrunch
         parser.banner = "Job specific options:"
         registry.each do |key, opt_def|
           options[key] = opt_def[:default]
-          parser.on(*opt_def[:args]) do |value|
-            options[key] = value
+          if opt_def[:args].present?
+            parser.on(*opt_def[:args]) do |value|
+              options[key] = value
+            end
           end
         end
       end.parse!(args || [])
