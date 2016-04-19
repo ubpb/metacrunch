@@ -35,7 +35,7 @@ require_relative "./some/other/ruby/file"
 # Declare a source (use a build-in or 3rd party source or implement it – see notes below).
 # At least one source is required to allow the job to run.
 source MySource.new
-# ... maybe another one
+# ... maybe another one. Sources are processed in the order they are defined.
 source MyOtherSource.new
 
 # Declare a destination (use a build-in or 3rd party destination or implement it – see notes below).
@@ -47,11 +47,11 @@ destination MyOtherDestination.new
 
 # To process data use the #transformation hook.
 transformation do |data|
-  # Called for each data object that has been put in the pipeline a source.
-  # Do your transformation process here.
+  # Called for each data object that has been put in the pipeline by a source.
+  # Do your data transformation process here.
 
-  # You must return the data to keep in the pipeline.
-  # Dismissing the data conditionally by returning nil
+  # You must return the data to keep it in the pipeline.
+  # You can dismiss the data conditionally by returning nil
   data
 end
 
@@ -69,7 +69,7 @@ pre_process do
   # Called before the first transformation
 end
 
-# to run arbitrary code after the last transformation use the #post_process hook.
+# To run arbitrary code after the last transformation use the #post_process hook.
 post_process do
   # Called after the last transformation
 end
