@@ -27,6 +27,7 @@ describe Metacrunch::Fs::Reader do
 
     it "reads that file" do
       expect(subject.each.first.contents).to eq("THIS IS A TEST\n")
+      expect(subject.each.first.from_archive?).to eq(false)
     end
   end
 
@@ -35,6 +36,7 @@ describe Metacrunch::Fs::Reader do
 
     it "reads the files from the archive" do
       expect(subject.each.first.contents).to eq("THIS IS A TEST\n")
+      expect(subject.each.first.from_archive?).to eq(true)
     end
   end
 
@@ -43,6 +45,7 @@ describe Metacrunch::Fs::Reader do
 
     it "reads that file" do
       expect(subject.each.first.contents).to eq("THIS IS A TEST\n")
+      expect(subject.each.first.from_archive?).to eq(false)
     end
   end
 
@@ -51,6 +54,7 @@ describe Metacrunch::Fs::Reader do
 
     it "reads the files from the archive" do
       expect(subject.each.first.contents).to eq("THIS IS A TEST\n")
+      expect(subject.each.first.from_archive?).to eq(true)
     end
   end
 
