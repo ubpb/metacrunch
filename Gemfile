@@ -7,6 +7,7 @@ group :development do
   gem "rake",      ">= 11.1"
   gem "rspec",     ">= 3.0.0",  "< 4.0.0"
   gem "simplecov", ">= 0.11.0"
+  gem "sqlite3",   ">= 1.3.11"
 
   if !ENV["CI"]
     gem "hashdiff",   ">= 0.3.0"
