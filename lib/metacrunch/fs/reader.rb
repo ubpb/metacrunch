@@ -1,3 +1,5 @@
+require "rubygems/package"
+
 module Metacrunch
   class Fs::Reader
 
