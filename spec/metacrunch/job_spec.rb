@@ -12,7 +12,7 @@ describe Metacrunch::Job do
       end
     end
 
-    context "when called with a valid string (a string containing valid job DSL ruby code)" do
+    context "when called with a valid script (a string containing valid ruby code)" do
       let(:job) do
         script = <<-EOT
           require "metacrunch/test_utils"
@@ -31,10 +31,10 @@ describe Metacrunch::Job do
       end
     end
 
-    context "when called with an invalid string (a string containing invalid job DSL ruby code)" do
+    context "when called with an script (a string containing invalid ruby code)" do
       let(:job) do
         script = <<-EOT
-          This a not valid ruby code
+          This is not valid ruby code
         EOT
 
         Metacrunch::Job.define(script)
