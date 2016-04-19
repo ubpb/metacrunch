@@ -16,4 +16,7 @@ module Metacrunch
     end
 
   end
+
+  class TestUtils::InvalidDummySource
+  end
 end

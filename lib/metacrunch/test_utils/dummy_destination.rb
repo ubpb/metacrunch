@@ -15,4 +15,7 @@ module Metacrunch
     end
 
   end
+
+  class TestUtils::InvalidDummyDestination
+  end
 end
