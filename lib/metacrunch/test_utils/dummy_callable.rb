@@ -3,7 +3,7 @@ require_relative "../test_utils"
 module Metacrunch
   class TestUtils::DummyCallable
 
-    def call(row = nil)
+    def call(*args)
       @call_called = true
     end
 
