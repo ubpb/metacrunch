@@ -1,9 +1,9 @@
 module Metacrunch
   class Job::Dsl::Helper
 
-    def buffer(id, row, size: 1)
+    def buffer(id, data, size: 1)
       buffer = buffers[id] ||= []
-      buffer << row
+      buffer << data
 
       if buffer.count >= size
         buffers[id] = []
