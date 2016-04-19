@@ -29,6 +29,7 @@ module Metacrunch
     end
 
     def dependencies(&gemfile)
+      raise ArgumentError, "Block needed" unless block_given?
       BundlerSupport.new(install: @_job.install_dependencies, &gemfile)
       exit(0) if @_job.install_dependencies
     end
