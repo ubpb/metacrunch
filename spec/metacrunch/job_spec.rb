@@ -44,30 +44,93 @@ describe Metacrunch::Job do
         expect{job}.to raise_error(SyntaxError)
       end
     end
-
   end
 
-  describe "#add_pre_process" do
+  describe "#sources" do
+    context "when no sources are defined" do
+      let(:job) do
+        Metacrunch::Job.define{}.run
+      end
+
+      it "returns an empty array" do
+        expect(job.sources).to eq([])
+      end
+    end
+
+    context "when sources are defined" do
+      let(:job) do
+        Metacrunch::Job.define do
+          require "metacrunch/test_utils"
+          source Metacrunch::TestUtils::DummySource.new
+          source Metacrunch::TestUtils::DummySource.new
+        end.run
+      end
+
+      it "returns the source instances" do
+        expect(job.sources.count).to eq(2)
+      end
+    end
+  end
+
+  describe "#add_source" do
     let!(:job) { Metacrunch::Job.new }
 
-    context "when called with a callable" do
-      it "adds the callable as a pre_process" do
-        job.add_pre_process(Metacrunch::TestUtils::DummyCallable.new)
-        expect(job.pre_processes.count).to eq(1)
+    context "when called with a valid source object (responds to #each)" do
+      it "adds the object as a source" do
+        job.add_source(Metacrunch::TestUtils::DummySource.new)
+        expect(job.sources.count).to eq(1)
       end
     end
 
-    context "when called with a block" do
-      it "adds the block as a pre_process" do
-        job.add_pre_process do ; end
-        expect(job.pre_processes.count).to eq(1)
-      end
-    end
-
-    context "when called with an object that does't respond to #call" do
+    context "when called with an invalid source object (doesn't responds to #each)" do
       it "raises an error" do
         expect{
-          job.add_pre_process(Metacrunch::TestUtils::DummyNonCallable.new)
+          job.add_source(Metacrunch::TestUtils::InvalidDummySource.new)
+        }.to raise_error(ArgumentError)
+      end
+    end
+  end
+
+  describe "#destinations" do
+    context "when no destinations are defined" do
+      let(:job) do
+        Metacrunch::Job.define{}.run
+      end
+
+      it "returns an empty array" do
+        expect(job.destinations).to eq([])
+      end
+    end
+
+    context "when destinations are defined" do
+      let(:job) do
+        Metacrunch::Job.define do
+          require "metacrunch/test_utils"
+          destination Metacrunch::TestUtils::DummyDestination.new
+          destination Metacrunch::TestUtils::DummyDestination.new
+        end.run
+      end
+
+      it "returns the destination instances" do
+        expect(job.destinations.count).to eq(2)
+      end
+    end
+  end
+
+  describe "#add_destination" do
+    let!(:job) { Metacrunch::Job.new }
+
+    context "when called with a valid destination object (responds to #write and #close)" do
+      it "adds the object as a destination" do
+        job.add_destination(Metacrunch::TestUtils::DummyDestination.new)
+        expect(job.destinations.count).to eq(1)
+      end
+    end
+
+    context "when called with an invalid destination object (doesn't responds to #write or #close)" do
+      it "raises an error" do
+        expect{
+          job.add_destination(Metacrunch::TestUtils::InvalidDummyDestination.new)
         }.to raise_error(ArgumentError)
       end
     end
@@ -98,6 +161,31 @@ describe Metacrunch::Job do
     end
   end
 
+  describe "#add_pre_process" do
+    let!(:job) { Metacrunch::Job.new }
+
+    context "when called with a callable" do
+      it "adds the callable as a pre_process" do
+        job.add_pre_process(Metacrunch::TestUtils::DummyCallable.new)
+        expect(job.pre_processes.count).to eq(1)
+      end
+    end
+
+    context "when called with a block" do
+      it "adds the block as a pre_process" do
+        job.add_pre_process do ; end
+        expect(job.pre_processes.count).to eq(1)
+      end
+    end
+
+    context "when called with an object that does't respond to #call" do
+      it "raises an error" do
+        expect{
+          job.add_pre_process(Metacrunch::TestUtils::DummyNonCallable.new)
+        }.to raise_error(ArgumentError)
+      end
+    end
+  end
 
   describe "#post_processes" do
     context "when no post processes are defined" do
@@ -124,60 +212,31 @@ describe Metacrunch::Job do
     end
   end
 
+  describe "#add_post_process" do
+    let!(:job) { Metacrunch::Job.new }
 
-  describe "#sources" do
-    context "when no sources are defined" do
-      let(:job) do
-        Metacrunch::Job.define{}.run
-      end
-
-      it "returns an empty array" do
-        expect(job.sources).to eq([])
+    context "when called with a callable" do
+      it "adds the callable as a post_process" do
+        job.add_post_process(Metacrunch::TestUtils::DummyCallable.new)
+        expect(job.post_processes.count).to eq(1)
       end
     end
 
-    context "when sources are defined" do
-      let(:job) do
-        Metacrunch::Job.define do
-          require "metacrunch/test_utils"
-          source Metacrunch::TestUtils::DummySource.new
-          source Metacrunch::TestUtils::DummySource.new
-        end.run
-      end
-
-      it "returns the source instances" do
-        expect(job.sources.count).to eq(2)
-      end
-    end
-  end
-
-
-  describe "#destinations" do
-    context "when no destinations are defined" do
-      let(:job) do
-        Metacrunch::Job.define{}.run
-      end
-
-      it "returns an empty array" do
-        expect(job.destinations).to eq([])
+    context "when called with a block" do
+      it "adds the block as a post_process" do
+        job.add_post_process do ; end
+        expect(job.post_processes.count).to eq(1)
       end
     end
 
-    context "when destinations are defined" do
-      let(:job) do
-        Metacrunch::Job.define do
-          require "metacrunch/test_utils"
-          destination Metacrunch::TestUtils::DummyDestination.new
-          destination Metacrunch::TestUtils::DummyDestination.new
-        end.run
-      end
-
-      it "returns the destination instances" do
-        expect(job.destinations.count).to eq(2)
+    context "when called with an object that does't respond to #call" do
+      it "raises an error" do
+        expect{
+          job.add_post_process(Metacrunch::TestUtils::DummyNonCallable.new)
+        }.to raise_error(ArgumentError)
       end
     end
   end
-
 
   describe "#transformations" do
     context "when no transformations are defined" do
@@ -204,6 +263,31 @@ describe Metacrunch::Job do
     end
   end
 
+  describe "#add_transformation" do
+    let!(:job) { Metacrunch::Job.new }
+
+    context "when called with a callable" do
+      it "adds the callable as a transformation" do
+        job.add_transformation(Metacrunch::TestUtils::DummyCallable.new)
+        expect(job.transformations.count).to eq(1)
+      end
+    end
+
+    context "when called with a block" do
+      it "adds the block as a transformation" do
+        job.add_transformation do ; end
+        expect(job.transformations.count).to eq(1)
+      end
+    end
+
+    context "when called with an object that does't respond to #call" do
+      it "raises an error" do
+        expect{
+          job.add_transformation(Metacrunch::TestUtils::DummyNonCallable.new)
+        }.to raise_error(ArgumentError)
+      end
+    end
+  end
 
   describe "#run" do
     context "when source is defined" do
