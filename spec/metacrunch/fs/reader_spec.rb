@@ -1,7 +1,7 @@
 describe Metacrunch::Fs::Reader do
 
   describe "#each" do
-    subject {Metacrunch::Fs::Reader.new(File.join(asset_dir, "regular_file.txt"))}
+    subject { Metacrunch::Fs::Reader.new(File.join(asset_dir, "regular_file.txt")) }
 
     context "when called without a block" do
       it "returns an enumerator" do
@@ -23,7 +23,7 @@ describe Metacrunch::Fs::Reader do
   end
 
   context "when given a regular file" do
-    subject {Metacrunch::Fs::Reader.new(File.join(asset_dir, "regular_file.txt"))}
+    subject { Metacrunch::Fs::Reader.new(File.join(asset_dir, "regular_file.txt")) }
 
     it "reads that file" do
       expect(subject.each.first.contents).to eq("THIS IS A TEST\n")
@@ -32,7 +32,7 @@ describe Metacrunch::Fs::Reader do
   end
 
   context "when given a tar archive" do
-    subject {Metacrunch::Fs::Reader.new(File.join(asset_dir, "archive.tar"))}
+    subject { Metacrunch::Fs::Reader.new(File.join(asset_dir, "archive.tar")) }
 
     it "reads the files from the archive" do
       expect(subject.each.first.contents).to eq("THIS IS A TEST\n")
@@ -41,7 +41,7 @@ describe Metacrunch::Fs::Reader do
   end
 
   context "when given a compressed file (GZip)" do
-    subject {Metacrunch::Fs::Reader.new(File.join(asset_dir, "regular_file.txt.gz"))}
+    subject { Metacrunch::Fs::Reader.new(File.join(asset_dir, "regular_file.txt.gz")) }
 
     it "reads that file" do
       expect(subject.each.first.contents).to eq("THIS IS A TEST\n")
@@ -50,7 +50,7 @@ describe Metacrunch::Fs::Reader do
   end
 
   context "when given a compressed tar archive (Gziped tar)" do
-    subject {Metacrunch::Fs::Reader.new(File.join(asset_dir, "archive.tar.gz"))}
+    subject { Metacrunch::Fs::Reader.new(File.join(asset_dir, "archive.tar.gz")) }
 
     it "reads the files from the archive" do
       expect(subject.each.first.contents).to eq("THIS IS A TEST\n")
