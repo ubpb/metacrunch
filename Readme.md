@@ -30,15 +30,18 @@ Let's look at an example.
 # File: my_etl_job.metacrunch
 
 # Every metacrunch job file is a regular Ruby file. So you can always use regular Ruby
-# stuff like defining a method
+# stuff like declaring methods
 def my_helper
   # ...
 end
 
-# ... defining classes
+# ... declaring classes
 class MyHelper
   # ...
 end
+
+# ... declaring variables
+foo = "bar"
 
 # ... or loading other ruby files
 require_relative "./some/other/ruby/file"
