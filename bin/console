@@ -1,5 +1,14 @@
 #!/usr/bin/env ruby
 require "bundler/setup"
 require "metacrunch"
-require "pry"
-Pry.start
+
+begin
+  require "pry"
+rescue LoadError ; end
+
+if defined?(Pry)
+  Pry.start
+else
+  require "irb"
+  IRB.start
+end
