@@ -114,7 +114,6 @@ describe Metacrunch::Job::Dsl do
     context "when called with a valid gemfile block" do
       it "loads the defined dependencies" do
         subject.dependencies do
-          source "https://rubygems.org"
           gem "rake"
         end
 
