@@ -2,7 +2,6 @@ require "rubygems"
 
 require "active_support"
 require "active_support/core_ext"
-require "bundler"
 require "commander"
 require "sequel"
 
