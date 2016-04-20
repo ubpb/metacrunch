@@ -3,7 +3,7 @@ source "https://rubygems.org"
 gemspec
 
 group :development do
-  gem "bundler",   ">= 1.11.2"
+  gem "bundler",   ">= 1.7"
   gem "rake",      ">= 11.1"
   gem "rspec",     ">= 3.0.0",  "< 4.0.0"
   gem "simplecov", ">= 0.11.0"
