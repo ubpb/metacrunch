@@ -1,4 +1,4 @@
-Copyright (c) 2013 René Sprotte, Michael Sievers, Marcel Otto
+Copyright (c) 2016 René Sprotte, Michael Sievers, Marcel Otto
 
 MIT License
 
