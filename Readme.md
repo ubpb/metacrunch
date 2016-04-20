@@ -1,4 +1,5 @@
-# metacrunch
+metacrunch
+==========
 
 [![Gem Version](https://badge.fury.io/rb/metacrunch.svg)](http://badge.fury.io/rb/metacrunch)
 [![Code Climate](https://codeclimate.com/github/ubpb/metacrunch/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch)
@@ -7,16 +8,26 @@
 metacrunch is a simple and lightweight data processing and ETL ([Extract-Load-Transform](http://en.wikipedia.org/wiki/Extract,_transform,_load))
 toolkit for Ruby.
 
-## Create ETL jobs with metacrunch
+
+Installation
+------------
+
+```
+$ gem install metacrunch
+```
+
+
+Create ETL jobs
+---------------
 
 The basic idea behind an ETL job in metacrunch is the concept of a data processing pipeline. Each ETL job reads data from one or more **sources**, runs one or more **transformations** on the data and finally writes the transformed data back to one or more **destinations**.
 
-metacrunch provides you with a simple DSL to define such ETL jobs. Just create a text file with the extension `.metacrunch` (The extension doesn't really matter but you should avoid `.rb` to not loading them by mistake from another Ruby component).
+metacrunch provides you with a simple DSL to define such ETL jobs. Just create a text file with the extension `.metacrunch`. Note: The extension doesn't really matter but you should avoid `.rb` to not loading them by mistake from another Ruby component.
 
 Let's look at an example.
 
 ```ruby
-# File: hello_world.metacrunch
+# File: my_etl_job.metacrunch
 
 # Every metacrunch job file is a regular Ruby file. So you can always use regular Ruby
 # stuff like defining a method
@@ -48,10 +59,11 @@ destination MyOtherDestination.new
 # To process data use the #transformation hook.
 transformation do |data|
   # Called for each data object that has been put in the pipeline by a source.
+
   # Do your data transformation process here.
 
-  # You must return the data to keep it in the pipeline.
-  # You can dismiss the data conditionally by returning nil
+  # You must return the data to keep it in the pipeline. Dismiss the
+  # data conditionally by returning nil.
   data
 end
 
@@ -84,3 +96,22 @@ pre_process Proc.new {
 post_process MyCallable.new
 
 ```
+
+
+Run ETL jobs
+------------
+
+metacrunch comes with a handy command line tool. In your terminal just call
+
+
+```
+$ metacrunch run my_etl_job.metacrunch
+```
+
+to run the job.
+
+
+License
+-------
+
+metacrunch is available at [github](https://github.com/ubpb/metacrunch) under [MIT license](https://github.com/ubpb/metacrunch/blob/master/License.txt).
