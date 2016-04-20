@@ -1,8 +1,0 @@
-require "java"
-
-$CLASSPATH << __dir__
-java_import "Hello"
-
-hello = Hello.new("John Doe")
-
-puts hello.say_hello()
