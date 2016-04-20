@@ -1,6 +1,7 @@
 describe Metacrunch::Db::Reader do
 
-  DB_URL = "sqlite://#{File.join(asset_dir, "dummy.sqlite")}"
+  DB_PROTOCOL = defined?(JRUBY_VERSION) ? "jdbc:sqlite" : "sqlite"
+  DB_URL = "#{DB_PROTOCOL}://#{File.join(asset_dir, "dummy.sqlite")}"
 
   describe "#each" do
     subject { Metacrunch::Db::Reader.new(DB_URL, "select * from users") }
