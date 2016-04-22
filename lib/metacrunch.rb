@@ -16,4 +16,5 @@ module Metacrunch
   require_relative "metacrunch/fs"
   require_relative "metacrunch/db"
   require_relative "metacrunch/transformator"
+  require_relative "metacrunch/hash"
 end
