@@ -7,6 +7,7 @@ Gem::Specification.new do |spec|
   spec.name          = "metacrunch-mab2"
   spec.version       = Metacrunch::Mab2::VERSION
   spec.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
+  spec.email         = "r.sprotte@ub.uni-paderborn.de"
   spec.summary       = %q{MAB2 tools for metacrunch}
   spec.homepage      = "http://github.com/ubpb/metacrunch-mab2"
   spec.license       = "MIT"
