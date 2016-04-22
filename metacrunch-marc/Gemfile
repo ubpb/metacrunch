@@ -2,8 +2,6 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "metacrunch", ">= 2.1.0", github: "ubpb/metacrunch", branch: "master"
-
 group :development do
   gem "bundler",      ">= 1.7"
   gem "rake",         ">= 11.1"
