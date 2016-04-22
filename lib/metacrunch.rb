@@ -15,6 +15,4 @@ module Metacrunch
   require_relative "metacrunch/job"
   require_relative "metacrunch/fs"
   require_relative "metacrunch/db"
-  require_relative "metacrunch/transformator" # TODO: Review
-  require_relative "metacrunch/hash"          # TODO: Review
 end
