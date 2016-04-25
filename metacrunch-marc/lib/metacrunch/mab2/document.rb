@@ -21,8 +21,15 @@ module Metacrunch
       # @param [String] xml repesenting a MAB document in Aleph MAB XML format
       # @return [Metacrunch::Mab2::Document]
       #
-      def self.from_aleph_mab_xml(xml)
+      def self.from_mab_xml(xml)
         MabXmlParser.new.parse(xml)
+      end
+
+      # TODO: Remove form 2.0
+      def self.from_aleph_mab_xml(xml)
+        d = ActiveSupport::Deprecation.new("2.0", "metacrunch-mab2")
+        d.deprecation_warning("#from_aleph_mab_xml", "use #from_mab_xml instead")
+        self.from_mab_xml(xml)
       end
 
       def initialize
