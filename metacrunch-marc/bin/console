@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 require "bundler/setup"
-require "metacrunch"
+require "metacrunch/mab2"
 
 begin
   require "pry"
