@@ -1,16 +1,11 @@
-require "htmlentities"
 require "ox"
-require_relative "../document"
 
 module Metacrunch
   module Mab2
     class Document
-      class AlephMabXmlParser < Ox::Sax
-        def self.parse(aleph_mab_xml)
-          new.parse(aleph_mab_xml)
-        end
+      class MabXmlParser < Ox::Sax
 
-        def parse(io_or_string)
+        def parse(mab_xml)
           # initialize state machine
           @in_controlfield = @in_datafield = @in_subfield = false
 
@@ -18,11 +13,9 @@ module Metacrunch
           @document = Document.new
           @html_entities_coder = HTMLEntities.new
 
-          io = io_or_string.is_a?(IO) ? io_or_string : StringIO.new(io_or_string)
-
           # convert_special tells ox to convert some html entities already during
           # parsing, which minifies the amount of entities we have to decode ourself
-          Ox.sax_parse(self, io, convert_special: true)
+          Ox.sax_parse(self, mab_xml, convert_special: true)
 
           return @document
         end
