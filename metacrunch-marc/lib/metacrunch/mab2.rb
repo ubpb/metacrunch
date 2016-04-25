@@ -1,8 +1,9 @@
 require "rubygems"
 require "active_support"
 require "active_support/core_ext"
-require "ox"
 require "htmlentities"
+require "nokogiri"
+require "ox" unless RUBY_PLATFORM == "java"
 
 module Metacrunch
   module Mab2

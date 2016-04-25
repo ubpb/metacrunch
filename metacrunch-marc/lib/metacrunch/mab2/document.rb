@@ -1,12 +1,17 @@
 module Metacrunch
   module Mab2
     class Document
-      require_relative "./document/aleph_mab_xml_parser"
-      require_relative "./document/controlfield"
-      require_relative "./document/datafield"
-      require_relative "./document/datafield_set"
-      require_relative "./document/subfield"
-      require_relative "./document/subfield_set"
+      if RUBY_PLATFORM == "java"
+        require_relative "document/jruby/mab_xml_parser"
+      else
+        require_relative "document/mab_xml_parser"
+      end
+
+      require_relative "document/controlfield"
+      require_relative "document/datafield"
+      require_relative "document/datafield_set"
+      require_relative "document/subfield"
+      require_relative "document/subfield_set"
 
       # ------------------------------------------------------------------------------
       # Parsing
@@ -17,7 +22,7 @@ module Metacrunch
       # @return [Metacrunch::Mab2::Document]
       #
       def self.from_aleph_mab_xml(xml)
-        AlephMabXmlParser.parse(xml)
+        MabXmlParser.new.parse(xml)
       end
 
       def initialize
