@@ -1,3 +1,5 @@
+require "rubygems/dependency_installer"
+
 module Metacrunch
   class Job::Dsl::DependencySupport
 
@@ -6,13 +8,11 @@ module Metacrunch
       proxy.instance_eval(&block)
 
       if install
+        installer = Gem::DependencyInstaller.new
         puts "Installing dependencies..."
         proxy.each do |name, options|
-          if options[:version]
-            `gem install #{name} -v "#{options[:version]}"`
-          else
-            `gem install #{name}`
-          end
+          args = [name, options[:version]].compact
+          installer.install(*args)
         end
 
         exit(0)
@@ -26,7 +26,7 @@ module Metacrunch
             gem(name)
           end
         rescue Gem::LoadError => e
-          puts "#{e.message}. Use 'metacrunch run --install FILE' to install the missing dependencies."
+          puts "'#{e.name}' (#{e.requirement}) is not installed. Use 'metacrunch run JOB_FILE --install' to install required dependencies."
           exit(1)
         end
 
