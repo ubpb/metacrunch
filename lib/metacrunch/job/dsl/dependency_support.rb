@@ -30,7 +30,7 @@ module Metacrunch
           exit(1)
         end
 
-        require(name)
+        require(options[:require] || name)
       end
     end
 
@@ -38,8 +38,8 @@ module Metacrunch
 
     class DependencyProxy
 
-      def gem(name, version = nil)
-        gems[name.to_s] = {version: version}
+      def gem(name, version = nil, options = {})
+        gems[name.to_s] = options.merge({version: version})
       end
 
       def each(&block)
