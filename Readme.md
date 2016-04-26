@@ -24,7 +24,7 @@ The basic idea behind an ETL job in metacrunch is the concept of a data processi
 
 metacrunch provides you with a simple DSL to define such ETL jobs. Just create a text file with the extension `.metacrunch`. Note: The extension doesn't really matter but you should avoid `.rb` to not loading them by mistake from another Ruby component.
 
-Let's look at an example.
+Let's look at an example. For a collection of working examples check out our [metacrunch-demo](https://github.com/ubpb/metacrunch-demo) repo.
 
 ```ruby
 # File: my_etl_job.metacrunch
