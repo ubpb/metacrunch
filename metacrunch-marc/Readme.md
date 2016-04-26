@@ -4,9 +4,9 @@ metacrunch-mab2
 [![Code Climate](https://codeclimate.com/github/ubpb/metacrunch-mab2/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch-mab2)
 [![Build Status](https://travis-ci.org/ubpb/metacrunch-mab2.svg)](https://travis-ci.org/ubpb/metacrunch-mab2)
 
-This is the official MAB2 package for the [metacrunch ETL toolkit](https://github.com/ubpb/metacrunch). It allows you to parse MAB XML data and access the data by a simple and powerful API.
+This is the official MAB2 package for the [metacrunch ETL toolkit](https://github.com/ubpb/metacrunch). It allows you to parse [MAB](https://de.wikipedia.org/wiki/Maschinelles_Austauschformat_f%C3%BCr_Bibliotheken) data and gives you access to the data by a simple and powerful API.
 
-Note: There is no technical dependency to metacrunch, so it's fine to use this gem in any Ruby application where you need to access MAB XML data.
+*Note: There is no runtime dependency to metacrunch, so it's fine to use this gem in any Ruby application where you need to read or manipulate MAB data.*
 
 
 Installation
@@ -21,6 +21,11 @@ Usage example
 -------------
 
 For the full API look at the files in [https://github.com/ubpb/metacrunch-mab2/tree/master/lib/metacrunch/mab2](https://github.com/ubpb/metacrunch-mab2/tree/master/lib/metacrunch/mab2)
+
+**Loading the library**
+```ruby
+require "metacrunch/mab2"
+```
 
 **Parsing a [MAB XML file](https://github.com/ubpb/metacrunch-mab2/blob/master/spec/assets/aleph_mab_xml/file1.xml)**
 ```ruby
