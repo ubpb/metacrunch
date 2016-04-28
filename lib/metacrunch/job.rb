@@ -2,18 +2,17 @@ module Metacrunch
   class Job
     require_relative "job/dsl"
 
-    attr_reader :builder, :args, :install_dependencies
+    attr_reader :builder, :args
 
     class << self
-      def define(file_content = nil, filename: nil, args: nil, install_dependencies: false, &block)
-        self.new(file_content, filename: filename, args: args, install_dependencies: install_dependencies, &block)
+      def define(file_content = nil, filename: nil, args: nil, &block)
+        self.new(file_content, filename: filename, args: args, &block)
       end
     end
 
-    def initialize(file_content = nil, filename: nil, args: nil, install_dependencies: false, &block)
+    def initialize(file_content = nil, filename: nil, args: nil, &block)
       @builder = Dsl.new(self)
       @args = args
-      @install_dependencies = install_dependencies
 
       if file_content
         @builder.instance_eval(file_content, filename || "")

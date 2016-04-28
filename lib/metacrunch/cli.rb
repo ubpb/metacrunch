@@ -28,7 +28,6 @@ module Metacrunch
       commander.command :run do |c|
         c.syntax = "metacrunch run [options] FILE [@@ job_options]"
         c.description = "Runs a metacrunch job description."
-        c.option "--install", "Install job dependencies using Bundler"
 
         c.action do |filenames, program_options|
           if filenames.empty?
@@ -39,7 +38,7 @@ module Metacrunch
           else
             filename = filenames.first
             contents = ::File.read(filename)
-            context = Metacrunch::Job.define(contents, filename: filename, args: job_args, install_dependencies: program_options.install)
+            context = Metacrunch::Job.define(contents, filename: filename, args: job_args)
             context.run
           end
         end
