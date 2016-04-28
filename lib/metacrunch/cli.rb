@@ -39,13 +39,10 @@ module Metacrunch
             filename = File.expand_path(filenames.first)
             dir = File.dirname(filename)
 
-            Dir.chdir(dir) do
-              begin
-                Bundler.setup
-                Bundler.require
-              rescue Bundler::GemfileNotFound ; end
+            setup_bundler(dir)
 
-              contents = ::File.read(filename)
+            Dir.chdir(dir) do
+              contents = File.read(filename)
               context = Metacrunch::Job.define(contents, filename: filename, args: job_args)
               context.run
             end
@@ -62,6 +59,15 @@ module Metacrunch
     def job_args
       index = ARGV.index(ARGS_SEPERATOR)
       @job_args ||= index ? ARGV[index+1..-1] : nil
+    end
+
+    def setup_bundler(dir)
+      ENV['BUNDLE_GEMFILE'] ||= File.join(dir, "Gemfile")
+      if File.exists?(ENV['BUNDLE_GEMFILE'])
+        puts "Using Gemfile `#{ENV['BUNDLE_GEMFILE']}`."
+        Bundler.setup
+        Bundler.require
+      end
     end
 
   end
