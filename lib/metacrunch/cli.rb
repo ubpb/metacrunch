@@ -36,10 +36,19 @@ module Metacrunch
           elsif filenames.count > 1
             say "You must provide exactly one job description file."
           else
-            filename = filenames.first
-            contents = ::File.read(filename)
-            context = Metacrunch::Job.define(contents, filename: filename, args: job_args)
-            context.run
+            filename = File.expand_path(filenames.first)
+            dir = File.dirname(filename)
+
+            Dir.chdir(dir) do
+              begin
+                Bundler.setup
+                Bundler.require
+              rescue Bundler::GemfileNotFound ; end
+
+              contents = ::File.read(filename)
+              context = Metacrunch::Job.define(contents, filename: filename, args: job_args)
+              context.run
+            end
           end
         end
       end
