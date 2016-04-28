@@ -1,7 +1,6 @@
 module Metacrunch
   class Job::Dsl
     require_relative "dsl/helper"
-    require_relative "dsl/dependency_support"
     require_relative "dsl/option_support"
 
     def initialize(job)
@@ -26,11 +25,6 @@ module Metacrunch
 
     def transformation(callable = nil, &block)
       @_job.add_transformation(callable, &block)
-    end
-
-    def dependencies(&block)
-      raise ArgumentError, "Block needed" unless block_given?
-      DependencySupport.new(install: @_job.install_dependencies, &block)
     end
 
     def options(&block)

@@ -109,25 +109,6 @@ describe Metacrunch::Job::Dsl do
     end
   end
 
-  describe "dependencies" do
-    # TODO: I have no idea how to test the "install" context
-    context "when called with a valid gemfile block" do
-      it "loads the defined dependencies" do
-        subject.dependencies do
-          gem "rake"
-        end
-
-        expect(defined?(Rake)).to be_present
-      end
-    end
-
-    context "when called without a block" do
-      it "raises an error" do
-        expect { subject.dependencies }.to raise_error(ArgumentError)
-      end
-    end
-  end
-
   describe "options" do
     context "when called with a block" do
       it "registers the options" do
