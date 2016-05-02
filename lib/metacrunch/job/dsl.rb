@@ -27,9 +27,9 @@ module Metacrunch
       @_job.add_transformation(callable, &block)
     end
 
-    def options(&block)
+    def options(require_args: false, &block)
       if block_given?
-        @_options = OptionSupport.new.register_options(@_job.args, &block)
+        @_options = OptionSupport.new.register_options(@_job.args, require_args: require_args, &block)
       else
         @_options ||= {}
       end

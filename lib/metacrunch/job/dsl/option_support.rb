@@ -1,7 +1,7 @@
 module Metacrunch
   class Job::Dsl::OptionSupport
 
-    def register_options(args, &block)
+    def register_options(args, require_args: false, &block)
       options = {}
       registry.instance_eval(&block)
 
@@ -20,11 +20,14 @@ module Metacrunch
         end
       end
 
-      # Finally parse CLI args with OptionParser
-      parser.parse!(args || [])
+      # Finally parse CLI options with OptionParser
+      args = parser.parse(args || [])
 
       # Make sure required options are present
       ensure_required_options!(options)
+
+      # Make sure args are present if required
+      ensure_required_args!(args) if require_args
 
       options
     end
@@ -56,6 +59,15 @@ module Metacrunch
 
           exit(1)
         end
+      end
+    end
+
+    def ensure_required_args!(args)
+      if args.blank?
+        puts "Error: Required ARGS are missing."
+        puts parser.help
+
+        exit(1)
       end
     end
 
