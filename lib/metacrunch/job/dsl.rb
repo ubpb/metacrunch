@@ -1,6 +1,5 @@
 module Metacrunch
   class Job::Dsl
-    require_relative "dsl/helper"
     require_relative "dsl/option_support"
 
     def initialize(job)
@@ -23,6 +22,10 @@ module Metacrunch
       @_job.add_post_process(callable, &block)
     end
 
+    def transformation_buffer(size)
+      @_job.add_transformation_buffer(size)
+    end
+
     def transformation(callable = nil, &block)
       @_job.add_transformation(callable, &block)
     end
@@ -33,10 +36,6 @@ module Metacrunch
       else
         @_options ||= {}
       end
-    end
-
-    def helper
-      @_helper ||= Helper.new
     end
 
   end

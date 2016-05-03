@@ -1,6 +1,7 @@
 module Metacrunch
   class Job
     require_relative "job/dsl"
+    require_relative "job/buffer"
 
     attr_reader :builder, :args
 
@@ -63,6 +64,10 @@ module Metacrunch
       add_callable_or_block(transformations, callable, &block)
     end
 
+    def add_transformation_buffer(size)
+      transformations << Metacrunch::Job::Buffer.new(size)
+    end
+
     def run
       run_pre_processes
       run_transformations
@@ -106,22 +111,38 @@ module Metacrunch
       sources.each do |source|
         # sources are expected to respond to `each`
         source.each do |row|
-          transformations.each do |transformation|
-            row = transformation.call(row) if row
-            break unless row
-          end
-
-          next unless row
-
-          destinations.each do |destination|
-            # destinations are expected to respond to `write(row)`
-            destination.write(row)
-          end
+          _run_transformations(row)
         end
+
+        # Run all transformations a last time to flush possible buffers
+        _run_transformations(nil, flush_buffers: true)
       end
 
       # destination implementations are expected to respond to `close`
       destinations.each(&:close)
+    end
+
+    def _run_transformations(row, flush_buffers: false)
+      transformations.each do |transformation|
+        row = if transformation.is_a?(Buffer)
+          if flush_buffers
+            transformation.flush
+          else
+            transformation.buffer(row)
+          end
+        else
+          transformation.call(row) if row
+        end
+
+        break unless row
+      end
+
+      if row
+        destinations.each do |destination|
+          # destinations are expected to respond to `write(row)`
+          destination.write(row)
+        end
+      end
     end
 
   end

@@ -145,10 +145,4 @@ describe Metacrunch::Job::Dsl do
     end
   end
 
-  describe "helper" do
-    it "returns a Metacrunch::Job::Dsl::Helper instance" do
-      expect(subject.helper).to be_a(Metacrunch::Job::Dsl::Helper)
-    end
-  end
-
 end
