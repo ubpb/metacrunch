@@ -5,7 +5,7 @@ metacrunch
 [![Code Climate](https://codeclimate.com/github/ubpb/metacrunch/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch)
 [![Build Status](https://travis-ci.org/ubpb/metacrunch.svg)](https://travis-ci.org/ubpb/metacrunch)
 
-metacrunch is a simple and lightweight data processing and ETL ([Extract-Load-Transform](http://en.wikipedia.org/wiki/Extract,_transform,_load))
+metacrunch is a simple and lightweight data processing and ETL ([Extract-Transform-Load](http://en.wikipedia.org/wiki/Extract,_transform,_load))
 toolkit for Ruby.
 
 
@@ -20,11 +20,11 @@ $ gem install metacrunch
 Create ETL jobs
 ---------------
 
-The basic idea behind an ETL job in metacrunch is the concept of a data processing pipeline. Each ETL job reads data from one or more **sources**, runs one or more **transformations** on the data and finally writes the transformed data back to one or more **destinations**.
+The basic idea behind an ETL job in metacrunch is the concept of a data processing pipeline. Each ETL job reads data from one or more **sources** (extract step), runs one or more **transformations** (transform step) on the data and finally writes the transformed data back to one or more **destinations** (load step).
 
 metacrunch provides you with a simple DSL to define such ETL jobs. Just create a text file with the extension `.metacrunch`. Note: The extension doesn't really matter but you should avoid `.rb` to not loading them by mistake from another Ruby component.
 
-Let's look at an example. For a collection of working examples check out our [metacrunch-demo](https://github.com/ubpb/metacrunch-demo) repo.
+Let's take a look at an example. For a collection of working examples check out our [metacrunch-demo](https://github.com/ubpb/metacrunch-demo) repo.
 
 ```ruby
 # File: my_etl_job.metacrunch
@@ -113,6 +113,30 @@ $ metacrunch run my_etl_job.metacrunch
 
 to run the job.
 
+Implementing sources
+--------------------
+
+TBD.
+
+Implementing transformations
+----------------------------
+
+TBD.
+
+Implementing writers
+---------------------
+
+TBD.
+
+Defining job dependencies
+-------------------------
+
+TBD.
+
+Defining job options
+--------------------
+
+TBD.
 
 License
 -------
