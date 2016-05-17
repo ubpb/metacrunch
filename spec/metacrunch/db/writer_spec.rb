@@ -2,7 +2,7 @@ describe Metacrunch::Db::Writer do
 
   DB = Sequel.sqlite # in-memory db
 
-  before do
+  before(:all) do
     DB.create_table(:users) do
       primary_key :id
       String :name
