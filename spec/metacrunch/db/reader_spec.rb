@@ -4,7 +4,7 @@ describe Metacrunch::Db::Reader do
   DB_URL = "#{DB_PROTOCOL}://#{File.join(asset_dir, "dummy.sqlite")}"
 
   describe "#each" do
-    subject { Metacrunch::Db::Reader.new(DB_URL, "select * from users") }
+    subject { Metacrunch::Db::Reader.new(DB_URL, ->(db){db[:users].order(:id)}) }
 
     context "when called without a block" do
       it "returns an enumerator" do
