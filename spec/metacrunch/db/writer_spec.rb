@@ -1,6 +1,10 @@
+def new_db_connection
+  defined?(JRUBY_VERSION) ? Sequel.connect("jdbc:sqlite::memory:") : Sequel.sqlite # in-memory db
+end
+
 describe Metacrunch::Db::Writer do
 
-  DB = Sequel.sqlite # in-memory db
+  DB = new_db_connection
 
   before(:all) do
     DB.create_table(:users) do
@@ -22,7 +26,7 @@ describe Metacrunch::Db::Writer do
   end
 
   describe "#close" do
-    subject { Sequel.sqlite }
+    subject { new_db_connection }
 
     it "closes db connection" do
       subject.disconnect
