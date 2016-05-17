@@ -21,4 +21,13 @@ describe Metacrunch::Db::Writer do
     end
   end
 
+  describe "#close" do
+    subject { Sequel.sqlite }
+
+    it "closes db connection" do
+      subject.disconnect
+      expect(subject.pool.available_connections).to be_empty
+    end
+  end
+
 end
