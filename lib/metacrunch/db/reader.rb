@@ -1,9 +1,15 @@
 module Metacrunch
   class Db::Reader
 
-    def initialize(url, dataset_proc, options = {})
+    def initialize(database_connection_or_url, dataset_proc, options = {})
       @rows_per_fetch = options.delete(:rows_per_fetch) || 1000
-      @db = Sequel.connect(url, options)
+
+      @db = if database_connection_or_url.is_a?(String)
+        Sequel.connect(database_connection_or_url, options)
+      else
+        database_connection_or_url
+      end
+
       @dataset = dataset_proc.call(@db)
     end
 
