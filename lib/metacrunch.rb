@@ -6,10 +6,6 @@ require "active_support/core_ext"
 require "commander"
 require "sequel"
 
-begin
-  require "pry"
-rescue LoadError ; end
-
 module Metacrunch
   require_relative "metacrunch/version"
   require_relative "metacrunch/cli"
