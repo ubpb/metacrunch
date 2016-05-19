@@ -104,14 +104,30 @@ post_process MyCallable.new
 Run ETL jobs
 ------------
 
-metacrunch comes with a handy command line tool. In your terminal just call
+metacrunch comes with a handy command line tool. In your terminal use
 
 
 ```
 $ metacrunch run my_etl_job.metacrunch
 ```
 
-to run the job.
+to run a job.
+
+If you use Bundler to manage dependencies for your jobs make sure to change into the directory where your Gemfile is located (or set BUNDLE_GEMFILE environment variable) and run the Job with `bundle exec`.
+
+```
+$ bundle exec metacrunch run my_etl_job.metacrunch
+```
+
+`bundle exec` may not be required depending on your environment but it's safe to use. When using a Gemfile make sure to add `gem "metacrunch"` to the Gemfile.
+
+To pass options to the job, separate job options from the metacrunch command options using the `@@` separator.
+
+```
+$ [bundle exec] metacrunch run [COMMAND_OPTIONS] JOB_FILE [@@ [JOB_OPTIONS] [ARGS]]
+```
+
+
 
 Implementing sources
 --------------------
