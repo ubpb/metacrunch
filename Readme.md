@@ -113,7 +113,7 @@ $ metacrunch run my_etl_job.metacrunch
 
 to run a job.
 
-If you use Bundler to manage dependencies for your jobs make sure to change into the directory where your Gemfile is (or set BUNDLE_GEMFILE environment variable) and run metacrunch with `bundle exec`.
+If you use [Bundler](http://bundler.io) to manage dependencies for your jobs make sure to change into the directory where your Gemfile is (or set BUNDLE_GEMFILE environment variable) and run metacrunch with `bundle exec`.
 
 ```
 $ bundle exec metacrunch run my_etl_job.metacrunch
@@ -123,6 +123,8 @@ Depending on your environment `bundle exec` may not be required (e.g. you have r
 
 To pass options to the job, separate job options from the metacrunch command options using the `@@` separator.
 
+Use the following syntax
+
 ```
 $ [bundle exec] metacrunch run [COMMAND_OPTIONS] JOB_FILE [@@ [JOB_OPTIONS] [JOB_ARGS...]]
 ```
@@ -131,7 +133,7 @@ $ [bundle exec] metacrunch run [COMMAND_OPTIONS] JOB_FILE [@@ [JOB_OPTIONS] [JOB
 Implementing sources
 --------------------
 
-A source (aka. a reader) is any Ruby object that responds to the `each` method that yields data objects one by one. 
+A source (aka a reader) is any Ruby object that responds to the `each` method that yields data objects one by one. 
 
 The data is usually a `Hash` instance, but could be other structures as long as the rest of your pipeline is expecting it.
 
@@ -142,7 +144,7 @@ Any `enumerable` object (e.g. `Array`) responds to `each` and can be used as a s
 source [1,2,3,4,5,6,7,8,9]
 ```
 
-Usually you implement your sources as classes. This way you can unit test and reuse them. 
+Usually you implement your sources as classes. Doing so you can unit test and reuse them. 
 
 Here is a simple CSV source
 
@@ -197,7 +199,7 @@ end
 
 ```
 
-### Transformations a callable
+### Transformations as a callable
 
 Procs and Lambdas in Ruby respond to `call`. They can be used to implement transformations similar to blocks.
 
@@ -235,10 +237,40 @@ transformation MyTransformation.new
 
 ```
 
-Implementing writers
----------------------
+Implementing destinations
+-------------------------
 
-TBD.
+A destination (aka a writer) is any Ruby object that responds to `write(data)` and `close`.
+
+Like sources you are encouraged to implement destinations as classes.
+
+```ruby
+# File: my_destination.rb
+
+class MyDestination
+  
+  def write(data)
+    # Write data to files, remote services, databases etc.
+  end
+
+  def close
+    # Use this method to close connections, files etc.
+  end
+
+end
+```
+
+In your job
+
+```ruby
+# File: my_etl_job.metacrunch
+
+require "my_destination"
+
+destination MyDestination.new
+
+```
+
 
 Defining job dependencies
 -------------------------
