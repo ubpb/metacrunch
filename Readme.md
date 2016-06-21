@@ -108,7 +108,7 @@ This example uses a custom destination. To learn more about the build-in destina
 #### Pre/Post process 
 
 To run arbitrary code before the first transformation use the 
-`#pre_process` hook. To run arbitrary after the last transformation use the 
+`#pre_process` hook. To run arbitrary after the last transformation use 
 `#post_process`. Like transformations, `#post_process` and `#pre_process` can be called with a block, a lambda or a (callable) object.
 
 ```ruby
