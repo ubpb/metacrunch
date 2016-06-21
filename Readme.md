@@ -64,7 +64,7 @@ This example uses a build-in file reader source. To learn more about the build-i
 
 #### Defining transformations
 
-To process, transform or manipulate data use the `#transformation` hook. A transformation can be implemented as a block, a lambda or as an object. To learn more about transformations check the section about [implementing transformations](#implementing-transformations) below.
+To process, transform or manipulate data use the `#transformation` hook. A transformation can be implemented as a block, a lambda or as an (callable) object. To learn more about transformations check the section about [implementing transformations](#implementing-transformations) below.
 
 The current data object (the object that is currently read by the source) will be passed to the first transformation as a parameter. The return value of a transformation will then be passed to the next transformation - or to the destination if the current transformation is the last one.
 
@@ -102,6 +102,8 @@ A destination (aka. a writer) is an object that writes the transformed data to a
 
 destination MyDestination.new
 ```
+
+This example uses a custom destination. To learn more about the build-in destinations see [notes below](#built-in-sources-and-destinations).
 
 #### Pre/Post process 
 
