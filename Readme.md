@@ -17,51 +17,64 @@ $ gem install metacrunch
 ```
 
 
-Create ETL jobs
----------------
+Creating ETL jobs
+-----------------
 
-The basic idea behind an ETL job in metacrunch is the concept of a data processing pipeline. Each ETL job reads data from one or more **sources** (extract step), runs one or more **transformations** (transform step) on the data and finally writes the transformed data back to one or more **destinations** (load step).
+The basic idea behind an ETL job in metacrunch is the concept of a data processing pipeline. Each ETL job reads data from one or more **sources** (extract step), runs one or more **transformations** (transform step) on the data and finally writes the transformed data to one or more **destinations** (load step).
 
-metacrunch provides you with a simple DSL to define such ETL jobs. Just create a text file with the extension `.metacrunch`. Note: The extension doesn't really matter but you should avoid `.rb` to not loading them by mistake from another Ruby component.
+metacrunch provides you with a simple DSL to define and run such ETL jobs. Just create a text file with the extension `.metacrunch`. *Note: The extension doesn't really matter but you should avoid `.rb` to not loading them by mistake from another Ruby component.*
 
-Let's take a look at an full featured example. For a collection of working examples check out our [metacrunch-demo](https://github.com/ubpb/metacrunch-demo) repo.
+Let's walk through the main steps of creating ETL jobs with metacrunch. For a collection of working examples check out our [metacrunch-demo](https://github.com/ubpb/metacrunch-demo) repo.
+
+#### It's Ruby
+
+Every `.metacrunch` job file is a regular Ruby file. So you can always use regular stuff like e.g. declaring methods, classes, variable and requiring other Ruby files. 
 
 ```ruby
 # File: my_etl_job.metacrunch
 
-# Every metacrunch job file is a regular Ruby file. So you can always use regular Ruby
-# stuff like declaring methods
 def my_helper
   # ...
 end
 
-# ... declaring classes
 class MyHelper
   # ...
 end
 
-# ... declaring variables
-foo = "bar"
+helper = MyHelper.new
 
-# ... or loading other ruby files
+require "SomeGem"
 require_relative "./some/other/ruby/file"
+```
 
-# Declare a source (use a build-in or 3rd party source or implement it – see notes below).
-# At least one source is required to allow the job to run.
+#### Defining sources
+
+A source (aka. a reader) is an object that reads data into the metacrunch processing pipeline. Use one of the build-in or 3rd party sources or implement it by yourself. Implementing sources is easy – [see notes below](#implementing-sources). You can declare one or more sources. They are processed in the order they are defined.
+
+You must declare at least one source to allow a job to run.
+
+```ruby
+# File: my_etl_job.metacrunch
+
+source Metacrunch::Fs::Reader.new(args)
 source MySource.new
-# ... maybe another one. Sources are processed in the order they are defined.
-source MyOtherSource.new
+```
 
-# Declare a destination (use a build-in or 3rd party destination or implement it – see notes below).
-# Technically a destination is optional, but a job that doesn't store it's
-# output doesn't really makes sense.
-destination MyDestination.new
-# ... you can have more destinations if you like
-destination MyOtherDestination.new
+This example uses a build-in file reader source. To learn more about the build-in sources see [notes below](#built-in-sources-and-destinations).
 
-# To process data use the #transformation hook.
+#### Defining transformations
+
+To process, transform or manipulate data use the `#transformation` hook. A transformation can be implemented as a block, a lambda or as an object. To learn more about transformations check the section about [implementing transformations](#implementing-transformations) below.
+
+The current data object (the object that is currently read by the source) will be passed to the first transformation as a parameter. The return value of a transformation will then be passed to the next transformation - or to the destination if the current transformation is the last one.
+
+If you return nil the current data object will be dismissed and the next transformation (or destination) won't be called.
+
+```ruby
+# File: my_etl_job.metacrunch
+
 transformation do |data|
-  # Called for each data object that has been put in the pipeline by a source.
+  # Called for each data object that has been read by a source.
 
   # Do your data transformation process here.
 
@@ -71,38 +84,54 @@ transformation do |data|
 end
 
 # Instead of passing a block to #transformation you can pass a
-# `callable` object (an object responding to #call).
-transformation Proc.new {
-  # Procs and Lambdas responds to #call
+# `callable` object (any object responding to #call).
+transformation ->(data) {
+  # Lambdas responds to #call
 }
 
 # MyTransformation defines #call
 transformation MyTransformation.new
+```
 
-# To run arbitrary code before the first transformation use the #pre_process hook.
+#### Defining destinations
+
+A destination (aka. a writer) is an object that writes the transformed data to an external system. Use one of the build-in or 3rd party destinations or implement it by yourself. Implementing destinations is easy – [see notes below](#implementing-destinations). You can declare one or more destinations. They are processed in the order they are defined.
+
+```ruby
+# File: my_etl_job.metacrunch
+
+destination MyDestination.new
+```
+
+#### Pre/Post process 
+
+To run arbitrary code before the first transformation use the 
+`#pre_process` hook. To run arbitrary after the last transformation use the 
+`#post_process`. Like transformations, `#post_process` and `#pre_process` can be called with a block, a lambda or a (callable) object.
+
+```ruby
 pre_process do
   # Called before the first transformation
 end
 
-# To run arbitrary code after the last transformation use the #post_process hook.
 post_process do
   # Called after the last transformation
 end
 
-# Instead of passing a block to #pre_process or #post_process you can pass a
-# `callable` object (an object responding to #call).
-pre_process Proc.new {
-  # Procs and Lambdas responds to #call
+pre_process ->() {
+  # Lambdas responds to #call
 }
 
 # MyCallable class defines #call
 post_process MyCallable.new
-
 ```
 
+#### Defining options
 
-Run ETL jobs
-------------
+TBD.
+
+Running ETL jobs
+----------------
 
 metacrunch comes with a handy command line tool. In a terminal use
 
@@ -271,6 +300,11 @@ destination MyDestination.new
 
 ```
 
+
+Built in sources and destinations
+---------------------------------
+
+TBD.
 
 Defining job dependencies
 -------------------------
