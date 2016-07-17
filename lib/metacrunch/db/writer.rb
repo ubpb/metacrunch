@@ -40,7 +40,7 @@ module Metacrunch
 
     def upsert(data)
       if data
-        rec = @dataset.where(id: data[@id_key])
+        rec = @dataset.where(@id_key => data[@id_key])
         if 1 != rec.update(data)
           insert(data)
         end
