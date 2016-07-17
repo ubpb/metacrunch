@@ -12,7 +12,15 @@ module Metacrunch
     end
 
     def write(data)
-      @dataset.insert(data)
+      if data.is_a?(Array)
+        @db.transaction do
+          data.each do |d|
+            @dataset.insert(d) if d
+          end
+        end
+      else
+        @dataset.insert(data) if data
+      end
     end
 
     def close
