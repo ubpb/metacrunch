@@ -1,7 +1,6 @@
 require "active_support"
 require "active_support/core_ext"
 require "commander"
-require "sequel"
 
 module Metacrunch
   require_relative "metacrunch/version"
@@ -9,4 +8,5 @@ module Metacrunch
   require_relative "metacrunch/job"
   require_relative "metacrunch/fs"
   require_relative "metacrunch/db"
+  require_relative "metacrunch/redis"
 end
