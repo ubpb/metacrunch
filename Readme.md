@@ -22,13 +22,14 @@ Creating ETL jobs
 
 The basic idea behind an ETL job in metacrunch is the concept of a data processing pipeline. Each ETL job reads data from one or more **sources** (extract step), runs one or more **transformations** (transform step) on the data and finally writes the transformed data to one or more **destinations** (load step).
 
-metacrunch provides you with a simple DSL to define and run such ETL jobs. Just create a text file with the extension `.metacrunch`. *Note: The extension doesn't really matter but you should avoid `.rb` to not loading them by mistake from another Ruby component.*
+metacrunch provides you with a simple DSL to define and run such ETL jobs in Ruby. Just create a text file with the extension `.metacrunch` and [run it](#running-etl-jobs) with the provided `metacrunch` CLI command. *Note: The extension doesn't really matter but you should avoid `.rb` to not loading them by mistake from another Ruby component.*
 
 Let's walk through the main steps of creating ETL jobs with metacrunch. For a collection of working examples check out our [metacrunch-demo](https://github.com/ubpb/metacrunch-demo) repo.
 
 #### It's Ruby
 
-Every `.metacrunch` job file is a regular Ruby file. So you can always use regular stuff like e.g. declaring methods, classes, variable and requiring other Ruby files. 
+Every `.metacrunch` job is a regular Ruby file and you can use any valid Ruby code like declaring methods, classes, variables, requiring other Ruby 
+files and so on. 
 
 ```ruby
 # File: my_etl_job.metacrunch
@@ -130,7 +131,40 @@ post_process MyCallable.new
 
 #### Defining options
 
-TBD.
+metacrunch has build-in support to parameterize your jobs. Using the `option` helper, you can declare options that can be set/overridden by the CLI when [running your jobs](#running-etl-jobs). 
+
+```ruby
+options do
+  add :number_of_processes, "-n", "--no-of-processes N", "Number of processes", default: 2 
+  add :database_url, "-d", "--database URL", "Database connection URL", required: true
+end
+```
+
+In this example we declare two options `number_of_processes` and `database_url`. `number_of_processes` defaults to 2, whereas `database_url` has no default and is required. In your job file you can access the option values using the `options` Hash. E.g. `options[:number_of_processes]`.
+
+To set/override these options use the command line.
+
+```
+$ bundle exec metacrunch run my_etl_job.metacrunch @@ --no-of-processes 4
+```
+
+This will set the `options[:number_of_processes]` to `4`.
+
+To get a list of available options for a job, use `--help` on the command line.
+
+```
+$ bundle exec metacrunch run my_etl_job.metacrunch @@ --help
+
+Usage: metacrunch run [options] JOB_FILE @@ [job-options] [ARGS]
+Job options:
+    -n, --no-of-processes N          Number of processes
+                                     DEFAULT: 2
+    -d, --database URL               Database connection URL
+                                     REQUIRED
+```
+
+To learn more about defining options take a look at the [reference below](#defining-job-options).
+
 
 Running ETL jobs
 ----------------
