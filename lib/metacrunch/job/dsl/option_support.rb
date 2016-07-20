@@ -36,7 +36,7 @@ module Metacrunch
 
     def parser
       @parser ||= OptionParser.new do |parser|
-        parser.banner = "Usage: metacrunch run [options] JOB_FILE @@ [job-options] [ARGS]\nJob options:"
+        parser.banner = "Usage: metacrunch [options] JOB_FILE @@ [job-options] [ARGS]\nJob options:"
       end
     end
 

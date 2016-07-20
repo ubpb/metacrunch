@@ -145,7 +145,7 @@ In this example we declare two options `number_of_processes` and `database_url`.
 To set/override these options use the command line.
 
 ```
-$ bundle exec metacrunch run my_etl_job.metacrunch @@ --no-of-processes 4
+$ bundle exec metacrunch my_etl_job.metacrunch @@ --no-of-processes 4
 ```
 
 This will set the `options[:number_of_processes]` to `4`.
@@ -153,7 +153,7 @@ This will set the `options[:number_of_processes]` to `4`.
 To get a list of available options for a job, use `--help` on the command line.
 
 ```
-$ bundle exec metacrunch run my_etl_job.metacrunch @@ --help
+$ bundle exec metacrunch my_etl_job.metacrunch @@ --help
 
 Usage: metacrunch run [options] JOB_FILE @@ [job-options] [ARGS]
 Job options:
@@ -173,7 +173,7 @@ metacrunch comes with a handy command line tool. In a terminal use
 
 
 ```
-$ metacrunch run my_etl_job.metacrunch
+$ metacrunch my_etl_job.metacrunch
 ```
 
 to run a job.
@@ -181,7 +181,7 @@ to run a job.
 If you use [Bundler](http://bundler.io) to manage dependencies for your jobs make sure to change into the directory where your Gemfile is (or set BUNDLE_GEMFILE environment variable) and run metacrunch with `bundle exec`.
 
 ```
-$ bundle exec metacrunch run my_etl_job.metacrunch
+$ bundle exec metacrunch my_etl_job.metacrunch
 ```
 
 Depending on your environment `bundle exec` may not be required (e.g. you have rubygems-bundler installed) but we recommend using it whenever you have a Gemfile you like to use. When using Bundler make sure to add `gem "metacrunch"` to the Gemfile.
@@ -191,7 +191,7 @@ To pass options to the job, separate job options from the metacrunch command opt
 Use the following syntax
 
 ```
-$ [bundle exec] metacrunch run [COMMAND_OPTIONS] JOB_FILE [@@ [JOB_OPTIONS] [JOB_ARGS...]]
+$ [bundle exec] metacrunch [COMMAND_OPTIONS] JOB_FILE [@@ [JOB_OPTIONS] [JOB_ARGS...]]
 ```
 
 
