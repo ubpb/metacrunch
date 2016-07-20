@@ -1,9 +1,13 @@
+require "metacrunch/db"
+
 module Metacrunch
   class Db::Writer
 
     def initialize(database_connection_or_url, dataset_proc, options = {})
-      @use_upsert = options.delete(:use_upsert) || false
-      @id_key     = options.delete(:id_key)     || :id
+      @use_upsert          = options.delete(:use_upsert)          || false
+      @id_key              = options.delete(:id_key)              || :id
+      @isolation_level     = options.delete(:isolation_level)     || :repeatable
+      @transaction_retries = options.delete(:transaction_retries) || 5
 
       @db = if database_connection_or_url.is_a?(String)
         Sequel.connect(database_connection_or_url, options)
@@ -16,7 +20,7 @@ module Metacrunch
 
     def write(data)
       if data.is_a?(Array)
-        @db.transaction do
+        @db.transaction(isolation: @isolation_level, num_retries: @transaction_retries) do
           data.each{|d| insert_or_upsert(d) }
         end
       else
