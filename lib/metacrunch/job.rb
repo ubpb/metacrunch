@@ -6,15 +6,15 @@ module Metacrunch
     attr_reader :builder, :args
 
     class << self
-      def define(file_content = nil, filename: nil, args: nil, total_numbers_of_processes: 1, process_index: 0, &block)
-        self.new(file_content, filename: filename, args: args, total_numbers_of_processes: total_numbers_of_processes, process_index: process_index, &block)
+      def define(file_content = nil, filename: nil, args: nil, number_of_processes: 1, process_index: 0, &block)
+        self.new(file_content, filename: filename, args: args, number_of_processes: number_of_processes, process_index: process_index, &block)
       end
     end
 
-    def initialize(file_content = nil, filename: nil, args: nil, total_numbers_of_processes: 1, process_index: 0, &block)
+    def initialize(file_content = nil, filename: nil, args: nil, number_of_processes: 1, process_index: 0, &block)
       @builder = Dsl.new(self)
       @args = args
-      @total_numbers_of_processes = total_numbers_of_processes
+      @number_of_processes = number_of_processes
       @process_index = process_index
 
       if file_content
@@ -112,10 +112,10 @@ module Metacrunch
     def run_transformations
       sources.each do |source|
         # Setup parallel processing
-        if @total_numbers_of_processes > 1
+        if @number_of_processes > 1
           if source.class.included_modules.include?(Metacrunch::ParallelProcessableReader)
             source.set_parallel_process_options(
-              total_numbers_of_processes: @total_numbers_of_processes,
+              number_of_processes: @number_of_processes,
               process_index: @process_index
             )
           else

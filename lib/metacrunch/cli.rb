@@ -91,7 +91,7 @@ module Metacrunch
             File.read(job_filename),
             filename: job_filename,
             args: job_argv,
-            total_numbers_of_processes: global_options[:number_of_procs],
+            number_of_processes: global_options[:number_of_procs],
             process_index: process_index
           ).run
         end
