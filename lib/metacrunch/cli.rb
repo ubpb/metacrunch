@@ -5,7 +5,7 @@ module Metacrunch
     ARGS_SEPERATOR = "@@"
 
     def run
-      job_files = global_parser.order!(global_argv)
+      job_files = global_parser.parse!(global_argv)
 
       run!(job_files)
     end
