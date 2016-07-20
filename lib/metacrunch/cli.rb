@@ -1,5 +1,4 @@
 require "optparse"
-require "pry-byebug"
 
 module Metacrunch
   class Cli
