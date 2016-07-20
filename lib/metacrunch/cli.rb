@@ -7,7 +7,7 @@ module Metacrunch
     def run
       job_files = global_parser.order!(global_argv)
 
-      run_job(job_files)
+      run!(job_files)
     end
 
   private
@@ -62,7 +62,7 @@ module Metacrunch
       @job_argv ||= index ? ARGV[index+1..-1] : nil
     end
 
-    def run_job(job_files)
+    def run!(job_files)
       if job_files.first == "run"
         puts ColorizedString["WARN: Using 'run' is deprecated. Just use 'metacrunch [options] JOB_FILE @@ [job-options] [ARGS...]'\n"].yellow.bold
         job_files = job_files[1..-1]
@@ -73,12 +73,34 @@ module Metacrunch
       elsif job_files.count > 1
         error "You must provide exactly one job file."
       else
-        filename = File.expand_path(job_files.first)
-        dir = File.dirname(filename)
+        job_filename = File.expand_path(job_files.first)
+        dir = File.dirname(job_filename)
 
         Dir.chdir(dir) do
-          Metacrunch::Job.define(File.read(filename), filename: filename, args: job_argv).run
+          run_job!(job_filename)
         end
+      end
+    end
+
+    def run_job!(job_filename)
+      if global_options[:number_of_procs] > 1
+        process_indicies = (0..(global_options[:number_of_procs] - 1)).to_a
+
+        Parallel.each(process_indicies) do |process_index|
+          Metacrunch::Job.define(
+            File.read(job_filename),
+            filename: job_filename,
+            args: job_argv,
+            total_numbers_of_processes: global_options[:number_of_procs],
+            process_index: process_index
+          ).run
+        end
+      else
+        Metacrunch::Job.define(
+          File.read(job_filename),
+          filename: job_filename,
+          args: job_argv
+        ).run
       end
     end
 

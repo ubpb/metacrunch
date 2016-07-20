@@ -6,14 +6,16 @@ module Metacrunch
     attr_reader :builder, :args
 
     class << self
-      def define(file_content = nil, filename: nil, args: nil, &block)
-        self.new(file_content, filename: filename, args: args, &block)
+      def define(file_content = nil, filename: nil, args: nil, total_numbers_of_processes: 1, process_index: 0, &block)
+        self.new(file_content, filename: filename, args: args, total_numbers_of_processes: total_numbers_of_processes, process_index: process_index, &block)
       end
     end
 
-    def initialize(file_content = nil, filename: nil, args: nil, &block)
+    def initialize(file_content = nil, filename: nil, args: nil, total_numbers_of_processes: 1, process_index: 0, &block)
       @builder = Dsl.new(self)
       @args = args
+      @total_numbers_of_processes = total_numbers_of_processes
+      @process_index = process_index
 
       if file_content
         @builder.instance_eval(file_content, filename || "")
@@ -109,6 +111,18 @@ module Metacrunch
 
     def run_transformations
       sources.each do |source|
+        # Setup parallel processing
+        if @total_numbers_of_processes > 1
+          if source.class.included_modules.include?(Metacrunch::ForkingSource)
+            source.set_forking_options(
+              total_numbers_of_processes: @total_numbers_of_processes,
+              process_index: @process_index
+            )
+          else
+            raise RuntimeError, "source does't support parallel processing"
+          end
+        end
+
         # sources are expected to respond to `each`
         source.each do |data|
           run_transformations_and_write_destinations(data)
