@@ -113,8 +113,8 @@ module Metacrunch
       sources.each do |source|
         # Setup parallel processing
         if @total_numbers_of_processes > 1
-          if source.class.included_modules.include?(Metacrunch::ForkingSource)
-            source.set_forking_options(
+          if source.class.included_modules.include?(Metacrunch::ParallelProcessableReader)
+            source.set_parallel_process_options(
               total_numbers_of_processes: @total_numbers_of_processes,
               process_index: @process_index
             )

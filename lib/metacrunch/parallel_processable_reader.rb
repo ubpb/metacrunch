@@ -1,7 +1,7 @@
 module Metacrunch
-  module ForkingSource
+  module ParallelProcessableReader
 
-    def set_forking_options(total_numbers_of_processes: 1, process_index: 0)
+    def set_parallel_process_options(total_numbers_of_processes: 1, process_index: 0)
       raise ArgumentError, "total_numbers_of_processes must be >= 1" if total_numbers_of_processes < 1
       raise ArgumentError, "process_index must be >= 0" if process_index < 0
 
