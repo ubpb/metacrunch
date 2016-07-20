@@ -47,7 +47,6 @@ module Metacrunch
     end
 
     def error(message)
-
       puts ColorizedString["Error: #{message}\n"].red.bold
       puts global_parser.help
       exit(0)
