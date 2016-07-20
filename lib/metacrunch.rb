@@ -1,6 +1,6 @@
 require "active_support"
 require "active_support/core_ext"
-require "commander"
+require "colorized_string"
 
 module Metacrunch
   require_relative "metacrunch/version"

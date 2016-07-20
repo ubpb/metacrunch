@@ -1,60 +1,85 @@
+require "optparse"
+
 module Metacrunch
   class Cli
     ARGS_SEPERATOR = "@@"
 
     def run
-      init_commander!
-      init_run_command!
-      run_commander!
+      job_files = global_parser.order!(global_argv)
+
+      run_job(job_files)
     end
 
   private
-    def commander
-      @commander ||= Commander::Runner.new(metacrunch_args)
-    end
+    def global_parser
+      @global_parser ||= OptionParser.new do |opts|
+        opts.banner = <<-BANNER.strip_heredoc
+          #{ColorizedString["Usage:"].bold}
 
-    def init_commander!
-      commander.program :name, "metacrunch"
-      commander.program :version, Metacrunch::VERSION
-      commander.program :description, "Data processing and ETL toolkit for Ruby."
-      commander.default_command :help
-    end
+            metacrunch [options] JOB_FILE @@ [job-options] [ARGS...]
 
-    def run_commander!
-      commander.run!
-    end
+          #{ColorizedString["Options:"].bold}
+        BANNER
 
-    def init_run_command!
-      commander.command :run do |c|
-        c.syntax = "metacrunch run [options] FILE [@@ job_options]"
-        c.description = "Runs a metacrunch job description."
-
-        c.action do |filenames, program_options|
-          if filenames.empty?
-            say "You need to provide a job description file."
-            exit(1)
-          elsif filenames.count > 1
-            say "You must provide exactly one job description file."
-          else
-            filename = File.expand_path(filenames.first)
-            dir = File.dirname(filename)
-
-            Dir.chdir(dir) do
-              Metacrunch::Job.define(File.read(filename), filename: filename, args: job_args).run
-            end
-          end
+        opts.on("-v", "--version", "Show metacrunch version and exit") do
+          show_version
         end
+
+        opts.on("-n INTEGER", "--number-of-procs INTEGER", Integer, "Number of processes. Source needs to support this. DEFAULT: 1") do |n|
+          error("--number-of-procs must be > 0") if n <= 0
+          global_options[:number_of_procs] = n
+        end
+
+        opts.separator "\n"
       end
     end
 
-    def metacrunch_args
-      index = ARGV.index(ARGS_SEPERATOR)
-      @metacrunch_args ||= index ? ARGV[0..index-1] : ARGV
+    def global_options
+      @global_options ||= {
+        number_of_procs: 1
+      }
     end
 
-    def job_args
+    def show_version
+      puts Metacrunch::VERSION
+      exit(0)
+    end
+
+    def error(message)
+
+      puts ColorizedString["Error: #{message}\n"].red.bold
+      puts global_parser.help
+      exit(0)
+    end
+
+    def global_argv
       index = ARGV.index(ARGS_SEPERATOR)
-      @job_args ||= index ? ARGV[index+1..-1] : nil
+      @global_argv ||= index ? ARGV[0..index-1] : ARGV
+    end
+
+    def job_argv
+      index = ARGV.index(ARGS_SEPERATOR)
+      @job_argv ||= index ? ARGV[index+1..-1] : nil
+    end
+
+    def run_job(job_files)
+      if job_files.first == "run"
+        puts ColorizedString["WARN: Using 'run' is deprecated. Just use 'metacrunch [options] JOB_FILE @@ [job-options] [ARGS...]'\n"].yellow.bold
+        job_files = job_files[1..-1]
+      end
+
+      if job_files.empty?
+        error "You need to provide a job file."
+      elsif job_files.count > 1
+        error "You must provide exactly one job file."
+      else
+        filename = File.expand_path(job_files.first)
+        dir = File.dirname(filename)
+
+        Dir.chdir(dir) do
+          Metacrunch::Job.define(File.read(filename), filename: filename, args: job_argv).run
+        end
+      end
     end
 
   end
