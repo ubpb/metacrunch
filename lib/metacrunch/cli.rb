@@ -1,4 +1,5 @@
 require "optparse"
+require "pry-byebug"
 
 module Metacrunch
   class Cli
@@ -54,7 +55,11 @@ module Metacrunch
 
     def global_argv
       index = ARGV.index(ARGS_SEPERATOR)
-      @global_argv ||= index ? ARGV[0..index-1] : ARGV
+      if index == 0
+        []
+      else
+        @global_argv ||= index ? ARGV[0..index-1] : ARGV
+      end
     end
 
     def job_argv
