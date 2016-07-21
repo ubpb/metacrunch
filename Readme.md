@@ -8,6 +8,7 @@ metacrunch
 metacrunch is a simple and lightweight data processing and ETL ([Extract-Transform-Load](http://en.wikipedia.org/wiki/Extract,_transform,_load))
 toolkit for Ruby.
 
+**NOTE: THIS README IS FOR THE MASTER BRANCH. CHECK THE [RELEASES-PAGE](https://github.com/ubpb/metacrunch/releases) TO SEE THE README FOR THE RELEVANT RELEASES**
 
 Installation
 ------------
