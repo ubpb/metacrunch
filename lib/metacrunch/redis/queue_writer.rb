@@ -7,6 +7,8 @@ module Metacrunch
       @queue_name = queue_name
       raise ArgumentError, "queue_name must be a string" unless queue_name.is_a?(String)
 
+      @save_on_close = options.delete(:save_on_close) || true
+
       @redis = if redis_connection_or_url.is_a?(String)
         ::Redis.new(url: redis_connection_or_url)
       else
@@ -19,7 +21,10 @@ module Metacrunch
     end
 
     def close
-      @redis.close if @redis
+      if @redis
+        @redis.bgsave if @save_on_close
+        @redis.close
+      end
     end
 
   end
