@@ -2,6 +2,7 @@ require "metacrunch/redis"
 
 module Metacrunch
   class Redis::QueueReader
+    include Metacrunch::ParallelProcessableReader
 
     def initialize(redis_connection_or_url, queue_name, options = {})
       @queue_name = queue_name
