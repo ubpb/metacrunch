@@ -21,8 +21,8 @@ module Metacrunch
 
       if @blocking_mode
         while true
-          result = @redis.blpop(@queue_name)
-          yield JSON.parse(result[1]) if result
+          list, result = @redis.blpop(@queue_name)
+          yield JSON.parse(result) if result
         end
       else
         while result = @redis.lpop(@queue_name)
