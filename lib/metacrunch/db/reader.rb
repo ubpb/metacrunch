@@ -14,7 +14,6 @@ module Metacrunch
       end
 
       @dataset = dataset_proc.call(@db).unlimited
-      @total_numbers_of_records = @dataset.count
 
       unless @dataset.opts[:order]
         raise ArgumentError, "Metacrunch::Db::Reader requires the dataset be ordered."
@@ -24,18 +23,8 @@ module Metacrunch
     def each(&block)
       return enum_for(__method__) unless block_given?
 
-      @db.transaction do
-        offset = (-number_of_processes * @rows_per_fetch) + (process_index * @rows_per_fetch)
-
-        loop do
-          offset = offset + (number_of_processes * @rows_per_fetch)
-
-          @dataset.limit(@rows_per_fetch).offset(offset).each do |row|
-            yield(row)
-          end
-
-          break if offset + @rows_per_fetch >= @total_numbers_of_records
-        end
+      @dataset.paged_each(rows_per_fetch: @rows_per_fetch, strategy: :filter) do |row|
+        yield(row)
       end
 
       self
