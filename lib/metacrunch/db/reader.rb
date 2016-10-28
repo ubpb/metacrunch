@@ -2,7 +2,6 @@ require "metacrunch/db"
 
 module Metacrunch
   class Db::Reader
-    include Metacrunch::ParallelProcessableReader
 
     def initialize(database_connection_or_url, dataset_proc, options = {})
       @rows_per_fetch = options.delete(:rows_per_fetch) || 1000
