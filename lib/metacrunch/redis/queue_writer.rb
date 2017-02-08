@@ -17,7 +17,15 @@ module Metacrunch
     end
 
     def write(data)
-      @redis.rpush(@queue_name, data.to_json)
+      @redis.rpush(@queue_name, data)
+    rescue RuntimeError => e
+      if e.message =~ /maxmemory/
+        puts "Redis has reached maxmemory. Waiting 10 seconds and trying again..."
+        sleep(10)
+        retry
+      else
+        raise e
+      end
     end
 
     def close
