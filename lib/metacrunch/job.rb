@@ -139,8 +139,12 @@ module Metacrunch
     def run_transformations_and_write_destinations(data, flush_buffers: false)
       transformations.each do |transformation|
         if transformation.is_a?(Buffer)
-          data = transformation.buffer(data) if data.present?
-          data = transformation.flush if flush_buffers
+          if data.present?
+            data = transformation.buffer(data)
+            data = transformation.flush if flush_buffers
+          else
+            data = transformation.flush
+          end
         else
           data = transformation.call(data) if data.present?
         end
