@@ -9,6 +9,7 @@ module Metacrunch
       raise ArgumentError, "queue_name must be a string" unless queue_name.is_a?(String)
 
       @blocking_mode = options.delete(:blocking) || false
+      @blocking_timeout = options.delete(:blocking_timeout) || 0
 
       @redis = if redis_connection_or_url.is_a?(String)
         ::Redis.new(url: redis_connection_or_url)
@@ -22,8 +23,12 @@ module Metacrunch
 
       if @blocking_mode
         while true
-          list, result = @redis.blpop(@queue_name)
-          yield JSON.parse(result) if result
+          list, result = @redis.blpop(@queue_name, timeout: @blocking_timeout)
+          if result.present?
+            yield JSON.parse(result)
+          else
+            yield nil
+          end
         end
       else
         while result = @redis.lpop(@queue_name)
