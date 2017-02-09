@@ -5,7 +5,7 @@ gemspec
 group :development do
   gem "bundler",      ">= 1.7"
   gem "rake",         ">= 11.1"
-  gem "rspec",        ">= 3.0.0",  "< 4.0.0"
+  gem "rspec",        ">= 3.5.0",  "< 4.0.0"
   gem "simplecov",    ">= 0.11.0"
   gem "sqlite3",      ">= 1.3.11", platform: :ruby
   gem "jdbc-sqlite3", ">= 3.8", platform: :jruby
