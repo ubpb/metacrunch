@@ -3,27 +3,20 @@ require "rubygems/package"
 
 module Metacrunch
   class Fs::Reader
-    include Metacrunch::ParallelProcessableReader
 
-    def initialize(filenames = nil)
+    def initialize(filenames)
       @filenames = [*filenames].map{|f| f.presence}.compact
     end
 
     def each(&block)
       return enum_for(__method__) unless block_given?
 
-      offset = 0 + process_index
-
-      while offset < @filenames.count do
-        _filename = @filenames[offset]
-
-        if is_archive?(_filename)
-         read_archive(_filename, &block)
+      @filenames.each do |filename|
+        if is_archive?(filename)
+         read_archive(filename, &block)
         else
-         read_regular_file(_filename, &block)
+         read_regular_file(filename, &block)
         end
-
-        offset += number_of_processes
       end
     end
 

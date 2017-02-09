@@ -2,6 +2,7 @@ require "optparse"
 
 module Metacrunch
   class Cli
+
     ARGS_SEPERATOR = "@@"
 
     def run
@@ -11,6 +12,7 @@ module Metacrunch
     end
 
   private
+
     def global_parser
       @global_parser ||= OptionParser.new do |opts|
         opts.banner = <<-BANNER.strip_heredoc
@@ -25,18 +27,12 @@ module Metacrunch
           show_version
         end
 
-        opts.on("-n INTEGER", "--number-of-processes INTEGER", Integer, "Number of parallel processes to run the job. Source needs to support this. DEFAULT: 1") do |n|
-          error("--number-of-procs must be > 0") if n <= 0
-          global_options[:number_of_processes] = n
-        end
-
         opts.separator "\n"
       end
     end
 
     def global_options
       @global_options ||= {
-        number_of_processes: 1
       }
     end
 
@@ -86,25 +82,11 @@ module Metacrunch
     end
 
     def run_job!(job_filename)
-      if global_options[:number_of_processes] > 1
-        process_indicies = (0..(global_options[:number_of_processes] - 1)).to_a
-
-        Parallel.each(process_indicies) do |process_index|
-          Metacrunch::Job.define(
-            File.read(job_filename),
-            filename: job_filename,
-            args: job_argv,
-            number_of_processes: global_options[:number_of_processes],
-            process_index: process_index
-          ).run
-        end
-      else
-        Metacrunch::Job.define(
-          File.read(job_filename),
-          filename: job_filename,
-          args: job_argv
-        ).run
-      end
+      Metacrunch::Job.define(
+        File.read(job_filename),
+        filename: job_filename,
+        args: job_argv
+      ).run
     end
 
   end
