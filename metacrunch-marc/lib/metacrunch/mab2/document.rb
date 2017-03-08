@@ -49,28 +49,24 @@ module Metacrunch
       # ------------------------------------------------------------------------------
 
       #
-      # Returns the data fields matching the given tag and ind1/ind2.
+      # Returns the data fields matching the given tag and/or ind1/ind2.
       #
-      # @param [String, nil] tag of the data field. Can be nil to match any data field.
+      # @param [String] tag of the data field.
       # @param [String, nil] ind1 filter for ind1. Can be nil to match any indicator 1.
       # @param [String, nil] ind2 filter for ind2. Can be nil to match any indicator 2.
-      # @return [Metacrunch::Mab2::Document::DatafieldSet] data field with the given tag and ind1/ind2.
-      #  The set is empty if a matching field with the tag and/or ind1/ind2 doesn't exists.
       #
-      def datafields(tag = nil, ind1: nil, ind2: nil)
-        if tag.nil?
-          DatafieldSet.new(@datafields.values.flatten(1))
-        else
-          set = DatafieldSet.new(@datafields[tag] || [])
-          return set if set.empty? || (ind1.nil? && ind2.nil?)
+      # @return [Metacrunch::Mab2::Document::DatafieldSet] Set of data fields with the
+      #  given tag and ind1/ind2. The set is empty if a matching field doesn't exists.
+      #
+      def datafields(tag, ind1: nil, ind2: nil)
+        _ind1 = map_indicator(ind1)
+        _ind2 = map_indicator(ind2)
 
-          ind1 = map_indicator(ind1)
-          ind2 = map_indicator(ind2)
-
-          set.select do |_datafield|
-            check_indicator(ind1, _datafield.ind1) && check_indicator(ind2, _datafield.ind2)
-          end
+        matched_datafields = (@datafields_map[tag] || []).select do |datafield|
+          check_indicator(_ind1, datafield.ind1) && check_indicator(_ind2, datafield.ind2)
         end
+
+        DatafieldSet.new(matched_datafields)
       end
 
       #

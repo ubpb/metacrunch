@@ -50,6 +50,22 @@ describe Metacrunch::Mab2::Document do
   describe "#datafields" do
     let(:document) { default_test_document }
 
+    context "given nil tag" do
+      subject { document.datafields(nil) }
+
+      it "returns no datafields" do
+        expect(subject.count).to eq(0)
+      end
+    end
+
+    context "given non existing tag" do
+      subject { document.datafields("_not_existing_tag_") }
+
+      it "returns no datafields" do
+        expect(subject.count).to eq(0)
+      end
+    end
+
     context "given tag=100" do
       subject { document.datafields("100") }
 
