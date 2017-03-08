@@ -1,17 +1,15 @@
-require "self_enumerable"
-
 module Metacrunch
   module Mab2
     class Document
       class DatafieldSet
-        include SelfEnumerable
+        include Enumerable
 
-        def initialize(datafields = [])
-          @datafields = datafields
+        def initialize(datafields)
+          @datafields = datafields || []
         end
 
-        def each
-          block_given? ? @datafields.each { |_datafield| yield _datafield } : to_enum
+        def each(&block)
+          @datafields.each(&block)
         end
 
         def <<(datafield)
