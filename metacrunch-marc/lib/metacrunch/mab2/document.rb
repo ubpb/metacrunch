@@ -59,11 +59,8 @@ module Metacrunch
       #  given tag and ind1/ind2. The set is empty if a matching field doesn't exists.
       #
       def datafields(tag, ind1: nil, ind2: nil)
-        _ind1 = map_indicator(ind1)
-        _ind2 = map_indicator(ind2)
-
         matched_datafields = (@datafields_map[tag] || []).select do |datafield|
-          check_indicator(_ind1, datafield.ind1) && check_indicator(_ind2, datafield.ind2)
+          match_indicator(ind1, datafield.ind1) && match_indicator(ind2, datafield.ind2)
         end
 
         DatafieldSet.new(matched_datafields)
@@ -80,22 +77,18 @@ module Metacrunch
 
     private
 
-      def map_indicator(ind)
-        ind.is_a?(Array) ? ind.map { |_el| _el == :blank ? [" ", "-", nil] : _el }.flatten(1) : ind
-      end
-
-      def check_indicator(requested_ind, datafield_ind)
-        if !requested_ind
-          true
-        elsif requested_ind == :blank && (datafield_ind == " " || datafield_ind == "-" || datafield_ind.nil?)
-          true
-        elsif requested_ind == datafield_ind
-          true
-        elsif requested_ind.is_a?(Array) && requested_ind.include?(datafield_ind)
-          true
-        else
-          false
-        end
+      def match_indicator(requested_ind, datafield_ind)
+        [*[requested_ind]].flatten.map do |_requested_ind|
+          if !_requested_ind
+            true
+          elsif _requested_ind == :blank && (datafield_ind == " " || datafield_ind == "-" || datafield_ind.nil?)
+            true
+          elsif _requested_ind == datafield_ind
+            true
+          else
+            false
+          end
+        end.any?
       end
 
     end
