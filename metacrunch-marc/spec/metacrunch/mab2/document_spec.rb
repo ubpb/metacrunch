@@ -1,8 +1,8 @@
 describe Metacrunch::Mab2::Document do
 
-  describe ".from_aleph_mab_xml" do
+  describe ".from_mab_xml" do
     let(:xml) { default_test_xml }
-    let(:document) { Metacrunch::Mab2::Document.from_aleph_mab_xml(xml) }
+    let(:document) { Metacrunch::Mab2::Document.from_mab_xml(xml) }
 
     subject { document }
 

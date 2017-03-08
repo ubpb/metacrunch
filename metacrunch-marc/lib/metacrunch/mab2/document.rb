@@ -20,13 +20,6 @@ module Metacrunch
         MabXmlParser.new.parse(xml)
       end
 
-      # TODO: Remove form 2.0
-      def self.from_aleph_mab_xml(xml)
-        d = ActiveSupport::Deprecation.new("2.0", "metacrunch-mab2")
-        d.deprecation_warning("#from_aleph_mab_xml", "use #from_mab_xml instead")
-        self.from_mab_xml(xml)
-      end
-
       def initialize
         @controlfields = {}
         @datafields = {}
