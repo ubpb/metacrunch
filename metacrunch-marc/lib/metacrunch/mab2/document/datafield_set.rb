@@ -51,16 +51,6 @@ module Metacrunch
           result
         end
 
-        # ------------------------------------------------------------------------------
-        # Serialization
-        # ------------------------------------------------------------------------------
-
-        def to_xml(builder)
-          self.each do |_datafield|
-            _datafield.to_xml(builder)
-          end
-        end
-
       end
     end
   end

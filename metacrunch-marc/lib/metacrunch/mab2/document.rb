@@ -86,24 +86,6 @@ module Metacrunch
         (@datafields[datafield.tag] ||= []) << datafield
       end
 
-      # ------------------------------------------------------------------------------
-      # Serialization
-      # ------------------------------------------------------------------------------
-
-      def to_xml
-        builder = ::Builder::XmlMarkup.new(indent: 2)
-        builder.instruct!(:xml, :encoding => "UTF-8")
-        builder.mab_xml do
-          controlfields_struct.values.each do |_controlfield|
-            _controlfield.to_xml(builder)
-          end
-
-          @datafields.values.each do |_datafield_set|
-            _datafield_set.to_xml(builder)
-          end
-        end
-      end
-
     private
 
       def map_indicator(ind)
