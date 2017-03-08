@@ -21,13 +21,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "htmlentities",    "~> 4.3"
   spec.add_dependency "nokogiri",        "~> 1.6"
   spec.add_dependency "self_enumerable", "~> 0.2"
-
-  if RUBY_PLATFORM != "java"
-    spec.add_dependency "ox", "~> 2.1"
-  end
-
-  if RUBY_PLATFORM == "java"
-    spec.platform = Gem::Platform::CURRENT
-  end
+  spec.add_dependency "ox",              "~> 2.1"
 end
 

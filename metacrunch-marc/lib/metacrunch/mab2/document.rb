@@ -1,12 +1,7 @@
 module Metacrunch
   module Mab2
     class Document
-      if RUBY_PLATFORM == "java"
-        require_relative "document/jruby/mab_xml_parser"
-      else
-        require_relative "document/mab_xml_parser"
-      end
-
+      require_relative "document/mab_xml_parser"
       require_relative "document/controlfield"
       require_relative "document/datafield"
       require_relative "document/datafield_set"
