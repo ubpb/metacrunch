@@ -1,5 +1,5 @@
 module Metacrunch
   module Mab2
-    VERSION = "1.3.1"
+    VERSION = "2.0.0.dev"
   end
 end
