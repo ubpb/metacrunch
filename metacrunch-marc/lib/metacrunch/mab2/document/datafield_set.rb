@@ -16,11 +16,6 @@ module Metacrunch
           @datafields << datafield
         end
 
-        def concat(datafield_set)
-          @datafields.concat(datafield_set.to_a)
-          self
-        end
-
         def value
           @datafields.find { |_datafield| _datafield.value }.try(:value)
         end
