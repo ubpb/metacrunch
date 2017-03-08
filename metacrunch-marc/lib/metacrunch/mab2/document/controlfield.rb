@@ -55,14 +55,6 @@ module Metacrunch
           @values.at(index)
         end
 
-        # ------------------------------------------------------------------------------
-        # Serialization
-        # ------------------------------------------------------------------------------
-
-        def to_xml(builder)
-          builder.controlfield(values2string, tag: tag)
-        end
-
       private
 
         def string2values(string)
