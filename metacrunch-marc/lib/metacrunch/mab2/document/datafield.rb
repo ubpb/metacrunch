@@ -6,7 +6,7 @@ module Metacrunch
         attr_accessor :tag
         attr_accessor :ind1, :ind2
 
-        def initialize(tag = nil, ind1:nil, ind2:nil)
+        def initialize(tag, ind1:nil, ind2:nil)
           @tag  = tag
           @ind1 = ind1
           @ind2 = ind2
