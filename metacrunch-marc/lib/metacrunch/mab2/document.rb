@@ -8,9 +8,6 @@ module Metacrunch
       require_relative "document/subfield"
       require_relative "document/subfield_set"
 
-      # ------------------------------------------------------------------------------
-      # ------------------------------------------------------------------------------
-
       #
       # @param [String] xml repesenting a MAB document in Aleph MAB XML format
       # @return [Metacrunch::Mab2::Document]
