@@ -17,8 +17,8 @@ module Metacrunch
       end
 
       def initialize
-        @controlfields = {}
-        @datafields = {}
+        @controlfields_map = {}
+        @datafields_map = {}
       end
 
       # ------------------------------------------------------------------------------
@@ -32,7 +32,7 @@ module Metacrunch
       # @return [Controlfield] control field with the given tag.
       #
       def controlfield(tag)
-        @controlfields[tag] || Controlfield.new(tag)
+        @controlfields_map[tag] || Controlfield.new(tag)
       end
 
       #
@@ -41,7 +41,7 @@ module Metacrunch
       # @param [Metacrunch::Mab2::Document::Controlfield] controlfield
       #
       def add_controlfield(controlfield)
-        @controlfields[controlfield.tag] = controlfield
+        @controlfields_map[controlfield.tag] = controlfield
       end
 
       # ------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ module Metacrunch
       # @param [Metacrunch::Mab2::Document::Datafield] datafield
       #
       def add_datafield(datafield)
-        (@datafields[datafield.tag] ||= []) << datafield
+        (@datafields_map[datafield.tag] ||= []) << datafield
       end
 
     private
