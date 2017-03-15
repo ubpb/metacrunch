@@ -1,13 +1,13 @@
+require_relative "document/mab_xml_parser"
+require_relative "document/controlfield"
+require_relative "document/datafield"
+require_relative "document/datafield_set"
+require_relative "document/subfield"
+require_relative "document/subfield_set"
+
 module Metacrunch
   module Mab2
     class Document
-      require_relative "document/mab_xml_parser"
-      require_relative "document/controlfield"
-      require_relative "document/datafield"
-      require_relative "document/datafield_set"
-      require_relative "document/subfield"
-      require_relative "document/subfield_set"
-
       #
       # @param [String] xml repesenting a MAB document in Aleph MAB XML format
       # @return [Metacrunch::Mab2::Document]
@@ -26,17 +26,19 @@ module Metacrunch
       # ------------------------------------------------------------------------------
 
       #
-      # Returns the control field matching the given tag.
+      # Returns the control field matching the given tag or nil if a control field
+      # with the tag does not exists.
       #
       # @param [String] tag of the control field
-      # @return [Controlfield] control field with the given tag.
+      # @return [Controlfield, nil] control field with the given tag or nil if the
+      #   tag does not exists.
       #
       def controlfield(tag)
-        @controlfields_map[tag] || Controlfield.new(tag)
+        @controlfields_map[tag]
       end
 
       #
-      # Adds a new control field.
+      # Adds a new control field to the document.
       #
       # @param [Metacrunch::Mab2::Document::Controlfield] controlfield
       #
@@ -49,17 +51,28 @@ module Metacrunch
       # ------------------------------------------------------------------------------
 
       #
-      # Returns the data fields matching the given tag and/or ind1/ind2.
+      # Returns the data fields matching the given tag(s) and/or ind1/ind2.
       #
-      # @param [String] tag of the data field.
-      # @param [String, nil] ind1 filter for ind1. Can be nil to match any indicator 1.
-      # @param [String, nil] ind2 filter for ind2. Can be nil to match any indicator 2.
+      # @param [String, nil, Array<String>] tag(s) of the data field. Can be nil to match
+      #   all data fields.
+      # @param [String, nil, Array<String>] ind1 filter for ind1. Can be nil to match any indicator 1.
+      # @param [String, nil, Array<String>] ind2 filter for ind2. Can be nil to match any indicator 2.
       #
       # @return [Metacrunch::Mab2::Document::DatafieldSet] Set of data fields with the
-      #  given tag and ind1/ind2. The set is empty if a matching field doesn't exists.
+      #  given tag(s) and ind1/ind2. The set is empty if a matching field doesn't exists.
       #
-      def datafields(tag, ind1: nil, ind2: nil)
-        matched_datafields = (@datafields_map[tag] || []).select do |datafield|
+      def datafields(tag = nil, ind1: nil, ind2: nil)
+        matched_datafields = if tag.nil?
+            @datafields_map.values.flatten(1)
+          else
+            if (tags = tag).is_a?(Array)
+              tags.map{ |_tag| @datafields_map[_tag] }.compact.flatten(1)
+            else
+              @datafields_map[tag]
+            end
+          end
+
+        matched_datafields = (matched_datafields || []).select do |datafield|
           match_indicator(ind1, datafield.ind1) && match_indicator(ind2, datafield.ind2)
         end
 
@@ -73,6 +86,7 @@ module Metacrunch
       #
       def add_datafield(datafield)
         (@datafields_map[datafield.tag] ||= []) << datafield
+        datafield
       end
 
     private

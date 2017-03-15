@@ -38,3 +38,56 @@ end
 def read_asset(path_to_file)
   File.read(File.expand_path(File.join(asset_dir, path_to_file)))
 end
+
+def empty_document
+  Metacrunch::Mab2::Document.new
+end
+
+def default_test_document
+  document = Metacrunch::Mab2::Document.new
+  document.add_controlfield(create_controlfield("LDR", "01234"))
+  document.add_controlfield(create_controlfield("050", "a|a|"))
+  document.add_controlfield(create_controlfield("052", ["a", nil, "b"]))
+
+  datafield = create_datafield("001", ind1: "-", ind2: "1")
+  datafield.add_subfield(create_subfield("a", "HT12345"))
+  document.add_datafield(datafield)
+
+  datafield = create_datafield("100", ind1: "-", ind2: "1")
+  datafield.add_subfield(create_subfield("p", "Doe, John"))
+  datafield.add_subfield(create_subfield("9", "123456789"))
+  document.add_datafield(datafield)
+
+  datafield = create_datafield("100", ind1: "a", ind2: "2")
+  datafield.add_subfield(create_subfield("p", "Sprotte, René"))
+  datafield.add_subfield(create_subfield("9", "123456789"))
+  document.add_datafield(datafield)
+
+  datafield = create_datafield("100", ind1: " ", ind2: "1")
+  datafield.add_subfield(create_subfield("p", "Sievers, Michael"))
+  datafield.add_subfield(create_subfield("9", "123456789"))
+  datafield.add_subfield(create_subfield("x", "123456789"))
+  document.add_datafield(datafield)
+
+  datafield = create_datafield("331", ind1: "-", ind2: "1")
+  datafield.add_subfield(create_subfield("a", "<<The>> art of MAB processing"))
+  document.add_datafield(datafield)
+
+  document
+end
+
+def default_test_xml
+  File.read(File.join(RSpec.root, "assets", "aleph_mab_xml", "file1.xml"))
+end
+
+def create_controlfield(tag, values)
+  Metacrunch::Mab2::Document::Controlfield.new(tag, values)
+end
+
+def create_datafield(tag, ind1:nil, ind2:nil)
+  Metacrunch::Mab2::Document::Datafield.new(tag, ind1: ind1, ind2: ind2)
+end
+
+def create_subfield(code, value)
+  Metacrunch::Mab2::Document::Subfield.new(code, value)
+end

@@ -12,15 +12,6 @@ module Metacrunch
           @datafields.each(&block)
         end
 
-        def <<(datafield)
-          @datafields << datafield
-        end
-
-        def value
-          @datafields.find { |_datafield| _datafield.value }.try(:value)
-        end
-        alias_method :first_value, :value
-
         def to_a
           @datafields
         end
@@ -35,13 +26,11 @@ module Metacrunch
 
         # @return [Metacrunch::Mab2::Document::SubfieldSet]
         def subfields(code = nil)
-          result = Metacrunch::Mab2::Document::SubfieldSet.new
+          subfields = @datafields.map do |datafield|
+            datafield.subfields(code).to_a
+          end.flatten(1)
 
-          @datafields.each do |_datafield|
-            result.concat(_datafield.subfields(code))
-          end
-
-          result
+          Metacrunch::Mab2::Document::SubfieldSet.new(subfields)
         end
 
       end

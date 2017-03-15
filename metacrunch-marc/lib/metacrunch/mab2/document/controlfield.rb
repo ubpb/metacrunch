@@ -3,22 +3,19 @@ module Metacrunch
     class Document
       class Controlfield
 
-        attr_accessor :tag
+        attr_reader :tag
 
-        def initialize(tag = nil, values = [])
-          self.tag    = tag
+        def initialize(tag, values = [])
+          @tag = tag
           self.values = values
-        end
-
-        def tag=(value)
-          @tag = value.to_s if value
         end
 
         #
         # Setter for the control field values. Values can be given as String or
         # as an Array.
         #
-        # @param [String, Array] values for the control field as a String or Array.
+        # @param [String, Array<String>] values for the control field as a string or
+        #   array of strings.
         #   In case of String the MAB2 delimiter/placeholder | is respected. In case
         #   of an Array every element is converted into a String. Empty strings are
         #   converted into nil. Array values that are longer than one character will
@@ -34,9 +31,7 @@ module Metacrunch
           @values = case values
             when String then string2values(values)
             when Array  then array2values(values)
-            when nil    then []
-            else
-              raise ArgumentError, "expecting a String or Array, but got #{values}"
+            else []
             end
         end
 
@@ -71,10 +66,6 @@ module Metacrunch
               nil
             end
           end
-        end
-
-        def values2string
-          values.map{|c| c.blank? ? "|" : c}.join
         end
 
       end

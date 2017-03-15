@@ -10,36 +10,28 @@ module Metacrunch
           @tag  = tag
           @ind1 = ind1
           @ind2 = ind2
-          @subfields = {}
+          @subfields_map = {}
         end
 
-        def value
-          subfields.value
-        end
-
-        # ------------------------------------------------------------------------------
-        # Sub fields
-        # ------------------------------------------------------------------------------
-
         #
-        # Returns the sub field matching the given code.
+        # Returns the sub fields matching the given code.
         #
-        # @param [String] code of the sub field
+        # @param [String, nil, Array<String>] code of the sub field
         # @return [Metacrunch::Mab2::Document::SubfieldSet] sub field with the given code. The set
         #  is empty if the sub field doesn't exists.
         #
         def subfields(code = nil)
-          result =  Metacrunch::Mab2::Document::SubfieldSet.new
-
-          if code.nil?
-            result.concat(@subfields.values.flatten(1))
-          elsif _subfields = @subfields[code]
-            result.concat(_subfields)
-          elsif (codes = code).is_a?(Array)
-            result.concat(codes.map { |_code| @subfields[_code] }.compact.flatten(1))
+          matched_subfields = if code.nil?
+            @subfields_map.values.flatten(1)
+          else
+            if (codes = code).is_a?(Array)
+              codes.map{ |_code| @subfields_map[_code] }.compact.flatten(1)
+            else
+              @subfields_map[code]
+            end
           end
 
-          result
+          SubfieldSet.new(matched_subfields)
         end
 
         #
@@ -48,7 +40,8 @@ module Metacrunch
         # @param [Metacrunch::Mab2::Document::Subfield] subfield
         #
         def add_subfield(subfield)
-          (@subfields[subfield.code] ||= []) << subfield
+          (@subfields_map[subfield.code] ||= []) << subfield
+          subfield
         end
 
       end

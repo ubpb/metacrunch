@@ -1,25 +1,15 @@
-require "self_enumerable"
-
 module Metacrunch
   module Mab2
     class Document
       class SubfieldSet
-        include SelfEnumerable
+        include Enumerable
 
-        def initialize(subfields = [])
-          @subfields = subfields
+        def initialize(subfields)
+          @subfields = subfields || []
         end
 
-        def each
-          block_given? ? @subfields.each { |_subfield| yield _subfield } : to_enum
-        end
-
-        def <<(subfield)
-          @subfields << subfield
-        end
-
-        def concat(subfield_set)
-          @subfields.concat(subfield_set.to_a)
+        def each(&block)
+          @subfields.each(&block)
         end
 
         def to_a
@@ -34,14 +24,18 @@ module Metacrunch
           !empty?
         end
 
-        def value
-          values.find{ |v| v.present? }
-        end
-        alias_method :first_value, :value
-
         def values
           @subfields.map{ |subfield| subfield.value }
         end
+
+        def present_values
+          values.map{ |v| v.presence }.compact
+        end
+
+        def first_value
+          present_values[0]
+        end
+        alias_method :value, :first_value
 
       end
     end

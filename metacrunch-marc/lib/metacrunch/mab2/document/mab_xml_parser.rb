@@ -1,5 +1,3 @@
-require "ox"
-
 module Metacrunch
   module Mab2
     class Document
@@ -23,50 +21,60 @@ module Metacrunch
         def start_element(name)
           if name == :subfield
             @in_subfield = true
-            @subfield = Metacrunch::Mab2::Document::Subfield.new
+            @subfield = {}
           elsif name == :datafield
             @in_datafield = true
-            @datafield = Metacrunch::Mab2::Document::Datafield.new
+            @datafield = {subfields: []}
           elsif name == :controlfield
             @in_controlfield = true
-            @controlfield = Metacrunch::Mab2::Document::Controlfield.new
+            @controlfield = {}
           end
         end
 
         def end_element(name)
           if @in_subfield
             @in_subfield = false
-            @datafield.add_subfield(@subfield)
+
+            subfield = Subfield.new(@subfield[:code], @subfield[:value])
+            @datafield[:subfields] << subfield
           elsif @in_datafield
             @in_datafield = false
-            @document.add_datafield(@datafield)
+
+            datafield = Datafield.new(@datafield[:tag], ind1: @datafield[:ind1], ind2: @datafield[:ind2])
+            @datafield[:subfields].each do |subfield|
+              datafield.add_subfield(subfield)
+            end
+
+            @document.add_datafield(datafield)
           elsif @in_controlfield
             @in_controlfield = false
-            @document.add_controlfield(@controlfield)
+
+            controlfield = Controlfield.new(@controlfield[:tag], @controlfield[:values])
+            @document.add_controlfield(controlfield)
           end
         end
 
         def attr(name, value)
           if @in_subfield
-            @subfield.code = value if name == :code
+            @subfield[:code] = value if name == :code
           elsif @in_datafield
             if name == :tag
-              @datafield.tag = value
+              @datafield[:tag] = value
             elsif name == :ind1
-              @datafield.ind1 = value
+              @datafield[:ind1] = value
             elsif name == :ind2
-              @datafield.ind2 = value
+              @datafield[:ind2] = value
             end
           elsif @in_controlfield
-            @controlfield.tag = value if name == :tag
+            @controlfield[:tag] = value if name == :tag
           end
         end
 
         def text(value)
           if @in_subfield
-            @subfield.value = value.include?("&") ? @html_entities_coder.decode(value) : value
+            @subfield[:value] = value.include?("&") ? @html_entities_coder.decode(value) : value
           elsif @in_controlfield
-            @controlfield.values = value
+            @controlfield[:values] = value
           end
         end
       end
