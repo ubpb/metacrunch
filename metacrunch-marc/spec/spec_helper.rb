@@ -6,7 +6,7 @@ else
   SimpleCov.start
 end
 
-require "metacrunch/mab2"
+require "metacrunch/marcxml"
 
 begin
   require "pry"
@@ -40,11 +40,11 @@ def read_asset(path_to_file)
 end
 
 def empty_document
-  Metacrunch::Mab2::Document.new
+  Metacrunch::Marcxml::Document.new
 end
 
 def default_test_document
-  document = Metacrunch::Mab2::Document.new
+  document = Metacrunch::Marcxml::Document.new
   document.add_controlfield(create_controlfield("LDR", "01234"))
   document.add_controlfield(create_controlfield("050", "a|a|"))
   document.add_controlfield(create_controlfield("052", ["a", nil, "b"]))
@@ -81,13 +81,13 @@ def default_test_xml
 end
 
 def create_controlfield(tag, values)
-  Metacrunch::Mab2::Document::Controlfield.new(tag, values)
+  Metacrunch::Marcxml::Document::Controlfield.new(tag, values)
 end
 
 def create_datafield(tag, ind1:nil, ind2:nil)
-  Metacrunch::Mab2::Document::Datafield.new(tag, ind1: ind1, ind2: ind2)
+  Metacrunch::Marcxml::Document::Datafield.new(tag, ind1: ind1, ind2: ind2)
 end
 
 def create_subfield(code, value)
-  Metacrunch::Mab2::Document::Subfield.new(code, value)
+  Metacrunch::Marcxml::Document::Subfield.new(code, value)
 end

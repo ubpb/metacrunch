@@ -1,14 +1,14 @@
-describe Metacrunch::Mab2::Document::MabXmlParser do
+describe Metacrunch::Marcxml::Parser do
 
   describe "#parse" do
     context "given a valid mab xml demo file" do
       let(:xml) { default_test_xml }
-      let(:document) { Metacrunch::Mab2::Document.from_mab_xml(xml) }
+      let(:document) { Metacrunch::Marcxml::Document.from_marcxml(xml) }
 
       subject { document }
 
-      it "should return a Mab2::Document" do
-        expect(subject).to be_instance_of(Metacrunch::Mab2::Document)
+      it "should return a Marcxml::Document" do
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
       end
 
       it "should find 2 data fields with tag 070" do

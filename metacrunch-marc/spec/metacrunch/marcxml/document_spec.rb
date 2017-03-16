@@ -1,17 +1,17 @@
-describe Metacrunch::Mab2::Document do
+describe Metacrunch::Marcxml::Document do
 
   # -----------------------------------------------------------------------
   # Parsing
   # -----------------------------------------------------------------------
 
-  describe ".from_mab_xml" do
+  describe ".from_marcxml" do
     let(:xml) { default_test_xml }
-    let(:document) { Metacrunch::Mab2::Document.from_mab_xml(xml) }
+    let(:document) { Metacrunch::Marcxml::Document.from_marcxml(xml) }
 
     subject { document }
 
-    it "should return a Mab2::Document" do
-      expect(subject).to be_instance_of(Metacrunch::Mab2::Document)
+    it "should return a Marcxml::Document" do
+      expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
     end
   end
 
@@ -38,7 +38,7 @@ describe Metacrunch::Mab2::Document do
       subject { document.controlfield("050") }
 
       it { is_expected.not_to be_nil }
-      it { is_expected.to be_instance_of(Metacrunch::Mab2::Document::Controlfield) }
+      it { is_expected.to be_instance_of(Metacrunch::Marcxml::Document::Controlfield) }
       it "should contain the correct values" do
         expect(subject.values).to eq(["a", nil, "a", nil])
       end
@@ -65,7 +65,7 @@ describe Metacrunch::Mab2::Document do
       subject { document.datafields(nil) }
 
       it "returns a DatafieldSet" do
-        expect(subject).to be_instance_of(Metacrunch::Mab2::Document::DatafieldSet)
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document::DatafieldSet)
       end
 
       it "DatafieldSet contains all datafields" do
@@ -77,7 +77,7 @@ describe Metacrunch::Mab2::Document do
       subject { document.datafields("_not_existing_tag_") }
 
       it "returns a DatafieldSet" do
-        expect(subject).to be_instance_of(Metacrunch::Mab2::Document::DatafieldSet)
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document::DatafieldSet)
       end
 
       it "DatafieldSet is empty" do

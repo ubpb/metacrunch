@@ -1,10 +1,10 @@
-describe Metacrunch::Mab2::Document::SubfieldSet do
+describe Metacrunch::Marcxml::Document::SubfieldSet do
 
   let(:document) { default_test_document }
   let(:datafield) { document.datafields.first }
   let(:subfields) { datafield.subfields.to_a }
-  let(:set) { Metacrunch::Mab2::Document::SubfieldSet.new(subfields) }
-  let(:empty_set) { Metacrunch::Mab2::Document::SubfieldSet.new(nil) }
+  let(:set) { Metacrunch::Marcxml::Document::SubfieldSet.new(subfields) }
+  let(:empty_set) { Metacrunch::Marcxml::Document::SubfieldSet.new(nil) }
 
   it "includes Enumerable module" do
     expect(set).to be_kind_of(Enumerable)
@@ -12,8 +12,8 @@ describe Metacrunch::Mab2::Document::SubfieldSet do
 
   describe "#initialize" do
     it "creates a new sub field set" do
-      expect(set).to be_instance_of(Metacrunch::Mab2::Document::SubfieldSet)
-      expect(empty_set).to be_instance_of(Metacrunch::Mab2::Document::SubfieldSet)
+      expect(set).to be_instance_of(Metacrunch::Marcxml::Document::SubfieldSet)
+      expect(empty_set).to be_instance_of(Metacrunch::Marcxml::Document::SubfieldSet)
     end
   end
 
@@ -59,7 +59,7 @@ describe Metacrunch::Mab2::Document::SubfieldSet do
 
   describe "#values" do
     let(:set) do
-      Metacrunch::Mab2::Document::SubfieldSet.new([
+      Metacrunch::Marcxml::Document::SubfieldSet.new([
         create_subfield("1", ""),
         create_subfield("2", " "),
         create_subfield("3", nil),
@@ -77,7 +77,7 @@ describe Metacrunch::Mab2::Document::SubfieldSet do
 
   describe "#present_values" do
     let(:set) do
-      Metacrunch::Mab2::Document::SubfieldSet.new([
+      Metacrunch::Marcxml::Document::SubfieldSet.new([
         create_subfield("1", ""),
         create_subfield("2", " "),
         create_subfield("3", nil),
@@ -95,7 +95,7 @@ describe Metacrunch::Mab2::Document::SubfieldSet do
 
   describe "#first_value, #value" do
     let(:set) do
-      Metacrunch::Mab2::Document::SubfieldSet.new([
+      Metacrunch::Marcxml::Document::SubfieldSet.new([
         create_subfield("1", ""),
         create_subfield("2", " "),
         create_subfield("3", nil),

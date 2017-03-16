@@ -1,14 +1,11 @@
 #!/usr/bin/env ruby
 require "bundler/setup"
-require "metacrunch/mab2"
+require "metacrunch/marcxml"
 
 begin
   require "pry"
-rescue LoadError ; end
-
-if defined?(Pry)
   Pry.start
-else
+rescue LoadError
   require "irb"
   IRB.start
 end

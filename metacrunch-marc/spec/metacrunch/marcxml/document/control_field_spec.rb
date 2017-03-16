@@ -1,18 +1,18 @@
-describe Metacrunch::Mab2::Document::Controlfield do
+describe Metacrunch::Marcxml::Document::Controlfield do
 
   describe "#initialize" do
     it "creates a new control field when using String values" do
-      field = Metacrunch::Mab2::Document::Controlfield.new("050", "a||b")
+      field = Metacrunch::Marcxml::Document::Controlfield.new("050", "a||b")
 
-      expect(field).to be_instance_of(Metacrunch::Mab2::Document::Controlfield)
+      expect(field).to be_instance_of(Metacrunch::Marcxml::Document::Controlfield)
       expect(field.tag).to eq("050")
       expect(field.values).to eq(["a", nil, nil, "b"])
     end
 
     it "creates a new control field when using Array values" do
-      field = Metacrunch::Mab2::Document::Controlfield.new("050", ["a", nil, nil, "b"])
+      field = Metacrunch::Marcxml::Document::Controlfield.new("050", ["a", nil, nil, "b"])
 
-      expect(field).to be_instance_of(Metacrunch::Mab2::Document::Controlfield)
+      expect(field).to be_instance_of(Metacrunch::Marcxml::Document::Controlfield)
       expect(field.tag).to eq("050")
       expect(field.values).to eq(["a", nil, nil, "b"])
     end
@@ -20,14 +20,14 @@ describe Metacrunch::Mab2::Document::Controlfield do
 
   describe "#tag" do
     it "returns the tag of the control field" do
-      field = Metacrunch::Mab2::Document::Controlfield.new("050", ["a", nil, nil, "b"])
+      field = Metacrunch::Marcxml::Document::Controlfield.new("050", ["a", nil, nil, "b"])
 
       expect(field.tag).to eq("050")
     end
   end
 
   describe "#values=" do
-    let(:field) { Metacrunch::Mab2::Document::Controlfield.new("050", nil) }
+    let(:field) { Metacrunch::Marcxml::Document::Controlfield.new("050", nil) }
 
     it "sets field values using String" do
       field.values = "a||b"
@@ -63,7 +63,7 @@ describe Metacrunch::Mab2::Document::Controlfield do
 
   describe "#values" do
     it "returns the values of a control field" do
-      field = Metacrunch::Mab2::Document::Controlfield.new("050", ["a", nil, nil, "b"])
+      field = Metacrunch::Marcxml::Document::Controlfield.new("050", ["a", nil, nil, "b"])
 
       expect(field.values).to eq(["a", nil, nil, "b"])
     end
@@ -71,7 +71,7 @@ describe Metacrunch::Mab2::Document::Controlfield do
 
   describe "#value, #at, []" do
     it "returns the value a the given index position" do
-      field = Metacrunch::Mab2::Document::Controlfield.new("050", ["a", nil, nil, "b"])
+      field = Metacrunch::Marcxml::Document::Controlfield.new("050", ["a", nil, nil, "b"])
 
       expect(field.at(0)).to eq("a")
       expect(field.value(0)).to eq("a")
@@ -79,7 +79,7 @@ describe Metacrunch::Mab2::Document::Controlfield do
     end
 
     it "returns nil on non existing value index" do
-      field = Metacrunch::Mab2::Document::Controlfield.new("050", ["a", nil, nil, "b"])
+      field = Metacrunch::Marcxml::Document::Controlfield.new("050", ["a", nil, nil, "b"])
 
       expect(field.at(999)).to be_nil
       expect(field.value(999)).to be_nil

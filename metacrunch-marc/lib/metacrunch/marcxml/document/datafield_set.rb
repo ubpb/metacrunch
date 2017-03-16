@@ -1,5 +1,5 @@
 module Metacrunch
-  module Mab2
+  module Marcxml
     class Document
       class DatafieldSet
         include Enumerable
@@ -24,13 +24,13 @@ module Metacrunch
           !empty?
         end
 
-        # @return [Metacrunch::Mab2::Document::SubfieldSet]
+        # @return [Metacrunch::Marcxml::Document::SubfieldSet]
         def subfields(code = nil)
           subfields = @datafields.map do |datafield|
             datafield.subfields(code).to_a
           end.flatten(1)
 
-          Metacrunch::Mab2::Document::SubfieldSet.new(subfields)
+          Metacrunch::Marcxml::Document::SubfieldSet.new(subfields)
         end
 
       end

@@ -1,4 +1,4 @@
-require_relative "document/mab_xml_parser"
+require_relative "parser"
 require_relative "document/controlfield"
 require_relative "document/datafield"
 require_relative "document/datafield_set"
@@ -6,14 +6,14 @@ require_relative "document/subfield"
 require_relative "document/subfield_set"
 
 module Metacrunch
-  module Mab2
+  module Marcxml
     class Document
       #
-      # @param [String] xml repesenting a MAB document in Aleph MAB XML format
-      # @return [Metacrunch::Mab2::Document]
+      # @param [String] xml repesenting a MarcXML document
+      # @return [Metacrunch::Marcxml::Document]
       #
-      def self.from_mab_xml(xml)
-        MabXmlParser.new.parse(xml)
+      def self.from_marcxml(xml)
+        Parser.new.parse(xml)
       end
 
       def initialize
@@ -40,7 +40,7 @@ module Metacrunch
       #
       # Adds a new control field to the document.
       #
-      # @param [Metacrunch::Mab2::Document::Controlfield] controlfield
+      # @param [Metacrunch::Marcxml::Document::Controlfield] controlfield
       #
       def add_controlfield(controlfield)
         @controlfields_map[controlfield.tag] = controlfield
@@ -58,7 +58,7 @@ module Metacrunch
       # @param [String, nil, Array<String>] ind1 filter for ind1. Can be nil to match any indicator 1.
       # @param [String, nil, Array<String>] ind2 filter for ind2. Can be nil to match any indicator 2.
       #
-      # @return [Metacrunch::Mab2::Document::DatafieldSet] Set of data fields with the
+      # @return [Metacrunch::Marcxml::Document::DatafieldSet] Set of data fields with the
       #  given tag(s) and ind1/ind2. The set is empty if a matching field doesn't exists.
       #
       def datafields(tag = nil, ind1: nil, ind2: nil)
@@ -81,7 +81,7 @@ module Metacrunch
       #
       # Adds a new data field.
       #
-      # @param [Metacrunch::Mab2::Document::Datafield] datafield
+      # @param [Metacrunch::Marcxml::Document::Datafield] datafield
       #
       def add_datafield(datafield)
         (@datafields_map[datafield.tag] ||= []) << datafield

@@ -1,5 +1,5 @@
 module Metacrunch
-  module Mab2
+  module Marcxml
     class Document
       class Datafield
 
@@ -17,7 +17,7 @@ module Metacrunch
         # Returns the sub fields matching the given code.
         #
         # @param [String, nil, Array<String>] code of the sub field
-        # @return [Metacrunch::Mab2::Document::SubfieldSet] sub field with the given code. The set
+        # @return [Metacrunch::Marcxml::Document::SubfieldSet] sub field with the given code. The set
         #  is empty if the sub field doesn't exists.
         #
         def subfields(code = nil)
@@ -37,7 +37,7 @@ module Metacrunch
         #
         # Adds a new sub field.
         #
-        # @param [Metacrunch::Mab2::Document::Subfield] subfield
+        # @param [Metacrunch::Marcxml::Document::Subfield] subfield
         #
         def add_subfield(subfield)
           (@subfields_map[subfield.code] ||= []) << subfield

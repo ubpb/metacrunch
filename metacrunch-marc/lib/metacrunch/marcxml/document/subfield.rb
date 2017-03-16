@@ -1,5 +1,5 @@
 module Metacrunch
-  module Mab2
+  module Marcxml
     class Document
       class Subfield
 

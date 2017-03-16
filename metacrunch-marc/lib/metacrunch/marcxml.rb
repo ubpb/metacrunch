@@ -4,5 +4,5 @@ require "active_support/core_ext"
 require "htmlentities"
 require "ox"
 
-require_relative "./mab2/version"
-require_relative "./mab2/document"
+require_relative "./marcxml/version"
+require_relative "./marcxml/document"

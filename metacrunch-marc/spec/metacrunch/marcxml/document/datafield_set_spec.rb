@@ -1,9 +1,9 @@
-describe Metacrunch::Mab2::Document::DatafieldSet do
+describe Metacrunch::Marcxml::Document::DatafieldSet do
 
   let(:document) { default_test_document }
   let(:datafields) { document.datafields.to_a }
-  let(:set) { Metacrunch::Mab2::Document::DatafieldSet.new(datafields) }
-  let(:empty_set) { Metacrunch::Mab2::Document::DatafieldSet.new(nil) }
+  let(:set) { Metacrunch::Marcxml::Document::DatafieldSet.new(datafields) }
+  let(:empty_set) { Metacrunch::Marcxml::Document::DatafieldSet.new(nil) }
 
   it "includes Enumerable module" do
     expect(set).to be_kind_of(Enumerable)
@@ -11,8 +11,8 @@ describe Metacrunch::Mab2::Document::DatafieldSet do
 
   describe "#initialize" do
     it "creates a new data field set" do
-      expect(set).to be_instance_of(Metacrunch::Mab2::Document::DatafieldSet)
-      expect(empty_set).to be_instance_of(Metacrunch::Mab2::Document::DatafieldSet)
+      expect(set).to be_instance_of(Metacrunch::Marcxml::Document::DatafieldSet)
+      expect(empty_set).to be_instance_of(Metacrunch::Marcxml::Document::DatafieldSet)
     end
   end
 
@@ -61,7 +61,7 @@ describe Metacrunch::Mab2::Document::DatafieldSet do
       subject { set.subfields(nil) }
 
       it "returns a SubfieldSet" do
-        expect(subject).to be_instance_of(Metacrunch::Mab2::Document::SubfieldSet)
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document::SubfieldSet)
       end
 
       it "SubfieldSet contains all sub fields" do
@@ -73,7 +73,7 @@ describe Metacrunch::Mab2::Document::DatafieldSet do
       subject { set.subfields("_not_existing_code_") }
 
       it "returns a SubfieldSet" do
-        expect(subject).to be_instance_of(Metacrunch::Mab2::Document::SubfieldSet)
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document::SubfieldSet)
       end
 
       it "SubfieldSet is empty" do

@@ -1,5 +1,5 @@
 module Metacrunch
-  module Mab2
+  module Marcxml
     VERSION = "2.0.0.dev"
   end
 end

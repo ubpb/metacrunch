@@ -1,10 +1,10 @@
-describe Metacrunch::Mab2::Document::Datafield do
+describe Metacrunch::Marcxml::Document::Datafield do
 
   describe "#initialize" do
     it "creates a new data field" do
-      field = Metacrunch::Mab2::Document::Datafield.new("123", ind1: "1", ind2: nil)
+      field = Metacrunch::Marcxml::Document::Datafield.new("123", ind1: "1", ind2: nil)
 
-      expect(field).to be_instance_of(Metacrunch::Mab2::Document::Datafield)
+      expect(field).to be_instance_of(Metacrunch::Marcxml::Document::Datafield)
       expect(field.tag).to eq("123")
       expect(field.ind1).to eq("1")
       expect(field.ind2).to be_nil
@@ -19,7 +19,7 @@ describe Metacrunch::Mab2::Document::Datafield do
       subject { datafield.subfields(nil) }
 
       it "returns a SubfieldSet" do
-        expect(subject).to be_instance_of(Metacrunch::Mab2::Document::SubfieldSet)
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document::SubfieldSet)
       end
 
       it "SubfieldfieldSet contains all sub fields" do
@@ -31,7 +31,7 @@ describe Metacrunch::Mab2::Document::Datafield do
       subject { datafield.subfields("_not_existing_code_") }
 
       it "returns a SubfieldSet" do
-        expect(subject).to be_instance_of(Metacrunch::Mab2::Document::SubfieldSet)
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document::SubfieldSet)
       end
 
       it "SubfieldSet is empty" do
