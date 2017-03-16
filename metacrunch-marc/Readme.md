@@ -1,66 +1,58 @@
-metacrunch-mab2
-===============
+metacrunch-marcxml
+==================
 
-[![Code Climate](https://codeclimate.com/github/ubpb/metacrunch-mab2/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch-mab2)
-[![Build Status](https://travis-ci.org/ubpb/metacrunch-mab2.svg)](https://travis-ci.org/ubpb/metacrunch-mab2)
+[![Code Climate](https://codeclimate.com/github/ubpb/metacrunch-marcxml/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch-marcxml)
+[![Build Status](https://travis-ci.org/ubpb/metacrunch-marcxml.svg)](https://travis-ci.org/ubpb/metacrunch-marcxml)
 
-This is the official MAB2 package for the [metacrunch ETL toolkit](https://github.com/ubpb/metacrunch). It allows you to parse [MAB](https://de.wikipedia.org/wiki/Maschinelles_Austauschformat_f%C3%BCr_Bibliotheken) data and gives you access to the data by a simple and powerful API.
+This is the official MARCXML package for the [metacrunch ETL toolkit](https://github.com/ubpb/metacrunch). It allows you to access [MARCXML](http://www.loc.gov/standards/marcxml/) data by a simple and powerful API.
 
-*Note: There is no runtime dependency to metacrunch, so it's fine to use this gem in any Ruby application where you need to read or manipulate MAB data.*
+*Note: There is no runtime dependency to metacrunch, so it's fine to use this gem in any Ruby application where you need to access MARCXML data.*
 
 
 Installation
 ------------
 
+Include the gem in your `Gemfile`
+
+```ruby
+gem "metacrunch-marcxml", "~> 2.0.0"
 ```
-$ gem install metacrunch-mab2
+
+and run `$ bundle install` to install it.
+
+Or install it manually
+
+```
+$ gem install metacrunch-marcxml
 ```
 
 
 Usage example
 -------------
 
-For the full API look at the files in [https://github.com/ubpb/metacrunch-mab2/tree/master/lib/metacrunch/mab2](https://github.com/ubpb/metacrunch-mab2/tree/master/lib/metacrunch/mab2)
-
 **Loading the library**
 ```ruby
-require "metacrunch/mab2"
+require "metacrunch/marcxml"
 ```
 
-**Parsing a [MAB XML file](https://github.com/ubpb/metacrunch-mab2/blob/master/spec/assets/aleph_mab_xml/file1.xml)**
+**Parsing a [MARCXML file](http://d-nb.info/982392028/about/marcxml)**
 ```ruby
-document = Metacrunch::Mab2::Document.from_mab_xml(File.read("my/mab.xml"))
+marcxml = open("http://d-nb.info/982392028/about/marcxml"){|io| io.read}
+document = Metacrunch::Marcxml::Document.from_marcxml(marcxml)
 ```
 
 **Accessing control fields**
 ```ruby
-document.controlfield("LDR")
-
-# <Metacrunch::Mab2::Document::Controlfield:0x007f98061b4b08
-# @tag="LDR",
-# @values=["-", "-", "-", "-", "-", "-", "M", "2", ".", "0", "1", "2", "0", "0", "0", "2", "4", "-", "-", "-", "-", "-", "-", "h"]>
+# TODO
 ```
 
 **Accessing data fields**
 ```ruby
-document.datafields("100")
-
-#<Metacrunch::Mab2::Document::DatafieldSet:0x007f98052e5af0
-# @datafields=
-#  [#<Metacrunch::Mab2::Document::Datafield:0x007f98061a5ea0
-#    @ind1="-",
-#    @ind2="1",
-#    @subfields=
-#     {"p"=>[#<Metacrunch::Mab2::Document::Subfield:0x007f98061a5dd8 @code="p", @value="Kofler, Michael">],
-#      "d"=>[#<Metacrunch::Mab2::Document::Subfield:0x007f98061a5ce8 @code="d", @value="1967-">],
-#      "9"=>[#<Metacrunch::Mab2::Document::Subfield:0x007f98061a5bf8 @code="9", @value="(DE-588)121636763">]},
-#    @tag="100">]>
+# TODO
 ```
 
 ```ruby
-document.datafields("100", ind1: :blank).subfields("p").value
-
-# Kofler, Michael
+# TODO
 ```
 
 License
