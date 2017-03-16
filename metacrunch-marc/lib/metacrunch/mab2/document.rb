@@ -34,7 +34,7 @@ module Metacrunch
       #   tag does not exists.
       #
       def controlfield(tag)
-        @controlfields_map[tag]
+        @controlfields_map[tag.to_s]
       end
 
       #
@@ -62,15 +62,14 @@ module Metacrunch
       #  given tag(s) and ind1/ind2. The set is empty if a matching field doesn't exists.
       #
       def datafields(tag = nil, ind1: nil, ind2: nil)
-        matched_datafields = if tag.nil?
-            @datafields_map.values.flatten(1)
-          else
-            if (tags = tag).is_a?(Array)
-              tags.map{ |_tag| @datafields_map[_tag] }.compact.flatten(1)
-            else
-              @datafields_map[tag]
-            end
-          end
+        matched_datafields = case tag
+        when nil
+          @datafields_map.values.flatten(1)
+        when Enumerable
+          tag.map{ |_tag| @datafields_map[_tag.to_s] }.compact.flatten(1)
+        else
+          @datafields_map[tag.to_s]
+        end
 
         matched_datafields = (matched_datafields || []).select do |datafield|
           match_indicator(ind1, datafield.ind1) && match_indicator(ind2, datafield.ind2)
