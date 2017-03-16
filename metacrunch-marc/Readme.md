@@ -1,8 +1,9 @@
 metacrunch-marcxml
 ==================
 
-[![Code Climate](https://codeclimate.com/github/ubpb/metacrunch-marcxml/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch-marcxml)
 [![Build Status](https://travis-ci.org/ubpb/metacrunch-marcxml.svg)](https://travis-ci.org/ubpb/metacrunch-marcxml)
+[![Code Climate](https://codeclimate.com/github/ubpb/metacrunch-marcxml/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch-marcxml)
+[![Test Coverage](https://codeclimate.com/github/ubpb/metacrunch-marcxml/badges/coverage.svg)](https://codeclimate.com/github/ubpb/metacrunch-marcxml/coverage)
 
 This is the official MARCXML package for the [metacrunch ETL toolkit](https://github.com/ubpb/metacrunch). It allows you to access [MARCXML](http://www.loc.gov/standards/marcxml/) data by a simple and powerful API.
 
