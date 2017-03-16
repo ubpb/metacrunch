@@ -58,4 +58,4 @@ document = Metacrunch::Marcxml::Document.from_marcxml(marcxml)
 License
 -------
 
-metacrunch-mab2 is available at [github](https://github.com/ubpb/metacrunch-mab2) under [MIT license](https://github.com/ubpb/metacrunch-mab2/blob/master/License.txt).
+metacrunch-marcxml is available at [github](https://github.com/ubpb/metacrunch-marcxml) under [MIT license](https://github.com/ubpb/metacrunch-marcxml/blob/master/License.txt).
