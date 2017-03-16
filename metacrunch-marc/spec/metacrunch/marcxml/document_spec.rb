@@ -40,7 +40,7 @@ describe Metacrunch::Marcxml::Document do
       it { is_expected.not_to be_nil }
       it { is_expected.to be_instance_of(Metacrunch::Marcxml::Document::Controlfield) }
       it "should contain the correct values" do
-        expect(subject.values).to eq(["a", nil, "a", nil])
+        expect(subject.value).to eq("a|a|")
       end
     end
   end
@@ -50,7 +50,7 @@ describe Metacrunch::Marcxml::Document do
 
     it "should add control field" do
       document.add_controlfield(create_controlfield("001", "a|a|"))
-      expect(document.controlfield("001").values).to eq(["a", nil, "a", nil])
+      expect(document.controlfield("001").value).to eq("a|a|")
     end
   end
 
