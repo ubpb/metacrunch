@@ -44,11 +44,13 @@ module Metacrunch
 
         #
         # @param [int] index
-        # @return [Array<String>] value at given index
+        # @return [String] value at given index
         #
-        def at(index)
+        def value(index)
           @values.at(index)
         end
+        alias_method :at, :value
+        alias_method :[], :value
 
       private
 

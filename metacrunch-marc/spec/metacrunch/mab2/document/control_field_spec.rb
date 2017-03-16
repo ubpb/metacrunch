@@ -69,17 +69,21 @@ describe Metacrunch::Mab2::Document::Controlfield do
     end
   end
 
-  describe "#at" do
+  describe "#value, #at, []" do
     it "returns the value a the given index position" do
       field = Metacrunch::Mab2::Document::Controlfield.new("050", ["a", nil, nil, "b"])
 
       expect(field.at(0)).to eq("a")
+      expect(field.value(0)).to eq("a")
+      expect(field[0]).to eq("a")
     end
 
     it "returns nil on non existing value index" do
       field = Metacrunch::Mab2::Document::Controlfield.new("050", ["a", nil, nil, "b"])
 
       expect(field.at(999)).to be_nil
+      expect(field.value(999)).to be_nil
+      expect(field[999]).to be_nil
     end
   end
 
