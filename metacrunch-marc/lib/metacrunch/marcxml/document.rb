@@ -8,12 +8,19 @@ require_relative "document/subfield_set"
 module Metacrunch
   module Marcxml
     class Document
-      #
-      # @param [String] xml repesenting a MarcXML document
-      # @return [Metacrunch::Marcxml::Document]
-      #
-      def self.from_marcxml(xml)
-        Parser.new.parse(xml)
+
+      class << self
+        #
+        # Parses a MARCXML string into a Metacrunch::Marcxml::Document.
+        #
+        # @param [String] XML string of a MARCXML document
+        # @return [Metacrunch::Marcxml::Document]
+        #
+        def parse(xml)
+          Parser.new.parse(xml)
+        end
+
+        alias_method :[], :parse
       end
 
       def initialize

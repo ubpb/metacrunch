@@ -4,14 +4,15 @@ describe Metacrunch::Marcxml::Document do
   # Parsing
   # -----------------------------------------------------------------------
 
-  describe ".from_marcxml" do
+  describe ".parse, .[]" do
     let(:xml) { default_test_xml }
-    let(:document) { Metacrunch::Marcxml::Document.from_marcxml(xml) }
-
-    subject { document }
 
     it "should return a Marcxml::Document" do
-      expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
+      document = Metacrunch::Marcxml::Document.parse(xml)
+      expect(document).to be_instance_of(Metacrunch::Marcxml::Document)
+
+      document = Metacrunch::Marcxml::Document[xml]
+      expect(document).to be_instance_of(Metacrunch::Marcxml::Document)
     end
   end
 

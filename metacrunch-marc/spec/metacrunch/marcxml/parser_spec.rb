@@ -3,7 +3,7 @@ describe Metacrunch::Marcxml::Parser do
   describe "#parse" do
     context "given a valid mab xml demo file" do
       let(:xml) { default_test_xml }
-      let(:document) { Metacrunch::Marcxml::Document.from_marcxml(xml) }
+      let(:document) { Metacrunch::Marcxml::Document.parse(xml) }
 
       subject { document }
 
