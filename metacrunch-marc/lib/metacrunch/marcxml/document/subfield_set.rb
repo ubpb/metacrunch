@@ -35,7 +35,6 @@ module Metacrunch
         def first_value
           present_values[0]
         end
-        alias_method :value, :first_value
 
       end
     end
