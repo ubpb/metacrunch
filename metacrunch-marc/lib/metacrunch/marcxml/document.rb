@@ -57,9 +57,9 @@ module Metacrunch
         when nil
           @datafields_map.values.flatten(1)
         when Enumerable
-          tag.map{ |_tag| @datafields_map[_tag.to_s] }.compact.flatten(1)
+          tag.map{ |_tag| @datafields_map[normalize_tag(_tag)] }.compact.flatten(1)
         else
-          @datafields_map[tag.to_s]
+          @datafields_map[normalize_tag(tag)]
         end
 
         matched_datafields = (matched_datafields || []).select do |datafield|
@@ -93,6 +93,14 @@ module Metacrunch
             false
           end
         end.any?
+      end
+
+      def normalize_tag(tag)
+        case tag
+        when Integer then tag.to_s.rjust(3, "0")
+        when String  then tag
+        else tag.to_s
+        end
       end
 
     end

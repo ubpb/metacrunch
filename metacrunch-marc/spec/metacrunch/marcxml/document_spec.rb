@@ -125,6 +125,14 @@ describe Metacrunch::Marcxml::Document do
         expect(subject.all?{|f| f.tag=="100" || f.ind1==" " || f.ind1=="-" || f.ind1=="a"}).to be(true)
       end
     end
+
+    context "given tag=070 as numeric 70" do
+      subject { document.datafields(70) }
+
+      it "returns only datafield with tag=070" do
+        expect(subject.all?{|f| f.tag=="070"}).to be(true)
+      end
+    end
   end
 
   describe "#add_datafield" do
