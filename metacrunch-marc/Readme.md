@@ -38,8 +38,14 @@ require "metacrunch/marcxml"
 
 **Parsing a [MARCXML file](http://d-nb.info/982392028/about/marcxml)**
 ```ruby
+# Load a MARCXML file (from a remote location in this example).
+require "open-uri"
 marcxml = open("http://d-nb.info/982392028/about/marcxml"){|io| io.read}
-document = Metacrunch::Marcxml::Document.from_marcxml(marcxml)
+
+# Now parse the file
+document = Metacrunch::Marcxml::Document.parse(marcxml)
+# .. or use the convenience method
+document = Metacrunch::Marcxml::Document(marcxml)
 ```
 
 **Accessing control fields**
