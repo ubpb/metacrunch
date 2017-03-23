@@ -7,9 +7,10 @@ require_relative "document/subfield_set"
 module Metacrunch
   module Marcxml
     class Document
+
       def initialize
         @controlfields_map = {}
-        @datafields_map = {}
+        @datafields_map    = {}
       end
 
       # ------------------------------------------------------------------------------
@@ -18,20 +19,19 @@ module Metacrunch
 
       #
       # Returns the control field matching the given tag or nil if a control field
-      # with the tag does not exists.
+      # with the given tag does not exist.
       #
-      # @param [String] tag of the control field
-      # @return [Controlfield, nil] control field with the given tag or nil if the
-      #   tag does not exists.
+      # @param tag [String, Integer] the tag of the control field. The tag can be
+      #   a string or an integer.
+      # @return [Controlfield, nil] the control field with the matching tag or nil
+      #   if a control field with a matching tag does not exist.
       #
       def controlfield(tag)
-        @controlfields_map[tag.to_s]
+        @controlfields_map[normalize_tag(tag)]
       end
 
       #
-      # Adds a new control field to the document.
-      #
-      # @param [Metacrunch::Marcxml::Document::Controlfield] controlfield
+      # @!visibility private
       #
       def add_controlfield(controlfield)
         @controlfields_map[controlfield.tag] = controlfield
@@ -44,13 +44,18 @@ module Metacrunch
       #
       # Returns the data fields matching the given tag(s) and/or ind1/ind2.
       #
-      # @param [String, nil, Array<String>] tag(s) of the data field. Can be nil to match
-      #   all data fields.
-      # @param [String, nil, Array<String>] ind1 filter for ind1. Can be nil to match any indicator 1.
-      # @param [String, nil, Array<String>] ind2 filter for ind2. Can be nil to match any indicator 2.
+      # @param tag [String, Integer, #each, nil] filter by tag(s). Can be `nil`
+      #   to match all data fields. The tag can be a string or an integer. To filter for
+      #   more than a single tag, `tag` also accepts any object that responds to `#each` like
+      #   `Array` and `Range`.
       #
-      # @return [Metacrunch::Marcxml::Document::DatafieldSet] Set of data fields with the
-      #  given tag(s) and ind1/ind2. The set is empty if a matching field doesn't exists.
+      # @param ind1 [String, nil, Array<String>] filter by indicator 1. Can be nil to match
+      #   any indicator.
+      # @param ind2 [String, nil, Array<String>] filter by indicator 2. Can be nil to match
+      #   any indicator.
+      #
+      # @return [Metacrunch::Marcxml::Document::DatafieldSet] Set of data fields matching the
+      #  given tag(s) and ind1/ind2. The set is empty if a matching field doesn't exist.
       #
       def datafields(tag = nil, ind1: nil, ind2: nil)
         matched_datafields = case tag
@@ -70,9 +75,7 @@ module Metacrunch
       end
 
       #
-      # Adds a new data field.
-      #
-      # @param [Metacrunch::Marcxml::Document::Datafield] datafield
+      # @!visibility private
       #
       def add_datafield(datafield)
         (@datafields_map[datafield.tag] ||= []) << datafield
