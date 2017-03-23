@@ -54,16 +54,39 @@ document = Metacrunch::Marcxml(marcxml)
 
 **Accessing control fields**
 ```ruby
-# TODO
+controlfield = document.controlfield("005")
+# same as ...
+controlfield = document.controlfield(5)
+# => #<Metacrunch::Marcxml::Document::Controlfield:0x007fd4c5120ec0 ...>
+
+tag = controlfield.tag
+# => "005"
+value = controlfield.value
+# => "20130926112144.0"
 ```
 
-**Accessing data fields**
+**Accessing data fields / sub fields**
 ```ruby
-# TODO
-```
+# Find fields matching tag=100 and indicator1=1 (author)
+set = document.datafields(100, ind1: "1")
+# => #<Metacrunch::Marcxml::Document::DatafieldSet:0x007fd4c4ce4b40 ...>
 
-```ruby
-# TODO
+first_author = set.first # set is an Enumerable
+# => #<Metacrunch::Marcxml::Document::Datafield:0x007fd4c5129480 ...>
+
+# Get the subfields matching code=a (author name)
+subfield_set = first_author.subfields("a")
+# => #<Metacrunch::Marcxml::Document::SubfieldSet:0x007fd4c4c779f0 ...>
+
+# because sub field "a" is not repeatable we know there can only be one match
+first_author_subfield = subfield_set.first # subfield_set is an Enumerable
+# => #<Metacrunch::Marcxml::Document::Subfield:0x007fd4c5129660 ...>
+
+first_author_name = first_author_subfield.value
+# => "Orwell, George"
+
+# ... there is a shortcut for this case
+first_author_name = document.datafields(100, ind1: "1").subfields("a").first_value
 ```
 
 License
