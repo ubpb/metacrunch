@@ -1,4 +1,3 @@
-require_relative "parser"
 require_relative "document/controlfield"
 require_relative "document/datafield"
 require_relative "document/datafield_set"
@@ -7,29 +6,7 @@ require_relative "document/subfield_set"
 
 module Metacrunch
   module Marcxml
-
-    class << self
-      #
-      # Parse MARCXML. Convenience method for Metacrunch::Marcxml::Document.parse
-      #
-      def Document(xml)
-        Metacrunch::Marcxml::Document.parse(xml)
-      end
-    end
-
     class Document
-      class << self
-        #
-        # Parses a MARCXML string into a Metacrunch::Marcxml::Document.
-        #
-        # @param [String] XML string of a MARCXML document
-        # @return [Metacrunch::Marcxml::Document]
-        #
-        def parse(xml)
-          Parser.new.parse(xml)
-        end
-      end
-
       def initialize
         @controlfields_map = {}
         @datafields_map = {}

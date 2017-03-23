@@ -47,9 +47,9 @@ require "open-uri"
 marcxml = open("http://d-nb.info/982392028/about/marcxml"){|io| io.read}
 
 # Now parse the file
-document = Metacrunch::Marcxml::Document.parse(marcxml)
+document = Metacrunch::Marcxml.parse(marcxml)
 # .. or use the convenience method
-document = Metacrunch::Marcxml::Document(marcxml)
+document = Metacrunch::Marcxml(marcxml)
 ```
 
 **Accessing control fields**
