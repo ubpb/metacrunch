@@ -93,7 +93,7 @@ describe Metacrunch::Marcxml::Document::SubfieldSet do
     end
   end
 
-  describe "#first_value, #value" do
+  describe "#first_value" do
     let(:set) do
       Metacrunch::Marcxml::Document::SubfieldSet.new([
         create_subfield("1", ""),
@@ -106,7 +106,6 @@ describe Metacrunch::Marcxml::Document::SubfieldSet do
 
     it "returns the first non empty value" do
       expect(set.first_value).to eq("Foo")
-      expect(set.value).to eq("Foo")
     end
   end
 
