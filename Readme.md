@@ -1,6 +1,8 @@
 metacrunch
 ==========
 
+**THIS IS THE CURRENT DEVELOPMENT VERSION. USE THE [LATEST 3.X RELEASE](https://github.com/ubpb/metacrunch/releases/latest) FOR A STABLE VERSION.**
+
 [![Gem Version](https://badge.fury.io/rb/metacrunch.svg)](http://badge.fury.io/rb/metacrunch)
 [![Code Climate](https://codeclimate.com/github/ubpb/metacrunch/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch)
 [![Build Status](https://travis-ci.org/ubpb/metacrunch.svg)](https://travis-ci.org/ubpb/metacrunch)
@@ -8,7 +10,6 @@ metacrunch
 metacrunch is a simple and lightweight data processing and ETL ([Extract-Transform-Load](http://en.wikipedia.org/wiki/Extract,_transform,_load))
 toolkit for Ruby.
 
-**NOTE: THIS README IS FOR THE MASTER BRANCH. CHECK THE [RELEASES-PAGE](https://github.com/ubpb/metacrunch/releases) TO SEE THE README FOR THE RELEVANT RELEASES**
 
 Installation
 ------------
