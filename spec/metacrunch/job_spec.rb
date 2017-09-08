@@ -31,7 +31,7 @@ describe Metacrunch::Job do
       end
     end
 
-    context "when called with an script (a string containing invalid ruby code)" do
+    context "when called with an invalid script (a string containing invalid ruby code)" do
       let(:job) do
         script = <<-EOT
           This is not valid ruby code
@@ -46,46 +46,46 @@ describe Metacrunch::Job do
     end
   end
 
-  describe "#sources" do
-    context "when no sources are defined" do
+  describe "#source" do
+    context "when no source is defined" do
       let(:job) do
         Metacrunch::Job.define{}.run
       end
 
-      it "returns an empty array" do
-        expect(job.sources).to eq([])
+      it "returns nil" do
+        expect(job.source).to be_nil
       end
     end
 
-    context "when sources are defined" do
+    context "when source is defined" do
       let(:job) do
         Metacrunch::Job.define do
           require "metacrunch/test_utils"
-          source Metacrunch::TestUtils::DummySource.new
           source Metacrunch::TestUtils::DummySource.new
         end.run
       end
 
       it "returns the source instances" do
-        expect(job.sources.count).to eq(2)
+        expect(job.source).not_to be_nil
       end
     end
   end
 
-  describe "#add_source" do
+  describe "#source=" do
     let!(:job) { Metacrunch::Job.new }
 
     context "when called with a valid source object (responds to #each)" do
       it "adds the object as a source" do
-        job.add_source(Metacrunch::TestUtils::DummySource.new)
-        expect(job.sources.count).to eq(1)
+        source = Metacrunch::TestUtils::DummySource.new
+        job.source = source
+        expect(job.source).to eq(source)
       end
     end
 
     context "when called with an invalid source object (doesn't responds to #each)" do
       it "raises an error" do
         expect{
-          job.add_source(Metacrunch::TestUtils::InvalidDummySource.new)
+          job.source = Metacrunch::TestUtils::InvalidDummySource.new
         }.to raise_error(ArgumentError)
       end
     end

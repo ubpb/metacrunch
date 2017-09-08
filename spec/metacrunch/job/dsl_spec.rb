@@ -5,16 +5,17 @@ describe Metacrunch::Job::Dsl do
 
   describe "#source" do
     context "when called with a valid source object (responds to #each)" do
-      it "adds the object as a source" do
-        job.add_source(Metacrunch::TestUtils::DummySource.new)
-        expect(job.sources.count).to eq(1)
+      it "set the object as a source" do
+        source = Metacrunch::TestUtils::DummySource.new
+        job.source = source
+        expect(job.source).to eq(source)
       end
     end
 
     context "when called with an invalid source object (doesn't responds to #each)" do
       it "raises an error" do
         expect{
-          job.add_source(Metacrunch::TestUtils::InvalidDummySource.new)
+          job.source = Metacrunch::TestUtils::InvalidDummySource.new
         }.to raise_error(ArgumentError)
       end
     end

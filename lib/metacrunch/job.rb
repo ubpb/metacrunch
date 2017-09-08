@@ -22,13 +22,13 @@ module Metacrunch
       end
     end
 
-    def sources
-      @sources ||= []
+    def source
+      @source
     end
 
-    def add_source(source)
+    def source=(source)
       ensure_source!(source)
-      sources << source
+      @source = source
     end
 
     def destinations
@@ -86,17 +86,17 @@ module Metacrunch
       end
     end
 
-    def ensure_callable!(object)
-      raise ArgumentError, "#{object} does't respond to #call." unless object.respond_to?(:call)
+    def ensure_source!(object)
+      raise ArgumentError, "#{object} doesn't respond to #each." unless object.respond_to?(:each)
     end
 
-    def ensure_source!(object)
-      raise ArgumentError, "#{object} does't respond to #each." unless object.respond_to?(:each)
+    def ensure_callable!(object)
+      raise ArgumentError, "#{object} doesn't respond to #call." unless object.respond_to?(:call)
     end
 
     def ensure_destination!(object)
-      raise ArgumentError, "#{object} does't respond to #write." unless object.respond_to?(:write)
-      raise ArgumentError, "#{object} does't respond to #close." unless object.respond_to?(:close)
+      raise ArgumentError, "#{object} doesn't respond to #write." unless object.respond_to?(:write)
+      raise ArgumentError, "#{object} doesn't respond to #close." unless object.respond_to?(:close)
     end
 
     def run_pre_processes
@@ -108,8 +108,7 @@ module Metacrunch
     end
 
     def run_transformations
-      sources.each do |source|
-        # sources are expected to respond to `each`
+      if source
         source.each do |data|
           run_transformations_and_write_destinations(data)
         end

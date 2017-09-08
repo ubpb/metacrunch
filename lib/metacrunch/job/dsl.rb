@@ -7,7 +7,7 @@ module Metacrunch
     end
 
     def source(source)
-      @_job.add_source(source)
+      @_job.source = source
     end
 
     def destination(destination)
