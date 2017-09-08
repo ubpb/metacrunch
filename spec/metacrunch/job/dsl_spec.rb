@@ -24,15 +24,16 @@ describe Metacrunch::Job::Dsl do
   describe "#destination" do
     context "when called with a valid destination object (responds to #write and #close)" do
       it "adds the object as a destination" do
-        job.add_destination(Metacrunch::TestUtils::DummyDestination.new)
-        expect(job.destinations.count).to eq(1)
+        destination = Metacrunch::TestUtils::DummyDestination.new
+        job.destination = destination
+        expect(job.destination).to eq(destination)
       end
     end
 
     context "when called with an invalid destination object (doesn't responds to #write or #close)" do
       it "raises an error" do
         expect{
-          job.add_destination(Metacrunch::TestUtils::InvalidDummyDestination.new)
+          job.destination = Metacrunch::TestUtils::InvalidDummyDestination.new
         }.to raise_error(ArgumentError)
       end
     end

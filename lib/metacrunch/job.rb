@@ -31,13 +31,13 @@ module Metacrunch
       @source = source
     end
 
-    def destinations
-      @destinations ||= []
+    def destination
+      @destination
     end
 
-    def add_destination(destination)
+    def destination=(destination)
       ensure_destination!(destination)
-      destinations << destination
+      @destination = destination
     end
 
     def pre_processes
@@ -90,13 +90,13 @@ module Metacrunch
       raise ArgumentError, "#{object} doesn't respond to #each." unless object.respond_to?(:each)
     end
 
-    def ensure_callable!(object)
-      raise ArgumentError, "#{object} doesn't respond to #call." unless object.respond_to?(:call)
-    end
-
     def ensure_destination!(object)
       raise ArgumentError, "#{object} doesn't respond to #write." unless object.respond_to?(:write)
       raise ArgumentError, "#{object} doesn't respond to #close." unless object.respond_to?(:close)
+    end
+
+    def ensure_callable!(object)
+      raise ArgumentError, "#{object} doesn't respond to #call." unless object.respond_to?(:call)
     end
 
     def run_pre_processes
@@ -117,8 +117,7 @@ module Metacrunch
         run_transformations_and_write_destinations(nil, flush_buffers: true)
       end
 
-      # destination implementations are expected to respond to `close`
-      destinations.each(&:close)
+      destination.close if destination
     end
 
     def run_transformations_and_write_destinations(data, flush_buffers: false)
@@ -136,9 +135,7 @@ module Metacrunch
       end
 
       if data.present?
-        destinations.each do |destination|
-          destination.write(data) # destinations are expected to respond to `write(data)`
-        end
+        destination.write(data) if destination
       end
     end
 

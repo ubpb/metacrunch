@@ -91,46 +91,46 @@ describe Metacrunch::Job do
     end
   end
 
-  describe "#destinations" do
-    context "when no destinations are defined" do
+  describe "#destination" do
+    context "when no destination is defined" do
       let(:job) do
         Metacrunch::Job.define{}.run
       end
 
       it "returns an empty array" do
-        expect(job.destinations).to eq([])
+        expect(job.destination).to be_nil
       end
     end
 
-    context "when destinations are defined" do
+    context "when destination is defined" do
       let(:job) do
         Metacrunch::Job.define do
           require "metacrunch/test_utils"
           destination Metacrunch::TestUtils::DummyDestination.new
-          destination Metacrunch::TestUtils::DummyDestination.new
         end.run
       end
 
-      it "returns the destination instances" do
-        expect(job.destinations.count).to eq(2)
+      it "returns the destination" do
+        expect(job.destination).not_to be_nil
       end
     end
   end
 
-  describe "#add_destination" do
+  describe "#destination=" do
     let!(:job) { Metacrunch::Job.new }
 
     context "when called with a valid destination object (responds to #write and #close)" do
       it "adds the object as a destination" do
-        job.add_destination(Metacrunch::TestUtils::DummyDestination.new)
-        expect(job.destinations.count).to eq(1)
+        destination = Metacrunch::TestUtils::DummyDestination.new
+        job.destination = destination
+        expect(job.destination).to eq(destination)
       end
     end
 
     context "when called with an invalid destination object (doesn't responds to #write or #close)" do
       it "raises an error" do
         expect{
-          job.add_destination(Metacrunch::TestUtils::InvalidDummyDestination.new)
+          job.destination = Metacrunch::TestUtils::InvalidDummyDestination.new
         }.to raise_error(ArgumentError)
       end
     end
@@ -315,11 +315,11 @@ describe Metacrunch::Job do
       end
 
       it "writes to a destination" do
-        expect(job.destinations.first.instance_variable_get("@write_called")).to be(true)
+        expect(job.destination.instance_variable_get("@write_called")).to be(true)
       end
 
       it "closes a destination" do
-        expect(job.destinations.first.instance_variable_get("@close_called")).to be(true)
+        expect(job.destination.instance_variable_get("@close_called")).to be(true)
       end
     end
 
@@ -346,11 +346,11 @@ describe Metacrunch::Job do
       end
 
       it "does not run write to a destination" do
-        expect(job.destinations.first.instance_variable_get("@write_called")).to be_nil
+        expect(job.destination.instance_variable_get("@write_called")).to be_nil
       end
 
       it "closes a destination" do
-        expect(job.destinations.first.instance_variable_get("@close_called")).to be(true)
+        expect(job.destination.instance_variable_get("@close_called")).to be(true)
       end
     end
   end

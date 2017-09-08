@@ -11,7 +11,7 @@ module Metacrunch
     end
 
     def destination(destination)
-      @_job.add_destination(destination)
+      @_job.destination = destination
     end
 
     def pre_process(callable = nil, &block)
