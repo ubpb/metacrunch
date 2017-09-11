@@ -14,12 +14,12 @@ module Metacrunch
       @_job.destination = destination
     end
 
-    def pre_process(callable = nil, &block)
-      @_job.add_pre_process(callable, &block)
+    def pre_process(callable)
+      @_job.pre_process = callable
     end
 
-    def post_process(callable = nil, &block)
-      @_job.add_post_process(callable, &block)
+    def post_process(callable)
+      @_job.post_process = callable
     end
 
     def transformation_buffer(size)

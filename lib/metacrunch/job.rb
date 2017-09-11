@@ -40,20 +40,22 @@ module Metacrunch
       @destination = destination
     end
 
-    def pre_processes
-      @pre_processes ||= []
+    def pre_process
+      @pre_process
     end
 
-    def add_pre_process(callable = nil, &block)
-      add_callable_or_block(pre_processes, callable, &block)
+    def pre_process=(callable)
+      ensure_callable!(callable)
+      @pre_process = callable
     end
 
-    def post_processes
-      @post_processes ||= []
+    def post_process
+      @post_process
     end
 
-    def add_post_process(callable = nil, &block)
-      add_callable_or_block(post_processes, callable, &block)
+    def post_process=(callable)
+      ensure_callable!(callable)
+      @post_process = callable
     end
 
     def transformations
@@ -69,9 +71,9 @@ module Metacrunch
     end
 
     def run
-      run_pre_processes
+      run_pre_process
       run_transformations
-      run_post_processes
+      run_post_process
       self
     end
 
@@ -99,12 +101,12 @@ module Metacrunch
       raise ArgumentError, "#{object} doesn't respond to #call." unless object.respond_to?(:call)
     end
 
-    def run_pre_processes
-      pre_processes.each(&:call)
+    def run_pre_process
+      pre_process.call if pre_process
     end
 
-    def run_post_processes
-      post_processes.each(&:call)
+    def run_post_process
+      post_process.call if post_process
     end
 
     def run_transformations

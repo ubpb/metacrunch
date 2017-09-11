@@ -41,23 +41,17 @@ describe Metacrunch::Job::Dsl do
 
   describe "#pre_process" do
     context "when called with a callable" do
-      it "adds the callable as a pre_process" do
-        job.add_pre_process(Metacrunch::TestUtils::DummyCallable.new)
-        expect(job.pre_processes.count).to eq(1)
-      end
-    end
-
-    context "when called with a block" do
-      it "adds the block as a pre_process" do
-        job.add_pre_process do ; end
-        expect(job.pre_processes.count).to eq(1)
+      it "sets the callable as a pre_process" do
+        pre_process = Metacrunch::TestUtils::DummyCallable.new
+        job.pre_process = pre_process
+        expect(job.pre_process).to eq(pre_process)
       end
     end
 
     context "when called with an object that does't respond to #call" do
       it "raises an error" do
         expect{
-          job.add_pre_process(Metacrunch::TestUtils::DummyNonCallable.new)
+          job.pre_process = Metacrunch::TestUtils::DummyNonCallable.new
         }.to raise_error(ArgumentError)
       end
     end
@@ -65,23 +59,17 @@ describe Metacrunch::Job::Dsl do
 
   describe "#post_process" do
     context "when called with a callable" do
-      it "adds the callable as a post_process" do
-        job.add_post_process(Metacrunch::TestUtils::DummyCallable.new)
-        expect(job.post_processes.count).to eq(1)
-      end
-    end
-
-    context "when called with a block" do
-      it "adds the block as a post_process" do
-        job.add_post_process do ; end
-        expect(job.post_processes.count).to eq(1)
+      it "sets the callable as a post_process" do
+        post_process = Metacrunch::TestUtils::DummyCallable.new
+        job.post_process = post_process
+        expect(job.post_process).to eq(post_process)
       end
     end
 
     context "when called with an object that does't respond to #call" do
       it "raises an error" do
         expect{
-          job.add_post_process(Metacrunch::TestUtils::DummyNonCallable.new)
+          job.post_process = Metacrunch::TestUtils::DummyNonCallable.new
         }.to raise_error(ArgumentError)
       end
     end

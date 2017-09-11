@@ -136,103 +136,89 @@ describe Metacrunch::Job do
     end
   end
 
-  describe "#pre_processes" do
-    context "when no pre processes are defined" do
+  describe "#pre_process" do
+    context "when no pre process is defined" do
       let(:job) do
         Metacrunch::Job.define{}.run
       end
 
-      it "returns an empty array" do
-        expect(job.pre_processes).to eq([])
+      it "returns nil" do
+        expect(job.pre_process).to be_nil
       end
     end
 
-    context "when pre processes are defined" do
+    context "when pre process is defined" do
       let(:job) do
         Metacrunch::Job.define do
-          pre_process ->() {}
           pre_process ->() {}
         end.run
       end
 
-      it "returns the pre process instances" do
-        expect(job.pre_processes.count).to eq(2)
+      it "returns the pre process instance" do
+        expect(job.pre_process).not_to be_nil
       end
     end
   end
 
-  describe "#add_pre_process" do
+  describe "#pre_process=" do
     let!(:job) { Metacrunch::Job.new }
 
     context "when called with a callable" do
       it "adds the callable as a pre_process" do
-        job.add_pre_process(Metacrunch::TestUtils::DummyCallable.new)
-        expect(job.pre_processes.count).to eq(1)
-      end
-    end
-
-    context "when called with a block" do
-      it "adds the block as a pre_process" do
-        job.add_pre_process do ; end
-        expect(job.pre_processes.count).to eq(1)
+        pre_process = Metacrunch::TestUtils::DummyCallable.new
+        job.pre_process = pre_process
+        expect(job.pre_process).to eq(pre_process)
       end
     end
 
     context "when called with an object that does't respond to #call" do
       it "raises an error" do
         expect{
-          job.add_pre_process(Metacrunch::TestUtils::DummyNonCallable.new)
+          job.pre_process = Metacrunch::TestUtils::DummyNonCallable.new
         }.to raise_error(ArgumentError)
       end
     end
   end
 
-  describe "#post_processes" do
-    context "when no post processes are defined" do
+  describe "#post_process" do
+    context "when no post processes is defined" do
       let(:job) do
         Metacrunch::Job.define{}.run
       end
 
       it "returns an empty array" do
-        expect(job.post_processes).to eq([])
+        expect(job.post_process).to be_nil
       end
     end
 
-    context "when post processes are defined" do
+    context "when post process is defined" do
       let(:job) do
         Metacrunch::Job.define do
-          post_process ->() {}
           post_process ->() {}
         end.run
       end
 
-      it "returns the post process instances" do
-        expect(job.post_processes.count).to eq(2)
+      it "returns the post process instance" do
+        expect(job.post_process).not_to be_nil
       end
     end
   end
 
-  describe "#add_post_process" do
+  describe "#post_process=" do
     let!(:job) { Metacrunch::Job.new }
 
     context "when called with a callable" do
       it "adds the callable as a post_process" do
-        job.add_post_process(Metacrunch::TestUtils::DummyCallable.new)
-        expect(job.post_processes.count).to eq(1)
-      end
-    end
-
-    context "when called with a block" do
-      it "adds the block as a post_process" do
-        job.add_post_process do ; end
-        expect(job.post_processes.count).to eq(1)
+        post_process = Metacrunch::TestUtils::DummyCallable.new
+        job.post_process = post_process
+        expect(job.post_process).to eq(post_process)
       end
     end
 
     context "when called with an object that does't respond to #call" do
       it "raises an error" do
         expect{
-          job.add_post_process(Metacrunch::TestUtils::DummyNonCallable.new)
+          job.post_process = Metacrunch::TestUtils::DummyNonCallable.new
         }.to raise_error(ArgumentError)
       end
     end
