@@ -171,7 +171,7 @@ describe Metacrunch::Job do
       end
     end
 
-    context "when called with an object that does't respond to #call" do
+    context "when called with an object that doesn't respond to #call" do
       it "raises an error" do
         expect{
           job.pre_process = Metacrunch::TestUtils::DummyNonCallable.new
@@ -215,7 +215,7 @@ describe Metacrunch::Job do
       end
     end
 
-    context "when called with an object that does't respond to #call" do
+    context "when called with an object that doesn't respond to #call" do
       it "raises an error" do
         expect{
           job.post_process = Metacrunch::TestUtils::DummyNonCallable.new
@@ -259,7 +259,7 @@ describe Metacrunch::Job do
       end
     end
 
-    context "when called with an object that does't respond to #call" do
+    context "when called with an object that doesn't respond to #call" do
       it "raises an error" do
         expect{
           job.add_transformation(Metacrunch::TestUtils::DummyNonCallable.new)
