@@ -62,11 +62,6 @@ module Metacrunch
     end
 
     def run!(job_files)
-      if job_files.first == "run"
-        puts ColorizedString["WARN: Using 'run' is deprecated. Just use 'metacrunch [options] JOB_FILE @@ [job-options] [ARGS...]'\n"].yellow.bold
-        job_files = job_files[1..-1]
-      end
-
       if job_files.empty?
         error "You need to provide a job file."
       elsif job_files.count > 1
