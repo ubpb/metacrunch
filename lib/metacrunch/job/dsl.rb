@@ -26,8 +26,8 @@ module Metacrunch
       @_job.add_transformation_buffer(size)
     end
 
-    def transformation(callable = nil, &block)
-      @_job.add_transformation(callable, &block)
+    def transformation(callable)
+      @_job.add_transformation(callable)
     end
 
     def options(require_args: false, &block)

@@ -259,13 +259,6 @@ describe Metacrunch::Job do
       end
     end
 
-    context "when called with a block" do
-      it "adds the block as a transformation" do
-        job.add_transformation do ; end
-        expect(job.transformations.count).to eq(1)
-      end
-    end
-
     context "when called with an object that does't respond to #call" do
       it "raises an error" do
         expect{

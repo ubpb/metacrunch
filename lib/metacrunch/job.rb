@@ -62,8 +62,9 @@ module Metacrunch
       @transformations ||= []
     end
 
-    def add_transformation(callable = nil, &block)
-      add_callable_or_block(transformations, callable, &block)
+    def add_transformation(callable)
+      ensure_callable!(callable)
+      transformations << callable
     end
 
     def add_transformation_buffer(size)
@@ -78,15 +79,6 @@ module Metacrunch
     end
 
   private
-
-    def add_callable_or_block(array, callable, &block)
-      if block_given?
-        array << block
-      elsif callable
-        ensure_callable!(callable)
-        array << callable
-      end
-    end
 
     def ensure_source!(object)
       raise ArgumentError, "#{object} doesn't respond to #each." unless object.respond_to?(:each)
