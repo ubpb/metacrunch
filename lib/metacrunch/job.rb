@@ -105,17 +105,17 @@ module Metacrunch
     def run_transformations
       if source
         source.each do |data|
-          run_transformations_and_write_destinations(data)
+          run_transformations_and_write_destination(data)
         end
 
         # Run all transformations a last time to flush existing buffers
-        run_transformations_and_write_destinations(nil, flush_buffers: true)
+        run_transformations_and_write_destination(nil, flush_buffers: true)
 
         destination.close if destination
       end
     end
 
-    def run_transformations_and_write_destinations(data, flush_buffers: false)
+    def run_transformations_and_write_destination(data, flush_buffers: false)
       transformations.each do |transformation|
         if transformation.is_a?(Buffer)
           if data.present?

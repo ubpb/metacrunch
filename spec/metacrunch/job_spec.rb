@@ -181,7 +181,7 @@ describe Metacrunch::Job do
   end
 
   describe "#post_process" do
-    context "when no post processes is defined" do
+    context "when no post process is defined" do
       let(:job) do
         Metacrunch::Job.define{}.run
       end
@@ -290,11 +290,11 @@ describe Metacrunch::Job do
         end.run
       end
 
-      it "runs pre processes" do
+      it "runs pre process" do
         expect(job.builder.instance_variable_get("@pre_process_called")).to be(true)
       end
 
-      it "runs post processes" do
+      it "runs post process" do
         expect(job.builder.instance_variable_get("@post_process_called")).to be(true)
       end
 
@@ -321,11 +321,11 @@ describe Metacrunch::Job do
         end.run
       end
 
-      it "runs pre processes" do
+      it "runs pre process" do
         expect(job.builder.instance_variable_get("@pre_process_called")).to be(true)
       end
 
-      it "runs post processes" do
+      it "runs post process" do
         expect(job.builder.instance_variable_get("@post_process_called")).to be(true)
       end
 
