@@ -110,9 +110,9 @@ module Metacrunch
 
         # Run all transformations a last time to flush existing buffers
         run_transformations_and_write_destinations(nil, flush_buffers: true)
-      end
 
-      destination.close if destination
+        destination.close if destination
+      end
     end
 
     def run_transformations_and_write_destinations(data, flush_buffers: false)

@@ -333,12 +333,12 @@ describe Metacrunch::Job do
         expect(job.builder.instance_variable_get("@transformation_called")).to be_nil
       end
 
-      it "does not run write to a destination" do
+      it "does not write to a destination" do
         expect(job.destination.instance_variable_get("@write_called")).to be_nil
       end
 
-      it "closes a destination" do
-        expect(job.destination.instance_variable_get("@close_called")).to be(true)
+      it "does not close a destination" do
+        expect(job.destination.instance_variable_get("@close_called")).to be_nil
       end
     end
   end
