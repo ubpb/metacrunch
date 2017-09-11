@@ -62,13 +62,14 @@ module Metacrunch
       @transformations ||= []
     end
 
-    def add_transformation(callable)
+    def add_transformation(callable, buffer_size: nil)
       ensure_callable!(callable)
-      transformations << callable
-    end
 
-    def add_transformation_buffer(size)
-      transformations << Metacrunch::Job::Buffer.new(size)
+      if buffer_size && buffer_size.to_i > 0
+        transformations << Metacrunch::Job::Buffer.new(buffer_size)
+      end
+
+      transformations << callable
     end
 
     def run
@@ -107,7 +108,7 @@ module Metacrunch
           run_transformations_and_write_destinations(data)
         end
 
-        # Run all transformations a last time to flush possible buffers
+        # Run all transformations a last time to flush existing buffers
         run_transformations_and_write_destinations(nil, flush_buffers: true)
       end
 

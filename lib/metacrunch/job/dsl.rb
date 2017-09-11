@@ -22,12 +22,8 @@ module Metacrunch
       @_job.post_process = callable
     end
 
-    def transformation_buffer(size)
-      @_job.add_transformation_buffer(size)
-    end
-
-    def transformation(callable)
-      @_job.add_transformation(callable)
+    def transformation(callable, buffer_size: nil)
+      @_job.add_transformation(callable, buffer_size: buffer_size)
     end
 
     def options(require_args: false, &block)
