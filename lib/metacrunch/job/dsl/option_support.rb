@@ -1,17 +1,20 @@
 module Metacrunch
   class Job::Dsl::OptionSupport
+    require_relative "option_support/dsl"
 
-    def register_options(args, require_args: false, &block)
-      options = {}
-      registry.instance_eval(&block)
+    attr_reader :options
 
-      registry.each do |key, opt_def|
+    def initialize(args, require_args: false, &block)
+      @options = {}
+      dsl.instance_eval(&block)
+
+      dsl.options.each do |key, opt_def|
         # Set default value
-        options[key] = opt_def[:default]
+        @options[key] = opt_def[:default]
 
         # Register with OptionParser
         if opt_def[:args].present?
-          option = parser.define(*opt_def[:args]) { |value| options[key] = value }
+          option = parser.define(*opt_def[:args]) { |value| @options[key] = value }
 
           option.desc << "REQUIRED" if opt_def[:required]
           option.desc << "DEFAULT: #{opt_def[:default]}" if opt_def[:default].present?
@@ -24,12 +27,10 @@ module Metacrunch
       args = parser.parse(args || [])
 
       # Make sure required options are present
-      ensure_required_options!(options)
+      ensure_required_options!(@options)
 
       # Make sure args are present if required
       ensure_required_args!(args) if require_args
-
-      options
     end
 
   private
@@ -44,12 +45,12 @@ module Metacrunch
       @parser_options ||= {}
     end
 
-    def registry
-      @registry ||= OptionRegistry.new
+    def dsl
+      @dsl ||= Dsl.new
     end
 
     def ensure_required_options!(options)
-      registry.each do |key, opt_def|
+      dsl.options.each do |key, opt_def|
         if opt_def[:required] && options[key].blank?
           long_option = parser_options[key].long.try(:[], 0)
           short_option = parser_options[key].short.try(:[], 0)
@@ -68,33 +69,6 @@ module Metacrunch
         puts parser.help
 
         exit(1)
-      end
-    end
-
-  private
-
-    class OptionRegistry
-
-      def add(name, *args, default: nil, required: false)
-        if default && required
-          raise ArgumentError, "You can't use `default` and `required` option at the same time."
-        end
-
-        options[name.to_sym] = {
-          args: args,
-          default: default,
-          required: required
-        }
-      end
-
-      def each(&block)
-        options.each(&block)
-      end
-
-    private
-
-      def options
-        @options ||= {}
       end
     end
 
