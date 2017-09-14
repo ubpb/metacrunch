@@ -74,8 +74,24 @@ module Metacrunch
 
     def run
       run_pre_process
-      run_transformations
+
+      if source
+        # Run transformation for each data object available in source
+        source.each do |data|
+          run_transformations(data)
+          write_destination(data)
+        end
+
+        # Run all transformations a last time to flush existing buffers
+        run_transformations(data = nil, flush_buffers: true)
+        write_destination(data)
+
+        # Close destination
+        destination.close if destination
+      end
+
       run_post_process
+
       self
     end
 
@@ -102,22 +118,7 @@ module Metacrunch
       post_process.call if post_process
     end
 
-    def run_transformations
-      if source
-        source.each do |data|
-          run_transformations!(data)
-          write_destination(data)
-        end
-
-        # Run all transformations a last time to flush existing buffers
-        run_transformations!(data = nil, flush_buffers: true)
-        write_destination(data)
-
-        destination.close if destination
-      end
-    end
-
-    def run_transformations!(data, flush_buffers: false)
+    def run_transformations(data, flush_buffers: false)
       transformations.each do |transformation|
         if transformation.is_a?(Buffer)
           if data.present?
