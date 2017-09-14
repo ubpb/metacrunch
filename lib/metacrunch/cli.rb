@@ -79,7 +79,6 @@ module Metacrunch
     def run_job!(job_filename)
       Metacrunch::Job.define(
         File.read(job_filename),
-        filename: job_filename,
         args: job_argv
       ).run
     end

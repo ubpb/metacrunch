@@ -6,17 +6,17 @@ module Metacrunch
     attr_reader :builder, :args
 
     class << self
-      def define(file_content = nil, filename: nil, args: nil, &block)
-        self.new(file_content, filename: filename, args: args, &block)
+      def define(file_content = nil, args: nil, &block)
+        self.new(file_content, args: args, &block)
       end
     end
 
-    def initialize(file_content = nil, filename: nil, args: nil, &block)
+    def initialize(file_content = nil, args: nil, &block)
       @builder = Dsl.new(self)
       @args = args
 
       if file_content
-        @builder.instance_eval(file_content, filename || "")
+        @builder.instance_eval(file_content, "Check your metacrunch Job at Line")
       elsif block_given?
         @builder.instance_eval(&block)
       end
