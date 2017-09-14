@@ -3,7 +3,7 @@ module Metacrunch
     require_relative "job/dsl"
     require_relative "job/buffer"
 
-    attr_reader :builder, :args
+    attr_reader :dsl, :args
 
     class << self
       def define(file_content = nil, args: nil, &block)
@@ -12,13 +12,13 @@ module Metacrunch
     end
 
     def initialize(file_content = nil, args: nil, &block)
-      @builder = Dsl.new(self)
+      @dsl = Dsl.new(self)
       @args = args
 
       if file_content
-        @builder.instance_eval(file_content, "Check your metacrunch Job at Line")
+        @dsl.instance_eval(file_content, "Check your metacrunch Job at Line")
       elsif block_given?
-        @builder.instance_eval(&block)
+        @dsl.instance_eval(&block)
       end
     end
 

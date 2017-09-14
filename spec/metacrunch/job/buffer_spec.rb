@@ -12,15 +12,15 @@ describe Metacrunch::Job::Buffer do
     end
 
     it "runs the transformation 10 times" do
-      expect(job.builder.instance_variable_get("@no_of_run")).to eq(10)
+      expect(job.dsl.instance_variable_get("@no_of_run")).to eq(10)
     end
 
     it "the first bulk contains the numbers 1..10" do
-      expect(job.builder.instance_variable_get("@bulks").first).to eq((1..10).to_a)
+      expect(job.dsl.instance_variable_get("@bulks").first).to eq((1..10).to_a)
     end
 
     it "the last bulk contains the numbers 91..95" do
-      expect(job.builder.instance_variable_get("@bulks").last).to eq((91..95).to_a)
+      expect(job.dsl.instance_variable_get("@bulks").last).to eq((91..95).to_a)
     end
   end
 

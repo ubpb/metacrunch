@@ -291,15 +291,15 @@ describe Metacrunch::Job do
       end
 
       it "runs pre process" do
-        expect(job.builder.instance_variable_get("@pre_process_called")).to be(true)
+        expect(job.dsl.instance_variable_get("@pre_process_called")).to be(true)
       end
 
       it "runs post process" do
-        expect(job.builder.instance_variable_get("@post_process_called")).to be(true)
+        expect(job.dsl.instance_variable_get("@post_process_called")).to be(true)
       end
 
       it "runs transformations" do
-        expect(job.builder.instance_variable_get("@transformation_called")).to be(true)
+        expect(job.dsl.instance_variable_get("@transformation_called")).to be(true)
       end
 
       it "writes to a destination" do
@@ -322,15 +322,15 @@ describe Metacrunch::Job do
       end
 
       it "runs pre process" do
-        expect(job.builder.instance_variable_get("@pre_process_called")).to be(true)
+        expect(job.dsl.instance_variable_get("@pre_process_called")).to be(true)
       end
 
       it "runs post process" do
-        expect(job.builder.instance_variable_get("@post_process_called")).to be(true)
+        expect(job.dsl.instance_variable_get("@post_process_called")).to be(true)
       end
 
       it "does not run transformations" do
-        expect(job.builder.instance_variable_get("@transformation_called")).to be_nil
+        expect(job.dsl.instance_variable_get("@transformation_called")).to be_nil
       end
 
       it "does not write to a destination" do
