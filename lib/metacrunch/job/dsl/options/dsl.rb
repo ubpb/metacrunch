@@ -1,5 +1,5 @@
 module Metacrunch
-  class Job::Dsl::OptionSupport::Dsl
+  class Job::Dsl::Options::Dsl
 
     def add(name, *args, default: nil, required: false)
       if default && required

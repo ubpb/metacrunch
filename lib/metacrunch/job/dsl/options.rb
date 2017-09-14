@@ -1,6 +1,6 @@
 module Metacrunch
-  class Job::Dsl::OptionSupport
-    require_relative "option_support/dsl"
+  class Job::Dsl::Options
+    require_relative "options/dsl"
 
     attr_reader :options
 

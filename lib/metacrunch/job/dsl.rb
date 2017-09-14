@@ -1,6 +1,6 @@
 module Metacrunch
   class Job::Dsl
-    require_relative "dsl/option_support"
+    require_relative "dsl/options"
 
     def initialize(job)
       @_job = job
@@ -28,7 +28,7 @@ module Metacrunch
 
     def options(require_args: false, &block)
       if block_given?
-        @_options = OptionSupport.new(@_job.args, require_args: require_args, &block).options
+        @_options = Options.new(@_job.args, require_args: require_args, &block).options
       else
         @_options ||= {}
       end
