@@ -6,7 +6,12 @@ module Metacrunch
     ARGS_SEPERATOR = "@@"
 
     def run
-      job_files = global_parser.parse!(global_argv)
+      global_args = global_argv()
+      job_args = job_argv()
+
+      job_files = global_parser.parse(global_args)
+      ARGV.clear
+      job_args.each {|arg| ARGV << arg}
 
       run!(job_files)
     end
@@ -32,8 +37,7 @@ module Metacrunch
     end
 
     def global_options
-      @global_options ||= {
-      }
+      @global_options ||= {}
     end
 
     def show_version
@@ -77,10 +81,7 @@ module Metacrunch
     end
 
     def run_job!(job_filename)
-      Metacrunch::Job.define(
-        File.read(job_filename),
-        args: job_argv
-      ).run
+      Metacrunch::Job.define(File.read(job_filename)).run
     end
 
   end

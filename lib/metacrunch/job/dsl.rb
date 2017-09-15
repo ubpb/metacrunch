@@ -28,7 +28,7 @@ module Metacrunch
 
     def options(require_args: false, &block)
       if block_given?
-        @_options = Options.new(@_job.args, require_args: require_args, &block).options
+        @_options = Options.new(require_args: require_args, &block).options
       else
         @_options ||= {}
       end

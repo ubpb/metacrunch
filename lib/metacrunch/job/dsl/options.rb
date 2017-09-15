@@ -4,7 +4,7 @@ module Metacrunch
 
     attr_reader :options
 
-    def initialize(args, require_args: false, &block)
+    def initialize(args = ARGV, require_args: false, &block)
       @options = {}
       dsl.instance_eval(&block)
 

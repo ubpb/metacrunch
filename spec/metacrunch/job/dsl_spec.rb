@@ -101,9 +101,13 @@ describe Metacrunch::Job::Dsl do
     end
   end
 
+  # Wee need to clear/set the ARGV because the tests would otherwise
+  # stumble upon arguments passed to the rspec runtime.
   describe "options" do
     context "when called with a block" do
       it "registers the options" do
+        ARGV.clear
+
         subject.options do
           add :foo, "-f", "--foo VALUE", default: "foo"
         end
@@ -111,9 +115,13 @@ describe Metacrunch::Job::Dsl do
         expect(subject.options[:foo]).to eq("foo")
       end
 
-      context "when args are present on the job object" do
+      context "when args are present on ARGV" do
         it "they override option values" do
-          job.instance_variable_set("@args", ["-f", "bar"])
+
+          ARGV.clear
+          ARGV << "-f"
+          ARGV << "bar"
+
           subject.options do
             add :foo, "-f", "--foo VALUE", default: "foo"
           end
@@ -124,13 +132,13 @@ describe Metacrunch::Job::Dsl do
     end
 
     context "when called without a block" do
-      before do
+      it "returns defined options" do
+        ARGV.clear
+
         subject.options do
           add :foo, default: "foo"
         end
-      end
 
-      it "returns defined options" do
         expect(subject.options.count).to be(1)
         expect(subject.options[:foo]).to eq("foo")
       end
