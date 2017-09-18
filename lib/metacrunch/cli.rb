@@ -3,17 +3,19 @@ require "optparse"
 module Metacrunch
   class Cli
 
-    ARGS_SEPERATOR = "@@"
-
     def run
-      global_args = global_argv()
-      job_args = job_argv()
-
-      job_files = global_parser.parse(global_args)
+      # Parse global options on order
+      job_argv = global_parser.order(ARGV)
+      # The first of the unparsed arguments is by definition the filename
+      # of the job.
+      job_file = job_argv[0]
+      # Manipulate ARGV so that the option handling for the job can work
       ARGV.clear
-      job_args.each {|arg| ARGV << arg}
-
-      run!(job_files)
+      job_argv[1..-1].each {|arg| ARGV << arg}
+      # Delete the old separator symbol for backward compatability
+      ARGV.delete_if{|arg| arg == "@@"}
+      # Finally run the job
+      run!(job_file)
     end
 
   private
@@ -36,10 +38,6 @@ module Metacrunch
       end
     end
 
-    def global_options
-      @global_options ||= {}
-    end
-
     def show_version
       puts Metacrunch::VERSION
       exit(0)
@@ -51,27 +49,13 @@ module Metacrunch
       exit(0)
     end
 
-    def global_argv
-      index = ARGV.index(ARGS_SEPERATOR)
-      if index == 0
-        []
-      else
-        @global_argv ||= index ? ARGV[0..index-1] : ARGV
-      end
-    end
-
-    def job_argv
-      index = ARGV.index(ARGS_SEPERATOR)
-      @job_argv ||= index ? ARGV[index+1..-1] : nil
-    end
-
-    def run!(job_files)
-      if job_files.empty?
+    def run!(job_file)
+      if job_file.blank?
         error "You need to provide a job file."
-      elsif job_files.count > 1
-        error "You must provide exactly one job file."
+      elsif !File.exists?(job_file)
+        error "The file `#{job_file}` doesn't exist."
       else
-        job_filename = File.expand_path(job_files.first)
+        job_filename = File.expand_path(job_file)
         dir = File.dirname(job_filename)
 
         Dir.chdir(dir) do

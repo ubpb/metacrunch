@@ -4,7 +4,7 @@ module Metacrunch
 
     attr_reader :options
 
-    def initialize(args = ARGV, require_args: false, &block)
+    def initialize(argv = ARGV, require_args: false, &block)
       @options = {}
       dsl.instance_eval(&block)
 
@@ -24,13 +24,13 @@ module Metacrunch
       end
 
       # Finally parse CLI options with OptionParser
-      args = parser.parse(args || [])
+      parser.parse!(argv)
 
       # Make sure required options are present
       ensure_required_options!(@options)
 
       # Make sure args are present if required
-      ensure_required_args!(args) if require_args
+      ensure_required_args!(argv) if require_args
     end
 
   private
@@ -63,8 +63,8 @@ module Metacrunch
       end
     end
 
-    def ensure_required_args!(args)
-      if args.blank?
+    def ensure_required_args!(argv)
+      if argv.blank?
         puts "Error: Required ARGS are missing."
         puts parser.help
 
