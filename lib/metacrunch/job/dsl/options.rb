@@ -31,22 +31,32 @@ module Metacrunch
 
       # Make sure args are present if required
       ensure_required_args!(argv) if require_args
+    rescue OptionParser::ParseError => e
+      error(e.message)
     end
 
   private
 
     def parser
-      @parser ||= OptionParser.new do |parser|
-        parser.banner = "Usage: metacrunch [options] JOB_FILE @@ [job-options] [ARGS]\nJob options:"
+      @parser ||= OptionParser.new do |opts|
+        opts.banner = <<-BANNER.strip_heredoc
+          #{ColorizedString["Job options:"].bold}
+        BANNER
       end
+    end
+
+    def dsl
+      @dsl ||= Dsl.new
     end
 
     def parser_options
       @parser_options ||= {}
     end
 
-    def dsl
-      @dsl ||= Dsl.new
+    def error(message)
+      puts ColorizedString["Error: #{message}\n"].red.bold
+      puts parser.help
+      exit(1)
     end
 
     def ensure_required_options!(options)
@@ -55,20 +65,14 @@ module Metacrunch
           long_option = parser_options[key].long.try(:[], 0)
           short_option = parser_options[key].short.try(:[], 0)
 
-          puts "Error: Required job option `#{long_option || short_option}` missing."
-          puts parser.help
-
-          exit(1)
+          error("Required job option `#{long_option || short_option}` missing.")
         end
       end
     end
 
     def ensure_required_args!(argv)
       if argv.blank?
-        puts "Error: Required ARGS are missing."
-        puts parser.help
-
-        exit(1)
+        error("Required ARGS are missing.")
       end
     end
 

@@ -11,11 +11,13 @@ module Metacrunch
       job_file = job_argv[0]
       # Manipulate ARGV so that the option handling for the job can work
       ARGV.clear
-      job_argv[1..-1].each {|arg| ARGV << arg}
+      job_argv[1..-1]&.each {|arg| ARGV << arg}
       # Delete the old separator symbol for backward compatability
       ARGV.delete_if{|arg| arg == "@@"}
       # Finally run the job
       run!(job_file)
+    rescue OptionParser::ParseError => e
+      error(e.message)
     end
 
   private
@@ -25,7 +27,7 @@ module Metacrunch
         opts.banner = <<-BANNER.strip_heredoc
           #{ColorizedString["Usage:"].bold}
 
-            metacrunch [options] JOB_FILE @@ [job-options] [ARGS...]
+            metacrunch [options] JOB_FILE [job-options] [ARGS...]
 
           #{ColorizedString["Options:"].bold}
         BANNER
@@ -33,8 +35,6 @@ module Metacrunch
         opts.on("-v", "--version", "Show metacrunch version and exit") do
           show_version
         end
-
-        opts.separator "\n"
       end
     end
 
