@@ -177,7 +177,7 @@ To get a list of available options for a job, use `--help` on the command line.
 ```
 $ bundle exec metacrunch my_etl_job.metacrunch --help
 
-Usage: metacrunch [options] JOB_FILE -- [job-options] [ARGS]
+Usage: metacrunch [options] JOB_FILE [job-options] [ARGS]
 Job options:
     -l, --log-level LEVEL            Log level (debug,info,warn,error)
                                      DEFAULT: info
@@ -186,6 +186,19 @@ Job options:
 ```
 
 To learn more about defining options take a look at the [reference below](#defining-job-options).
+
+#### Require non-option arguments
+
+All non-option arguments that get passed to the job when running are available to the `ARGV` constant. If your job requires such arguments (e.g. if you work with a list of files) you can require it.
+
+```ruby
+# File: my_etl_job.metacrunch
+
+options(require_args: true) do
+  # ...
+end
+
+```
 
 
 Running ETL jobs
