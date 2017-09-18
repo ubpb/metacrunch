@@ -1,8 +1,6 @@
 metacrunch
 ==========
 
-**THIS IS THE CURRENT DEVELOPMENT VERSION. USE THE [LATEST 3.X RELEASE](https://github.com/ubpb/metacrunch/releases/latest) FOR A STABLE VERSION.**
-
 [![Gem Version](https://badge.fury.io/rb/metacrunch.svg)](http://badge.fury.io/rb/metacrunch)
 [![Code Climate](https://codeclimate.com/github/ubpb/metacrunch/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch)
 [![Build Status](https://travis-ci.org/ubpb/metacrunch.svg)](https://travis-ci.org/ubpb/metacrunch)
@@ -17,6 +15,8 @@ Installation
 ```
 $ gem install metacrunch
 ```
+
+When upgrading from metacrunch 3.x, there are some breaking changes you need to address. See the [notes below](#upgrading) for details.
 
 
 Creating ETL jobs
@@ -59,7 +59,9 @@ You must declare a source to allow a job to run.
 ```ruby
 # File: my_etl_job.metacrunch
 
-source Metacrunch::Fs::Reader.new(args)
+source [1,2,3,4]
+# or ...
+source Metacrunch::Fs::Reader.new(ARGV)
 # or ...
 source MySource.new
 ```
@@ -76,6 +78,8 @@ If you return `nil` the current data object will be dismissed and the next trans
 
 ```ruby
 # File: my_etl_job.metacrunch
+
+# Array implements #each and therefore is a valid source
 source [1,2,3,4,5,6,7,8,9]
 
 # A transformation is implemented with a `callable` object (any 
@@ -117,7 +121,7 @@ transformation ->(bulk) {
 
 #### Defining a destination
 
-A destination (aka. a writer) is an object that writes the transformed data to an external system. Use one of the build-in or 3rd party destinations or implement it by yourself. Implementing destinations is easy – [see notes below](#implementing-destinations). A destination receives the return value from the last transformation as a parameter if the return value from the last transformation was not `nil`.
+A destination is an object that writes the transformed data to an external system. Use one of the build-in or 3rd party destinations or implement it by yourself. Implementing destinations is easy – [see notes below](#implementing-destinations). A destination receives the return value from the last transformation as a parameter if the return value from the last transformation was not `nil`.
 
 Using destinations is optional. In most cases using the last transformation to write the data to an external system is fine. Destinations are useful if the required code is more complex.
 
@@ -163,7 +167,7 @@ In this example we declare two options `log_level` and `database_url`. `log_leve
 To set/override these options use the command line.
 
 ```
-$ bundle exec metacrunch my_etl_job.metacrunch @@ --log-level debug
+$ bundle exec metacrunch my_etl_job.metacrunch --log-level debug
 ```
 
 This will set the `options[:log_level]` to `debug`.
@@ -171,7 +175,7 @@ This will set the `options[:log_level]` to `debug`.
 To get a list of available options for a job, use `--help` on the command line.
 
 ```
-$ bundle exec metacrunch my_etl_job.metacrunch @@ --help
+$ bundle exec metacrunch my_etl_job.metacrunch --help
 
 Usage: metacrunch [options] JOB_FILE -- [job-options] [ARGS]
 Job options:
@@ -204,12 +208,10 @@ $ bundle exec metacrunch my_etl_job.metacrunch
 
 Depending on your environment `bundle exec` may not be required (e.g. if you have rubygems-bundler installed) but we recommend using it whenever you have a Gemfile you like to use. When using Bundler make sure to add `gem "metacrunch"` to the Gemfile.
 
-To pass options to the job, separate job options from the metacrunch command options using the `--` separator.
-
-Use the following syntax
+Use the following syntax to run a metacrunch job
 
 ```
-$ [bundle exec] metacrunch [COMMAND_OPTIONS] JOB_FILE [-- [JOB_OPTIONS] [JOB_ARGS...]]
+$ [bundle exec] metacrunch [COMMAND_OPTIONS] JOB_FILE [JOB_OPTIONS] [JOB_ARGS...]
 ```
 
 
@@ -340,15 +342,18 @@ Built in sources and destinations
 
 TBD.
 
-Defining job dependencies
--------------------------
+Upgrading
+---------
 
-TBD.
+#### 3.x -> 4.x
 
-Defining job options
---------------------
+When upgrading from metacrunch 3.x, there are some breaking changes you need to address.
 
-TBD.
+* There is now only one `source` and `destination`. If you have more than one in your job file the last definition will used.
+* There is no `transformation_buffer` anymore. Instead set `buffer_size` as an option to `transformation`.
+* `transformation`, `pre_process` and `post_process` can't be implemented using a block anymore. Always use a `callable` (E.g. Lambda, Proc or any object responding to `#call`).
+* When running jobs via the CLI you do not need to separate the arguments passed to metacrunch from the arguments passed to the job with `@@`.
+* The `args` function to get the non-option arguments passed to a job has been removed. Use `ARGV` instead.
 
 License
 -------
