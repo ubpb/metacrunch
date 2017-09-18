@@ -115,8 +115,8 @@ describe Metacrunch::Job::Dsl do
         expect(subject.options[:foo]).to eq("foo")
       end
 
-      context "when args are present on ARGV" do
-        it "they override option values" do
+      context "when options are present on ARGV" do
+        it "they override default values" do
 
           ARGV.clear
           ARGV << "-f"
