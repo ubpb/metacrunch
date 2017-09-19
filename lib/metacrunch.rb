@@ -1,7 +1,6 @@
 require "active_support"
 require "active_support/core_ext"
 require "colorized_string"
-require "parallel"
 
 module Metacrunch
   require_relative "metacrunch/version"

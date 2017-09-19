@@ -19,7 +19,6 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "activesupport", ">= 4.2", "< 5.1"
   spec.add_dependency "colorize",      ">= 0.8"
-  spec.add_dependency "parallel",      "~> 1.9"
   spec.add_dependency "sequel",        "~> 4.33"
   spec.add_dependency "redis",         "~> 3.3"
 end
