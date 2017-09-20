@@ -18,5 +18,4 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "activesupport", ">= 5.1.0"
   spec.add_dependency "colorize",      ">= 0.8.1"
-  spec.add_dependency "redis",         ">= 4.0.0"
 end
