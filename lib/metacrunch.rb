@@ -7,6 +7,5 @@ module Metacrunch
   require_relative "metacrunch/cli"
   require_relative "metacrunch/job"
   require_relative "metacrunch/fs"
-  require_relative "metacrunch/db"
   require_relative "metacrunch/redis"
 end

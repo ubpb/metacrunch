@@ -6,7 +6,6 @@ group :development do
   gem "bundler", ">= 1.15"
   gem "rake",    ">= 12.1"
   gem "rspec",   ">= 3.5.0", "< 4.0.0"
-  gem "sqlite3", ">= 1.3.11"
 
   if !ENV["CI"]
     gem "pry-byebug", ">= 3.5.0"
