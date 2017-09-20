@@ -1,3 +1,3 @@
 module Metacrunch
-  VERSION = "4.0.0.dev"
+  VERSION = "4.0.0"
 end
