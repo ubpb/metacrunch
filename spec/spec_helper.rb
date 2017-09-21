@@ -1,4 +1,4 @@
-require "pry"
+require "pry" if !ENV["CI"]
 require "simplecov"
 
 require "metacrunch"
