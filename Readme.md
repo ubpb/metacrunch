@@ -16,7 +16,7 @@ Installation
 $ gem install metacrunch
 ```
 
-When upgrading from metacrunch 3.x, there are some breaking changes you need to address. See the [notes below](#upgrading) for details.
+*Note: When upgrading from metacrunch 3.x, there are some breaking changes you need to address. See the [notes below](#upgrading) for details.*
 
 
 Creating ETL jobs
@@ -61,7 +61,7 @@ You must declare a source to allow a job to run.
 
 source [1,2,3,4]
 # or ...
-source Metacrunch::Fs::Reader.new(ARGV)
+source Metacrunch::File::Source.new(ARGV)
 # or ...
 source MySource.new
 ```
@@ -356,9 +356,10 @@ When upgrading from metacrunch 3.x, there are some breaking changes you need to 
 * There is no `transformation_buffer` anymore. Instead set `buffer_size` as an option to `transformation`.
 * `transformation`, `pre_process` and `post_process` can't be implemented using a block anymore. Always use a `callable` (E.g. Lambda, Proc or any object responding to `#call`).
 * When running jobs via the CLI you do not need to separate the arguments passed to metacrunch from the arguments passed to the job with `@@`.
-* The `args` function to get the non-option arguments passed to a job has been removed. Use `ARGV` instead.
-* DB package: `Metacrunch::Db` classes has been moved into the gem package [metacrunch-db](https://github.com/ubpb/metacrunch-db).
-* Redis package: `Metacrunch::Redis` classes has been moved into gem package [metacrunch-redis](https://github.com/ubpb/metacrunch-redis).
+* The `args` function used to get the non-option arguments passed to a job has been removed. Use `ARGV` instead.
+* `Metacrunch::Db` classes have been moved into the [metacrunch-db](https://github.com/ubpb/metacrunch-db) gem package.
+* `Metacrunch::Redis` classes have been moved into the [metacrunch-redis](https://github.com/ubpb/metacrunch-redis) gem package.
+* `Metacrunch::File` classes have been moved into the [metacrunch-file](https://github.com/ubpb/metacrunch-file) gem package.
 
 License
 -------
