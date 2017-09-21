@@ -52,7 +52,7 @@ require_relative "./some/other/ruby/file"
 
 #### Defining a source
 
-A source is an object that reads data (e.g. from a file or an external system) into the metacrunch processing pipeline. Use one of the build-in or third party sources or implement it by yourself. Implementing sources is easy – a source can be any Ruby object that responds to `#each`. For more information on how to implement sources [see notes below](#implementing-sources).
+A source is an object that reads data (e.g. from a file or an external system) into the metacrunch processing pipeline. Implementing sources is easy – a source can be any Ruby object that responds to `#each`. For more information on how to implement sources [see notes below](#implementing-sources).
 
 You must declare a source to allow a job to run.
 
@@ -65,8 +65,6 @@ source Metacrunch::Fs::Reader.new(ARGV)
 # or ...
 source MySource.new
 ```
-
-This example uses a build-in file reader source. To learn more about the build-in sources see [notes below](#built-in-sources-and-destinations).
 
 #### Defining transformations
 
@@ -121,7 +119,7 @@ transformation ->(bulk) {
 
 #### Defining a destination
 
-A destination is an object that writes the transformed data to an external system. Use one of the build-in or 3rd party destinations or implement it by yourself. Implementing destinations is easy – [see notes below](#implementing-destinations). A destination receives the return value from the last transformation as a parameter if the return value from the last transformation was not `nil`.
+A destination is an object that writes the transformed data to an external system. Implementing destinations is easy – [see notes below](#implementing-destinations). A destination receives the return value from the last transformation as a parameter if the return value from the last transformation was not `nil`.
 
 Using destinations is optional. In most cases using the last transformation to write the data to an external system is fine. Destinations are useful if the required code is more complex.
 
@@ -130,8 +128,6 @@ Using destinations is optional. In most cases using the last transformation to w
 
 destination MyDestination.new
 ```
-
-This example uses a custom destination. To learn more about the build-in destinations see [notes below](#built-in-sources-and-destinations).
 
 #### Pre/Post process 
 
@@ -349,12 +345,6 @@ destination MyDestination.new
 
 ```
 
-
-Built in sources and destinations
----------------------------------
-
-TBD.
-
 Upgrading
 ---------
 
@@ -367,6 +357,8 @@ When upgrading from metacrunch 3.x, there are some breaking changes you need to 
 * `transformation`, `pre_process` and `post_process` can't be implemented using a block anymore. Always use a `callable` (E.g. Lambda, Proc or any object responding to `#call`).
 * When running jobs via the CLI you do not need to separate the arguments passed to metacrunch from the arguments passed to the job with `@@`.
 * The `args` function to get the non-option arguments passed to a job has been removed. Use `ARGV` instead.
+* DB package: `Metacrunch::Db` classes has been moved into the gem package [metacrunch-db](https://github.com/ubpb/metacrunch-db).
+* Redis package: `Metacrunch::Redis` classes has been moved into gem package [metacrunch-redis](https://github.com/ubpb/metacrunch-redis).
 
 License
 -------
