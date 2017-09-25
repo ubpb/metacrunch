@@ -77,12 +77,12 @@ module Metacrunch
       if source
         # Run transformation for each data object available in source
         source.each do |data|
-          run_transformations(data)
+          data = run_transformations(data)
           write_destination(data)
         end
 
         # Run all transformations a last time to flush existing buffers
-        run_transformations(data = nil, flush_buffers: true)
+        data = run_transformations(data = nil, flush_buffers: true)
         write_destination(data)
 
         # Close destination
@@ -130,6 +130,8 @@ module Metacrunch
           data = transformation.call(data) if data.present?
         end
       end
+
+      data
     end
 
     def write_destination(data)
