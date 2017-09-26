@@ -82,7 +82,7 @@ module Metacrunch
         end
 
         # Run all transformations a last time to flush existing buffers
-        data = run_transformations(data = nil, flush_buffers: true)
+        data = run_transformations(nil, flush_buffers: true)
         write_destination(data)
 
         # Close destination
@@ -120,14 +120,14 @@ module Metacrunch
     def run_transformations(data, flush_buffers: false)
       transformations.each do |transformation|
         if transformation.is_a?(Buffer)
-          if data.present?
+          if data
             data = transformation.buffer(data)
             data = transformation.flush if flush_buffers
           else
             data = transformation.flush
           end
         else
-          data = transformation.call(data) if data.present?
+          data = transformation.call(data) if data
         end
       end
 
@@ -135,7 +135,7 @@ module Metacrunch
     end
 
     def write_destination(data)
-      destination.write(data) if destination
+      destination.write(data) if destination && data
     end
 
   end
