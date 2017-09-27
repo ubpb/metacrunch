@@ -3,19 +3,15 @@ source "https://rubygems.org"
 gemspec
 
 group :development do
-  gem "bundler",      ">= 1.7"
-  gem "rake",         ">= 11.1"
-  gem "rspec",        ">= 3.0.0",  "< 4.0.0"
-  gem "simplecov",    ">= 0.11.0"
+  gem "bundler", ">= 1.15"
+  gem "rake",    ">= 12.1"
+  gem "rspec",   ">= 3.5.0", "< 4.0.0"
 
   if !ENV["CI"]
-    gem "hashdiff",   ">= 0.3.0", platform: :ruby
-    gem "pry-byebug", ">= 3.3.0", platform: :ruby
-    gem "pry-rescue", ">= 1.4.2", platform: :ruby
-    gem "pry-state",  ">= 0.1.7", platform: :ruby
+    gem "pry-byebug", ">= 3.5.0"
   end
 end
 
 group :test do
-  gem "codeclimate-test-reporter", ">= 0.5.0", require: nil
+  gem "simplecov", ">= 0.15.0"
 end

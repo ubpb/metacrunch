@@ -1,11 +1,8 @@
 metacrunch-marcxml
 ==================
 
-**THIS IS THE CURRENT DEVELOPMENT VERSION. USE THE [LATEST 1.X RELEASE](https://github.com/ubpb/metacrunch-marcxml/releases/latest) FOR A STABLE VERSION.**
-
 [![Build Status](https://travis-ci.org/ubpb/metacrunch-marcxml.svg)](https://travis-ci.org/ubpb/metacrunch-marcxml)
 [![Code Climate](https://codeclimate.com/github/ubpb/metacrunch-marcxml/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch-marcxml)
-[![Test Coverage](https://codeclimate.com/github/ubpb/metacrunch-marcxml/badges/coverage.svg)](https://codeclimate.com/github/ubpb/metacrunch-marcxml/coverage)
 
 This is the official [MARCXML](http://www.loc.gov/standards/marcxml/) package for the [metacrunch ETL toolkit](https://github.com/ubpb/metacrunch). It allows you to access MARCXML data by a simple and powerful Ruby API.
 
@@ -68,10 +65,10 @@ value = controlfield.value
 **Accessing data fields / sub fields**
 ```ruby
 # Find fields matching tag=100 and indicator1=1 (author)
-set = document.datafields(100, ind1: "1")
+datafield_set = document.datafields(100, ind1: "1")
 # => #<Metacrunch::Marcxml::Document::DatafieldSet:0x007fd4c4ce4b40 ...>
 
-first_author = set.first # set is an Enumerable
+first_author = datafield_set.first # set is an Enumerable
 # => #<Metacrunch::Marcxml::Document::Datafield:0x007fd4c5129480 ...>
 
 # Get the subfields matching code=a (author name)

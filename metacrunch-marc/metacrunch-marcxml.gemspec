@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.version       = Metacrunch::Marcxml::VERSION
   spec.authors       = ["René Sprotte"]
   spec.email         = "r.sprotte@ub.uni-paderborn.de"
-  spec.summary       = %q{MARCXML tools for metacrunch}
+  spec.summary       = %q{MARCXML package for the metacrunch ETL toolkit.}
   spec.homepage      = "http://github.com/ubpb/metacrunch-marcxml"
   spec.license       = "MIT"
 
@@ -17,8 +17,8 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "activesupport", ">= 4.2"
+  spec.add_dependency "activesupport", ">= 5.1"
   spec.add_dependency "htmlentities",  ">= 4.3"
-  spec.add_dependency "ox",            ">= 2.4"
+  spec.add_dependency "ox",            ">= 2.8"
 end
 
