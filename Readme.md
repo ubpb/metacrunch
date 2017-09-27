@@ -163,7 +163,7 @@ In this example we declare two options `log_level` and `database_url`. `log_leve
 To set/override these options use the command line.
 
 ```
-$ bundle exec metacrunch my_etl_job.metacrunch --log-level debug
+$ metacrunch my_etl_job.metacrunch --log-level debug
 ```
 
 This will set the `options[:log_level]` to `debug`.
@@ -171,9 +171,8 @@ This will set the `options[:log_level]` to `debug`.
 To get a list of available options for a job, use `--help` on the command line.
 
 ```
-$ bundle exec metacrunch my_etl_job.metacrunch --help
+$ metacrunch my_etl_job.metacrunch --help
 
-Usage: metacrunch [options] JOB_FILE [job-options] [ARGS]
 Job options:
     -l, --log-level LEVEL            Log level (debug,info,warn,error)
                                      DEFAULT: info
@@ -215,12 +214,17 @@ If you use [Bundler](http://bundler.io) to manage dependencies for your jobs mak
 $ bundle exec metacrunch my_etl_job.metacrunch
 ```
 
-Depending on your environment `bundle exec` may not be required (e.g. if you have rubygems-bundler installed) but we recommend using it whenever you have a Gemfile you like to use. When using Bundler make sure to add `gem "metacrunch"` to the Gemfile.
+In your job file use `Bundler.require` to require the dependencies from your `Gemfile`.
+
+```ruby
+# File: my_etl_job.metacrunch
+Bundler.require
+```
 
 Use the following syntax to run a metacrunch job
 
 ```
-$ [bundle exec] metacrunch [COMMAND_OPTIONS] JOB_FILE [JOB_OPTIONS] [JOB_ARGS...]
+$ [bundle exec] metacrunch [options] JOB_FILE [job-options] [ARGS...]
 ```
 
 
