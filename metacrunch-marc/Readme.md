@@ -1,8 +1,9 @@
 metacrunch-marcxml
 ==================
 
-[![Build Status](https://travis-ci.org/ubpb/metacrunch-marcxml.svg)](https://travis-ci.org/ubpb/metacrunch-marcxml)
+[![Gem Version](https://badge.fury.io/rb/metacrunch-marcxml.svg)](http://badge.fury.io/rb/metacrunch-marcxml)
 [![Code Climate](https://codeclimate.com/github/ubpb/metacrunch-marcxml/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch-marcxml)
+[![Build Status](https://travis-ci.org/ubpb/metacrunch-marcxml.svg)](https://travis-ci.org/ubpb/metacrunch-marcxml)
 
 This is the official [MARCXML](http://www.loc.gov/standards/marcxml/) package for the [metacrunch ETL toolkit](https://github.com/ubpb/metacrunch). It allows you to access MARCXML data by a simple and powerful Ruby API.
 
