@@ -349,6 +349,15 @@ destination MyDestination.new
 
 ```
 
+Official extension packages
+---------------------------
+
+* [metacrunch-db](https://github.com/ubpb/metacrunch-db): SQL Database package
+* [metacrunch-file](https://github.com/ubpb/metacrunch-file): File package
+* [metacrunch-elasticsearch](https://github.com/ubpb/metacrunch-elasticsearch): [Elasticsearch](https://www.elastic.co) package
+* [metacrunch-redis](https://github.com/ubpb/metacrunch-redis): [Redis](https://redis.io) package
+* [metacrunch-marcxml](https://github.com/ubpb/metacrunch-marcxml): [MARCXML](http://www.loc.gov/standards/marcxml/) package
+
 Upgrading
 ---------
 
