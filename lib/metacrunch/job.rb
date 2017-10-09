@@ -14,6 +14,8 @@ module Metacrunch
     def initialize(file_content = nil, &block)
       @dsl = Dsl.new(self)
 
+      @deprecator = ActiveSupport::Deprecation.new("5.0.0", "metacrunch")
+
       if file_content
         @dsl.instance_eval(file_content, "Check your metacrunch Job at Line")
       elsif block_given?
@@ -61,11 +63,16 @@ module Metacrunch
       @transformations ||= []
     end
 
-    def add_transformation(callable, buffer_size: nil)
+    def add_transformation(callable, buffer_size: nil, buffer: nil)
       ensure_callable!(callable)
 
-      if buffer_size && buffer_size.to_i > 0
-        transformations << Metacrunch::Job::Buffer.new(buffer_size)
+      if buffer_size && buffer_size.is_a?(Numeric)
+        @deprecator.deprecation_warning(:buffer_size, :buffer)
+        buffer = buffer_size
+      end
+
+      if buffer
+        transformations << Metacrunch::Job::Buffer.new(buffer)
       end
 
       transformations << callable
@@ -120,11 +127,13 @@ module Metacrunch
     def run_transformations(data, flush_buffers: false)
       transformations.each do |transformation|
         if transformation.is_a?(Buffer)
+          buffer = transformation
+
           if data
-            data = transformation.buffer(data)
-            data = transformation.flush if flush_buffers
+            data = buffer.buffer(data)
+            data = buffer.flush if flush_buffers
           else
-            data = transformation.flush
+            data = buffer.flush
           end
         else
           data = transformation.call(data) if data

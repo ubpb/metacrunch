@@ -102,19 +102,27 @@ transformation MyTransformation.new
 
 Sometimes it is useful to buffer data between transformation steps to allow a transformation to work on larger bulks of data. metacrunch uses a simple transformation buffer to achieve this.
 
-To use a transformation buffer pass the buffer size as an option to the transformation.
+To use a transformation buffer add the `:buffer` option to your transformation. You can pass a positive integer value as a buffer size, or as an advanced option you can pass a `Proc` object. The buffer flushes every time the buffer reaches the given size or if the `Proc` returns `true`.
 
 ```ruby
 # File: my_etl_job.metacrunch
 
 source 1..95 # A range responds to #each and is a valid source
 
+# A buffer with a fixed size
 transformation ->(bulk) { 
   # this transformation is called when the buffer 
   # is filled with 10 objects or if the source has
   # yielded the last data object.
   # bulk would be: [1,...,10], [11,...,20], ..., [91,...,95]
-}, buffer_size: 10
+}, buffer: 10
+
+# A buffer that uses a Proc
+transformation ->(bulk) { 
+  # ...
+}, buffer: -> {
+  true if some_condition
+}
 ```
 
 #### Defining a destination
@@ -366,7 +374,7 @@ Upgrading
 When upgrading from metacrunch 3.x, there are some breaking changes you need to address.
 
 * There is now only one `source` and `destination`. If you have more than one in your job file the last definition will used.
-* There is no `transformation_buffer` anymore. Instead set `buffer_size` as an option to `transformation`.
+* There is no `transformation_buffer` anymore. Instead set `buffer` as an option to `transformation`.
 * `transformation`, `pre_process` and `post_process` can't be implemented using a block anymore. Always use a `callable` (E.g. Lambda, Proc or any object responding to `#call`).
 * When running jobs via the CLI you do not need to separate the arguments passed to metacrunch from the arguments passed to the job with `@@`.
 * The `args` function used to get the non-option arguments passed to a job has been removed. Use `ARGV` instead.

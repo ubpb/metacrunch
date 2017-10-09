@@ -93,7 +93,23 @@ describe Metacrunch::Job::Dsl do
 
     context "when called with a callable and a buffer size > 0" do
       it "adds the buffer and the callable as a transformation" do
-        job.add_transformation(-> {}, buffer_size: 1000)
+        job.add_transformation(-> {}, buffer: 1000)
+        expect(job.transformations.count).to eq(2)
+        expect(job.transformations[0]).to be_a(Metacrunch::Job::Buffer)
+        expect(job.transformations[1]).to be_a(Proc)
+      end
+    end
+
+    context "when called with a callable and a buffer size <= 0" do
+      it "raises an argument error" do
+        expect { job.add_transformation(-> {}, buffer: 0) }.to raise_error(ArgumentError)
+        expect { job.add_transformation(-> {}, buffer: -2) }.to raise_error(ArgumentError)
+      end
+    end
+
+    context "when called with a callable and a buffer function" do
+      it "adds the buffer and the callable as a transformation" do
+        job.add_transformation(-> {}, buffer: -> {})
         expect(job.transformations.count).to eq(2)
         expect(job.transformations[0]).to be_a(Metacrunch::Job::Buffer)
         expect(job.transformations[1]).to be_a(Proc)
