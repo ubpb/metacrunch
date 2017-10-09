@@ -33,6 +33,8 @@ $ gem install metacrunch-marcxml
 Usage example
 -------------
 
+*Note: For working examples on how to use this package in a metacrunch job check out our [demo repository](https://github.com/ubpb/metacrunch-demo).*
+
 **Loading the library**
 ```ruby
 require "metacrunch/marcxml"
