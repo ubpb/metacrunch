@@ -72,7 +72,10 @@ To process, transform or manipulate data use the `#transformation` hook. A trans
 
 The current data object (the last object yielded by the source) will be passed to the first transformation as a parameter. The return value of a transformation will then be passed to the next transformation and so on.
 
-If you return `nil` the current data object will be dismissed and the next transformation won't be called.
+There are two exceptions to that rule.
+
+* If you return `nil` the current data object will be dismissed and the next transformation won't be called.
+* If you return an `Enumerator` the object will be expanded and the following transformations will be called with each element of the `Enumerator`.
 
 ```ruby
 # File: my_etl_job.metacrunch

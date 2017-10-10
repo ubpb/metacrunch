@@ -357,6 +357,29 @@ describe Metacrunch::Job do
         expect(job.destination.instance_variable_get("@close_called")).to be_nil
       end
     end
+
+    context "when a transformation returns an Enumerator" do
+      let!(:job) do
+        Metacrunch::Job.define do
+          source source [[1,2], [3,4], [5,6]]
+          transformation ->(numbers) {
+            numbers.each
+          }
+          transformation ->(number) {
+            (@numbers || @numbers = []) << number
+            number
+          }
+          transformation ->(bulk) {
+            (@bulks || @bulks = []) << bulk
+          }, buffer: 3
+        end.run
+      end
+
+      it "works" do
+        expect(job.dsl.instance_variable_get("@numbers")).to eq([1, 2, 3, 4, 5, 6])
+        expect(job.dsl.instance_variable_get("@bulks")).to eq([[1, 2, 3], [4, 5, 6]])
+      end
+    end
   end
 
 end

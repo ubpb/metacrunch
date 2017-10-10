@@ -83,12 +83,12 @@ class Metacrunch::Job # http://valve.github.io/blog/2013/10/26/constant-resoluti
     if source
       # Run transformation for each data object available in source
       source.each do |data|
-        data = run_transformations(data)
+        data = run_transformations(transformations, data)
         write_destination(data)
       end
 
       # Run all transformations a last time to flush existing buffers
-      data = run_transformations(nil, flush_buffers: true)
+      data = run_transformations(transformations, nil, flush_buffers: true)
       write_destination(data)
 
       # Close destination
@@ -123,19 +123,18 @@ private
     post_process.call if post_process
   end
 
-  def run_transformations(data, flush_buffers: false)
-    transformations.each do |transformation|
+  def run_transformations(transformations, data, flush_buffers: false)
+    transformations.each.with_index do |transformation, i|
       if transformation.is_a?(Buffer)
-        buffer = transformation
-
-        if data
-          data = buffer.buffer(data)
-          data = buffer.flush if flush_buffers
-        else
-          data = buffer.flush
-        end
+        data = transformation.buffer(data) if data
+        data = transformation.flush if flush_buffers
       else
         data = transformation.call(data) if data
+
+        if data&.is_a?(Enumerator)
+          data.each { |d| run_transformations(transformations.slice(i+1..-1), d, flush_buffers: flush_buffers) }
+          data = nil
+        end
       end
     end
 
