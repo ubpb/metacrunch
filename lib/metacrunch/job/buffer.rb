@@ -22,7 +22,7 @@ module Metacrunch
     end
 
     def flush
-      @buffer
+      @buffer.presence
     ensure
       @buffer = []
     end
