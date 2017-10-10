@@ -143,7 +143,7 @@ private
   end
 
   def write_destination(data)
-    destination.write(data) if destination && data
+    destination.write(data) if destination && data.present?
   end
 
 end
