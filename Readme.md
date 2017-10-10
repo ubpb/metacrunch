@@ -119,7 +119,7 @@ transformation ->(bulk) {
 
 # A buffer that uses a Proc
 transformation ->(bulk) { 
-  # ...
+  # Called when the buffer `Proc` returns `true`
 }, buffer: -> {
   true if some_condition
 }
