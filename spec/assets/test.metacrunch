@@ -1,0 +1,5 @@
+source 1..10
+
+post_process -> do
+  @job_was_run = true
+end
