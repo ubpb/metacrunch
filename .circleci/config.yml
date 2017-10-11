@@ -17,11 +17,17 @@ jobs:
           name: install dependencies
           command: bundle install --jobs=4 --retry=3 --path vendor/bundle
 
+      - run: curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+      - run: chmod +x ./cc-test-reporter
+      - run: ./cc-test-reporter before-build
+
       - run:
           name: run tests
           command: |
             mkdir /tmp/test-results
             bundle exec rspec --format progress --format RspecJunitFormatter --out /tmp/test-results/rspec.xml
+
+      - run: ./cc-test-reporter after-build --exit-code $?
 
       - store_test_results:
           path: /tmp/test-results
