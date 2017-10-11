@@ -1,10 +1,10 @@
 require "pry" if !ENV["CI"]
+
 require "simplecov"
+SimpleCov.start
 
 require "metacrunch"
 require "metacrunch/test_utils"
-
-SimpleCov.start
 
 RSpec.configure do |config|
 end
