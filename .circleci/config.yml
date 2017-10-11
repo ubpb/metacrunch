@@ -14,6 +14,10 @@ jobs:
       - checkout
 
       - run:
+          name: foo
+          command: echo $CC_TEST_REPORTER_ID
+
+      - run:
           name: install dependencies
           command: bundle install --jobs=4 --retry=3 --path vendor/bundle
 
