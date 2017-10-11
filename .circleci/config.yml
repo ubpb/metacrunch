@@ -14,29 +14,23 @@ jobs:
       - checkout
 
       - run:
-          name: foo
-          command: echo $CC_TEST_REPORTER_ID
+        name: install dependencies
+        command: bundle install --jobs=4 --retry=3 --path vendor/bundle
 
       - run:
-          name: install dependencies
-          command: bundle install --jobs=4 --retry=3 --path vendor/bundle
-
-      - run: curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-      - run: chmod +x ./cc-test-reporter
-      - run: ./cc-test-reporter before-build
+        name: install CodeClimate test coverage reporter
+        command: |
+          curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+          chmod +x ./cc-test-reporter
+          ./cc-test-reporter before-build
 
       - run:
-          name: run tests
-          command: |
-            mkdir /tmp/test-results
-            bundle exec rspec --format progress --format RspecJunitFormatter --out /tmp/test-results/rspec.xml
+        name: run tests
+        command: |
+          mkdir /tmp/test-results
+          bundle exec rspec --format progress --format RspecJunitFormatter --out /tmp/test-results/rspec.xml
 
-      - run: ./cc-test-reporter after-build --exit-code $?
-
-      - store_test_results:
-          path: /tmp/test-results
-
-      - store_artifacts:
-          path: /tmp/test-results
-          destination: test-results
+      - run:
+        name: upload test coverage report to CodeClimate
+        command: ./cc-test-reporter after-build --exit-code $?
 
