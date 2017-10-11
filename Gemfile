@@ -14,4 +14,5 @@ end
 
 group :test do
   gem "simplecov", ">= 0.15.0"
+  gem "rspec_junit_formatter", ">= 0.3.0"
 end
