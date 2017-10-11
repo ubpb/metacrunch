@@ -5,7 +5,6 @@ gemspec
 group :development do
   gem "bundler", ">= 1.15"
   gem "rake",    ">= 12.1"
-  gem "rspec",   ">= 3.5.0", "< 4.0.0"
 
   if !ENV["CI"]
     gem "pry-byebug", ">= 3.5.0"
@@ -13,5 +12,7 @@ group :development do
 end
 
 group :test do
-  gem "simplecov", ">= 0.15.0"
+  gem "rspec",                 ">= 3.5.0", "< 4.0.0"
+  gem "rspec_junit_formatter", ">= 0.3.0"
+  gem "simplecov",             ">= 0.15.0"
 end

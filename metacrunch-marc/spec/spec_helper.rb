@@ -1,8 +1,11 @@
 require "pry" if !ENV["CI"]
-require "simplecov"
-require "metacrunch/marcxml"
 
-SimpleCov.start
+require "simplecov"
+SimpleCov.start do
+  add_filter %r{^/spec/}
+end
+
+require "metacrunch/marcxml"
 
 RSpec.configure do |config|
 end
