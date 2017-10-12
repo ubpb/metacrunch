@@ -291,6 +291,14 @@ describe Metacrunch::Job do
         expect(job.transformations[1]).to be_a(Proc)
       end
     end
+
+    context "when buffer_size is used" do
+      it "outputs a deprecation warning on stderr" do
+        expect {
+          job.add_transformation(-> {}, buffer_size: 10)
+        }.to output(/DEPRECATION WARNING/).to_stderr
+      end
+    end
   end
 
   describe "#run" do
