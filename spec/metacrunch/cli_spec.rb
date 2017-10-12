@@ -20,7 +20,7 @@ describe Metacrunch::Cli do
       end
     end
 
-    context "job file does't exists" do
+    context "job file doesn't exists" do
       it "shows error and exit" do
         ARGV << "foo.metacrunch"
         expect {
