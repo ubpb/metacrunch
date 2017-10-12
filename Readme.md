@@ -29,7 +29,7 @@ metacrunch gives you a simple DSL ([Domain-specific language](https://en.wikiped
 
 Let's walk through the main steps of creating ETL jobs with metacrunch. For a collection of working examples check out our [metacrunch-demo](https://github.com/ubpb/metacrunch-demo) repository.
 
-#### It's Ruby
+### It's Ruby
 
 Every `.metacrunch` job is a regular Ruby file and you can use any valid Ruby code like declaring methods, classes, variables, requiring other Ruby 
 files and so on. 
@@ -51,11 +51,13 @@ require "SomeGem"
 require_relative "./some/other/ruby/file"
 ```
 
-#### Defining a source
+### Defining a source
 
 A source is an object that reads data (e.g. from a file or an external system) into the metacrunch processing pipeline. Implementing sources is easy – a source is a Ruby `Enumerable` (any object that responds to the `#each` method). For more information on how to implement sources [see notes below](#implementing-sources).
 
 You must declare a source to allow a job to run.
+
+A source iterates over it's elements and yields data object by data object into the transformation pipeline, starting with the first transformation.
 
 ```ruby
 # File: my_etl_job.metacrunch
@@ -67,15 +69,15 @@ source Metacrunch::File::Source.new(ARGV)
 source MySource.new
 ```
 
-#### Defining transformations
+### Defining transformations
 
-To process, transform or manipulate data use the `#transformation` hook. A transformation is implemented with a `callable` object (any Ruby object that responds to `#call`. E.g. a lambda). To learn more about transformations check the section about [implementing transformations](#implementing-transformations) below.
+To process, transform or manipulate data use the `#transformation` hook. A transformation is implemented with a `callable` object (any Ruby object that responds to `#call`. E.g. a `Proc`). To learn more about transformations check the section about [implementing transformations](#implementing-transformations) below.
 
-The current data object (the last object yielded by the source) will be passed to the first transformation as a parameter. The return value of a transformation will then be passed to the next transformation and so on.
+The *current data object* (the current object yielded by the source) will be passed to the first transformation as a parameter. The return value of a transformation will then be passed to the next transformation and so on.
 
-There are two exceptions to that rule.
+There are two exceptions to that rule:
 
-* If you return `nil` the current data object will be dismissed and the next transformation won't be called.
+* If you return `nil` the current data object will be dismissed and the next transformation won't be called. The process continues with the next data object that is yielded by the source and the first transformation.
 * If you return an `Enumerator` the object will be expanded and the following transformations will be called with each element of the `Enumerator`.
 
 ```ruby
@@ -102,7 +104,7 @@ transformation ->(odd_number) {
 transformation MyTransformation.new
 ```
 
-#### Using a transformation buffer
+### Using a transformation buffer
 
 Sometimes it is useful to buffer data between transformation steps to allow a transformation to work on larger bulks of data. metacrunch uses a simple transformation buffer to achieve this.
 
@@ -129,7 +131,7 @@ transformation ->(bulk) {
 }
 ```
 
-#### Defining a destination
+### Defining a destination
 
 A destination is an object that writes the transformed data to an external system. Implementing destinations is easy – [see notes below](#implementing-destinations). A destination receives the return value from the last transformation as a parameter if the return value from the last transformation was not `nil`.
 
@@ -141,7 +143,7 @@ Using destinations is optional. In most cases using the last transformation to w
 destination MyDestination.new
 ```
 
-#### Pre/Post process 
+### Pre/Post process 
 
 To run arbitrary code before the first transformation is run on the first data object use the `#pre_process` hook. To run arbitrary code after the last transformation is run on the last data object use `#post_process`. Like transformations, `#post_process` and `#pre_process` must be implemented using a `callable` object.
 
@@ -154,7 +156,7 @@ pre_process -> {
 post_process MyCallable.new
 ```
 
-#### Defining job options
+### Defining job options
 
 metacrunch has build-in support to parameterize jobs. Using the `options` hook you can declare options that can be set/overridden by the CLI when [running your jobs](#running-etl-jobs). 
 
@@ -194,7 +196,7 @@ Job options:
 
 To learn more about defining options take a look at the [reference below](#defining-job-options).
 
-#### Require non-option arguments
+### Require non-option arguments
 
 All non-option arguments that get passed to the job when running are available to the `ARGV` constant. If your job requires such arguments (e.g. if you work with a list of files) you can require it.
 
@@ -243,11 +245,11 @@ $ [bundle exec] metacrunch [options] JOB_FILE [job-options] [ARGS...]
 Implementing sources
 --------------------
 
-A metacrunch source is any Ruby object that responds to the `each` method that yields data objects one by one. 
+A metacrunch source is any Ruby `Enumerable` object (an object that responds to the `#each` method) that yields data objects one by one. 
 
 The data is usually a `Hash` instance, but could be other structures as long as the rest of your pipeline is expecting it.
 
-Any `enumerable` object (e.g. `Array`) responds to `each` and can be used as a source in metacrunch. 
+Any `Enumerable` object (e.g. `Array`) responds to `#each` and can be used as a source in metacrunch. 
 
 ```ruby
 # File: my_etl_job.metacrunch
@@ -289,9 +291,9 @@ source MyCsvSource.new("my_data.csv")
 Implementing transformations
 ----------------------------
 
-A metacrunch transformation is implemented as a `callable` object. A `callable` in Ruby is any object that responds to the `call` method. 
+A metacrunch transformation is implemented as a `callable` object. A `callable` in Ruby is any object that responds to the `#call` method. 
 
-Procs and Lambdas in Ruby respond to `call`. They can be used to implement transformations inline.
+`Proc`s in Ruby respond to `#call`. They can be used to implement transformations inline.
 
 ```ruby
 # File: my_etl_job.metacrunch
@@ -330,7 +332,7 @@ transformation MyTransformation.new
 Implementing destinations
 -------------------------
 
-A destination is any Ruby object that responds to `write(data)` and `close`.
+A destination is any Ruby object that responds to `#write(data)` and `#close`.
 
 Like sources you are encouraged to implement destinations as classes.
 
