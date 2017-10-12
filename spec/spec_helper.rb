@@ -3,6 +3,7 @@ require "pry" if !ENV["CI"]
 require "simplecov"
 SimpleCov.start do
   add_filter %r{^/spec/}
+  add_filter %r{^/lib/metacrunch/test_utils}
 end
 
 require "metacrunch"
