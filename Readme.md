@@ -73,11 +73,11 @@ source MySource.new
 
 To process, transform or manipulate data use the `#transformation` hook. A transformation is implemented with a `callable` object (any Ruby object that responds to `#call`. E.g. a `Proc`). To learn more about transformations check the section about [implementing transformations](#implementing-transformations) below.
 
-The *current data object* (the current object yielded by the source) will be passed to the first transformation as a parameter. The return value of a transformation will then be passed to the next transformation and so on.
+The *current data object* (the current object emitted by the source) will be passed to the first transformation as a parameter. The return value of a transformation will then be passed to the next transformation and so on.
 
 There are two exceptions to that rule:
 
-* If you return `nil` the current data object will be dismissed and the next transformation won't be called. The process continues with the next data object that is yielded by the source and the first transformation.
+* If you return `nil` the current data object will be dismissed and the next transformation won't be called. The process continues with the next data object that will be emitted by the source and the first transformation.
 * If you return an `Enumerator` the object will be expanded and the following transformations will be called with each element of the `Enumerator`.
 
 ```ruby
@@ -88,19 +88,21 @@ source [1,2,3,4,5,6,7,8,9]
 
 # A transformation is implemented with a `callable` object (any 
 # object that responds to #call).
-# Lambdas responds to #call
+# Proc responds to #call
 transformation ->(number) {
-  # Called for each data object that has been read by a source.
+  # Called for each data object that has been emitted by a source.
   # You must return the data to keep it in the pipeline. Dismiss the
   # data conditionally by returning nil.
   number if number.odd?
 }
 
+# Only called for odd numbers as even numbers gets dismissed in the previous
+# transformation.
 transformation ->(odd_number) {
   odd_number * 2
 }
 
-# MyTransformation implements #call
+# MyTransformation implements #call. Gets called with the prevous number times 2.
 transformation MyTransformation.new
 ```
 
@@ -108,7 +110,7 @@ transformation MyTransformation.new
 
 Sometimes it is useful to buffer data between transformation steps to allow a transformation to work on larger bulks of data. metacrunch uses a simple transformation buffer to achieve this.
 
-To use a transformation buffer add the `:buffer` option to your transformation. You can pass a positive integer value as a buffer size, or as an advanced option you can pass a `Proc` object. The buffer flushes every time the buffer reaches the given size or if the `Proc` returns `true`.
+To use a transformation buffer add the `:buffer` option to your transformation. You can pass a positive integer value as a buffer size, or as an advanced option you can pass a `Proc` object. The buffer flushes every time the buffer reaches the given size or if the `Proc` returns `true`. The buffer also flushes after the last data object was emitted by the source.
 
 ```ruby
 # File: my_etl_job.metacrunch
@@ -133,9 +135,7 @@ transformation ->(bulk) {
 
 ### Defining a destination
 
-A destination is an object that writes the transformed data to an external system. Implementing destinations is easy – [see notes below](#implementing-destinations). A destination receives the return value from the last transformation as a parameter if the return value from the last transformation was not `nil`.
-
-Using destinations is optional. In most cases using the last transformation to write the data to an external system is fine. Destinations are useful if the required code is more complex.
+A destination is an object that writes the transformed data to an external system (e.g. a file, database etc.). Implementing destinations is easy – [see notes below](#implementing-destinations). A destination receives the return value from the last transformation as a parameter if the return value from the last transformation was not `nil`.
 
 ```ruby
 # File: my_etl_job.metacrunch
@@ -149,7 +149,7 @@ To run arbitrary code before the first transformation is run on the first data o
 
 ```ruby
 pre_process -> {
-  # Lambdas responds to #call
+  # Proc responds to #call
 }
 
 # MyCallable class defines #call
@@ -193,8 +193,6 @@ Job options:
     -d, --database URL               Database connection URL
                                      REQUIRED
 ```
-
-To learn more about defining options take a look at the [reference below](#defining-job-options).
 
 ### Require non-option arguments
 
