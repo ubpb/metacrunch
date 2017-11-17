@@ -57,7 +57,7 @@ A source is an object that emits data objects (e.g. from a file or an external s
 
 You must declare a source to allow a job to run.
 
-A source iterates over it's elements and yields data object by data object into the transformation pipeline, starting with the first transformation.
+A source iterates over it's elements and emits data object by data object into the transformation pipeline, starting with the first transformation.
 
 ```ruby
 # File: my_etl_job.metacrunch
