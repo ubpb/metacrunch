@@ -53,7 +53,7 @@ require_relative "./some/other/ruby/file"
 
 ### Defining a source
 
-A source is an object that reads data (e.g. from a file or an external system) into the metacrunch processing pipeline. Implementing sources is easy – a source is a Ruby `Enumerable` (any object that responds to the `#each` method). For more information on how to implement sources [see notes below](#implementing-sources).
+A source is an object that emits data objects (e.g. from a file or an external system) into the metacrunch processing pipeline. Implementing sources is easy – a source is a Ruby `Enumerable` (any object that responds to the `#each` method). For more information on how to implement sources [see notes below](#implementing-sources).
 
 You must declare a source to allow a job to run.
 
