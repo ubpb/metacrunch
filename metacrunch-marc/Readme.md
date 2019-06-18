@@ -19,7 +19,7 @@ Installation
 Include the gem in your `Gemfile`
 
 ```ruby
-gem "metacrunch-marcxml", "~> 2.0.0"
+gem "metacrunch-marcxml", "~> 2.1.0"
 ```
 
 and run `$ bundle install` to install it.
@@ -36,12 +36,14 @@ Usage example
 
 *Note: For working examples on how to use this package in a metacrunch job check out our [demo repository](https://github.com/ubpb/metacrunch-demo).*
 
-**Loading the library**
+**Load the library**
+
 ```ruby
 require "metacrunch/marcxml"
 ```
 
 **Parsing a [MARCXML file](http://d-nb.info/982392028/about/marcxml)**
+
 ```ruby
 # Load a MARCXML file (from a remote location in this example).
 require "open-uri"
@@ -53,7 +55,8 @@ document = Metacrunch::Marcxml.parse(marcxml)
 document = Metacrunch::Marcxml(marcxml)
 ```
 
-**Accessing control fields**
+**Access control fields**
+
 ```ruby
 controlfield = document.controlfield("005")
 # same as ...
@@ -66,16 +69,17 @@ value = controlfield.value
 # => "20130926112144.0"
 ```
 
-**Accessing data fields / sub fields**
+**Access data fields / sub fields**
+
 ```ruby
-# Find fields matching tag=100 and indicator1=1 (author)
+# Find fields matching tag=100 and ind1=1 (author)
 datafield_set = document.datafields(100, ind1: "1")
 # => #<Metacrunch::Marcxml::Document::DatafieldSet:0x007fd4c4ce4b40 ...>
 
 first_author = datafield_set.first # set is an Enumerable
 # => #<Metacrunch::Marcxml::Document::Datafield:0x007fd4c5129480 ...>
 
-# Get the subfields matching code=a (author name)
+# Get the sub fields matching code=a (author name)
 subfield_set = first_author.subfields("a")
 # => #<Metacrunch::Marcxml::Document::SubfieldSet:0x007fd4c4c779f0 ...>
 
