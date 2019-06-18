@@ -1,18 +1,23 @@
 describe Metacrunch::Marcxml do
 
-  # -----------------------------------------------------------------------
-  # Parsing
-  # -----------------------------------------------------------------------
+  let(:xml) { <<-XML
+    <datafield tag="001" ind1="-" ind2="-">
+      <subfield code="a">some value</subfield>
+    </datafield>
+    XML
+  }
 
-  describe ".parse, ()" do
-    let(:xml) { default_test_xml }
+  describe ".parse" do
+    subject { Metacrunch::Marcxml.parse(xml) }
+    it "should return a `Metacrunch::Marcxml::Document`" do
+      expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
+    end
+  end
 
-    it "should return a Marcxml::Document" do
-      document = Metacrunch::Marcxml.parse(xml)
-      expect(document).to be_instance_of(Metacrunch::Marcxml::Document)
-
-      document = Metacrunch::Marcxml(xml)
-      expect(document).to be_instance_of(Metacrunch::Marcxml::Document)
+  describe ".()" do
+    subject { Metacrunch::Marcxml.parse(xml) }
+    it "should return a `Metacrunch::Marcxml::Document`" do
+      expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
     end
   end
 
