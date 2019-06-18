@@ -2,7 +2,7 @@ module Metacrunch
   module Marcxml
     class Parser < Ox::Sax
 
-      def parse(mab_xml)
+      def parse(marc_xml)
         # initialize state machine
         @in_controlfield = @in_datafield = @in_subfield = false
 
@@ -11,8 +11,9 @@ module Metacrunch
         @html_entities_coder = HTMLEntities.new
 
         # convert_special tells ox to convert some html entities already during
-        # parsing, which minifies the amount of entities we have to decode ourself
-        Ox.sax_parse(self, mab_xml, convert_special: true)
+        # parsing, which minifies the amount of entities we have to decode using
+        # html_entities_coder in #text.
+        Ox.sax_parse(self, marc_xml, convert_special: true)
 
         return @document
       end
