@@ -15,7 +15,7 @@ describe Metacrunch::Marcxml do
   end
 
   describe ".()" do
-    subject { Metacrunch::Marcxml.parse(xml) }
+    subject { Metacrunch::Marcxml(xml) }
     it "should return a `Metacrunch::Marcxml::Document`" do
       expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
     end
