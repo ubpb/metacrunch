@@ -86,8 +86,6 @@ first_author_subfield = subfield_set.first # subfield_set is an Enumerable
 first_author_name = first_author_subfield.value
 # => "Orwell, George"
 
-# ... there is a shortcut for this case
-first_author_name = document.datafields(100, ind1: "1").subfields("a").first_value
 ```
 
 License

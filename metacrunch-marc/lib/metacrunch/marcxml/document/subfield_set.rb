@@ -28,14 +28,6 @@ module Metacrunch
           @subfields.map{ |subfield| subfield.value }
         end
 
-        def present_values
-          values.map{ |v| v.presence }.compact
-        end
-
-        def first_value
-          present_values[0]
-        end
-
       end
     end
   end

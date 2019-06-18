@@ -75,38 +75,4 @@ describe Metacrunch::Marcxml::Document::SubfieldSet do
     end
   end
 
-  describe "#present_values" do
-    let(:set) do
-      Metacrunch::Marcxml::Document::SubfieldSet.new([
-        create_subfield("1", ""),
-        create_subfield("2", " "),
-        create_subfield("3", nil),
-        create_subfield("4", "Foo"),
-        create_subfield("5", "Bar")
-      ])
-    end
-
-    it "returns only the non nil and non empty value of each sub field as an array" do
-      expect(set.present_values).to be_instance_of(Array)
-      expect(set.present_values).not_to be_empty
-      expect(set.present_values).to eq(["Foo", "Bar"])
-    end
-  end
-
-  describe "#first_value" do
-    let(:set) do
-      Metacrunch::Marcxml::Document::SubfieldSet.new([
-        create_subfield("1", ""),
-        create_subfield("2", " "),
-        create_subfield("3", nil),
-        create_subfield("4", "Foo"),
-        create_subfield("5", "Bar")
-      ])
-    end
-
-    it "returns the first non empty value" do
-      expect(set.first_value).to eq("Foo")
-    end
-  end
-
 end
