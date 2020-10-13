@@ -31,5 +31,5 @@ jobs:
 
       - run:
           name: Upload test coverage report to CodeClimate
-          command: ./cc-test-reporter after-build --coverage-input-type simplecov
+          command: ./cc-test-reporter after-build --exit-code $?
 
