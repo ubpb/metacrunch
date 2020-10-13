@@ -1,32 +1,15 @@
-version: 2
+version: 2.1
+orbs:
+  ruby: circleci/ruby@0.1.2 
+
 jobs:
   build:
     docker:
-      - image: circleci/ruby:2.6-node-browsers
-
-    working_directory: ~/repo
-
+      - image: circleci/ruby:2.6.3-stretch-node
+    executor: ruby/default
     steps:
       - checkout
-
       - run:
-          name: Install dependencies
-          command: bundle install --jobs=4 --retry=3 --path vendor/bundle
-
-      - run:
-          name: Install CodeClimate test coverage reporter
-          command: |
-            curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-            chmod +x ./cc-test-reporter
-            ./cc-test-reporter before-build
-
-      - run:
-          name: Run tests
-          command: |
-            mkdir /tmp/test-results
-            bundle exec rspec --format progress --format RspecJunitFormatter --out /tmp/test-results/rspec.xml
-
-      - run:
-          name: Upload test coverage report to CodeClimate
-          command: ./cc-test-reporter after-build --exit-code $?
-
+          name: Which bundler?
+          command: bundle -v
+      - ruby/bundle-install
