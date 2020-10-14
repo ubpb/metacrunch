@@ -32,6 +32,16 @@ module Metacrunch
       def parse(xml)
         Parser.new.parse(xml)
       end
+
+      #
+      # Convenience method for Metacrunch::Marcxml.parse
+      #
+      # @return [Metacrunch::Marcxml::Document] the parsed {Metacrunch::Marcxml::Document}
+      # @see Metacrunch::Marcxml#parse
+      #
+      def [](xml)
+        self.parse(xml)
+      end
     end
   end
 
