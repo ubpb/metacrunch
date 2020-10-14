@@ -86,7 +86,7 @@ module Metacrunch
         [*[requested_ind]].flatten.map do |_requested_ind|
           if !_requested_ind
             true
-          elsif _requested_ind == :blank && (datafield_ind == " " || datafield_ind == "-" || datafield_ind.nil?)
+          elsif _requested_ind == :blank && (datafield_ind == " " || datafield_ind == "-" || datafield_ind == "_" || datafield_ind.nil?)
             true
           elsif _requested_ind == datafield_ind
             true
