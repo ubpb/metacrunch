@@ -48,20 +48,18 @@ module Metacrunch
       #   to match all data fields. The tag can be a string or an integer. To filter for
       #   more than a single tag, `tag` also accepts any object that responds to `#each` like
       #   `Array` and `Range`.
-      #
-      # @param ind1 [String, nil, Array<String>] filter by indicator 1. Can be nil to match
+      # @param ind1 [nil, String, Array<String>] filter by indicator 1. Can be nil to match
       #   any indicator.
-      # @param ind2 [String, nil, Array<String>] filter by indicator 2. Can be nil to match
+      # @param ind2 [nil, String, Array<String>] filter by indicator 2. Can be nil to match
       #   any indicator.
       #
       # @return [Metacrunch::Marcxml::Document::DatafieldSet] Set of data fields matching the
       #  given tag(s) and ind1/ind2. The set is empty if a matching field doesn't exist.
       #
       def datafields(tag = nil, ind1: nil, ind2: nil)
-        matched_datafields = case tag
-        when nil
+        matched_datafields = if tag.nil?
           @datafields_map.values.flatten(1)
-        when Enumerable
+        elsif tag.is_a?(Enumerable)
           tag.map{ |_tag| @datafields_map[normalize_tag(_tag)] }.compact.flatten(1)
         else
           @datafields_map[normalize_tag(tag)]
