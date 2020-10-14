@@ -137,8 +137,8 @@ describe Metacrunch::Marcxml::Document do
     context "given tag=100 as other non string value 100.0" do
       subject { document.datafields(100.0) }
 
-      it "returns no datafields with tag=100.0" do
-        expect(subject.empty?).to be(true)
+      it "returns only datafields with tag=100" do
+        expect(subject.all?{|f| f.tag=="100"}).to be(true)
       end
     end
   end
