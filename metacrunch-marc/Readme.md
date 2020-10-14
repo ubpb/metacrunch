@@ -19,7 +19,7 @@ Installation
 Include the gem in your `Gemfile`
 
 ```ruby
-gem "metacrunch-marcxml", "~> 2.1.0"
+gem "metacrunch-marcxml", "~> 3.0.0"
 ```
 
 and run `$ bundle install` to install it.
@@ -47,11 +47,13 @@ require "metacrunch/marcxml"
 ```ruby
 # Load a MARCXML file (from a remote location in this example).
 require "open-uri"
-marcxml = open("http://d-nb.info/982392028/about/marcxml"){|io| io.read}
+marcxml = URI.open("http://d-nb.info/982392028/about/marcxml"){|io| io.read}
 
 # Now parse the file
 document = Metacrunch::Marcxml.parse(marcxml)
-# .. or use the convenience method
+# .. or 
+document = Metacrunch::Marcxml[marcxml]
+# .. or
 document = Metacrunch::Marcxml(marcxml)
 ```
 
@@ -59,8 +61,6 @@ document = Metacrunch::Marcxml(marcxml)
 
 ```ruby
 controlfield = document.controlfield("005")
-# same as ...
-controlfield = document.controlfield(5)
 # => #<Metacrunch::Marcxml::Document::Controlfield:0x007fd4c5120ec0 ...>
 
 tag = controlfield.tag
@@ -73,7 +73,7 @@ value = controlfield.value
 
 ```ruby
 # Find fields matching tag=100 and ind1=1 (author)
-datafield_set = document.datafields(100, ind1: "1")
+datafield_set = document.datafields("100", ind1: "1")
 # => #<Metacrunch::Marcxml::Document::DatafieldSet:0x007fd4c4ce4b40 ...>
 
 first_author = datafield_set.first # set is an Enumerable
@@ -90,6 +90,45 @@ first_author_subfield = subfield_set.first # subfield_set is an Enumerable
 first_author_name = first_author_subfield.value
 # => "Orwell, George"
 
+# ... this can be a one liner
+first_author_name = document.datafields(100, ind1: "1").subfields("a").values.first
+```
+
+**Direct value access using a query string**
+
+Access fields as described above is flexible but very verbose. Most of the time you know your data and you are interested in a simple and direct way to access the field values.
+
+For this case we provide a way to query field values using a simple query string.
+
+```ruby
+# Get the value of control field "005"
+document["005"]
+# => "20130926112144.0"
+
+# Get the first value of data field tag=100, ind1=1, sub field code=a
+document["1001*a"].first
+# => "Orwell, George"
+```
+
+The query string syntax is simple. Each query string starts with three letters for the tag. If the tag starts with `00` it is considered a query for a control field value. Otherwise it is considered a data field / sub field query. In that case the next two characters are used to match ind1 and ind2. The default value is `*` which matches every indicator value. `-`, `_` and ` ` are interpreted as `blank`. The last characters are used to match the code of the sub fields. To query for more than one sub field code you may separate them using commas.
+
+**Examples**
+
+```ruby
+document["1001*a"] 
+# => ["Orwell, George"]
+
+document["020**a,c"]
+# => ["9783548267456",
+# "kart. : EUR 6.00 (DE), EUR 6.20 (AT), sfr 11.00",
+# "3548267459",
+# "kart. : EUR 6.00 (DE), EUR 6.20 (AT), sfr 11.00"]
+
+document["2463_a"]
+# => ["Neunzehnhundertvierundachtzig"]
+
+document["264_1a,b,c"]
+# => ["Berlin", "Ullstein", "2007"]
 ```
 
 License
