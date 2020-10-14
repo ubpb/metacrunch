@@ -99,8 +99,8 @@ module Metacrunch
       def normalize_tag(tag)
         case tag
         when Integer then tag.to_s.rjust(3, "0")
-        when String  then tag
-        else tag.to_s
+        when String  then tag[0..2]
+        else tag.to_s[0..2]
         end
       end
 
