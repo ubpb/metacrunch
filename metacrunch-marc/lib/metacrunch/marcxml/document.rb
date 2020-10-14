@@ -23,7 +23,7 @@ module Metacrunch
       #
       # @param tag [String, Integer] the tag of the control field. The tag can be
       #   a string or an integer.
-      # @return [Controlfield, nil] the control field with the matching tag or nil
+      # @return [Metacrunch::Marcxml::Document::Controlfield, nil] the control field with the matching tag or nil
       #   if a control field with a matching tag does not exist.
       #
       def controlfield(tag)
