@@ -80,6 +80,50 @@ module Metacrunch
         datafield
       end
 
+      # ------------------------------------------------------------------------------
+      # Query API
+      # ------------------------------------------------------------------------------
+
+      #
+      # Returns a control field value or data field/sub field values matching the
+      # given query string.
+      #
+      # @param query_string [String] a query string.
+      #
+      # @return [Array<String>] The sub field values matching the query. Is empty if no match
+      #  is found.
+      #
+      def [](query_string)
+        # Control field query
+        if query_string.starts_with?("00")
+          # Example: "005"
+          # [0..2] => Control field tag
+          tag = query_string[0..2].presence
+          controlfield(tag).value
+
+        # Data field / sub field query
+        else
+          # Example: "100**a,e"
+          # [0..2] => Data field tag (required).
+          # [3]    => Ind1, defaults to `*`, which matches any indicator 1 (optional). ` `, `-` or `_` will be interpreted as `blank`.
+          # [4]    => Ind2, defaults to `*`, which matches any indicator 2 (optional). ` `, `-` or `_` will be interpreted as `blank`.
+          # [5]    => Sub field code(s) (optional).
+          tag      = query_string[0..2].presence
+
+          ind1     = query_string[3].presence
+          ind1     = nil    if ind1 == "*"
+          ind1     = :blank if ind1 == "-" || ind1 == "_" || ind1 == " "
+
+          ind2     = query_string[4].presence
+          ind2     = nil    if ind2 == "*"
+          ind2     = :blank if ind2 == "-" || ind2 == "_" || ind2 == " "
+
+          subfield_codes = query_string[5..-1]&.split(",")&.map(&:strip).compact.presence
+
+          datafields(tag, ind1: ind1, ind2: ind2).subfields(subfield_codes).values
+        end
+      end
+
     private
 
       def match_indicator(requested_ind, datafield_ind)
