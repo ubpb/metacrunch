@@ -99,7 +99,7 @@ module Metacrunch
           # Example: "005"
           # [0..2] => Control field tag
           tag = query_string[0..2].presence
-          controlfield(tag).value
+          controlfield(tag)&.value
 
         # Data field / sub field query
         else
