@@ -1,80 +1,78 @@
 module Metacrunch
   module Marcxml
     class Parser < Ox::Sax
+      class ParsingDone < StandardError ; end
 
-      def parse(marc_xml)
-        # initialize state machine
-        @in_controlfield = @in_datafield = @in_subfield = false
+      def parse(marc_xml, collection_mode: false)
+        @stack     = []
+        @documents = []
+        @collection_mode = collection_mode
 
-        @controlfield = @datafield = @subfield = nil
-        @document = Document.new
-        @html_entities_coder = HTMLEntities.new
+        begin
+          Ox.sax_parse(self, marc_xml, convert_special: true)
+        rescue ParsingDone ; end
 
-        # convert_special tells ox to convert some html entities already during
-        # parsing, which minifies the amount of entities we have to decode using
-        # html_entities_coder in #text.
-        Ox.sax_parse(self, marc_xml, convert_special: true)
-
-        return @document
+        collection_mode ? @documents : @documents.first
       end
 
       def start_element(name)
-        if name == :subfield
-          @in_subfield = true
-          @subfield = {}
-        elsif name == :datafield
-          @in_datafield = true
-          @datafield = {subfields: []}
-        elsif name == :controlfield
-          @in_controlfield = true
-          @controlfield = {}
+        @stack << [name, {}]
+
+        element_name, element_data = @stack[-1]
+        parent_name, parent_data   = @stack[-2]
+
+        if element_name == :record
+          element_data[:document] = Document.new
+        elsif element_name == :controlfield && parent_name == :record
+          element_data[:controlfield] = Document::Controlfield.new
+        elsif element_name == :datafield && parent_name == :record
+          element_data[:datafield] = Document::Datafield.new
+        elsif element_name == :subfield && parent_name == :datafield
+          element_data[:subfield] = Document::Subfield.new
         end
       end
 
       def end_element(name)
-        if @in_subfield
-          @in_subfield = false
+        element_name, element_data = @stack[-1]
+        parent_name, parent_data   = @stack[-2]
 
-          subfield = Document::Subfield.new(@subfield[:code], @subfield[:value])
-          @datafield[:subfields] << subfield
-        elsif @in_datafield
-          @in_datafield = false
-
-          datafield = Document::Datafield.new(@datafield[:tag], ind1: @datafield[:ind1], ind2: @datafield[:ind2])
-          @datafield[:subfields].each do |subfield|
-            datafield.add_subfield(subfield)
-          end
-
-          @document.add_datafield(datafield)
-        elsif @in_controlfield
-          @in_controlfield = false
-
-          controlfield = Document::Controlfield.new(@controlfield[:tag], @controlfield[:values])
-          @document.add_controlfield(controlfield)
+        if element_name == :record
+          @documents << element_data[:document] unless element_data[:document].empty?
+          raise ParsingDone unless @collection_mode
+        elsif element_name == :controlfield && parent_name == :record
+          parent_data[:document].add_controlfield(element_data[:controlfield])
+        elsif element_name == :datafield && parent_name == :record
+          parent_data[:document].add_datafield(element_data[:datafield])
+        elsif element_name == :subfield && parent_name == :datafield
+          parent_data[:datafield].add_subfield(element_data[:subfield])
         end
+
+        @stack.pop
       end
 
       def attr(name, value)
-        if @in_subfield
-          @subfield[:code] = value if name == :code
-        elsif @in_datafield
-          if name == :tag
-            @datafield[:tag] = value
-          elsif name == :ind1
-            @datafield[:ind1] = value
-          elsif name == :ind2
-            @datafield[:ind2] = value
-          end
-        elsif @in_controlfield
-          @controlfield[:tag] = value if name == :tag
+        element_name, element_data = @stack[-1]
+        parent_name, parent_data   = @stack[-2]
+
+        if element_name == :controlfield && parent_name == :record
+          element_data[:controlfield].tag = value if name == :tag
+        elsif element_name == :datafield && parent_name == :record
+          element_data[:datafield].tag  = value if name == :tag
+          element_data[:datafield].ind1 = value if name == :ind1
+          element_data[:datafield].ind2 = value if name == :ind2
+        elsif element_name == :subfield && parent_name == :datafield
+          element_data[:subfield].code = value if name == :code
         end
       end
 
       def text(value)
-        if @in_subfield
-          @subfield[:value] = value.include?("&") ? @html_entities_coder.decode(value) : value
-        elsif @in_controlfield
-          @controlfield[:values] = value
+        element_name, element_data = @stack[-1]
+        parent_name, parent_data   = @stack[-2]
+
+        if element_name == :controlfield && parent_name == :record
+          element_data[:controlfield].value = value
+        elsif element_name == :subfield && parent_name == :datafield
+          element_data[:subfield].value = value
         end
       end
     end

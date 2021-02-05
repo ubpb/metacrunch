@@ -1,6 +1,5 @@
 require "active_support"
 require "active_support/core_ext"
-require "htmlentities"
 require "ox"
 
 module Metacrunch
@@ -12,11 +11,10 @@ module Metacrunch
     #
     # Convenience method for Metacrunch::Marcxml.parse
     #
-    # @return [Metacrunch::Marcxml::Document] the parsed {Metacrunch::Marcxml::Document}
     # @see Metacrunch::Marcxml#parse
     #
-    def Marcxml(xml)
-      Metacrunch::Marcxml.parse(xml)
+    def Marcxml(xml, collection_mode: false)
+      Metacrunch::Marcxml.parse(xml, collection_mode: collection_mode)
     end
   end
 
@@ -27,20 +25,23 @@ module Metacrunch
       # Parses a MARCXML string into a {Metacrunch::Marcxml::Document}.
       #
       # @param xml [String] the MARCXML document as a string
-      # @return [Metacrunch::Marcxml::Document] the parsed {Metacrunch::Marcxml::Document}
+      # @param collection_mode [true, false] set to `true` if the MARCXML contains more than one record.
+      #  Default is `false`.
+      # @return [Metacrunch::Marcxml::Document, Array<Metacrunch::Marcxml::Document>, nil] the parsed
+      #   {Metacrunch::Marcxml::Document}, an array of documents if `collection_mode` was `true`
+      #   or `nil` if the MARCXML did not contain valid data.
       #
-      def parse(xml)
-        Parser.new.parse(xml)
+      def parse(xml, collection_mode: false)
+        Parser.new.parse(xml, collection_mode: collection_mode)
       end
 
       #
-      # Convenience method for Metacrunch::Marcxml.parse
+      # Convenience method for Metacrunch::Marcxml.parse(xml, collection_mode: false)
       #
-      # @return [Metacrunch::Marcxml::Document] the parsed {Metacrunch::Marcxml::Document}
       # @see Metacrunch::Marcxml#parse
       #
       def [](xml)
-        self.parse(xml)
+        self.parse(xml, collection_mode: false)
       end
     end
   end

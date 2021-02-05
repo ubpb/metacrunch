@@ -3,10 +3,10 @@ module Metacrunch
     class Document
       class Controlfield
 
-        attr_reader :tag
-        attr_reader :value
+        attr_accessor :tag
+        attr_accessor :value
 
-        def initialize(tag, value)
+        def initialize(tag = nil, value = nil)
           @tag = tag
           @value = value
         end

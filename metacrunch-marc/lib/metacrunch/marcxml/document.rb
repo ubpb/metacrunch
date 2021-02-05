@@ -13,6 +13,10 @@ module Metacrunch
         @datafields_map    = {}
       end
 
+      def empty?
+        @controlfields_map.blank? && @datafields_map.blank?
+      end
+
       # ------------------------------------------------------------------------------
       # Control fields
       # ------------------------------------------------------------------------------
