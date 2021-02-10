@@ -42,7 +42,7 @@ Usage example
 require "metacrunch/marcxml"
 ```
 
-#### Parsing a [MARCXML file](http://d-nb.info/982392028/about/marcxml)**
+#### Parsing a [MARCXML file](http://d-nb.info/982392028/about/marcxml)
 
 ```ruby
 # Load a MARCXML file (from a remote location in this example).
