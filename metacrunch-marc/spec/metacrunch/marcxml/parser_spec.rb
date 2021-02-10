@@ -15,6 +15,39 @@ describe Metacrunch::Marcxml::Parser do
       end
     end
 
+    context "given empty MarcXML" do
+      subject {
+        described_class.new.parse <<-XML
+          <record>
+          </record>
+        XML
+      }
+
+      it "should return nil" do
+        expect(subject).to be_nil
+      end
+    end
+
+    context "given a MarcXML with a leader" do
+      subject {
+        described_class.new.parse <<-XML
+          <record>
+            <leader>123456</leader>
+          </record>
+        XML
+      }
+
+      it "should return a Marcxml::Record" do
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Record)
+      end
+
+      it "should have created the leader" do
+        leader = subject.instance_variable_get("@leader")
+        expect(leader).to be_instance_of(Metacrunch::Marcxml::Record::Leader)
+        expect(leader.value).to eq("123456")
+      end
+    end
+
     context "given a MarcXML with a control field" do
       subject {
         described_class.new.parse <<-XML
@@ -24,8 +57,8 @@ describe Metacrunch::Marcxml::Parser do
         XML
       }
 
-      it "should return a Marcxml::Document" do
-        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
+      it "should return a Marcxml::Record" do
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Record)
       end
 
       it "should have created the control field" do
@@ -33,7 +66,7 @@ describe Metacrunch::Marcxml::Parser do
         expect(controlfields_map.count).to eq(1)
 
         controlfield = subject.instance_variable_get("@controlfields_map")["XXX"]
-        expect(controlfield).to be_instance_of(Metacrunch::Marcxml::Document::Controlfield)
+        expect(controlfield).to be_instance_of(Metacrunch::Marcxml::Record::Controlfield)
         expect(controlfield.tag).to eq("XXX")
         expect(controlfield.value).to eq("123456")
       end
@@ -50,8 +83,8 @@ describe Metacrunch::Marcxml::Parser do
         XML
       }
 
-      it "should return a Marcxml::Document" do
-        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
+      it "should return a Marcxml::Record" do
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Record)
       end
 
       it "should have created the data field" do
@@ -62,7 +95,7 @@ describe Metacrunch::Marcxml::Parser do
         expect(datafields.count).to eq(1)
 
         datafield = datafields.first
-        expect(datafield).to be_instance_of(Metacrunch::Marcxml::Document::Datafield)
+        expect(datafield).to be_instance_of(Metacrunch::Marcxml::Record::Datafield)
         expect(datafield.tag).to eq("XXX")
         expect(datafield.ind1).to eq("1")
         expect(datafield.ind2).to eq("2")
@@ -78,7 +111,7 @@ describe Metacrunch::Marcxml::Parser do
         expect(subfields.count).to eq(1)
 
         subfield = subfields.first
-        expect(subfield).to be_instance_of(Metacrunch::Marcxml::Document::Subfield)
+        expect(subfield).to be_instance_of(Metacrunch::Marcxml::Record::Subfield)
         expect(subfield.code).to eq("a")
         expect(subfield.value).to eq("123456")
       end
@@ -129,8 +162,8 @@ describe Metacrunch::Marcxml::Parser do
         XML
       }
 
-      it "should return a Marcxml::Document" do
-        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
+      it "should return a Marcxml::Record" do
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Record)
       end
 
       it "should have created the control field" do
@@ -138,12 +171,44 @@ describe Metacrunch::Marcxml::Parser do
         expect(controlfields_map.count).to eq(1)
 
         controlfield = subject.instance_variable_get("@controlfields_map")["XXX"]
-        expect(controlfield).to be_instance_of(Metacrunch::Marcxml::Document::Controlfield)
+        expect(controlfield).to be_instance_of(Metacrunch::Marcxml::Record::Controlfield)
         expect(controlfield.tag).to eq("XXX")
         expect(controlfield.value).to eq("123456")
       end
     end
 
-  end
+    context "given a MarcXML record collection" do
+      let(:marcxml) {
+        <<-XML
+          <collection>
+            <record>
+              <controlfield tag="XXX">123456</controlfield>
+            </record>
+            <record>
+              <controlfield tag="ZZZ">123456</controlfield>
+            </record>
+          </collection>
+        XML
+      }
 
+      context "given collection_mode = false" do
+        subject { described_class.new.parse(marcxml, collection_mode: false) }
+
+        it "should return the first Marcxml::Record" do
+          expect(subject).to be_instance_of(Metacrunch::Marcxml::Record)
+          expect(subject.controlfield("XXX")).to be_present
+        end
+      end
+
+      context "given collection_mode = true" do
+        subject { described_class.new.parse(marcxml, collection_mode: true) }
+
+        it "should return an array of Marcxml::Record objects" do
+          expect(subject).to be_instance_of(Array)
+          expect(subject.all?{|r| r.is_a?(Metacrunch::Marcxml::Record)}).to be(true)
+        end
+      end
+    end
+
+  end
 end

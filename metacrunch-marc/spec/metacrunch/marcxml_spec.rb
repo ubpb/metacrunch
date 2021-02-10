@@ -28,22 +28,22 @@ describe Metacrunch::Marcxml do
   context "collection_mode = false" do
     describe ".parse" do
       subject { Metacrunch::Marcxml.parse(xml) }
-      it "should return a `Metacrunch::Marcxml::Document`" do
-        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
+      it "should return a `Metacrunch::Marcxml::Record`" do
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Record)
       end
     end
 
     describe ".()" do
       subject { Metacrunch::Marcxml(xml) }
-      it "should return a `Metacrunch::Marcxml::Document`" do
-        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
+      it "should return a `Metacrunch::Marcxml::Record`" do
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Record)
       end
     end
 
     describe ".[]" do
       subject { Metacrunch::Marcxml[xml] }
-      it "should return a `Metacrunch::Marcxml::Document`" do
-        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
+      it "should return a `Metacrunch::Marcxml::Record`" do
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Record)
       end
     end
   end
@@ -51,26 +51,26 @@ describe Metacrunch::Marcxml do
   context "collection_mode = true" do
     describe ".parse" do
       subject { Metacrunch::Marcxml.parse(collection_xml, collection_mode: true) }
-      it "should return a `Metacrunch::Marcxml::Document`" do
+      it "should return a `Metacrunch::Marcxml::Record`" do
         expect(subject).to be_instance_of(Array)
-        expect(subject.first).to be_instance_of(Metacrunch::Marcxml::Document)
+        expect(subject.first).to be_instance_of(Metacrunch::Marcxml::Record)
         expect(subject.count).to eq(2)
       end
     end
 
     describe ".()" do
       subject { Metacrunch::Marcxml(collection_xml, collection_mode: true) }
-      it "should return a `Metacrunch::Marcxml::Document`" do
+      it "should return a `Metacrunch::Marcxml::Record`" do
         expect(subject).to be_instance_of(Array)
-        expect(subject.first).to be_instance_of(Metacrunch::Marcxml::Document)
+        expect(subject.first).to be_instance_of(Metacrunch::Marcxml::Record)
         expect(subject.count).to eq(2)
       end
     end
 
     describe ".[]" do
       subject { Metacrunch::Marcxml[collection_xml] }
-      it "should return a `Metacrunch::Marcxml::Document`" do
-        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document)
+      it "should return a `Metacrunch::Marcxml::Record`" do
+        expect(subject).to be_instance_of(Metacrunch::Marcxml::Record)
       end
     end
   end

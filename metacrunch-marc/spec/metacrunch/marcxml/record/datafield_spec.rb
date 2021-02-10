@@ -1,10 +1,10 @@
-describe Metacrunch::Marcxml::Document::Datafield do
+describe Metacrunch::Marcxml::Record::Datafield do
 
   describe "#initialize" do
     it "creates a new data field" do
-      field = Metacrunch::Marcxml::Document::Datafield.new("123", ind1: "1", ind2: nil)
+      field = Metacrunch::Marcxml::Record::Datafield.new("123", ind1: "1", ind2: nil)
 
-      expect(field).to be_instance_of(Metacrunch::Marcxml::Document::Datafield)
+      expect(field).to be_instance_of(Metacrunch::Marcxml::Record::Datafield)
       expect(field.tag).to eq("123")
       expect(field.ind1).to eq("1")
       expect(field.ind2).to be_nil
@@ -12,14 +12,15 @@ describe Metacrunch::Marcxml::Document::Datafield do
   end
 
   describe "#subfields" do
-    let(:document) { default_test_document }
-    let(:datafield) { document.datafields("100").first }
+    let(:record) { default_test_record }
+    let(:datafield) { record.datafields("100").first }
 
     context "given code=nil" do
       subject { datafield.subfields(nil) }
 
-      it "returns a SubfieldSet" do
-        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document::SubfieldSet)
+      it "returns sub fields" do
+        expect(subject).to be_instance_of(Array)
+        expect(subject.first).to be_instance_of(Metacrunch::Marcxml::Record::Subfield)
       end
 
       it "SubfieldfieldSet contains all sub fields" do
@@ -30,11 +31,8 @@ describe Metacrunch::Marcxml::Document::Datafield do
     context "given non existing code" do
       subject { datafield.subfields("_not_existing_code_") }
 
-      it "returns a SubfieldSet" do
-        expect(subject).to be_instance_of(Metacrunch::Marcxml::Document::SubfieldSet)
-      end
-
-      it "SubfieldSet is empty" do
+      it "returns empty array" do
+        expect(subject).to be_instance_of(Array)
         expect(subject.empty?).to be(true)
       end
     end
@@ -57,8 +55,8 @@ describe Metacrunch::Marcxml::Document::Datafield do
   end
 
   describe "#add_subfield" do
-    let(:document) { empty_document }
-    let(:datafield) { document.add_datafield(create_datafield("123", ind1: "a", ind2: nil)) }
+    let(:record) { empty_record }
+    let(:datafield) { record.add_datafield(create_datafield("123", ind1: "a", ind2: nil)) }
 
     it "should add sub field" do
       expect(datafield.subfields("a").count).to eq(0)

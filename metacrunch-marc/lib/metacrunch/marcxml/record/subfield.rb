@@ -1,6 +1,6 @@
 module Metacrunch
   module Marcxml
-    class Document
+    class Record
       class Subfield
 
         attr_accessor :code
@@ -9,6 +9,10 @@ module Metacrunch
         def initialize(code = nil, value = nil)
           @code  = code
           @value = value
+        end
+
+        def to_h
+          {code => value}
         end
 
       end

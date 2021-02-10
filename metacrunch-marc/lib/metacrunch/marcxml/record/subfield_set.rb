@@ -1,6 +1,6 @@
 module Metacrunch
   module Marcxml
-    class Document
+    class Record
       class SubfieldSet
         include Enumerable
 
@@ -24,8 +24,12 @@ module Metacrunch
           !empty?
         end
 
-        def values
-          @subfields.map{ |subfield| subfield.value }
+        def values(as_hash: false)
+          if as_hash
+            @subfields.map{ |subfield| subfield.to_h }
+          else
+            @subfields.map{ |subfield| subfield.value }
+          end
         end
 
       end

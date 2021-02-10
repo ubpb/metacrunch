@@ -1,20 +1,34 @@
-require_relative "document/controlfield"
-require_relative "document/datafield"
-require_relative "document/datafield_set"
-require_relative "document/subfield"
-require_relative "document/subfield_set"
+require_relative "record/leader"
+require_relative "record/controlfield"
+require_relative "record/datafield"
+require_relative "record/datafield_set"
+require_relative "record/subfield"
+require_relative "record/subfield_set"
 
 module Metacrunch
   module Marcxml
-    class Document
+    class Record
 
       def initialize
         @controlfields_map = {}
         @datafields_map    = {}
+        @leader            = nil
       end
 
       def empty?
-        @controlfields_map.blank? && @datafields_map.blank?
+        @leader.blank? && @controlfields_map.blank? && @datafields_map.blank?
+      end
+
+      # ------------------------------------------------------------------------------
+      # Leader
+      # ------------------------------------------------------------------------------
+
+      def leader
+        @leader
+      end
+
+      def set_leader(leader)
+        @leader = leader
       end
 
       # ------------------------------------------------------------------------------
@@ -27,7 +41,7 @@ module Metacrunch
       #
       # @param tag [String, Integer] the tag of the control field. The tag can be
       #   a string or an integer.
-      # @return [Metacrunch::Marcxml::Document::Controlfield, nil] the control field with the matching tag or nil
+      # @return [Metacrunch::Marcxml::Record::Controlfield, nil] the control field with the matching tag or nil
       #   if a control field with a matching tag does not exist.
       #
       def controlfield(tag)
@@ -57,7 +71,7 @@ module Metacrunch
       # @param ind2 [nil, String, Array<String>] filter by indicator 2. Can be nil to match
       #   any indicator.
       #
-      # @return [Metacrunch::Marcxml::Document::DatafieldSet] Set of data fields matching the
+      # @return [Metacrunch::Marcxml::Record::DatafieldSet] Set of data fields matching the
       #  given tag(s) and ind1/ind2. The set is empty if a matching field doesn't exist.
       #
       def datafields(tag = nil, ind1: nil, ind2: nil)
@@ -90,41 +104,67 @@ module Metacrunch
 
       #
       # Returns a control field value or data field/sub field values matching the
-      # given query string.
+      # given query string. *THE FEATURE IS EXPERIMENTAL AND SUBJECT TO CHANGE*
       #
-      # @param query_string [String] a query string.
+      # @param query_string [String] a query string. Each query string starts with
+      #   three letters for the tag. If the tag starts with `00` it is considered a
+      #   query for a control field value. Otherwise it is considered a data field /
+      #   sub field query. In that case the next two characters are used to match ind1
+      #   and ind2. The default value is `*` which matches every indicator value.
+      #  `#`, `-`, and `_` are interpreted as `blank`. The last characters are used to
+      #   match the code of the sub fields. To query for more than one sub field code
+      #   you may separate them using commas.
       #
-      # @return [Array<String>] The sub field values matching the query. Is empty if no match
-      #  is found.
+      # @param flatten_subfields [Boolean] TODO
       #
-      def [](query_string)
+      # @param values_as_hash [Boolean] TODO
+      #
+      # @return [Array<String>, String, nil] in case for a control field query it return
+      #   the value or `nil` if the control field doesn't exists. In case for a data field
+      #   / sub field query it returns the matching values.
+      #
+      def [](query_string, flatten_subfields: false, values_as_hash: false)
+        #
         # Control field query
+        #
         if query_string.starts_with?("00")
           # Example: "005"
           # [0..2] => Control field tag
           tag = query_string[0..2].presence
-          controlfield(tag)&.value
+          controlfield = controlfield(tag)
 
+          if controlfield
+            values_as_hash ? controlfield.to_h : controlfield.value
+          end
+        #
         # Data field / sub field query
+        #
         else
           # Example: "100**a,e"
           # [0..2] => Data field tag (required).
-          # [3]    => Ind1, defaults to `*`, which matches any indicator 1 (optional). ` `, `-` or `_` will be interpreted as `blank`.
-          # [4]    => Ind2, defaults to `*`, which matches any indicator 2 (optional). ` `, `-` or `_` will be interpreted as `blank`.
+          # [3]    => Ind1, defaults to `*`, which matches any indicator 1 (optional). `#`, `-` or `_` will be interpreted as `blank`.
+          # [4]    => Ind2, defaults to `*`, which matches any indicator 2 (optional). `#`, `-` or `_` will be interpreted as `blank`.
           # [5]    => Sub field code(s) (optional).
           tag      = query_string[0..2].presence
 
           ind1     = query_string[3].presence
           ind1     = nil    if ind1 == "*"
-          ind1     = :blank if ind1 == "-" || ind1 == "_" || ind1 == " "
+          ind1     = :blank if ind1 == "#" || ind1 == "-" || ind1 == "_"
 
           ind2     = query_string[4].presence
           ind2     = nil    if ind2 == "*"
-          ind2     = :blank if ind2 == "-" || ind2 == "_" || ind2 == " "
+          ind2     = :blank if ind2 == "#" || ind2 == "-" || ind2 == "_"
 
           subfield_codes = query_string[5..-1]&.split(",")&.map(&:strip).compact.presence
 
-          datafields(tag, ind1: ind1, ind2: ind2).subfields(subfield_codes).values
+          subfield_set = datafields(tag,
+            ind1: ind1,
+            ind2: ind2
+          ).subfields(subfield_codes,
+            flatten: flatten_subfields
+          )
+
+          flatten_subfields ? subfield_set.values(as_hash: values_as_hash) : subfield_set.map{|set| set.values(as_hash: values_as_hash)}
         end
       end
 
@@ -151,7 +191,10 @@ module Metacrunch
         else tag.to_s[0..2]
         end
       end
-
     end
+
+    # Record was called Document in the past. We inherit from Record
+    # to avoid a breaking change.
+    class Document < Record ; end
   end
 end
