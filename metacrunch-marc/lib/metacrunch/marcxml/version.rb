@@ -1,5 +1,5 @@
 module Metacrunch
   module Marcxml
-    VERSION = "3.1.0"
+    VERSION = "4.0.0"
   end
 end
