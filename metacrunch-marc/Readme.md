@@ -139,7 +139,7 @@ record["1001*a"].first
 
 The query string syntax is simple. Each query string starts with three letters for the tag. If the tag starts with `00` it is considered a query for a control field value. Otherwise it is considered a data field / sub field query. In that case the next two characters are used to match ind1 and ind2. The default value is `*` which matches every indicator value. `#`, `-` and `_` are interpreted as `blank`. The last characters are used to match the code of the sub fields. To query for more than one sub field code you may separate them using commas.
 
-By default subfield values are not flattened. You get an array of matching sub field values for each matching data field. To flatten sub field values set `flatten_subfields: true`.
+By default sub field values are flattened. To get an array of matching sub field values for each matching data field set `flatten_subfields: false`.
 
 By default only the values are returned. That means you can't see from which sub field the value was extracted. If you query for just one sub field this information is not needed. But if you query for more than one sub field it may be useful. To get the sub field value and the sub field code to can set `values_as_hash: true`. This works for control fields as well.
 

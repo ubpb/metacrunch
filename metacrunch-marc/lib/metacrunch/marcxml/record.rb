@@ -123,7 +123,7 @@ module Metacrunch
       #   the value or `nil` if the control field doesn't exists. In case for a data field
       #   / sub field query it returns the matching values.
       #
-      def [](query_string, flatten_subfields: false, values_as_hash: false)
+      def [](query_string, flatten_subfields: true, values_as_hash: false)
         #
         # Control field query
         #
