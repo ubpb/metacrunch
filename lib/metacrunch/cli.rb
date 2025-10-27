@@ -51,7 +51,7 @@ private
   def run!(job_file)
     if job_file.blank?
       error "You need to provide a job file."
-    elsif !File.exists?(job_file)
+    elsif !File.exist?(job_file)
       error "The file `#{job_file}` doesn't exist."
     else
       job_filename = File.expand_path(job_file)
