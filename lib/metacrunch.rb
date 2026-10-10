@@ -6,6 +6,9 @@ require_relative "metacrunch/version"
 require_relative "metacrunch/errors"
 require_relative "metacrunch/record_logger"
 require_relative "metacrunch/context"
+require_relative "metacrunch/stats"
+require_relative "metacrunch/stats_collector"
+require_relative "metacrunch/result"
 
 module Metacrunch
 
