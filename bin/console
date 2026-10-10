@@ -1,14 +1,8 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 require "bundler/setup"
 require "metacrunch"
+require "irb"
 
-begin
-  require "pry"
-rescue LoadError ; end
-
-if defined?(Pry)
-  Pry.start
-else
-  require "irb"
-  IRB.start
-end
+IRB.start(__FILE__)
