@@ -9,6 +9,8 @@ require_relative "metacrunch/context"
 require_relative "metacrunch/stats"
 require_relative "metacrunch/stats_collector"
 require_relative "metacrunch/result"
+require_relative "metacrunch/callable"
+require_relative "metacrunch/step"
 
 module Metacrunch
 
