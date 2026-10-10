@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "json"
 
 class StepTest < Minitest::Test
 
@@ -22,7 +23,8 @@ class StepTest < Minitest::Test
     "block_using_it" => [proc { [it] }, ["r"]],
     "block_with_two_parameters" => [proc { |record, ctx| [record, ctx] }, ["r", "ctx"]],
     "lambda_with_one_parameter" => [->(record) { [record] }, ["r"]],
-    "lambda_with_optional_second_parameter" => [->(record, ctx = nil) { [record, ctx] }, ["r", "ctx"]],
+    "lambda_with_optional_second_parameter" => [->(record, ctx = nil) { [record, ctx] }, ["r", nil]],
+    "method_with_optional_second_parameter" => [method(:Array), ["r"]],
     "block_with_named_splat" => [proc { |*args| args }, ["r", "ctx"]],
     "class_with_self_call" => [OneArgument, ["r"]],
     "object_with_two_parameter_call" => [TwoArguments.new, ["r", "ctx"]]
@@ -34,6 +36,14 @@ class StepTest < Minitest::Test
 
       assert_equal expected, step.call("r", "ctx")
     end
+  end
+
+  def test_library_methods_with_optional_parameters_get_only_the_record
+    to_integer = Metacrunch::Step.build(:map, method(:Integer), name: "map#1")
+    to_json = Metacrunch::Step.build(:map, JSON.method(:generate), name: "map#2")
+
+    assert_equal 42, to_integer.call("42", "ctx")
+    assert_equal "[1]", to_json.call([1], "ctx")
   end
 
   def test_symbol_procs_get_only_the_record
