@@ -7,3 +7,9 @@ inherit_mode:
 
 Style/FrozenStringLiteralComment:
   Enabled: true
+
+# DSL steps such as `map { raise ... }` are not loops; tests and fixtures
+# let steps raise on purpose.
+Lint/UnreachableLoop:
+  Exclude:
+    - "test/**/*"

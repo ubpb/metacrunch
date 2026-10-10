@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
 module Metacrunch
+
+  # Passed to open(context) of sources, steps and sinks.
+  OpenContext = Data.define(:params, :logger)
+
   # Runs a Pipeline: pushes every source record through the chain of steps
-  # into the sink and collects stats.
+  # into the sink, applies the error policy and collects stats.
   class Engine
 
     def initialize(pipeline, executor: Executor::Inline.new, observer: nil)
@@ -15,23 +19,79 @@ module Metacrunch
       @stats = StatsCollector.new(@pipeline.steps.map(&:name), profile: @pipeline.profile)
       @on_mark = @stats.method(:mark)
       error = execute
-      Result.new(status: error ? :aborted : :ok, error:, stats: @stats.snapshot)
+      run_after_hooks(Result.new(status: status_for(error), error:, stats: @stats.snapshot))
     end
 
     private
 
-    # Returns the error that aborted the run, or nil.
+    def status_for(error)
+      return :aborted if error
+      return :ok_with_failures if @stats.failed_total.positive?
+
+      :ok
+    end
+
+    # Returns the error that aborted the run, or nil. Opened components are
+    # closed in any case, also while an Interrupt propagates.
     def execute
+      opened = []
+      error = nil
+      begin
+        process(opened)
+      rescue StandardError => e
+        error = e
+      ensure
+        close_error = close_components(opened)
+      end
+      error || close_error
+    end
+
+    def process(opened)
+      open_components(opened)
+      @pipeline.before_hooks.each(&:call)
       chain = build_chain
       @executor.run(@pipeline.source) { |record, position| ingest(chain, record, position) }
       sinks.each(&:flush)
-      nil
-    rescue StandardError => e
-      e
     end
 
     def sinks
       [@pipeline.sink, @pipeline.rejects, @pipeline.errors].compact
+    end
+
+    # Source, step callables and sinks, in open order.
+    def components
+      [@pipeline.source, *@pipeline.steps.map(&:callable), *sinks].uniq(&:__id__)
+    end
+
+    def open_components(opened)
+      context = OpenContext.new(params: @pipeline.params, logger: @pipeline.logger)
+      components.each do |component|
+        component.open(context) if component.respond_to?(:open)
+        opened << component
+      end
+    end
+
+    # Closes the opened components in reverse order and returns the first
+    # error, after trying to close all of them.
+    def close_components(opened)
+      first_error = nil
+      opened.reverse_each do |component|
+        component.close if component.respond_to?(:close)
+      rescue StandardError => e
+        @pipeline.logger.error("closing #{component.class} failed: #{e.class}: #{e.message}")
+        first_error ||= e
+      end
+      first_error
+    end
+
+    def run_after_hooks(result)
+      @pipeline.after_hooks.each do |hook|
+        hook.call(result)
+      rescue StandardError => e
+        @pipeline.logger.error("after hook failed: #{e.class}: #{e.message}")
+        result = result.with(status: :aborted, error: result.error || e)
+      end
+      result
     end
 
     def ingest(chain, record, position)
@@ -45,8 +105,8 @@ module Metacrunch
     end
 
     # One link of the chain: runs the step and passes its outputs on. Only
-    # the step itself is covered by the error handling; errors raised
-    # further down (later steps, sinks) pass through.
+    # the step itself is covered by the error policy; errors raised further
+    # down (later steps, sinks) pass through.
     def link(step, downstream)
       lambda do |record, ctx|
         ctx.step = step.name
@@ -66,7 +126,7 @@ module Metacrunch
     # Calls the step and returns its outputs as an Array. Raises
     # ContractError if the step breaks its contract.
     def evaluate(step, record, ctx)
-      result = step.call(record, ctx)
+      result = timed(step) { step.call(record, ctx) }
       return [] if ctx.rejected?
 
       case step.kind
@@ -74,6 +134,17 @@ module Metacrunch
       when :filter then kept(step, record, ctx, result)
       when :reject then kept(step, record, ctx, !result)
       else flat_map_result(step, result)
+      end
+    end
+
+    def timed(step)
+      return yield unless @pipeline.profile
+
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      begin
+        yield
+      ensure
+        @stats.step_time(step.name, Process.clock_gettime(Process::CLOCK_MONOTONIC) - started)
       end
     end
 
@@ -131,11 +202,25 @@ module Metacrunch
       @pipeline.rejects&.write(record, ctx)
     end
 
-    def fail_record(step, _record, ctx, error)
+    def fail_record(step, record, ctx, error)
       @stats.step_failed(step.name, error)
       step_error = StepError.new(step: step.name, record_id: ctx.id, position: ctx.position, error:)
-      raise step_error, cause: error
+      raise step_error, cause: error if @pipeline.on_error == :abort
+
+      ctx.failure = Failure.new(error:, step: step.name)
+      ctx.logger.error(step_error.message)
+      @pipeline.errors&.write(record, ctx)
+      check_max_errors(step_error)
+    end
+
+    def check_max_errors(step_error)
+      max = @pipeline.max_errors
+      return unless max && @stats.failed_total > max
+
+      error = Error.new("#{@stats.failed_total} failed records exceed max_errors #{max}")
+      raise error, cause: step_error
     end
 
   end
+
 end
