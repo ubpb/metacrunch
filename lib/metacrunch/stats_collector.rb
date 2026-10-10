@@ -26,8 +26,8 @@ module Metacrunch
       @read += 1
     end
 
-    def count_written
-      @written += 1
+    def count_written(count = 1)
+      @written += count
     end
 
     def step_in(name)

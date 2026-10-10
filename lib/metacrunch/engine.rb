@@ -19,6 +19,7 @@ module Metacrunch
       @stats = StatsCollector.new(@pipeline.steps.map(&:name), profile: @pipeline.profile)
       @on_mark = @stats.method(:mark)
       error = execute
+      @stats.count_written(@pipeline.sink.delivered) if @pipeline.sink
       run_after_hooks(Result.new(status: status_for(error), error:, stats: @stats.snapshot))
     end
 
@@ -40,6 +41,7 @@ module Metacrunch
         process(opened)
       rescue StandardError => e
         error = e
+        flush_after_abort
       ensure
         close_error = close_components(opened)
       end
@@ -56,6 +58,17 @@ module Metacrunch
 
     def sinks
       [@pipeline.sink, @pipeline.rejects, @pipeline.errors].compact
+    end
+
+    # Writes what the sinks have buffered, so batch: does not change which
+    # records reach a sink when a run aborts. Flush errors are logged; the
+    # error that aborted the run stays the run's error.
+    def flush_after_abort
+      sinks.each do |sink|
+        sink.flush
+      rescue StandardError => e
+        @pipeline.logger.error("flushing #{sink.sink.class} after abort failed: #{e.class}: #{e.message}")
+      end
     end
 
     # Source, step callables and sinks, in open order.
@@ -193,7 +206,6 @@ module Metacrunch
       return unless @pipeline.sink
 
       @pipeline.sink.write(record, ctx)
-      @stats.count_written
     end
 
     def reject_record(record, ctx)
