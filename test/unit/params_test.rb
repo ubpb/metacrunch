@@ -12,7 +12,8 @@ class ParamsTest < Minitest::Test
     "too_few_arguments" => [["--index", "i"], /expected at least 1 argument\(s\) for files, got 0/],
     "too_many_arguments" => [["--index", "i", "a", "b", "c"], /expected at most 2 argument\(s\) for files, got 3/],
     "help_does_not_exit" => [["--index", "i", "--help", "f"], /invalid option: --help/],
-    "version_does_not_exit" => [["--index", "i", "--version", "f"], /invalid option: --version/]
+    "version_does_not_exit" => [["--index", "i", "--version", "f"], /invalid option: --version/],
+    "abbreviated_option" => [["--ind", "i", "f"], /invalid option: --ind/]
   }.freeze
 
   DECLARATION_ERRORS = {
@@ -21,7 +22,10 @@ class ParamsTest < Minitest::Test
     "unsupported_type" => proc { param :x, Symbol },
     "default_and_required" => proc { param :x, String, default: "a", required: true },
     "args_twice" => proc { args :a; args :b },
-    "min_above_max" => proc { args :a, min: 3, max: 1 }
+    "min_above_max" => proc { args :a, min: 3, max: 1 },
+    "invalid_default" => proc { param :bulk, Integer, default: "ten" },
+    "default_of_the_wrong_type" => proc { param :tags, Array, default: 5 },
+    "name_shadows_a_params_method" => proc { param :to_h }
   }.freeze
 
   def test_cli_value_wins_over_environment_and_default
@@ -96,6 +100,49 @@ class ParamsTest < Minitest::Test
     define_method("test_declaration_error_#{description}") do
       assert_raises(ArgumentError) { schema(&declaration) }
     end
+  end
+
+  def test_converts_and_validates_defaults
+    params = schema do
+      param :bulk, Integer, default: "1000"
+      param :ratio, Float, default: 1
+      param :dry, :bool, default: "yes"
+    end
+
+    assert_equal({bulk: 1000, ratio: 1.0, dry: true}, params.bind_argv([], env: {}).to_h)
+  end
+
+  def test_bound_values_are_frozen
+    params = schema do
+      param :tags, Array, default: ["a"]
+      param :fields, Array
+    end
+    values = params.bind_argv(["--fields", "x,y"], env: {})
+
+    assert_raises(FrozenError) { values.tags << "b" }
+    assert_raises(FrozenError) { values.fields.first << "z" }
+    assert_equal ["a"], params.bind_argv([], env: {}).tags
+  end
+
+  def test_invalid_environment_values_name_the_variable
+    params = schema { param :bulk, Integer, env: "BULK" }
+    error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {"BULK" => "ten"}) }
+
+    assert_match(/invalid value for --bulk from environment variable BULK: "ten" is not an Integer/, error.message)
+  end
+
+  def test_empty_environment_values_count_as_unset
+    params = schema { param :bulk, Integer, default: 5, env: "BULK" }
+
+    assert_equal 5, params.bind_argv([], env: {"BULK" => ""}).bulk
+  end
+
+  def test_help_is_recognized_only_as_an_option
+    params = job_schema
+
+    assert params.help_requested?(["a.xml", "--help"])
+    assert params.help_requested?(["-h"])
+    refute params.help_requested?(["--index", "-h", "a.xml"])
   end
 
   def test_help_lists_options_and_arguments

@@ -4,11 +4,14 @@ require "optparse"
 
 module Metacrunch
   # The parameters a job declares in `params { ... }`, and their binding
-  # from CLI arguments (#bind_argv) or a Hash (#bind_hash).
+  # from CLI arguments (#bind_argv) or a Hash (#bind_hash). Bound values
+  # are frozen.
   class Params
 
     TYPES = [String, Integer, Float, :bool, Array].freeze
-    RESERVED = [:help, :job].freeze
+    # help and job are CLI options; the others would hide methods of the
+    # bound params object (params.to_h, params.with, ...).
+    RESERVED = ([:help, :job] + Data.define.public_instance_methods).freeze
     TRUE_VALUES = ["true", "yes", "on", "1"].freeze
     FALSE_VALUES = ["false", "no", "off", "0"].freeze
 
@@ -54,12 +57,15 @@ module Metacrunch
       @args_definition = nil
     end
 
+    # Defaults are converted and checked like CLI values when the parameter
+    # is declared, so a wrong default fails early.
     def param(name, type = String, default: nil, required: false, env: nil, desc: nil, short: nil)
       name = check_name!(name)
       raise ArgumentError, "unsupported type #{type.inspect} for parameter #{name}" unless TYPES.include?(type)
       raise ArgumentError, "parameter #{name}: use either default: or required: true" if required && !default.nil?
 
-      @definitions[name] = Definition.new(name:, type:, default:, required:, env:, desc:, short:)
+      definition = Definition.new(name:, type:, default: nil, required:, env:, desc:, short:)
+      @definitions[name] = definition.with(default: default_value(definition, default))
       nil
     end
 
@@ -74,12 +80,17 @@ module Metacrunch
     end
 
     # Binds CLI arguments. Parameters with env: that are not given on the
-    # command line are read from env.
+    # command line are read from env; empty variables count as unset.
     def bind_argv(argv, env: ENV)
       given = {}
       positional = option_parser(given).parse(argv)
       values = @definitions.to_h do |name, definition|
-        [name, resolve(definition, given.fetch(name) { env_value(definition, env) })]
+        value = if given.key?(name)
+          resolve(definition, given[name])
+        else
+          resolve(definition, env_value(definition, env), origin: "environment variable #{definition.env}")
+        end
+        [name, value]
       end
       build(values, positional)
     rescue OptionParser::ParseError => e
@@ -96,6 +107,18 @@ module Metacrunch
 
       values = @definitions.to_h { |name, definition| [name, resolve(definition, hash[name])] }
       build(values, args_name ? Array(hash[args_name]) : [])
+    end
+
+    # True if argv asks for help: -h or --help as an option, not as the
+    # value of another option.
+    def help_requested?(argv)
+      help = false
+      parser = option_parser({})
+      parser.on("-h", "--help") { help = true }
+      parser.parse(argv)
+      help
+    rescue OptionParser::ParseError
+      help
     end
 
     def help
@@ -116,10 +139,21 @@ module Metacrunch
       name
     end
 
+    def default_value(definition, default)
+      return if default.nil?
+
+      frozen_copy(convert(definition, default))
+    rescue ParamError
+      expected = TYPE_NAMES.fetch(definition.type)
+      raise ArgumentError, "invalid default for parameter #{definition.name}: #{default.inspect} is not #{expected}"
+    end
+
     def option_parser(given)
       OptionParser.new do |parser|
         # Remove the built-in --help and --version: they would print and exit.
         parser.base.long.clear
+        # No abbreviations: --ind must not silently mean --index.
+        parser.require_exact = true
         @definitions.each_value do |definition|
           parser.on(*switches(definition)) { |value| given[definition.name] = value }
         end
@@ -145,32 +179,47 @@ module Metacrunch
     end
 
     def env_value(definition, env)
-      env[definition.env] if definition.env
+      return unless definition.env
+
+      value = env[definition.env]
+      value unless value.nil? || value.empty?
     end
 
-    def resolve(definition, raw)
-      value = raw.nil? ? definition.default : convert(definition, raw)
+    def resolve(definition, raw, origin: nil)
+      value = raw.nil? ? definition.default : frozen_copy(convert(definition, raw, origin:))
       raise ParamError, "missing required parameter #{definition.option}" if definition.required && value.nil?
 
       value
     end
 
-    def convert(definition, raw)
+    def convert(definition, raw, origin: nil)
       value = raw.is_a?(String) ? CONVERTERS.fetch(definition.type).call(raw) : raw
-      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw)
+      value = value.to_f if definition.type == Float && value.is_a?(Integer)
+      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin)
     rescue ArgumentError, TypeError
-      invalid!(definition, raw)
+      invalid!(definition, raw, origin)
     end
 
-    def invalid!(definition, raw)
+    def invalid!(definition, raw, origin)
       expected = TYPE_NAMES.fetch(definition.type)
-      raise ParamError, "invalid value for #{definition.option}: #{raw.inspect} is not #{expected}"
+      from = origin ? " from #{origin}" : ""
+      raise ParamError, "invalid value for #{definition.option}#{from}: #{raw.inspect} is not #{expected}"
+    end
+
+    # Bound values are frozen, so a default Array cannot leak changes from
+    # one run into the next.
+    def frozen_copy(value)
+      case value
+      when Array then value.map { |item| frozen_copy(item) }.freeze
+      when String then -value
+      else value
+      end
     end
 
     def build(values, positional)
       if @args_definition
         check_args!(positional)
-        values[@args_definition.name] = positional
+        values[@args_definition.name] = frozen_copy(positional)
       elsif positional.any?
         raise ParamError, "unexpected arguments: #{positional.join(" ")}"
       end
