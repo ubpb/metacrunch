@@ -143,8 +143,10 @@ SignalException, "PIPE"` ends the process with status 141 and prints nothing.
   `StringIO`.
 - `lib/metacrunch/cli/command.rb`: base class. Logger setup (`-q`/`-v`),
   loading the job (`-j`), job help, the final report, usage errors.
+- `lib/metacrunch/cli/job_command.rb`: base class of the commands that take
+  a job file (`run`, `check`, `trace`): `-j`, `-q`, `-v`, job help.
 - `lib/metacrunch/cli/run.rb`, `check.rb`, `trace.rb`, `new.rb`: one class
-  per command.
+  per command (`RunCommand`, `CheckCommand`, `TraceCommand`, `NewCommand`).
 - `lib/metacrunch/cli/run_options.rb`: `RunOptions` (4.2).
 - `exe/metacrunch` stays as it is.
 
@@ -172,7 +174,9 @@ writer flushes it). The CLI passes its injected streams as IO objects.
 - `each` opens the file, reads it line by line and closes it in an
   `ensure`, so a `break` (e.g. from `--limit`) closes it as well. It needs no
   `open` or `close`.
-- Lines are read as UTF-8. Blank lines are skipped and not counted.
+- Lines are read as UTF-8. Blank lines are skipped and not counted. A
+  byte order mark at the start is ignored; `\r\n` line endings and a
+  missing final newline are fine.
 - A path ending in `.gz` is decompressed with `Zlib::GzipReader` (`zlib` is
   a default gem).
 - Each line is parsed with `JSON.parse`, so a record can be any JSON value.
@@ -238,7 +242,9 @@ or MARC readers). The engine:
   - `:skip`: the failure is logged, `raw` goes to the `errors` sink with
     `ctx.failure.step == "source"`, `max_errors` applies.
 - counts it in `Stats#failed` (total and per error class). `Stats#steps`
-  gets no `"source"` entry.
+  gets no `"source"` entry;
+- reports it to the observer as the step `"source"`: `step_in` with the raw
+  value, `step_out` without outputs.
 
 `"source"` becomes a reserved step name: `map ..., name: "source"` raises
 `ArgumentError`.
@@ -314,7 +320,10 @@ without an object, raises `ArgumentError`.
 - **Same path, same object.** Options naming the same path share one writer:
   `--rejects bad.jsonl --errors bad.jsonl` writes both roles into one file,
   opened and closed once (sub-project 1, 2.4). The `rejection` or `failure`
-  key tells them apart. Paths are compared after `File.expand_path`.
+  key tells them apart. Paths are compared after `File.expand_path`. Any
+  other two of `-i`, `-o`, `--rejects`, `--errors` and `--stats` naming the
+  same file are a usage error (`-i x -o x` would truncate the input before
+  it is read).
 - **`--limit N`** (N ≥ 1): a new `Pipeline` field `limit` (default `nil`).
   `Executor::Inline` leaves the source's `each` with `break` after N
   records, so the source's `ensure` blocks run. The limit counts source
@@ -497,9 +506,14 @@ the run aborted (error in the source, `open`, `close`); 2 for usage errors.
 - `lib/metacrunch/diff.rb`: the Hash diff.
 - `lib/metacrunch/cli/trace.rb`: options and wiring.
 - The engine accepts `select: ->(record, position) { ... }` and hands it to
-  the executor. Records that are not selected are read and counted, but not
-  pushed into the chain. The observer interface of sub-project 1
-  (`step_in`, `step_out`) does not change.
+  the executor. Records that are not selected are read, but neither counted
+  nor pushed into the chain. `limit` counts the records pushed into the
+  chain; without `select` these are all source records. `Trace#trace?` is
+  the select callable.
+- The observer interface of sub-project 1 (`step_in`, `step_out`) does not
+  change. Two refinements: for a failed step, `step_out` comes after the
+  error policy was applied, so under `:skip` the observer sees
+  `ctx.failure`; invalid records appear as the step `"source"` (3.4).
 
 ## 7. `check`
 
@@ -589,6 +603,9 @@ end
 | `Job#run` | `limit:` keyword |
 | `Testing.run` | `ArgumentError` if the job has no source and no `source:` is given |
 | `Params` | `job` is no longer reserved (2.2) |
+| `Engine` (closing) | A signal raised while closing a component (SIGPIPE from a writer) is raised again after all components were closed |
+| `LiveStats` | new: live counters for monitors (5.4) |
+| `SinkAdapter` | `batch` reader (for `check`) |
 | new | `json_lines.rb`, `progress.rb`, `trace.rb`, `diff.rb`, `cli/` |
 
 The step contract, context, error policy and stats of sub-project 1 do not
@@ -600,13 +617,16 @@ change otherwise.
 lib/metacrunch.rb
 lib/metacrunch/
   invalid_record.rb               InvalidRecord (Data)
+  live_stats.rb                   LiveStats for monitors
   json_lines.rb                   JsonLines::Reader, Writer, ContextWriter
   progress.rb                     Progress monitor, shared stderr
-  trace.rb                        Trace observer and renderer
+  trace.rb                        Trace observer (events → tree)
+  trace/renderer.rb               Trace::Renderer (tree → text)
   diff.rb                         Hash diff for trace
   cli.rb                          Dispatch, exit codes
   cli/
-    command.rb                    Base: logger, job loading, help, report
+    command.rb                    Base: options, logger, exit codes
+    job_command.rb                Base for run/check/trace: job loading, job help
     run_options.rb                RunOptions#apply
     run.rb
     check.rb
