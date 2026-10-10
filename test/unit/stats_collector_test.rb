@@ -6,15 +6,17 @@ class StatsCollectorTest < Minitest::Test
 
   def test_snapshot_reports_job_and_step_counts
     collector = Metacrunch::StatsCollector.new(["map#1", "reject#2"])
+    map_counter = collector.counter("map#1")
+    reject_counter = collector.counter("reject#2")
     3.times do
       collector.count_read
-      collector.step_in("map#1")
-      collector.step_out("map#1")
-      collector.step_in("reject#2")
+      map_counter.input += 1
+      map_counter.output += 1
+      reject_counter.input += 1
     end
     collector.step_rejected("reject#2", "Patent")
-    collector.step_filtered("reject#2")
-    collector.step_out("reject#2")
+    reject_counter.filtered += 1
+    reject_counter.output += 1
     collector.count_written
     collector.mark("No title")
     stats = collector.snapshot

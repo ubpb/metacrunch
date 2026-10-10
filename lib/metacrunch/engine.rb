@@ -56,8 +56,8 @@ module Metacrunch
     end
 
     # Returns the error that aborted the run, or nil. Buffered records are
-    # flushed after an abort and on Interrupt; opened components are closed
-    # in any case.
+    # flushed after an abort and on signals (Ctrl-C, SIGTERM); opened
+    # components are closed in any case.
     def execute
       opened = []
       error = nil
@@ -66,7 +66,7 @@ module Metacrunch
       rescue *RECOVERABLE => e
         error = e
         flush_after_abort
-      rescue Interrupt
+      rescue SignalException
         flush_after_abort
         raise
       ensure
@@ -179,7 +179,8 @@ module Metacrunch
 
     # flat_map: streams each child downstream as the step's Enumerable
     # yields it. Children forwarded before an error in the step's own
-    # iteration stay forwarded.
+    # iteration stay forwarded; a reject! during the iteration stops it.
+    # The observer's step_out comes after the children went downstream.
     def flat_map_link(step, counter, downstream)
       lambda do |record, ctx|
         ctx.step = step.name
@@ -191,6 +192,8 @@ module Metacrunch
           unless ctx.rejected?
             flat_map_contract!(step, result)
             result.each do |child|
+              break if ctx.rejected?
+
               children&.push(child)
               counter.output += 1
               forward_child(downstream, child, ctx)
@@ -199,10 +202,10 @@ module Metacrunch
         rescue DownstreamFailure => e
           raise e.original, cause: e.original.cause
         rescue *RECOVERABLE => e
-          @observer&.step_out(step.name, children || [], ctx)
           next fail_record(step, record, ctx, e)
+        ensure
+          @observer&.step_out(step.name, children, ctx)
         end
-        @observer&.step_out(step.name, children, ctx)
         reject_record(record, ctx) if ctx.rejected?
       end
     end

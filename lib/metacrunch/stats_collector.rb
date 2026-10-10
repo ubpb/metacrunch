@@ -36,18 +36,6 @@ module Metacrunch
       @written += count
     end
 
-    def step_in(name)
-      @steps.fetch(name).input += 1
-    end
-
-    def step_out(name, count = 1)
-      @steps.fetch(name).output += count
-    end
-
-    def step_filtered(name)
-      @steps.fetch(name).filtered += 1
-    end
-
     def step_rejected(name, reason)
       @steps.fetch(name).rejected += 1
       @rejected[reason] += 1

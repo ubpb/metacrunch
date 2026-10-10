@@ -25,7 +25,8 @@ class ParamsTest < Minitest::Test
     "min_above_max" => proc { args :a, min: 3, max: 1 },
     "invalid_default" => proc { param :bulk, Integer, default: "ten" },
     "default_of_the_wrong_type" => proc { param :tags, Array, default: 5 },
-    "name_shadows_a_params_method" => proc { param :to_h }
+    "name_shadows_a_params_method" => proc { param :to_h },
+    "short_help_option" => proc { param :host, short: "-h" }
   }.freeze
 
   def test_cli_value_wins_over_environment_and_default
@@ -143,6 +144,12 @@ class ParamsTest < Minitest::Test
     assert params.help_requested?(["a.xml", "--help"])
     assert params.help_requested?(["-h"])
     refute params.help_requested?(["--index", "-h", "a.xml"])
+  end
+
+  def test_explains_names_that_would_hide_params_methods
+    error = assert_raises(ArgumentError) { schema { param :to_h } }
+
+    assert_match(/parameter name to_h would hide params\.to_h/, error.message)
   end
 
   def test_help_lists_options_and_arguments

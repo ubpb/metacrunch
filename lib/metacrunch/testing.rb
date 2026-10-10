@@ -24,6 +24,14 @@ module Metacrunch
 
     end
 
+    # Collects the records of jobs without a sink. Reports nothing as
+    # delivered, so the run's stats show written: 0, as in a real run.
+    class UncountedSinkAdapter < SinkAdapter
+
+      def delivered = 0
+
+    end
+
     # records: what reached the sink. rejects: [record, Rejection] pairs.
     # errors: [record, Failure] pairs.
     Result = Data.define(:records, :rejects, :errors, :stats, :status, :error)
@@ -40,16 +48,16 @@ module Metacrunch
       end
 
       pipeline = job.pipeline(binder: ->(schema) { schema.bind_hash(params) }, logger:)
-      has_sink = !pipeline.sink.nil?
       memory = {sink: MemorySink.new, rejects: MemorySink.new, errors: MemorySink.new}
-      pipeline = pipeline.with(source: source || pipeline.source,
-                               **memory.transform_values { |sink| SinkAdapter.new(sink) })
+      adapters = memory.transform_values { |sink| SinkAdapter.new(sink) }
+      adapters[:sink] = UncountedSinkAdapter.new(memory[:sink]) unless pipeline.sink
+      pipeline = pipeline.with(source: source || pipeline.source, **adapters)
       result = Engine.new(pipeline).run
       Result.new(
         records: memory[:sink].records,
         rejects: memory[:rejects].records.zip(memory[:rejects].contexts.map(&:rejection)),
         errors: memory[:errors].records.zip(memory[:errors].contexts.map(&:failure)),
-        stats: has_sink ? result.stats : result.stats.with(written: 0),
+        stats: result.stats,
         status: result.status,
         error: result.error
       )

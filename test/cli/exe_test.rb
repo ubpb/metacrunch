@@ -28,6 +28,12 @@ class ExeTest < Minitest::Test
     assert_equal Signal.list.fetch("INT"), status.termsig
   end
 
+  def test_sigterm_ends_the_process_by_the_signal
+    _stdout, _stderr, status = metacrunch(File.join(ROOT, "test", "fixtures", "jobs", "terminated.rb"))
+
+    assert_equal Signal.list.fetch("TERM"), status.termsig
+  end
+
   def test_interrupt_keeps_the_data_written_to_stdout
     stdout, stderr, = metacrunch(File.join(ROOT, "test", "fixtures", "jobs", "interrupted_output.rb"))
 

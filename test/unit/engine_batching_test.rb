@@ -22,6 +22,26 @@ class EngineBatchingTest < Minitest::Test
 
   end
 
+  # Sink without write_batch that is interrupted once while writing record 3.
+  class InterruptedOnce
+
+    attr_reader :records
+
+    def initialize
+      @records = []
+      @interrupted = false
+    end
+
+    def write(record)
+      if record == 3 && !@interrupted
+        @interrupted = true
+        raise Interrupt
+      end
+      @records << record
+    end
+
+  end
+
   class FailingBatch
 
     def write(_record) = raise("write_batch expected")
@@ -63,6 +83,29 @@ class EngineBatchingTest < Minitest::Test
     end
 
     assert_raises(Interrupt) { Metacrunch::Engine.new(pipeline).run }
+    assert_equal [1, 2], target.records
+  end
+
+  def test_interrupt_during_a_per_record_flush_keeps_the_rest
+    target = InterruptedOnce.new
+    pipeline = build_pipeline do
+      source [1, 2, 3, 4, 5]
+      sink target, batch: 10
+    end
+
+    assert_raises(Interrupt) { Metacrunch::Engine.new(pipeline).run }
+    assert_equal [1, 2, 3, 4, 5], target.records
+  end
+
+  def test_sigterm_flushes_like_interrupt
+    target = BatchCollector.new
+    pipeline = build_pipeline do
+      source [1, 2, 3]
+      map { it == 3 ? raise(SignalException, "TERM") : it }
+      sink target, batch: 10
+    end
+
+    assert_raises(SignalException) { Metacrunch::Engine.new(pipeline).run }
     assert_equal [1, 2], target.records
   end
 

@@ -60,6 +60,12 @@ class BuilderTest < Minitest::Test
     assert_equal ["patent", 0], [pipeline.steps.first.reason, pipeline.max_errors]
   end
 
+  def test_explains_invalid_reasons
+    error = assert_raises(ArgumentError) { build_pipeline { source([]); reject(42, ->(record) { record }) } }
+
+    assert_match(/the reason must be a String or Symbol, got 42/, error.message)
+  end
+
   def test_binds_declared_params
     pipeline = build_pipeline(params: {index: "books"}) do
       params { param :index, String, required: true }

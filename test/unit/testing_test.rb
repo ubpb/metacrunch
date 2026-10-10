@@ -37,9 +37,15 @@ class TestingTest < Minitest::Test
   end
 
   def test_jobs_without_a_sink_report_nothing_written
-    result = Metacrunch::Testing.run(Metacrunch.job { source [1, 2] })
+    seen = []
+    job = Metacrunch.job do
+      source [1, 2]
+      after { |result| seen << result.stats.written }
+    end
+    result = Metacrunch::Testing.run(job)
 
     assert_equal [[1, 2], 0], [result.records, result.stats.written]
+    assert_equal [0], seen
   end
 
   def test_rejects_a_source_without_each

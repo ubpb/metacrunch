@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "metacrunch/cli"
+require_relative "../fixtures/jobs/lib/counting_source"
 
 class CliTest < Minitest::Test
 
@@ -57,6 +58,27 @@ class CliTest < Minitest::Test
 
     assert_equal 1, stderr.scan("zero is not allowed").size
     assert_match(/INFO  aborted: read 1, written 0/, stderr)
+  end
+
+  def test_a_run_without_help_builds_the_job_once
+    CountingSource.constructed = 0
+    cli(job("counting.rb"))
+
+    assert_equal 1, CountingSource.constructed
+  end
+
+  def test_logs_causes_of_errors_other_than_step_errors
+    _code, _stdout, stderr = cli(job("chained_error.rb"))
+
+    assert_match(/ERROR ArgumentError: source broke/, stderr)
+    assert_match(/caused by IOError/, stderr)
+  end
+
+  def test_sigterm_exits_with_the_signal_code
+    code, _stdout, stderr = cli(job("terminated.rb"))
+
+    assert_equal 143, code
+    assert_match(/WARN  interrupted by SIGTERM/, stderr)
   end
 
   def test_runs_the_job

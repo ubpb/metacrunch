@@ -10,6 +10,7 @@ module Metacrunch
 
     USAGE = "Usage: metacrunch [-h|-v] JOB_FILE [--job NAME] [JOB_PARAMS...] [ARGS...]"
     EXIT_CODES = {ok: 0, aborted: 1, usage: 2, ok_with_failures: 3, interrupted: 130}.freeze
+    HELP_OPTIONS = ["-h", "--help"].freeze
 
     def initialize(stdout: $stdout, stderr: $stderr, env: ENV)
       @stdout = stdout
@@ -28,9 +29,11 @@ module Metacrunch
       run_job(argv)
     rescue OptionParser::ParseError, JobLoadError, ParamError => e
       usage_error(e.message)
-    rescue Interrupt
-      @logger.warn("interrupted")
-      EXIT_CODES[:interrupted]
+    rescue SignalException => e
+      # Ctrl-C (SIGINT) or SIGTERM. Exit code 128 + signal number, as shells
+      # report it; exe/metacrunch then ends by the signal itself.
+      @logger.warn("interrupted by SIG#{Signal.signame(e.signo)}")
+      128 + e.signo
     rescue *Engine::RECOVERABLE => e
       @logger.error(e.full_message(highlight: false))
       EXIT_CODES[:aborted]
@@ -43,8 +46,10 @@ module Metacrunch
       return usage_error("no job file given") unless job_file
 
       job = Metacrunch.load_job(job_file, name: extract_job_name(argv))
-      schema = job.describe
-      return show(job_help(job_file, schema)) if schema.help_requested?(argv)
+      if help_mentioned?(argv)
+        schema = job.describe
+        return show(job_help(job_file, schema)) if schema.help_requested?(argv)
+      end
 
       report(job.run(argv, env: @env, logger: @logger))
     end
@@ -71,6 +76,12 @@ module Metacrunch
       argv.delete_at(index) || raise(ParamError, "--job needs a job name")
     end
 
+    # A quick check before the job's parser decides: only then is the job
+    # described (which evaluates the start of its recipe).
+    def help_mentioned?(argv)
+      options_part(argv).intersect?(HELP_OPTIONS)
+    end
+
     # The arguments before a "--" separator.
     def options_part(argv)
       argv.take_while { |arg| arg != "--" }
@@ -88,7 +99,7 @@ module Metacrunch
       if error
         @logger.error("#{error.class}: #{error.message}")
         cause = error.cause
-        @logger.error("caused by #{cause.class}: #{cause.message}") if cause && !error.message.include?(cause.message)
+        @logger.error("caused by #{cause.class}: #{cause.message}") if cause && !error.is_a?(StepError)
       end
       @logger.info("#{result.status}: #{result.stats.summary}")
       EXIT_CODES.fetch(result.status)

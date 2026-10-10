@@ -9,9 +9,10 @@ module Metacrunch
   class Params
 
     TYPES = [String, Integer, Float, :bool, Array].freeze
-    # help and job are CLI options; the others would hide methods of the
-    # bound params object (params.to_h, params.with, ...).
-    RESERVED = ([:help, :job] + Data.define.public_instance_methods).freeze
+    # Used by the CLI. Names of methods of the bound params object (to_h,
+    # with, ...) are checked when a parameter is declared.
+    RESERVED = [:help, :job].freeze
+    RESERVED_SHORT = "-h"
     TRUE_VALUES = ["true", "yes", "on", "1"].freeze
     FALSE_VALUES = ["false", "no", "off", "0"].freeze
 
@@ -62,6 +63,7 @@ module Metacrunch
     def param(name, type = String, default: nil, required: false, env: nil, desc: nil, short: nil)
       name = check_name!(name)
       raise ArgumentError, "unsupported type #{type.inspect} for parameter #{name}" unless TYPES.include?(type)
+      raise ArgumentError, "parameter #{name}: #{RESERVED_SHORT} is reserved for help" if short == RESERVED_SHORT
       raise ArgumentError, "parameter #{name}: use either default: or required: true" if required && !default.nil?
 
       definition = Definition.new(name:, type:, default: nil, required:, env:, desc:, short:)
@@ -131,7 +133,8 @@ module Metacrunch
 
     def check_name!(name)
       name = name.to_sym
-      raise ArgumentError, "parameter name #{name} is reserved" if RESERVED.include?(name)
+      raise ArgumentError, "parameter name #{name} is reserved for the CLI" if RESERVED.include?(name)
+      raise ArgumentError, "parameter name #{name} would hide params.#{name}" if Data.public_method_defined?(name)
       if @definitions.key?(name) || @args_definition&.name == name
         raise ArgumentError, "parameter #{name} is declared twice"
       end
