@@ -23,3 +23,6 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
 - `rejects` and `errors` sinks.
 - Error policy `on_error :abort | :skip` with `max_errors`.
 - Run results with stats per step and reason; `profile` for step timing.
+- `flat_map` streams its children; batched sinks are flushed after an abort and on Ctrl-C.
+- Steps and sinks get the context only for a second required parameter, so `map(&method(:Integer))` works.
+- Job files are loaded again only when they change.

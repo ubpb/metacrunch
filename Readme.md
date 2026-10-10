@@ -57,7 +57,8 @@ object several times must not change it in place afterwards.
 
 ## Sources
 
-Any object with `#each` that yields records. Optional `#open(context)` and `#close`.
+Any object with `#each` that yields records. Optional `#open(context)` and `#close`. A source that yields several
+values at once (`yield key, value`) produces Array records (`[key, value]`).
 
 ```ruby
 source MySource.new(params.files), id: ->(record) { record["_id"] }
@@ -77,8 +78,12 @@ source MySource.new(params.files), id: ->(record) { record["_id"] }
 A step is a block or any object with `#call`, for example a class with `self.call`. Steps are named
 `map#1`, `filter#2`, … or explicitly: `map Mab2Primo, name: "mab2primo"`.
 
-`filter` and `reject` take an optional reason. Records dropped with a reason are *rejected*: they are counted
-per reason and sent to the `rejects` sink. Without a reason they are *filtered*: counted, nothing else.
+`filter` and `reject` take an optional reason (a String or Symbol). Records dropped with a reason are *rejected*:
+they are counted per reason and sent to the `rejects` sink. Without a reason they are *filtered*: counted, nothing
+else.
+
+`flat_map` streams: each record its Enumerable yields goes on through the pipeline right away. If the Enumerable
+raises halfway, the records it yielded before are already on their way.
 
 ```ruby
 reject("Patent") { it["type"] == "patent" }
@@ -86,7 +91,7 @@ reject("Patent") { it["type"] == "patent" }
 
 ## The record context
 
-A step that takes a second parameter gets the record's context:
+A step that takes a second **required** parameter gets the record's context:
 
 ```ruby
 map do |record, ctx|
@@ -106,6 +111,9 @@ end
 
 `flat_map` gives every emitted record its own copy of the context.
 
+Optional parameters do not count, so methods such as `method(:Integer)` or `JSON.method(:generate)` can be used as
+steps directly: `map(&method(:Integer))`. A step written as `->(record, ctx = nil)` gets `nil` for `ctx`.
+
 ## Sinks
 
 Any object with `#write(record)`. Optional `#write_batch(records)`, `#open(context)` and `#close`. Sinks that
@@ -117,16 +125,20 @@ rejects JsonLinesFile.new("rejects.jsonl")   # rejected records, ctx.rejection
 errors  JsonLinesFile.new("errors.jsonl")    # failed records (on_error :skip), ctx.failure
 ```
 
-With `batch:` the sink gets `write_batch` calls with up to that many records; the rest is written at the end.
+With `batch:` the sink gets `write_batch` calls with up to that many records; the rest is written at the end, also
+when the job aborts or is interrupted, so `batch:` never changes which records arrive. One object used as both
+`sink` and `rejects` (or `errors`) is opened and closed once.
 
 ## Errors
 
 ```ruby
 on_error :abort                    # default: stop at the first failing record
 on_error :skip, max_errors: 100    # log, send to the errors sink, continue; stop after 100 failures
+on_error :skip, max_errors: 0      # stop at the first failure, but after it reached the errors sink
 ```
 
 Errors in sources, sinks, hooks, `open` and `close` always stop the job. Components are closed in any case.
+`NotImplementedError` and other script errors are handled like any other error.
 
 ## Hooks
 
@@ -152,8 +164,10 @@ end
 ```
 
 `params` must be the first statement of a job. Values come from the command line, then the environment
-variable (`env:`), then the default. Types: `String`, `Integer`, `Float`, `:bool`, `Array` (comma-separated).
-Use the values with `params.index`.
+variable (`env:`, an empty variable counts as unset), then the default. Types: `String`, `Integer`, `Float`,
+`:bool`, `Array` (comma-separated). Defaults are converted and checked when declared (`Integer, default: "1000"`
+gives 1000). Use the values with `params.index`; they are frozen. Options must be spelled out (`--ind` is not
+`--index`), and names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed.
 
 ## Running jobs
 
@@ -171,7 +185,7 @@ The CLI does not change the working directory: relative paths are relative to wh
 | 1 | aborted |
 | 2 | usage error (job file, parameters) |
 | 3 | finished, but records failed (`on_error :skip`) |
-| 130 | interrupted |
+| 130 | interrupted (`exe/metacrunch` ends by SIGINT, so shells and `xargs` see the interruption) |
 
 ## Testing jobs
 

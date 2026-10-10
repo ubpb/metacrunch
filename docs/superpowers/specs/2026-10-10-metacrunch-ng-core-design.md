@@ -2,7 +2,7 @@
 
 - Date: 2026-10-10
 - Branch: `metacrunch-ng`
-- Status: draft for review
+- Status: approved; revised after the final review (see 1.4)
 
 ## 1. Context
 
@@ -63,6 +63,29 @@ The redesign is split into sub-projects. Each gets its own spec and plan:
    4.0 on Linux and macOS.
 4. Line coverage is at least 95 %, branch coverage at least 90 %.
 
+### 1.4 Revisions after the final review
+
+The final review of the implementation led to these changes, all reflected
+in the sections below:
+
+- Sinks are flushed after an abort and on `Interrupt`, so `batch:` never
+  changes which records reach a sink; `written` counts records the sink
+  accepted (3.2, 3.3, 3.4).
+- `flat_map` streams its children instead of collecting them first (2.3, 3.1).
+- Only a second *required* parameter (or a named splat) asks for the
+  context; optional parameters no longer do (2.3, 2.4).
+- Reasons are Strings; Symbols are converted, `nil`/empty raise (2.3, 2.5).
+- `ScriptError` and `SystemStackError` follow the error policy (3.3).
+- `max_errors: 0` is allowed (3.3).
+- Sources that yield several values produce an Array record (2.2).
+- Parameters: no abbreviated options, defaults are converted and checked,
+  bound values are frozen, names that hide methods of `params` are
+  reserved, environment errors name the variable, empty variables count
+  as unset (5.5).
+- Job files are cached per path until they change (5.2).
+- `Testing.run` reports `written: 0` for jobs without a sink (5.6).
+- The executable ends by `SIGINT` after Ctrl-C (6).
+
 ## 2. Data model and contracts
 
 ### 2.1 Record
@@ -81,7 +104,9 @@ afterwards.
 ### 2.2 Source
 
 Any object that responds to `#each` and yields records. Optional `#open(context)`
-and `#close`.
+and `#close`. The engine calls `each` with a block, so sources that only
+`yield` work. Several values yielded at once (`yield key, value`) become one
+Array record, as with `Enumerable#to_a`.
 
 Declared with an optional id extractor:
 
@@ -103,8 +128,10 @@ The id becomes `ctx.id`. Without `id:`, `ctx.id` is `nil`.
 - A callable is a block or any object that responds to `#call`, including a
   class with `self.call`.
 - **Context parameter.** The engine passes `ctx` as second argument if the
-  callable accepts a second positional argument: a second required or
-  optional parameter, or a splat (`*args`). It decides once, when the
+  callable asks for it: a second *required* positional parameter, or a named
+  splat (`*args`). Optional parameters do not count, so library methods such
+  as `method(:Integer)` or `JSON.method(:generate)` get only the record, and
+  so do Symbol procs (`&:odd?`, unnamed splat). It decides once, when the
   pipeline is built, from the parameters of the block or of `#call`
   (`Proc#parameters(lambda: true)`, `Method#parameters`). All other callables
   get `(record)`.
@@ -112,7 +139,8 @@ The id becomes `ctx.id`. Without `id:`, `ctx.id` is `nil`.
   `trace`. Default: `"<kind>#<n>"`, where `n` is the step's 1-based position
   in the pipeline (`map#3`). Explicit: `map Mab2Primo, name: "mab2primo"`.
 - **Reasons.** `filter` and `reject` take an optional reason as first
-  argument: `reject("Patent") { it["type"] == "patent" }`. With a reason, a
+  argument: `reject("Patent") { it["type"] == "patent" }` (a Symbol is
+  converted to a String; an empty reason is an `ArgumentError`). With a reason, a
   dropped record is *rejected* (counted per reason, sent to the `rejects`
   sink). Without a reason, it is *filtered* (counted only, not sent anywhere).
 - **Contract checks** raise `Metacrunch::ContractError`:
@@ -120,6 +148,10 @@ The id becomes `ctx.id`. Without `id:`, `ctx.id` is `nil`.
   - `flat_map` returns something that does not respond to `#each`, or a
     `Hash`. A `Hash` is rejected explicitly because iterating it yields
     key/value pairs; the error message says to return `[hash]`.
+- **Streaming.** `flat_map` passes each child on as its Enumerable yields it.
+  An error raised by the step's own iteration is a failure of that step;
+  children forwarded before it stay forwarded. Errors from later steps and
+  sinks are not counted as failures of the `flat_map` step.
 
 ### 2.4 Sink
 
@@ -130,8 +162,9 @@ Any object that responds to `#write(record)`. Optional `#write_batch(records)`,
   `write_batch(records)` with up to 1000 records. Without `write_batch`, the
   engine calls `write` for each record of the batch. The rest is flushed
   before `close`.
-- **Context.** Like steps, a sink receives contexts if its method accepts
-  them: `write(record, ctx)` and `write_batch(records, ctxs)`. Sinks use
+- **Context.** Like steps, a sink receives contexts if its method asks for
+  them (second required parameter): `write(record, ctx)` and
+  `write_batch(records, ctxs)`. Sinks use
   them to read marks (as `FisDestination` does). Calling `ctx.reject!` or
   `ctx.mark` inside a sink raises `ContractError`.
 - One `sink` per job. Declaring a second one raises `ArgumentError` (4.x
@@ -141,6 +174,8 @@ Any object that responds to `#write(record)`. Optional `#write_batch(records)`,
   (`ctx.rejection`). `errors SINK` receives records that failed under
   `on_error :skip`, with their context (`ctx.failure`). Both are optional and
   accept `batch:`.
+- One object used for several of these roles (e.g. as `sink` and `rejects`)
+  is opened and closed once.
 
 ### 2.5 Per-record context
 
@@ -151,13 +186,13 @@ The engine creates one context per record emitted by the source.
 | `id` | From the source's `id:` extractor, else `nil` |
 | `position` | 1-based number of the record in the source |
 | `step` | Name of the step currently processing the record |
-| `reject!(reason, value: nil)` | Stops processing this record immediately. The engine records a rejection (`reason`, `value`, `step`) and sends the record to the `rejects` sink. The step's return value is ignored. |
+| `reject!(reason, value: nil)` | Reason: a non-empty String or Symbol (converted to String), else `ContractError`. Stops processing this record immediately. The engine records a rejection (`reason`, `value`, `step`) and sends the record to the `rejects` sink. The step's return value is ignored. |
 | `rejected?`, `rejection` | Rejection data (`Data`: `reason`, `value`, `step`) or `nil` |
-| `mark(reason, value: nil)` | Records a non-fatal note; the record continues. |
+| `mark(reason, value: nil)` | Records a non-fatal note; the record continues. Same reason rules as `reject!`. |
 | `marks` | Array of marks (`Data`: `reason`, `value`, `step`) |
 | `failure` | Set for records sent to the `errors` sink (`Data`: `error`, `step`) |
 | `store` | A `Hash` for per-record scratch data, e.g. cached enrichment |
-| `logger` | The job logger; messages are prefixed with the record id or position |
+| `logger` | The job logger; messages are prefixed with the record id or position. Logger-compatible: message or lazy block, level predicates (`debug?`, ...) |
 
 `flat_map` gives every emitted child a **copy** of the parent context: same
 `id` and `position`, own `marks` (copied), own `store` (shallow copy). Rejecting
@@ -186,7 +221,9 @@ each are allowed and run in declaration order. `after` receives the
 When a run starts, the engine folds the steps into a chain of procs, from the
 sink backwards. Each link implements its step kind, sets `ctx.step`, counts
 in/out, checks the contract and applies the error policy. Records are pushed
-through the chain one at a time, with no intermediate arrays.
+through the chain one at a time, with no intermediate arrays (`flat_map`
+streams its children). Step counters are resolved once when the chain is
+built.
 
 `Enumerator::Lazy` stays the mental model of the DSL, but is not used
 internally. Carrying the context, stopping on `reject!`, per-step counting
@@ -199,7 +236,10 @@ and the sink flush map directly onto a push chain.
 3. `before` hooks.
 4. For each record from the source: create the context, push it through the
    chain.
-5. Flush the batches of all sinks.
+5. Flush the batches of all sinks. After an abort or an `Interrupt` the
+   sinks are flushed as well (best effort; flush errors are logged and the
+   original error stays the run's error), so `batch:` never changes which
+   records reach a sink.
 6. `close` on sinks, steps and source, in reverse order. Always runs (in an
    `ensure`), also after an abort.
 7. `after` hooks, with the result. They also run after an abort, but not
@@ -207,7 +247,13 @@ and the sink flush map directly onto a push chain.
 
 ### 3.3 Error policy
 
-Declared with `on_error :abort` (default) or `on_error :skip, max_errors: n`.
+Declared with `on_error :abort` (default) or `on_error :skip, max_errors: n`
+(`n >= 0`; `0` stops at the first failure after the record reached the
+`errors` sink).
+
+"Exception" below means `StandardError`, `ScriptError` (e.g.
+`NotImplementedError`) or `SystemStackError`. Other exceptions
+(`NoMemoryError`, signals, `SystemExit`) end the process as usual.
 
 | Situation | Behaviour |
 |---|---|
@@ -223,8 +269,8 @@ original exception as `cause`. Its message names all of them.
 Error classes (all under `Metacrunch::Error < StandardError`): `ParamError`,
 `ContractError`, `StepError`, `JobLoadError`.
 
-`Interrupt` (Ctrl-C) is not rescued by the policy. Sinks and sources are
-still closed (step 6), then the interrupt propagates.
+`Interrupt` (Ctrl-C) is not rescued by the policy. Sinks are flushed and
+closed, sources closed (steps 5 and 6), then the interrupt propagates.
 
 ### 3.4 Result and stats
 
@@ -239,10 +285,10 @@ abort:
 
 `Stats` (`Data`, immutable):
 
-- Job level: `read`, `written`, `filtered`, `rejected` (total and per reason),
+- Job level: `read`, `written` (records the sink accepted), `filtered`, `rejected` (total and per reason),
   `marked` (number of marks per reason), `failed` (total and per error class),
   `duration`, `rate` (records read per second).
-- Per step, keyed by step name: `in`, `out`, `filtered`, `rejected`,
+- Per step, keyed by step name: `input`, `output`, `filtered`, `rejected`,
   `failed`, and `time` only if the job sets `profile true`. Timing is opt-in
   because two clock reads per step and record add up (50 steps × 1 million
   records).
@@ -304,6 +350,9 @@ registers recipes.
 loader it only returns the job. If the file defines several jobs, `name:` is
 required and selects one. Errors (no job, unknown name, ambiguous) raise
 `JobLoadError`.
+
+A job file is loaded again only when it changed (modification time), because
+loading it twice would redefine its constants.
 
 Paths in parameters are relative to the user's working directory. Files
 relative to the job use `require_relative` or `__dir__`.
@@ -373,15 +422,21 @@ end
 - CLI option names derive from the parameter name, `_` becomes `-`
   (`:bulk_size` → `--bulk-size`).
 - Precedence: CLI value, then environment variable (`env:`), then `default:`.
-  Environment values are converted with the parameter's type.
-- `default:` together with `required: true` raises `ArgumentError`.
+  Environment values are converted with the parameter's type; an empty
+  variable counts as unset; conversion errors name the variable.
+- Abbreviated options are not accepted (`--ind` does not mean `--index`).
+- `default:` together with `required: true` raises `ArgumentError`. Defaults
+  are converted like CLI values when declared (`Integer, default: "1000"`
+  gives 1000); an invalid default raises `ArgumentError`.
 - `args` collects the positional arguments into an `Array`; `min`/`max`
   are checked. Without `args`, positional arguments are an error.
-- `help` and `job` are reserved names.
+- `help` and `job` are reserved names, and so are names that would hide a
+  method of the bound params object (`to_h`, `with`, `hash`, ...).
 - Binding errors (missing required value, conversion error, unknown option,
   wrong number of arguments) raise `ParamError`. The library never calls
   `exit` or prints.
-- Bound parameters are a `Data` instance: `params.index`.
+- Bound parameters are a `Data` instance: `params.index`. Their values are
+  frozen (Strings and Arrays), so a default cannot leak changes between runs.
 - **Help.** To describe a job (`--help`), the CLI evaluates the recipe in
   describe mode. The `params` block declares the parameters, then evaluation
   stops with `throw`, so no source, step or sink is constructed. Consequence
@@ -412,7 +467,8 @@ result.status           # :ok, :ok_with_failures, :aborted
 - `source:` replaces the job's source with any `Enumerable` (optional).
 - The sink and the `rejects` and `errors` sinks are always replaced by
   in-memory sinks, so nothing is written. The replaced sinks are constructed,
-  but not opened (constructor convention, 5.2).
+  but not opened (constructor convention, 5.2). Jobs without a sink still have
+  their records collected, but `stats.written` is 0, as in a real run.
 
 ## 6. Minimal CLI
 
@@ -425,10 +481,15 @@ metacrunch [-h|-v] JOB_FILE [--job NAME] [JOB_PARAMS...] [ARGS...]
 
 - Options before `JOB_FILE`: `-h`/`--help` (CLI usage), `-v`/`--version`.
 - After `JOB_FILE`: `--job NAME` selects a job, `-h`/`--help` prints the job's
-  parameters, all other options are job parameters, the rest are `args`.
+  parameters (recognized with the job's own option parser, so `-h` as the
+  value of another option does not count), all other options are job
+  parameters, the rest are `args`.
 - Errors and logs go to stderr. Nothing is printed on stdout except help and
   version.
-- At the end of a run, the stats summary is logged on stderr (`INFO`).
+- At the end of a run, status and stats are logged on stderr (`INFO`). An
+  error and its cause are logged once each.
+- After Ctrl-C, `Cli#run` returns 130 and `exe/metacrunch` then ends by
+  `SIGINT`, so callers (shells, `xargs`, `make`) see the interruption.
 
 | Exit code | Meaning |
 |---|---|
