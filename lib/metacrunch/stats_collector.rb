@@ -22,6 +22,12 @@ module Metacrunch
       @profile
     end
 
+    # The mutable counter of one step. The engine resolves it once per step
+    # and updates input, output and filtered directly.
+    def counter(name)
+      @steps.fetch(name)
+    end
+
     def count_read
       @read += 1
     end
