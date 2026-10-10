@@ -5,7 +5,9 @@ module Metacrunch
   # open, close and write_batch methods.
   class SinkAdapter
 
-    attr_reader :sink
+    # sink: the wrapped object. delivered: records the sink has accepted,
+    # i.e. write or write_batch returned without raising.
+    attr_reader :sink, :delivered
 
     def initialize(sink, batch: nil)
       raise ArgumentError, "sink must respond to #write, got #{sink.inspect}" unless sink.respond_to?(:write)
@@ -20,6 +22,7 @@ module Metacrunch
       @write_batch_with_context = @write_batch && Callable.accepts_second_argument?(@write_batch)
       @records = []
       @contexts = []
+      @delivered = 0
     end
 
     def open(context)
@@ -45,6 +48,7 @@ module Metacrunch
       @contexts = []
       if @write_batch
         @write_batch_with_context ? @write_batch.call(records, contexts) : @write_batch.call(records)
+        @delivered += records.size
       else
         records.zip(contexts) { |record, ctx| write_one(record, ctx) }
       end
@@ -58,6 +62,7 @@ module Metacrunch
 
     def write_one(record, ctx)
       @write_with_context ? @sink.write(record, ctx) : @sink.write(record)
+      @delivered += 1
     end
 
   end
