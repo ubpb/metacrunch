@@ -84,6 +84,24 @@ class EngineErrorPolicyTest < Minitest::Test
     assert_equal [1], failed.records
   end
 
+  def test_script_errors_in_steps_follow_the_error_policy
+    result = run_pipeline do
+      source [1, 2]
+      map { it == 1 ? raise(NotImplementedError, "todo") : it }
+      on_error :skip
+    end
+
+    assert_equal [:ok_with_failures, {"NotImplementedError" => 1}], [result.status, result.stats.failed]
+  end
+
+  def test_script_errors_outside_steps_abort_the_run_instead_of_escaping
+    result = run_pipeline do
+      source(Enumerator.new { raise NotImplementedError, "source todo" })
+    end
+
+    assert_equal [:aborted, NotImplementedError], [result.status, result.error.class]
+  end
+
   ALWAYS_ABORT.each do |description, (recipe, message)|
     define_method("test_errors_in_#{description}_abort_even_with_skip") do
       result = run_pipeline do

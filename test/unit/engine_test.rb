@@ -15,6 +15,15 @@ class EngineTest < Minitest::Test
 
   end
 
+  class PairSource
+
+    def each
+      yield 1, :a
+      yield 2, :b
+    end
+
+  end
+
   class RecordingObserver
 
     attr_reader :events
@@ -158,6 +167,55 @@ class EngineTest < Minitest::Test
     end
 
     assert_equal [0, 1], target.records
+  end
+
+  def test_sources_yielding_several_values_produce_arrays
+    target = CollectingSink.new
+    run_pipeline do
+      source PairSource.new
+      sink target
+    end
+
+    assert_equal [[1, :a], [2, :b]], target.records
+  end
+
+  def test_flat_map_streams_children_before_its_enumerator_finishes
+    target = CollectingSink.new
+    result = run_pipeline do
+      source [1]
+      flat_map do
+        Enumerator.new do |yielder|
+          yielder << "first"
+          raise "generator broke"
+        end
+      end
+      sink target
+    end
+
+    assert_equal ["first"], target.records
+    assert_equal [:aborted, "flat_map#1"], [result.status, result.error.step]
+  end
+
+  def test_errors_after_a_flat_map_belong_to_the_later_step
+    stats = run_pipeline do
+      source [1]
+      flat_map { [1, 2] }
+      map(name: "later") { raise "later broke" }
+      on_error :skip
+    end.stats
+
+    assert_equal [0, 2], [stats.steps["flat_map#1"].failed, stats.steps["later"].failed]
+  end
+
+  def test_aborts_after_a_flat_map_name_the_later_step
+    result = run_pipeline do
+      source [1]
+      flat_map { [1, 2] }
+      map(name: "later") { raise "later broke" }
+    end
+
+    assert_equal ["later", RuntimeError], [result.error.step, result.error.cause.class]
+    assert_equal 0, result.stats.steps["flat_map#1"].failed
   end
 
   CONTRACT_VIOLATIONS.each do |description, step|

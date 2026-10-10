@@ -9,6 +9,26 @@ module Metacrunch
   # into the sink, applies the error policy and collects stats.
   class Engine
 
+    # Errors a step can fail with. Everything else (NoMemoryError, signals,
+    # SystemExit) ends the process as usual.
+    RECOVERABLE = [StandardError, ScriptError, SystemStackError].freeze
+
+    # Returned by map/filter/reject evaluation when the record goes no further.
+    DROPPED = Object.new.freeze
+
+    # Wraps errors from later steps and sinks while a flat_map streams its
+    # children, so they are not counted as failures of the flat_map step.
+    class DownstreamFailure < StandardError
+
+      attr_reader :original
+
+      def initialize(original)
+        @original = original
+        super(original.message)
+      end
+
+    end
+
     def initialize(pipeline, executor: Executor::Inline.new, observer: nil)
       @pipeline = pipeline
       @executor = executor
@@ -32,16 +52,20 @@ module Metacrunch
       :ok
     end
 
-    # Returns the error that aborted the run, or nil. Opened components are
-    # closed in any case, also while an Interrupt propagates.
+    # Returns the error that aborted the run, or nil. Buffered records are
+    # flushed after an abort and on Interrupt; opened components are closed
+    # in any case.
     def execute
       opened = []
       error = nil
       begin
         process(opened)
-      rescue StandardError => e
+      rescue *RECOVERABLE => e
         error = e
         flush_after_abort
+      rescue Interrupt
+        flush_after_abort
+        raise
       ensure
         close_error = close_components(opened)
       end
@@ -61,19 +85,21 @@ module Metacrunch
     end
 
     # Writes what the sinks have buffered, so batch: does not change which
-    # records reach a sink when a run aborts. Flush errors are logged; the
-    # error that aborted the run stays the run's error.
+    # records reach a sink when a run stops early. Flush errors are logged;
+    # the error that aborted the run stays the run's error.
     def flush_after_abort
       sinks.each do |sink|
         sink.flush
-      rescue StandardError => e
+      rescue *RECOVERABLE => e
         @pipeline.logger.error("flushing #{sink.sink.class} after abort failed: #{e.class}: #{e.message}")
       end
     end
 
-    # Source, step callables and sinks, in open order.
+    # Source, step callables and sinks, in open order. A SinkAdapter stands
+    # for its sink, so one object used as sink and rejects opens once.
     def components
-      [@pipeline.source, *@pipeline.steps.map(&:callable), *sinks].uniq(&:__id__)
+      all = [@pipeline.source, *@pipeline.steps.map(&:callable), *sinks]
+      all.uniq { |component| component.is_a?(SinkAdapter) ? component.sink.__id__ : component.__id__ }
     end
 
     def open_components(opened)
@@ -90,7 +116,7 @@ module Metacrunch
       first_error = nil
       opened.reverse_each do |component|
         component.close if component.respond_to?(:close)
-      rescue StandardError => e
+      rescue *RECOVERABLE => e
         @pipeline.logger.error("closing #{component.class} failed: #{e.class}: #{e.message}")
         first_error ||= e
       end
@@ -100,7 +126,7 @@ module Metacrunch
     def run_after_hooks(result)
       @pipeline.after_hooks.each do |hook|
         hook.call(result)
-      rescue StandardError => e
+      rescue *RECOVERABLE => e
         @pipeline.logger.error("after hook failed: #{e.class}: #{e.message}")
         result = result.with(status: :aborted, error: result.error || e)
       end
@@ -117,36 +143,83 @@ module Metacrunch
       @pipeline.steps.reverse.reduce(method(:deliver)) { |downstream, step| link(step, downstream) }
     end
 
-    # One link of the chain: runs the step and passes its outputs on. Only
-    # the step itself is covered by the error policy; errors raised further
-    # down (later steps, sinks) pass through.
+    # One link of the chain. Only the step itself is covered by the error
+    # policy; errors raised further down (later steps, sinks) pass through.
     def link(step, downstream)
+      counter = @stats.counter(step.name)
+      step.kind == :flat_map ? flat_map_link(step, counter, downstream) : single_link(step, counter, downstream)
+    end
+
+    # map, filter and reject: at most one output, no intermediate Array.
+    def single_link(step, counter, downstream)
       lambda do |record, ctx|
         ctx.step = step.name
-        @stats.step_in(step.name)
+        counter.input += 1
         @observer&.step_in(step.name, record, ctx)
         begin
-          outputs = evaluate(step, record, ctx)
-        rescue StandardError => e
+          output = evaluate(step, record, ctx)
+        rescue *RECOVERABLE => e
           @observer&.step_out(step.name, [], ctx)
           next fail_record(step, record, ctx, e)
         end
-        @observer&.step_out(step.name, outputs, ctx)
-        forward(step, record, ctx, outputs, downstream)
+        @observer&.step_out(step.name, output.equal?(DROPPED) ? [] : [output], ctx)
+        if ctx.rejected?
+          reject_record(record, ctx)
+        elsif output.equal?(DROPPED)
+          counter.filtered += 1
+        else
+          counter.output += 1
+          downstream.call(output, ctx)
+        end
       end
     end
 
-    # Calls the step and returns its outputs as an Array. Raises
-    # ContractError if the step breaks its contract.
+    # flat_map: streams each child downstream as the step's Enumerable
+    # yields it. Children forwarded before an error in the step's own
+    # iteration stay forwarded.
+    def flat_map_link(step, counter, downstream)
+      lambda do |record, ctx|
+        ctx.step = step.name
+        counter.input += 1
+        @observer&.step_in(step.name, record, ctx)
+        children = @observer ? [] : nil
+        begin
+          result = timed(step) { step.call(record, ctx) }
+          unless ctx.rejected?
+            flat_map_contract!(step, result)
+            result.each do |child|
+              children&.push(child)
+              counter.output += 1
+              forward_child(downstream, child, ctx)
+            end
+          end
+        rescue DownstreamFailure => e
+          raise e.original, cause: e.original.cause
+        rescue *RECOVERABLE => e
+          @observer&.step_out(step.name, children || [], ctx)
+          next fail_record(step, record, ctx, e)
+        end
+        @observer&.step_out(step.name, children, ctx)
+        reject_record(record, ctx) if ctx.rejected?
+      end
+    end
+
+    def forward_child(downstream, child, ctx)
+      downstream.call(child, ctx.copy)
+    rescue *RECOVERABLE => e
+      raise DownstreamFailure, e
+    end
+
+    # Calls a map, filter or reject step. Returns the output record or
+    # DROPPED. Raises ContractError if the step breaks its contract.
     def evaluate(step, record, ctx)
       result = timed(step) { step.call(record, ctx) }
-      return [] if ctx.rejected?
+      return DROPPED if ctx.rejected?
 
       case step.kind
-      when :map then [map_result(step, result)]
+      when :map then map_result(step, result)
       when :filter then kept(step, record, ctx, result)
-      when :reject then kept(step, record, ctx, !result)
-      else flat_map_result(step, result)
+      else kept(step, record, ctx, !result)
       end
     end
 
@@ -162,10 +235,10 @@ module Metacrunch
     end
 
     def kept(step, record, ctx, keep)
-      return [record] if keep
+      return record if keep
 
       ctx.reject!(step.reason) if step.reason
-      []
+      DROPPED
     end
 
     def map_result(step, result)
@@ -174,32 +247,13 @@ module Metacrunch
       result
     end
 
-    def flat_map_result(step, result)
+    def flat_map_contract!(step, result)
       if result.is_a?(Hash)
         raise ContractError, "flat_map step #{step.name} returned a Hash; return [hash] to emit it as one record"
       end
-      unless result.respond_to?(:each)
-        raise ContractError, "flat_map step #{step.name} must return an Enumerable, got #{result.class}"
-      end
+      return if result.respond_to?(:each)
 
-      # The contract only requires #each, so #map may not exist.
-      outputs = []
-      result.each { |output| outputs << output } # rubocop:disable Style/MapIntoArray
-      outputs
-    end
-
-    def forward(step, record, ctx, outputs, downstream)
-      if ctx.rejected?
-        reject_record(record, ctx)
-      elsif step.kind == :flat_map
-        @stats.step_out(step.name, outputs.size)
-        outputs.each { |child| downstream.call(child, ctx.copy) }
-      elsif outputs.empty?
-        @stats.step_filtered(step.name)
-      else
-        @stats.step_out(step.name)
-        downstream.call(outputs.first, ctx)
-      end
+      raise ContractError, "flat_map step #{step.name} must return an Enumerable, got #{result.class}"
     end
 
     def deliver(record, ctx)

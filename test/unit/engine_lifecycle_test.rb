@@ -34,6 +34,10 @@ class EngineLifecycleTest < Minitest::Test
 
     def write(_record) = nil
 
+    def write_batch(records)
+      @log << "write_batch #{records.size}"
+    end
+
   end
 
   class FailingClose
@@ -101,7 +105,30 @@ class EngineLifecycleTest < Minitest::Test
     end
 
     assert_equal :aborted, result.status
-    assert_equal ["open source", "open sink", "close sink", "close source"], log
+    assert_equal ["open source", "open sink", "write_batch 1", "close sink", "close source"], log
+  end
+
+  def test_flushes_the_rest_of_a_batch_before_close
+    log = []
+    run_pipeline do
+      source [1, 2]
+      sink Component.new("sink", log), batch: 10
+    end
+
+    assert_equal ["open sink", "write_batch 2", "close sink"], log
+  end
+
+  def test_one_object_used_as_several_sinks_is_opened_and_closed_once
+    log = []
+    shared = Component.new("shared", log)
+    run_pipeline do
+      source [1]
+      reject("never") { false }
+      sink shared
+      rejects shared
+    end
+
+    assert_equal ["open shared", "close shared"], log
   end
 
   def test_interrupt_in_a_step_closes_components_and_skips_after_hooks
