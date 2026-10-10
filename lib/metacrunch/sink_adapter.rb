@@ -42,16 +42,7 @@ module Metacrunch
     def flush
       return if @records.empty?
 
-      records = @records
-      contexts = @contexts
-      @records = []
-      @contexts = []
-      if @write_batch
-        @write_batch_with_context ? @write_batch.call(records, contexts) : @write_batch.call(records)
-        @delivered += records.size
-      else
-        records.zip(contexts) { |record, ctx| write_one(record, ctx) }
-      end
+      @write_batch ? flush_batch : flush_one_by_one
     end
 
     def close
@@ -59,6 +50,25 @@ module Metacrunch
     end
 
     private
+
+    def flush_batch
+      records = @records
+      contexts = @contexts
+      @records = []
+      @contexts = []
+      @write_batch_with_context ? @write_batch.call(records, contexts) : @write_batch.call(records)
+      @delivered += records.size
+    end
+
+    # A record leaves the buffer only after it was written, so a flush that
+    # is interrupted can be continued.
+    def flush_one_by_one
+      until @records.empty?
+        write_one(@records.first, @contexts.first)
+        @records.shift
+        @contexts.shift
+      end
+    end
 
     def write_one(record, ctx)
       @write_with_context ? @sink.write(record, ctx) : @sink.write(record)

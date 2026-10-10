@@ -161,7 +161,7 @@ module Metacrunch
 
         return [first.to_s, second]
       end
-      raise ArgumentError, "the reason must be a String, got #{first.inspect}" unless second.nil?
+      raise ArgumentError, "the reason must be a String or Symbol, got #{first.inspect}" unless second.nil?
 
       [nil, first]
     end

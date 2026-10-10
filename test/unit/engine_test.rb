@@ -250,6 +250,65 @@ class EngineTest < Minitest::Test
     assert_equal [:aborted, IOError, "disk full"], [result.status, result.error.class, result.error.message]
   end
 
+  def test_reject_during_a_lazy_flat_map_stops_its_children
+    target = CollectingSink.new
+    rejected = CollectingSink.new
+    run_pipeline do
+      source ["parent"]
+      flat_map do |_record, ctx|
+        Enumerator.new do |yielder|
+          yielder << 1
+          ctx.reject!("Stop")
+          yielder << 2
+        end
+      end
+      sink target
+      rejects rejected
+    end
+
+    assert_equal [[1], ["parent"]], [target.records, rejected.records]
+  end
+
+  def test_observer_sees_a_matching_step_out_for_every_flat_map_step_in
+    observer = RecordingObserver.new
+    pipeline = build_pipeline do
+      source [1]
+      flat_map { [1, 2] }
+      map(name: "later") { raise "later broke" }
+    end
+    Metacrunch::Engine.new(pipeline, observer:).run
+    flat_map_events = observer.events.select { |_kind, step, _payload| step == "flat_map#1" }
+
+    assert_equal [[:in, "flat_map#1", 1], [:out, "flat_map#1", [1]]], flat_map_events
+  end
+
+  def test_nested_flat_maps_attribute_iteration_errors_to_the_inner_step
+    result = run_pipeline do
+      source [1]
+      flat_map(name: "outer") { [1, 2] }
+      flat_map(name: "inner") { Enumerator.new { raise ArgumentError, "inner broke" } }
+    end
+
+    assert_equal ["inner", ArgumentError], [result.error.step, result.error.cause.class]
+    assert_equal 0, result.stats.steps["outer"].failed
+  end
+
+  def test_sink_errors_while_streaming_keep_their_cause_chain
+    result = run_pipeline do
+      source [1]
+      flat_map { [1, 2] }
+      sink BrokenSink.new
+    end
+    chain = []
+    error = result.error
+    while error
+      chain << error.class
+      error = error.cause
+    end
+
+    assert_equal [IOError], chain
+  end
+
   CONTRACT_VIOLATIONS.each do |description, step|
     define_method("test_contract_violation_#{description}_aborts") do
       result = run_pipeline do
