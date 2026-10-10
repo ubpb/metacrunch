@@ -1,21 +1,26 @@
-# coding: utf-8
-lib = File.expand_path("../lib", __FILE__)
-$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require "metacrunch/version"
+# frozen_string_literal: true
+
+require_relative "lib/metacrunch/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = "metacrunch"
-  spec.version       = Metacrunch::VERSION
-  spec.authors       = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
-  spec.summary       = %q{Data processing and ETL toolkit for Ruby}
-  spec.homepage      = "http://github.com/ubpb/metacrunch"
-  spec.license       = "MIT"
+  spec.name     = "metacrunch"
+  spec.version  = Metacrunch::VERSION
+  spec.authors  = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
+  spec.summary  = "Data processing and ETL toolkit for Ruby"
+  spec.homepage = "https://github.com/ubpb/metacrunch"
+  spec.license  = "MIT"
 
-  spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
-  spec.bindir        = "exe"
-  spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
-  spec.require_paths = ["lib"]
+  spec.required_ruby_version = ">= 4.0"
 
-  spec.add_dependency "activesupport", ">= 5.1.0"
-  spec.add_dependency "colorize",      ">= 0.8.1"
+  spec.metadata = {
+    "source_code_uri" => spec.homepage,
+    "changelog_uri" => "#{spec.homepage}/blob/master/CHANGELOG.md",
+    "rubygems_mfa_required" => "true"
+  }
+
+  spec.files = Dir["lib/**/*.rb", "exe/*", "CHANGELOG.md", "License.txt", "Readme.md"]
+  spec.bindir = "exe"
+  spec.executables = Dir["exe/*"].map { |path| File.basename(path) }
+
+  spec.add_dependency "logger", ">= 1.6"
 end
