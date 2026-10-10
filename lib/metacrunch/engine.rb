@@ -18,7 +18,10 @@ module Metacrunch
 
     # Wraps errors from later steps and sinks while a flat_map streams its
     # children, so they are not counted as failures of the flat_map step.
-    class DownstreamFailure < StandardError
+    # It inherits from Exception on purpose: the flat_map's Enumerable runs
+    # user code around each yield, and a `rescue => e` there must not be
+    # able to swallow these errors.
+    class DownstreamFailure < Exception # rubocop:disable Lint/InheritException
 
       attr_reader :original
 
