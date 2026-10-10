@@ -17,6 +17,8 @@ require_relative "metacrunch/pipeline"
 require_relative "metacrunch/builder"
 require_relative "metacrunch/executor/inline"
 require_relative "metacrunch/engine"
+require_relative "metacrunch/job"
+require_relative "metacrunch/loader"
 
 module Metacrunch
 
@@ -35,6 +37,16 @@ module Metacrunch
 
     def build_logger(io)
       Logger.new(io, level: Logger::INFO, formatter: LOG_FORMATTER)
+    end
+
+    # Defines a job. Inside a job file loaded with load_job, the job is
+    # also registered with the loader.
+    def job(name = nil, &)
+      Job.new(name, &).tap { |job| Loader.register(job) }
+    end
+
+    def load_job(path, name: nil)
+      Loader.load(path, name:)
     end
 
   end
