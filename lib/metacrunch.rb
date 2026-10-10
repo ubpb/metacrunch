@@ -13,6 +13,8 @@ require_relative "metacrunch/callable"
 require_relative "metacrunch/step"
 require_relative "metacrunch/sink_adapter"
 require_relative "metacrunch/params"
+require_relative "metacrunch/pipeline"
+require_relative "metacrunch/builder"
 
 module Metacrunch
 
