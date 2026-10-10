@@ -83,7 +83,9 @@ they are counted per reason and sent to the `rejects` sink. Without a reason the
 else.
 
 `flat_map` streams: each record its Enumerable yields goes on through the pipeline right away. If the Enumerable
-raises halfway, the records it yielded before are already on their way.
+raises halfway, the records it yielded before are already on their way. Errors from later steps and sinks pass
+through the Enumerable's `each`; a `rescue => e` there does not catch them, but a `rescue Exception` would, so do not
+use one around `yield`.
 
 ```ruby
 reject("Patent") { it["type"] == "patent" }

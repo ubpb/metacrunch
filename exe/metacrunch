@@ -6,10 +6,9 @@ require "metacrunch/cli"
 code = Metacrunch::Cli.new.run(ARGV)
 
 # After Ctrl-C, end by the signal itself, so callers such as shells, xargs
-# or make see that the process was interrupted.
-if code == Metacrunch::Cli::EXIT_CODES[:interrupted]
-  trap("INT", "SYSTEM_DEFAULT")
-  Process.kill("INT", Process.pid)
-end
+# or make see that the process was interrupted. Raising SignalException
+# (instead of killing the process) lets Ruby flush stdout and run at_exit
+# hooks first, then re-raise the signal without printing anything.
+raise SignalException, "INT" if code == Metacrunch::Cli::EXIT_CODES[:interrupted]
 
 exit code
