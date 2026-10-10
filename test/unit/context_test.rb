@@ -38,6 +38,15 @@ class ContextTest < Minitest::Test
     assert_equal ["parent", "child"], child.marks.map(&:reason)
   end
 
+  def test_reasons_are_strings
+    ctx = build_context
+    ctx.reject!(:patent)
+
+    assert_equal "patent", ctx.rejection.reason
+    assert_raises(Metacrunch::ContractError) { build_context.reject!(nil) }
+    assert_raises(Metacrunch::ContractError) { build_context.mark("") }
+  end
+
   def test_sealed_context_rejects_changes
     ctx = build_context.seal!
 
