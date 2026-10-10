@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "fileutils"
+require "tmpdir"
 
 class LoaderTest < Minitest::Test
 
@@ -27,6 +29,19 @@ class LoaderTest < Minitest::Test
     Metacrunch.job("inline") { source [] }
 
     assert_equal "lazy", Metacrunch.load_job(fixture("lazy.rb")).name
+  end
+
+  def test_loads_a_file_once_until_it_changes
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "job.rb")
+      FileUtils.cp(fixture("lazy.rb"), path)
+      first = Metacrunch.load_job(path)
+      second = Metacrunch.load_job(path)
+      File.utime(Time.now, Time.now + 5, path)
+
+      assert_same first, second
+      refute_same first, Metacrunch.load_job(path)
+    end
   end
 
   ERRORS.each do |description, (file, name, message)|

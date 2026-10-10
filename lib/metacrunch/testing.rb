@@ -32,12 +32,15 @@ module Metacrunch
 
     # params are bound like CLI values (strings are converted), without
     # environment lookup. The job's sinks are built but never opened.
+    # Records are collected even if the job has no sink; stats.written is
+    # 0 then, as in a real run.
     def run(job, params: {}, source: nil, logger: Logger.new(nil))
       unless source.nil? || source.respond_to?(:each)
         raise ArgumentError, "source must respond to #each, got #{source.inspect}"
       end
 
       pipeline = job.pipeline(binder: ->(schema) { schema.bind_hash(params) }, logger:)
+      has_sink = !pipeline.sink.nil?
       memory = {sink: MemorySink.new, rejects: MemorySink.new, errors: MemorySink.new}
       pipeline = pipeline.with(source: source || pipeline.source,
                                **memory.transform_values { |sink| SinkAdapter.new(sink) })
@@ -46,7 +49,7 @@ module Metacrunch
         records: memory[:sink].records,
         rejects: memory[:rejects].records.zip(memory[:rejects].contexts.map(&:rejection)),
         errors: memory[:errors].records.zip(memory[:errors].contexts.map(&:failure)),
-        stats: result.stats,
+        stats: has_sink ? result.stats : result.stats.with(written: 0),
         status: result.status,
         error: result.error
       )

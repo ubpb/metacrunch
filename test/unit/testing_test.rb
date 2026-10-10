@@ -36,6 +36,12 @@ class TestingTest < Minitest::Test
     assert_equal [1, 2], Metacrunch::Testing.run(job).records
   end
 
+  def test_jobs_without_a_sink_report_nothing_written
+    result = Metacrunch::Testing.run(Metacrunch.job { source [1, 2] })
+
+    assert_equal [[1, 2], 0], [result.records, result.stats.written]
+  end
+
   def test_rejects_a_source_without_each
     assert_raises(ArgumentError) { Metacrunch::Testing.run(build_job, source: 42) }
   end
