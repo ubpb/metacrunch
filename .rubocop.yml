@@ -5,6 +5,11 @@ inherit_mode:
   merge:
     - Exclude
 
+AllCops:
+  Exclude:
+    # Contains a syntax error on purpose (loader tests).
+    - "test/fixtures/jobs/broken.rb"
+
 Style/FrozenStringLiteralComment:
   Enabled: true
 
