@@ -2,17 +2,31 @@
 
 module Metacrunch
   # Loads job files. Metacrunch.job registers each job with the load that
-  # is in progress on the current thread.
+  # is in progress on the current thread. A file is loaded again only when
+  # it has changed, because loading it twice would redefine its constants.
   module Loader
 
     KEY = :metacrunch_loading_jobs
+
+    @cache = {}
 
     module_function
 
     def load(path, name: nil)
       raise JobLoadError, "job file not found: #{path}" unless File.file?(path)
 
-      select_job(collect(path), path, name&.to_s)
+      select_job(cached_jobs(path), path, name&.to_s)
+    end
+
+    def cached_jobs(path)
+      key = File.expand_path(path)
+      mtime = File.mtime(key)
+      cached_mtime, jobs = @cache[key]
+      return jobs if cached_mtime == mtime
+
+      jobs = collect(path)
+      @cache[key] = [mtime, jobs]
+      jobs
     end
 
     def register(job)
