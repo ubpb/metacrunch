@@ -55,6 +55,16 @@ class ContextTest < Minitest::Test
     assert_match(/WARN  \[#7\] no id/, io.string)
   end
 
+  def test_logger_supports_block_form_and_level_checks
+    io = StringIO.new
+    record_logger = build_context(logger: Metacrunch.build_logger(io)).logger
+    record_logger.info { "lazy message" }
+    record_logger.debug { raise "debug blocks must not run at level INFO" }
+
+    assert_match(/INFO  \[rec1\] lazy message/, io.string)
+    refute_predicate record_logger, :debug?
+  end
+
   private
 
   def build_context(id: "rec1", logger: Logger.new(nil), on_mark: nil)
