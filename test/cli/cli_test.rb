@@ -45,6 +45,20 @@ class CliTest < Minitest::Test
     assert_equal [0, "Usage: metacrunch #{job("several.rb")} [JOB_PARAMS...]\n\n"], [code, stdout]
   end
 
+  def test_help_options_given_as_values_do_not_print_help
+    code, stdout, stderr = cli(job("numbers.rb"), "--factor", "-h", "1")
+
+    assert_equal [2, ""], [code, stdout]
+    assert_match(/invalid value for --factor: "-h"/, stderr)
+  end
+
+  def test_an_aborted_run_reports_the_error_once
+    _code, _stdout, stderr = cli(job("numbers.rb"), "0")
+
+    assert_equal 1, stderr.scan("zero is not allowed").size
+    assert_match(/INFO  aborted: read 1, written 0/, stderr)
+  end
+
   def test_runs_the_job
     code, stdout, stderr = cli(job("numbers.rb"), "--factor", "3", "--", "1", "-2", "2")
 
@@ -78,6 +92,13 @@ class CliTest < Minitest::Test
 
     assert_equal 1, code
     assert_match(/NameError/, stderr)
+  end
+
+  def test_script_errors_in_recipes_exit_as_aborted
+    code, _stdout, stderr = cli(job("todo_recipe.rb"))
+
+    assert_equal 1, code
+    assert_match(/NotImplementedError/, stderr)
   end
 
   private
