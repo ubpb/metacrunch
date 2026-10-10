@@ -28,6 +28,13 @@ class ExeTest < Minitest::Test
     assert_equal Signal.list.fetch("INT"), status.termsig
   end
 
+  def test_interrupt_keeps_the_data_written_to_stdout
+    stdout, stderr, = metacrunch(File.join(ROOT, "test", "fixtures", "jobs", "interrupted_output.rb"))
+
+    assert_equal "1\n2\n", stdout
+    refute_match(/SignalException|Interrupt \(/, stderr)
+  end
+
   private
 
   def metacrunch(*)
