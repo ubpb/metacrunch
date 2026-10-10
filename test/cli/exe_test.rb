@@ -21,6 +21,13 @@ class ExeTest < Minitest::Test
     assert_equal 2, metacrunch.last.exitstatus
   end
 
+  def test_interrupt_ends_the_process_by_the_signal
+    _stdout, _stderr, status = metacrunch(File.join(ROOT, "test", "fixtures", "jobs", "interrupted.rb"))
+
+    assert_predicate status, :signaled?
+    assert_equal Signal.list.fetch("INT"), status.termsig
+  end
+
   private
 
   def metacrunch(*)

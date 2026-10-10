@@ -3,4 +3,13 @@
 
 require "metacrunch/cli"
 
-exit Metacrunch::Cli.new.run(ARGV)
+code = Metacrunch::Cli.new.run(ARGV)
+
+# After Ctrl-C, end by the signal itself, so callers such as shells, xargs
+# or make see that the process was interrupted.
+if code == Metacrunch::Cli::EXIT_CODES[:interrupted]
+  trap("INT", "SYSTEM_DEFAULT")
+  Process.kill("INT", Process.pid)
+end
+
+exit code
