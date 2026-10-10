@@ -16,6 +16,7 @@ class BuilderTest < Minitest::Test
     "duplicate_step_name" => proc { source([]); map(name: "x") { it }; map(name: "x") { it } },
     "unknown_error_policy" => proc { source([]); on_error :ignore },
     "max_errors_without_skip" => proc { source([]); on_error :abort, max_errors: 3 },
+    "negative_max_errors" => proc { source([]); on_error :skip, max_errors: -1 },
     "params_after_other_statements" => proc { source([]); params { param :x } }
   }.freeze
 
@@ -47,6 +48,16 @@ class BuilderTest < Minitest::Test
     end
 
     assert_equal([[nil, callable], ["Patent", callable]], pipeline.steps.map { [it.reason, it.callable] })
+  end
+
+  def test_accepts_symbol_reasons_and_zero_max_errors
+    pipeline = build_pipeline do
+      source []
+      reject(:patent) { it }
+      on_error :skip, max_errors: 0
+    end
+
+    assert_equal ["patent", 0], [pipeline.steps.first.reason, pipeline.max_errors]
   end
 
   def test_binds_declared_params

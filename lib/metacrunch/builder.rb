@@ -91,8 +91,8 @@ module Metacrunch
       unless ON_ERROR_POLICIES.include?(policy)
         raise ArgumentError, "on_error must be one of #{ON_ERROR_POLICIES.inspect}, got #{policy.inspect}"
       end
-      unless max_errors.nil? || (policy == :skip && max_errors.is_a?(Integer) && max_errors.positive?)
-        raise ArgumentError, "max_errors must be a positive Integer and needs on_error :skip"
+      unless max_errors.nil? || (policy == :skip && max_errors.is_a?(Integer) && !max_errors.negative?)
+        raise ArgumentError, "max_errors must be a non-negative Integer and needs on_error :skip"
       end
 
       @on_error = policy
@@ -156,7 +156,11 @@ module Metacrunch
     end
 
     def split_reason(first, second)
-      return [first, second] if first.is_a?(String)
+      if first.is_a?(String) || first.is_a?(Symbol)
+        raise ArgumentError, "the reason must not be empty" if first.empty?
+
+        return [first.to_s, second]
+      end
       raise ArgumentError, "the reason must be a String, got #{first.inspect}" unless second.nil?
 
       [nil, first]

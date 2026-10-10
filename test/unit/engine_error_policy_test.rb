@@ -71,6 +71,19 @@ class EngineErrorPolicyTest < Minitest::Test
     assert_instance_of Metacrunch::StepError, result.error.cause
   end
 
+  def test_zero_max_errors_stops_at_the_first_failure_after_recording_it
+    failed = CollectingSink.new
+    result = run_pipeline do
+      source [1, 2, 3]
+      map { raise ArgumentError, "bad" }
+      errors failed
+      on_error :skip, max_errors: 0
+    end
+
+    assert_equal [:aborted, 1], [result.status, result.stats.read]
+    assert_equal [1], failed.records
+  end
+
   ALWAYS_ABORT.each do |description, (recipe, message)|
     define_method("test_errors_in_#{description}_abort_even_with_skip") do
       result = run_pipeline do

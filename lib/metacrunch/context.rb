@@ -13,6 +13,15 @@ module Metacrunch
     attr_reader :id, :position, :marks, :store, :rejection
     attr_accessor :step, :failure
 
+    # Reasons are counted and reported as Strings. Symbols are converted;
+    # nil and empty reasons break the contract.
+    def self.reason(reason)
+      text = reason.is_a?(Symbol) ? reason.to_s : reason
+      return text if text.is_a?(String) && !text.empty?
+
+      raise ContractError, "a reason must be a non-empty String or Symbol, got #{reason.inspect}"
+    end
+
     # on_mark is called with the reason of every mark, so marks are counted
     # when they happen (once, even if a flat_map copies the context later).
     def initialize(id:, position:, logger:, on_mark: nil, marks: [], store: {})
@@ -32,7 +41,7 @@ module Metacrunch
     # sink and ignores the return value of the current step.
     def reject!(reason, value: nil)
       ensure_writable!
-      @rejection = Rejection.new(reason:, value:, step:)
+      @rejection = Rejection.new(reason: Context.reason(reason), value:, step:)
       nil
     end
 
@@ -43,6 +52,7 @@ module Metacrunch
     # Records a non-fatal note. The record continues through the pipeline.
     def mark(reason, value: nil)
       ensure_writable!
+      reason = Context.reason(reason)
       @marks << Mark.new(reason:, value:, step:)
       @on_mark&.call(reason)
       nil
