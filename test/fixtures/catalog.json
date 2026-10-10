@@ -1,0 +1,7 @@
+[
+  {"_id": "1", "public": true, "title": "Ruby", "year": 2020, "isbns": ["978-1", "978-2"]},
+  {"_id": "2", "public": false, "title": "Secret", "year": 2021, "isbns": []},
+  {"_id": "3", "public": true, "title": "Old", "year": 1850, "isbns": []},
+  {"_id": "4", "public": true, "title": null, "year": 2001, "isbns": []},
+  {"_id": "5", "public": true, "title": "No ISBN field", "year": 2005}
+]
