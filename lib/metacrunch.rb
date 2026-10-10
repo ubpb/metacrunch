@@ -15,6 +15,8 @@ require_relative "metacrunch/sink_adapter"
 require_relative "metacrunch/params"
 require_relative "metacrunch/pipeline"
 require_relative "metacrunch/builder"
+require_relative "metacrunch/executor/inline"
+require_relative "metacrunch/engine"
 
 module Metacrunch
 
