@@ -24,6 +24,28 @@ class EngineTest < Minitest::Test
 
   end
 
+  # An Enumerable that skips items whose processing raises, e.g. a lenient
+  # parser. It must not be able to swallow errors from later steps or sinks.
+  class ForgivingEnumerable
+
+    include Enumerable
+
+    def each
+      [1, 2].each do |item|
+        yield item
+      rescue StandardError
+        next
+      end
+    end
+
+  end
+
+  class BrokenSink
+
+    def write(_record) = raise(IOError, "disk full")
+
+  end
+
   class RecordingObserver
 
     attr_reader :events
@@ -216,6 +238,16 @@ class EngineTest < Minitest::Test
 
     assert_equal ["later", RuntimeError], [result.error.step, result.error.cause.class]
     assert_equal 0, result.stats.steps["flat_map#1"].failed
+  end
+
+  def test_errors_after_a_flat_map_cannot_be_swallowed_by_its_enumerable
+    result = run_pipeline do
+      source [1]
+      flat_map { ForgivingEnumerable.new }
+      sink BrokenSink.new
+    end
+
+    assert_equal [:aborted, IOError, "disk full"], [result.status, result.error.class, result.error.message]
   end
 
   CONTRACT_VIOLATIONS.each do |description, step|
