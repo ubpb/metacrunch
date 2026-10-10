@@ -169,7 +169,8 @@ end
 variable (`env:`, an empty variable counts as unset), then the default. Types: `String`, `Integer`, `Float`,
 `:bool`, `Array` (comma-separated). Defaults are converted and checked when declared (`Integer, default: "1000"`
 gives 1000). Use the values with `params.index`; they are frozen. Options must be spelled out (`--ind` is not
-`--index`), and names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed.
+`--index`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and `-h` is reserved
+for help.
 
 ## Running jobs
 
@@ -187,7 +188,11 @@ The CLI does not change the working directory: relative paths are relative to wh
 | 1 | aborted |
 | 2 | usage error (job file, parameters) |
 | 3 | finished, but records failed (`on_error :skip`) |
-| 130 | interrupted (`exe/metacrunch` ends by SIGINT, so shells and `xargs` see the interruption) |
+| 130 | interrupted by Ctrl-C (SIGINT) |
+| 143 | terminated (SIGTERM) |
+
+After Ctrl-C or SIGTERM the job writes what its sinks have buffered, closes them, and `exe/metacrunch` ends by the
+signal, so shells and `xargs` see the interruption. Data already written to stdout is kept.
 
 ## Testing jobs
 

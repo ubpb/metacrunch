@@ -68,7 +68,7 @@ The redesign is split into sub-projects. Each gets its own spec and plan:
 The final review of the implementation led to these changes, all reflected
 in the sections below:
 
-- Sinks are flushed after an abort and on `Interrupt`, so `batch:` never
+- Sinks are flushed after an abort and on signals (Ctrl-C, SIGTERM), so `batch:` never
   changes which records reach a sink; `written` counts records the sink
   accepted (3.2, 3.3, 3.4).
 - `flat_map` streams its children instead of collecting them first (2.3, 3.1).
@@ -84,7 +84,8 @@ in the sections below:
   as unset (5.5).
 - Job files are cached per path until they change (5.2).
 - `Testing.run` reports `written: 0` for jobs without a sink (5.6).
-- The executable ends by `SIGINT` after Ctrl-C (6).
+- The executable ends by the signal (`SIGINT`, `SIGTERM`) that stopped the run (6).
+- `-h` is reserved as a short option for help (5.5).
 
 ## 2. Data model and contracts
 
@@ -150,8 +151,10 @@ The id becomes `ctx.id`. Without `id:`, `ctx.id` is `nil`.
     key/value pairs; the error message says to return `[hash]`.
 - **Streaming.** `flat_map` passes each child on as its Enumerable yields it.
   An error raised by the step's own iteration is a failure of that step;
-  children forwarded before it stay forwarded. Errors from later steps and
-  sinks are not counted as failures of the `flat_map` step.
+  children forwarded before it stay forwarded. A `reject!` during the
+  iteration stops it. Errors from later steps and sinks are not counted as
+  failures of the `flat_map` step, and a `rescue => e` inside the step's
+  Enumerable cannot catch them.
 
 ### 2.4 Sink
 
@@ -236,7 +239,7 @@ and the sink flush map directly onto a push chain.
 3. `before` hooks.
 4. For each record from the source: create the context, push it through the
    chain.
-5. Flush the batches of all sinks. After an abort or an `Interrupt` the
+5. Flush the batches of all sinks. After an abort or a signal (Ctrl-C, SIGTERM) the
    sinks are flushed as well (best effort; flush errors are logged and the
    original error stays the run's error), so `batch:` never changes which
    records reach a sink.
@@ -269,8 +272,9 @@ original exception as `cause`. Its message names all of them.
 Error classes (all under `Metacrunch::Error < StandardError`): `ParamError`,
 `ContractError`, `StepError`, `JobLoadError`.
 
-`Interrupt` (Ctrl-C) is not rescued by the policy. Sinks are flushed and
-closed, sources closed (steps 5 and 6), then the interrupt propagates.
+Signals (`Interrupt` from Ctrl-C, `SignalException` from SIGTERM) are not
+rescued by the policy. Sinks are flushed and closed, sources closed (steps 5
+and 6), then the signal propagates.
 
 ### 3.4 Result and stats
 
@@ -309,7 +313,9 @@ the snapshot at the end.
 - **Observer.** The engine accepts an optional observer that receives
   `step_in(step, record, ctx)` and `step_out(step, outputs, ctx)`. The check
   for an observer happens when the chain is built; without one, no call is
-  made per record. Used by `trace` in sub-project 2.
+  made per record. Every `step_in` gets a matching `step_out`. For `flat_map`
+  the `step_out` comes after its children went downstream (it streams).
+  Used by `trace` in sub-project 2.
 
 ## 4. Logging
 
@@ -431,7 +437,8 @@ end
 - `args` collects the positional arguments into an `Array`; `min`/`max`
   are checked. Without `args`, positional arguments are an error.
 - `help` and `job` are reserved names, and so are names that would hide a
-  method of the bound params object (`to_h`, `with`, `hash`, ...).
+  method of the bound params object (`to_h`, `with`, `hash`, ...), checked
+  when the parameter is declared. `-h` is reserved as a short option.
 - Binding errors (missing required value, conversion error, unknown option,
   wrong number of arguments) raise `ParamError`. The library never calls
   `exit` or prints.
@@ -488,8 +495,11 @@ metacrunch [-h|-v] JOB_FILE [--job NAME] [JOB_PARAMS...] [ARGS...]
   version.
 - At the end of a run, status and stats are logged on stderr (`INFO`). An
   error and its cause are logged once each.
-- After Ctrl-C, `Cli#run` returns 130 and `exe/metacrunch` then ends by
-  `SIGINT`, so callers (shells, `xargs`, `make`) see the interruption.
+- After Ctrl-C or SIGTERM, `Cli#run` returns 128 + signal number (130,
+  143) and `exe/metacrunch` then ends by that signal, so callers (shells,
+  `xargs`, `make`) see the interruption. Ruby flushes stdout first.
+- The job is described (its recipe evaluated up to `params`) only when
+  `-h`/`--help` appears in the arguments.
 
 | Exit code | Meaning |
 |---|---|
@@ -497,7 +507,8 @@ metacrunch [-h|-v] JOB_FILE [--job NAME] [JOB_PARAMS...] [ARGS...]
 | 1 | `:aborted`, or an unexpected error |
 | 2 | Usage error: no or unknown job file, `JobLoadError`, `ParamError` |
 | 3 | `:ok_with_failures` |
-| 130 | Interrupted (Ctrl-C) |
+| 130 | Interrupted by Ctrl-C (SIGINT) |
+| 143 | Terminated (SIGTERM) |
 
 ## 7. Project setup
 
