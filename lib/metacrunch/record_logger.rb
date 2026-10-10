@@ -12,10 +12,14 @@ module Metacrunch
       @label = label
     end
 
+    # Like Logger: a message or a block, which only runs if the level is
+    # enabled. The predicates (debug?, info?, ...) are delegated.
     LEVELS.each do |level|
-      define_method(level) do |message|
-        @logger.public_send(level) { "[#{@label}] #{message}" }
+      define_method(level) do |message = nil, &block|
+        @logger.public_send(level) { "[#{@label}] #{block && message.nil? ? block.call : message}" }
       end
+
+      define_method(:"#{level}?") { @logger.public_send(:"#{level}?") }
     end
 
   end
