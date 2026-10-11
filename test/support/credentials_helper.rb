@@ -7,6 +7,25 @@ require "yaml"
 # Temporary projects with encrypted credentials.
 module CredentialsHelper
 
+  SECRET = "sk-123-geheim"
+
+  # A job that needs a secret and writes it reversed, so tests can check the
+  # value without the secret itself appearing in the output.
+  SECRET_JOB = <<~RUBY
+    # frozen_string_literal: true
+
+    Metacrunch.job do
+      params do
+        param :api_key, String, env: "FIS_API_KEY", credential: "fis.api_key", required: true
+        param :output, String, default: "-"
+      end
+
+      source [1, 2]
+      map { params.api_key.reverse }
+      sink Metacrunch::JsonLines::Writer.new(params.output)
+    end
+  RUBY
+
   # Yields the real path of a new temporary directory (macOS links /var to
   # /private/var, and the credentials code resolves links).
   def in_tmpdir

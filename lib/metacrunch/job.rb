@@ -7,6 +7,10 @@ module Metacrunch
 
     attr_reader :name
 
+    # The file the job was loaded from (Metacrunch.load_job), else nil.
+    # Credentials are searched from there.
+    attr_accessor :file
+
     def initialize(name = nil, &recipe)
       raise ArgumentError, "a job needs a block" unless recipe
 
@@ -23,12 +27,16 @@ module Metacrunch
     end
 
     # Runs the job with CLI-style arguments. Raises ParamError for invalid
-    # arguments and lets errors from the recipe itself (e.g. a component
-    # constructor or a DSL mistake) propagate. Errors while the pipeline
-    # runs end up in the Result. limit stops after that many records;
-    # workers runs the steps in that many processes.
+    # arguments (CredentialsError, a ParamError, for unreadable credentials)
+    # and lets errors from the recipe itself (e.g. a component constructor
+    # or a DSL mistake) propagate. Errors while the pipeline runs end up in
+    # the Result. limit stops after that many records; workers runs the
+    # steps in that many processes. Credentials follow env:
+    # METACRUNCH_ENV, METACRUNCH_CREDENTIALS, METACRUNCH_MASTER_KEY, HOME.
     def run(argv = [], env: ENV, logger: Metacrunch.logger, observer: nil, limit: nil, workers: nil)
-      built = pipeline(binder: ->(schema) { schema.bind_argv(argv, env:) }, logger:)
+      credentials = Credentials.store(job_file: file, env:, logger:)
+      warn = ->(message) { logger.warn(message) }
+      built = pipeline(binder: ->(schema) { schema.bind_argv(argv, env:, credentials:, warn:) }, logger:)
       Engine.new(built.with(limit:), observer:, executor: Executor.for(workers)).run
     end
 

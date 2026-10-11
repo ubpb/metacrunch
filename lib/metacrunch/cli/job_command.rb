@@ -18,6 +18,8 @@ module Metacrunch
         parser.on("-j", "--job NAME", "Select a job in a file that defines several") { @job_name = it }
         parser.on("-q", "--quiet", "Log warnings and errors only") { @log_level = Logger::WARN }
         parser.on("-v", "--verbose", "Log debug messages too") { @log_level = Logger::DEBUG }
+        credentials_options(parser, "Credentials directory (default: METACRUNCH_CREDENTIALS,",
+                            "then .metacrunch/ above the job file, then ~/.metacrunch/)")
       end
 
       def execute(argv)
@@ -46,9 +48,13 @@ module Metacrunch
         "Usage: metacrunch #{self.class::NAME} #{@job_file} [JOB_PARAMS...]#{args}\n\n#{schema.help}"
       end
 
-      # Evaluates the recipe with the job's arguments.
+      # Evaluates the recipe with the job's arguments. Credentials are read
+      # only if a parameter needs them.
       def build_pipeline(job, argv)
-        job.pipeline(binder: ->(schema) { schema.bind_argv(argv, env: @env) }, logger:)
+        credentials = Credentials.store(job_file: job.file, env: @env, logger:, environment: @environment,
+                                        directory: @credentials)
+        warn = ->(message) { logger.warn(message) }
+        job.pipeline(binder: ->(schema) { schema.bind_argv(argv, env: @env, credentials:, warn:) }, logger:)
       end
 
     end

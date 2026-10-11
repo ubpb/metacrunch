@@ -37,7 +37,7 @@ module Metacrunch
       previous = Thread.current[KEY]
       jobs = Thread.current[KEY] = []
       Kernel.load(File.expand_path(path))
-      jobs
+      jobs.each { it.file = File.expand_path(path) }
     rescue ScriptError, StandardError => e
       raise JobLoadError, "could not load #{path}: #{e.class}: #{e.message}"
     ensure
