@@ -7,7 +7,8 @@ class BuilderTest < Minitest::Test
   include PipelineHelper
 
   INVALID_RECIPES = {
-    "missing_source" => proc { map { it } },
+    "empty_source" => proc { source },
+    "second_source_after_an_id" => proc { source(id: ->(record) { record }); source([]) },
     "second_source" => proc { source([]); source([]) },
     "source_without_each" => proc { source(42) },
     "second_sink" => proc { source([]); sink(CollectingSink.new); sink(CollectingSink.new) },
@@ -84,6 +85,19 @@ class BuilderTest < Minitest::Test
     define_method("test_invalid_recipe_#{description}") do
       assert_raises(ArgumentError) { build_pipeline(&recipe) }
     end
+  end
+
+  def test_a_job_may_declare_only_an_id_extractor_or_no_source
+    extractor = ->(record) { record["id"] }
+    with_id = build_pipeline do
+      source id: extractor
+      map { it }
+    end
+    without = build_pipeline { map { it } }
+
+    assert_nil with_id.source
+    assert_same extractor, with_id.id_extractor
+    assert_nil without.source
   end
 
   def test_describe_mode_stops_after_params

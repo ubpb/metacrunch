@@ -39,6 +39,8 @@ module Metacrunch
     end
 
     def run
+      raise ArgumentError, "the pipeline has no source" unless @pipeline.source
+
       @stats = StatsCollector.new(@pipeline.steps.map(&:name), profile: @pipeline.profile)
       @on_mark = @stats.method(:mark)
       error = execute

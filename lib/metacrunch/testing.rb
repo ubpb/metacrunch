@@ -51,7 +51,10 @@ module Metacrunch
       memory = {sink: MemorySink.new, rejects: MemorySink.new, errors: MemorySink.new}
       adapters = memory.transform_values { |sink| SinkAdapter.new(sink) }
       adapters[:sink] = UncountedSinkAdapter.new(memory[:sink]) unless pipeline.sink
-      pipeline = pipeline.with(source: source || pipeline.source, **adapters)
+      source ||= pipeline.source
+      raise ArgumentError, "the job has no source; pass source:" unless source
+
+      pipeline = pipeline.with(source:, **adapters)
       result = Engine.new(pipeline).run
       Result.new(
         records: memory[:sink].records,
