@@ -18,6 +18,21 @@ class TraceTest < Minitest::Test
 
   end
 
+  # stdout whose reader went away.
+  class ClosedPipe < StringIO
+
+    def write(*) = raise(Errno::EPIPE)
+
+  end
+
+  def test_a_closed_pipe_ends_the_trace_like_sigpipe
+    pipeline = build_pipeline { source [1] }
+    trace = Metacrunch::Trace.new(ClosedPipe.new, pipeline:)
+    error = assert_raises(SignalException) { trace.finish }
+
+    assert_equal Signal.list.fetch("PIPE"), error.signo
+  end
+
   def test_shows_the_effect_of_each_step
     output = trace_run do
       source [{"_id" => 1, "public" => true}, {"_id" => 2, "public" => false}], id: ->(record) { record["_id"] }
