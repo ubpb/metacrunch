@@ -1,0 +1,120 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class CredentialsStoreTest < Minitest::Test
+
+  include CredentialsHelper
+  include Override
+
+  def test_looks_up_paths_through_nested_hashes
+    in_tmpdir do |root|
+      write_credentials(root, {"fis" => {"api_key" => "sk-123"}, "port" => 9200})
+      credentials = store(root)
+
+      assert_equal ["sk-123", 9200], [credentials.lookup("fis.api_key"), credentials.lookup("port")]
+    end
+  end
+
+  def test_missing_keys_nil_values_and_scalars_on_the_way_give_nil
+    in_tmpdir do |root|
+      write_credentials(root, {"fis" => {"api_key" => nil}, "port" => 9200})
+      credentials = store(root)
+
+      assert_equal [nil, nil, nil],
+                   [credentials.lookup("fis.api_key"), credentials.lookup("es.password"), credentials.lookup("port.x")]
+    end
+  end
+
+  def test_decrypts_once
+    in_tmpdir do |root|
+      write_credentials(root, {"a" => 1, "b" => 2})
+      calls = 0
+      unseal = Metacrunch::Credentials::Box.method(:unseal)
+      counting = lambda do |*args, **options|
+        calls += 1
+        unseal.call(*args, **options)
+      end
+      credentials = store(root)
+      override(Metacrunch::Credentials::Box, :unseal, counting) { [credentials.lookup("a"), credentials.lookup("b")] }
+
+      assert_equal 1, calls
+    end
+  end
+
+  def test_reads_nothing_before_the_first_lookup
+    in_tmpdir do |root|
+      write_file(root, ".metacrunch/credentials.yml.enc", "garbage")
+      credentials = store(root)
+
+      assert_raises(Metacrunch::CredentialsError) { credentials.lookup("a") }
+    end
+  end
+
+  def test_a_failed_read_is_not_taken_for_empty_credentials
+    in_tmpdir do |root|
+      write_credentials(root, {"a" => 1}, key_file: false)
+      credentials = store(root)
+
+      assert_raises(Metacrunch::CredentialsError) { credentials.lookup("a") }
+      assert_raises(Metacrunch::CredentialsError) { credentials.lookup("a") }
+    end
+  end
+
+  def test_explains_why_a_value_is_missing
+    in_tmpdir do |root|
+      write_credentials(root, {"a" => 1})
+      dir = File.join(root, ".metacrunch")
+
+      assert_equal "fis.api_key not in #{dir}/credentials.yml.enc", store(root).missing("fis.api_key")
+      assert_equal "no credentials for environment production in #{dir}",
+                   store(root, environment: "production").missing("a")
+    end
+  end
+
+  def test_explains_a_missing_file_without_environment
+    in_tmpdir do |root|
+      FileUtils.mkdir_p(File.join(root, ".metacrunch"))
+
+      assert_equal "no credentials.yml.enc in #{File.join(root, ".metacrunch")}", store(root).missing("a")
+    end
+  end
+
+  def test_without_a_directory_there_are_no_values
+    credentials = Metacrunch::Credentials.store(job_file: nil, env: {})
+
+    assert_nil credentials.lookup("fis.api_key")
+    assert_equal "no credentials directory: no ~/.metacrunch/", credentials.missing("fis.api_key")
+  end
+
+  def test_a_given_directory_must_exist
+    credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: "/nonexistent/.metacrunch")
+    error = assert_raises(Metacrunch::CredentialsError) { credentials.lookup("a") }
+
+    assert_equal "credentials directory not found: /nonexistent/.metacrunch", error.message
+  end
+
+  def test_logs_the_decrypted_file_at_debug_level
+    in_tmpdir do |root|
+      write_credentials(root, {"a" => 1})
+      io = StringIO.new
+      store(root, logger: Logger.new(io, level: Logger::DEBUG)).lookup("a")
+
+      assert_includes io.string, "credentials: #{root}/.metacrunch/credentials.yml.enc"
+    end
+  end
+
+  def test_origin_names_the_path_and_the_file
+    credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: "/p/.metacrunch")
+
+    assert_equal "credential fis.api_key in /p/.metacrunch/credentials.yml.enc", credentials.origin("fis.api_key")
+  end
+
+  private
+
+  def store(root, environment: nil, logger: nil)
+    Metacrunch::Credentials.store(job_file: nil, env: {}, environment:, logger:,
+                                  directory: File.join(root, ".metacrunch"))
+  end
+
+end
