@@ -159,7 +159,7 @@ class EngineLifecycleTest < Minitest::Test
       after { log << "after" }
     end
 
-    assert_raises(Interrupt) { Metacrunch::Engine.new(pipeline).run }
+    assert_raises(Interrupt) { engine(pipeline).run }
     assert_equal ["open source", "close source"], log
   end
 
@@ -170,7 +170,7 @@ class EngineLifecycleTest < Minitest::Test
       sink Component.new("sink", log)
     end
 
-    assert_raises(Interrupt) { Metacrunch::Engine.new(pipeline).run }
+    assert_raises(Interrupt) { engine(pipeline).run }
     assert_equal ["open sink", "close sink"], log
   end
 
@@ -215,7 +215,7 @@ class EngineLifecycleTest < Minitest::Test
       source input
       sink PipeClosingSink.new
     end
-    error = assert_raises(SignalException) { Metacrunch::Engine.new(pipeline).run }
+    error = assert_raises(SignalException) { engine(pipeline).run }
 
     assert_equal Signal.list.fetch("PIPE"), error.signo
     assert_includes log, "close source"
@@ -232,3 +232,12 @@ class EngineLifecycleTest < Minitest::Test
   end
 
 end
+
+ForkVariant.define(
+  EngineLifecycleTest,
+  inline_only: [
+    :test_opens_source_and_sinks_then_steps_and_closes_in_reverse,
+    :test_steps_open_after_the_before_hooks,
+    :test_hooks_run_around_the_records
+  ]
+)

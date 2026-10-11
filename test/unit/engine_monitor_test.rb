@@ -34,7 +34,7 @@ class EngineMonitorTest < Minitest::Test
       filter { it < 3 }
       sink CollectingSink.new
     end
-    Metacrunch::Engine.new(pipeline, monitor:).run
+    engine(pipeline, monitor:).run
     live = monitor.live
 
     assert_equal [[:start, 0], [:stop, 3, 1]], monitor.events
@@ -45,10 +45,10 @@ class EngineMonitorTest < Minitest::Test
   def test_the_monitor_stops_after_an_abort_and_a_signal
     aborted = RecordingMonitor.new
     interrupted = RecordingMonitor.new
-    Metacrunch::Engine.new(build_pipeline { source [1]; map { raise "broken" } }, monitor: aborted).run
+    engine(build_pipeline { source [1]; map { raise "broken" } }, monitor: aborted).run
 
     assert_raises(Interrupt) do
-      Metacrunch::Engine.new(build_pipeline { source [1]; map { raise Interrupt } }, monitor: interrupted).run
+      engine(build_pipeline { source [1]; map { raise Interrupt } }, monitor: interrupted).run
     end
     assert_equal [:start, :stop], aborted.events.map(&:first)
     assert_equal [:start, :stop], interrupted.events.map(&:first)
@@ -61,10 +61,12 @@ class EngineMonitorTest < Minitest::Test
       map { raise "broken" }
       on_error :skip
     end
-    Metacrunch::Engine.new(pipeline, monitor:).run
+    engine(pipeline, monitor:).run
 
     assert_equal [2, 0], [monitor.live.failed, monitor.live.written]
     assert_operator monitor.live.elapsed, :>, 0
   end
 
 end
+
+ForkVariant.define(EngineMonitorTest)

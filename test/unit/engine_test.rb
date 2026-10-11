@@ -130,20 +130,18 @@ class EngineTest < Minitest::Test
   end
 
   def test_reject_from_the_context_stops_the_record
-    later = []
+    target = CollectingSink.new
     result = run_pipeline do
       source [1, 2]
       map do |record, ctx|
         ctx.reject!("Odd", value: record) if record.odd?
         record
       end
-      map do |record|
-        later << record
-        record
-      end
+      map { it * 10 }
+      sink target
     end
 
-    assert_equal [2], later
+    assert_equal [20], target.records
     assert_equal({"Odd" => 1}, result.stats.rejected)
   end
 
@@ -345,7 +343,7 @@ class EngineTest < Minitest::Test
 
   def test_a_pipeline_without_source_cannot_run
     pipeline = build_pipeline { map { it } }
-    error = assert_raises(ArgumentError) { Metacrunch::Engine.new(pipeline).run }
+    error = assert_raises(ArgumentError) { engine(pipeline).run }
 
     assert_equal "the pipeline has no source", error.message
   end
@@ -374,3 +372,11 @@ class EngineTest < Minitest::Test
   end
 
 end
+
+ForkVariant.define(
+  EngineTest,
+  inline_only: [
+    :test_observer_sees_a_matching_step_out_for_every_flat_map_step_in,
+    :test_observer_sees_inputs_and_outputs_of_each_step
+  ]
+)

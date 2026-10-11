@@ -46,6 +46,7 @@ module Metacrunch
 
     def validate!
       raise ArgumentError, "the pipeline has no source" unless @pipeline.source
+      raise ArgumentError, "an observer needs the inline executor" if @observer && @executor.workers > 1
 
       limit = @pipeline.limit
       return if limit.nil? || (limit.is_a?(Integer) && limit.positive?)
