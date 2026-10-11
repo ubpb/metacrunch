@@ -17,6 +17,7 @@ module Metacrunch
       def apply(pipeline, stdin:, stdout:)
         check_stdout!(pipeline)
         check_files!
+        check_directories!
         apply_input(pipeline, stdin:).with(
           sink: sink(pipeline, stdout), **side_sinks(pipeline, stdout), limit: limit || pipeline.limit,
           **error_policy(pipeline)
@@ -102,6 +103,17 @@ module Metacrunch
         return if users.size < 2
 
         raise UsageError, "stdout is used by both #{users[0]} and #{users[1]}"
+      end
+
+      # Output files go into existing directories only. --stats is written
+      # after the run, so a typo would otherwise cost the whole run.
+      def check_directories!
+        {"--output" => output, "--rejects" => rejects, "--errors" => errors, "--stats" => stats}.each do |option, path|
+          next if path.nil? || path == JsonLines::STDIO
+
+          directory = File.dirname(File.expand_path(path))
+          raise UsageError, "#{option}: directory does not exist: #{directory}" unless File.directory?(directory)
+        end
       end
 
       # A file must not be written twice, or read and written at once, except
