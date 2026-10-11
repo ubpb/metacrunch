@@ -58,8 +58,13 @@ module Metacrunch
         case node.kind
         when :flat_map then ["→ #{count(node.outputs.size, "record")}"]
         when :map then @full ? full(node) : changes(node.input, node.outputs.first)
-        else @full ? full(node) : [node.outputs.empty? ? "filtered" : paint(:dim, "pass")]
+        else @full ? full(node) : [kept(node)]
         end
+      end
+
+      # The effect of a filter or reject step that dropped nothing silently.
+      def kept(node)
+        node.outputs.empty? ? "filtered" : paint(:dim, "pass")
       end
 
       def failure(node)
