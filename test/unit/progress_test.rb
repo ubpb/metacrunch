@@ -32,6 +32,36 @@ class ProgressTest < Minitest::Test
 
   end
 
+  # A source whose progress breaks.
+  class BrokenProgress
+
+    def progress = raise("progress broke")
+
+  end
+
+  # A source whose size breaks.
+  class BrokenSize
+
+    def size = raise("size broke")
+
+  end
+
+  # A source that counts how often its size is asked for.
+  class CountedSize
+
+    attr_reader :calls
+
+    def initialize
+      @calls = 0
+    end
+
+    def size
+      @calls += 1
+      100
+    end
+
+  end
+
   # stderr of a terminal with 10 columns.
   class NarrowTerminal < StringIO
 
@@ -78,6 +108,29 @@ class ProgressTest < Minitest::Test
     advance(1.0, read: 5)
 
     assert_match(/\A⠙ 00:00:01  read 5 /, progress.line)
+  end
+
+  def test_an_error_in_the_display_does_not_reach_the_run
+    @live.source = BrokenProgress.new
+    progress = Metacrunch::Progress.new(Output.new(StringIO.new), mode: :line, logger: nil, interval: 0.01)
+    _stdout, stderr = capture_io do
+      progress.start(@live)
+      sleep(0.05)
+      progress.stop
+    end
+
+    assert_empty stderr
+  end
+
+  def test_the_size_is_read_once_and_may_fail
+    counted = CountedSize.new
+    @live.source = counted
+    sized = start(:line)
+    3.times { sized.line }
+    @live.source = BrokenSize.new
+
+    assert_equal 1, counted.calls
+    assert_match(/\A⠙ /, start(:line).line)
   end
 
   def test_the_rate_covers_the_last_seconds
