@@ -3174,6 +3174,24 @@ In the options table of "Running jobs", after the row of `-j`, `--job NAME`, add
 | `--credentials DIR` | Credentials directory (default: `METACRUNCH_CREDENTIALS`, then `.metacrunch/` above the job file, then `~/.metacrunch/`) |
 ```
 
+- [ ] **Step 5b: Readme, running jobs from Ruby**
+
+In "Running jobs from Ruby", replace
+
+```
+`run` takes the job's parameters as command-line arguments, and the environment for parameters with `env:` as
+`env:` (default `ENV`). Invalid parameters raise `Metacrunch::ParamError`; errors while the job runs end up in the result.
+```
+
+with
+
+```
+`run` takes the job's parameters as command-line arguments, and the environment for parameters with `env:` as
+`env:` (default `ENV`). Credentials follow the same `env:` (`METACRUNCH_ENV`, `METACRUNCH_CREDENTIALS`,
+`METACRUNCH_MASTER_KEY`, `HOME`) and are searched from the job's file. Invalid parameters and unreadable credentials
+raise `Metacrunch::ParamError`; errors while the job runs end up in the result.
+```
+
 - [ ] **Step 6: CHANGELOG**
 
 In `CHANGELOG.md`, at the end of "### Added" in 5.0.0, add:
