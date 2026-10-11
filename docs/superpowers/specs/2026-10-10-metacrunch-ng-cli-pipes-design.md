@@ -318,7 +318,8 @@ without an object, raises `ArgumentError`.
 - **stdout once.** `-o -`, `--rejects -`, `--errors -`, `--stats -` and the
   filter default (job without sink, no `-o`) must not share stdout; a
   conflict is a usage error (exit 2) such as `stdout is used by both --output
-  and --rejects`.
+  and --rejects`. `--rejects -` together with `--errors -` counts as one
+  use: they share one writer.
 - **Same path, same object.** Options naming the same path share one writer:
   `--rejects bad.jsonl --errors bad.jsonl` writes both roles into one file,
   opened and closed once (sub-project 1, 2.4). The `rejection` or `failure`

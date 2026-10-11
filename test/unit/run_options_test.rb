@@ -96,6 +96,30 @@ class RunOptionsTest < Minitest::Test
                  lines.map { [it.dig("rejection", "reason"), it.dig("failure", "error")] })
   end
 
+  def test_rejects_and_errors_may_share_stdout
+    stdout = StringIO.new
+    pipeline = build_pipeline do
+      source [1, 2]
+      reject("Two") { it == 2 }
+      map { raise "broken" }
+      sink CollectingSink.new
+      on_error :skip
+    end
+    applied = apply(RunOptions.new(rejects: "-", errors: "-"), pipeline, stdout:)
+    Metacrunch::Engine.new(applied).run
+
+    assert_same applied.rejects.sink, applied.errors.sink
+    assert_equal 2, stdout.string.lines.size
+  end
+
+  def test_shared_stdout_of_rejects_and_errors_still_conflicts_with_records
+    pipeline = build_pipeline { source [1] }
+    error = assert_raises(Metacrunch::UsageError) { apply(RunOptions.new(rejects: "-", errors: "-"), pipeline) }
+
+    assert_equal "stdout is used by both the default output (the job has no sink) and --rejects/--errors",
+                 error.message
+  end
+
   def test_stdout_is_used_once
     pipeline = build_pipeline do
       source [1]
