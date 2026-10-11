@@ -306,6 +306,18 @@ class ExecutorForkTest < Minitest::Test
     assert_equal [4, 5], [opened.status, closed.status]
   end
 
+  def test_close_errors_after_an_abort_are_logged_like_inline
+    io = StringIO.new
+    result = run_pipeline(logger: Metacrunch.build_logger(io)) do
+      source [1, 2]
+      map FailingClose.new
+      map { raise "boom" }
+    end
+
+    assert_equal :aborted, result.status
+    assert_equal 1, io.string.scan("closing ExecutorForkTest::FailingClose failed").size
+  end
+
   def test_an_early_abort_stops_feeding_the_workers
     result = run_pipeline do
       source((1..1_000).to_a)

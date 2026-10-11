@@ -137,11 +137,15 @@ module Metacrunch
         end
 
         # Returns the error that ended a batch, or nil at the end of the
-        # input.
+        # input. After an error the steps are closed before the batch's frame
+        # goes out, so their log lines reach the parent, as inline; the parent
+        # reads no frame of this worker after that one.
         def process_batches(input)
           while (batch = Frame.read(input))
             positions, records = batch
-            error = send_frame(:batch, error: process(positions, records))
+            error = process(positions, records)
+            close_steps if error
+            error = send_frame(:batch, error:)
             return error if error
           end
           nil
