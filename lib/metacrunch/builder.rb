@@ -21,6 +21,7 @@ module Metacrunch
       @values = nil
       @used = false
       @source = nil
+      @source_declared = false
       @id_extractor = nil
       @steps = []
       @sinks = {}
@@ -42,15 +43,19 @@ module Metacrunch
       bind_schema
     end
 
-    def source(enumerable, id: nil)
+    # With an object: the source. With only id: the job reads the default
+    # input of the CLI (JSON Lines from stdin) with this id extractor.
+    def source(enumerable = nil, id: nil)
       use!
-      raise ArgumentError, "source already defined" if @source
-      unless enumerable.respond_to?(:each)
+      raise ArgumentError, "source already defined" if @source_declared
+      raise ArgumentError, "source needs an object with #each or id:" if enumerable.nil? && id.nil?
+      unless enumerable.nil? || enumerable.respond_to?(:each)
         raise ArgumentError, "source must respond to #each, got #{enumerable.inspect}"
       end
 
       @id_extractor = id && Callable.ensure_callable!(id, "id:")
       @source = enumerable
+      @source_declared = true
       nil
     end
 
@@ -116,7 +121,6 @@ module Metacrunch
 
     def build
       ensure_params_bound
-      raise ArgumentError, "a job needs a source" unless @source
 
       Pipeline.new(
         source: @source, id_extractor: @id_extractor, steps: @steps.dup.freeze,

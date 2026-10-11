@@ -343,6 +343,13 @@ class EngineTest < Minitest::Test
     assert_equal [[1, 2], [3]], target.batches
   end
 
+  def test_a_pipeline_without_source_cannot_run
+    pipeline = build_pipeline { map { it } }
+    error = assert_raises(ArgumentError) { Metacrunch::Engine.new(pipeline).run }
+
+    assert_equal "the pipeline has no source", error.message
+  end
+
   def test_observer_sees_inputs_and_outputs_of_each_step
     observer = RecordingObserver.new
     pipeline = build_pipeline do

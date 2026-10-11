@@ -24,6 +24,14 @@ class TestingTest < Minitest::Test
     assert_equal([[0, "zero"]], result.errors.map { |record, failure| [record, failure.error.message] })
   end
 
+  def test_jobs_without_a_source_need_one
+    job = Metacrunch.job { map { it * 2 } }
+    error = assert_raises(ArgumentError) { Metacrunch::Testing.run(job) }
+
+    assert_equal "the job has no source; pass source:", error.message
+    assert_equal [2], Metacrunch::Testing.run(job, source: [1]).records
+  end
+
   def test_converts_string_params
     result = Metacrunch::Testing.run(build_job, params: {limit: "0"}, source: [1])
 
