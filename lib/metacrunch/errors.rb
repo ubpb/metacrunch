@@ -13,6 +13,9 @@ module Metacrunch
   # A job file could not be loaded or does not define the requested job.
   class JobLoadError < Error; end
 
+  # Invalid use of the command line, e.g. options that conflict.
+  class UsageError < Error; end
+
   # A step raised an error for a record. The original error is the cause.
   class StepError < Error
 
