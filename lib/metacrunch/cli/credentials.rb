@@ -139,19 +139,28 @@ module Metacrunch
 
       # Both new files are written before either is renamed, so an error or
       # an interrupt until then changes nothing. If the second rename fails,
-      # KEY_FILE.new holds the key of the new credentials file.
+      # KEY_FILE.new holds the key of the new credentials file; a KEY_FILE.new
+      # left from such a failure stops the next rotate, because it may be
+      # the only key that works.
       def rotate_key_file(location, plaintext, key)
-        sealed = "#{location.file}.#{Process.pid}.tmp"
         pending = "#{location.key_file}.new"
+        if File.exist?(pending)
+          raise CredentialsError, "#{display(pending)} exists: an earlier rotate was interrupted. Check it as the " \
+                                  "Readme says (Credentials, rotation) before you rotate again"
+        end
+
+        sealed = "#{location.file}.#{SecureRandom.hex(8)}.tmp"
+        created = []
         renamed = false
         begin
-          File.open(sealed, "w", 0o644) { it.write(Credentials::Box.seal(plaintext, key)) }
-          File.open(pending, "w", 0o600) { it.write("#{key.hex}\n") }
-          File.chmod(0o600, pending)
+          Credentials.create(sealed, Credentials::Box.seal(plaintext, key), perm: 0o644)
+          created << sealed
+          Credentials.create(pending, "#{key.hex}\n", perm: 0o600)
+          created << pending
           File.rename(sealed, location.file)
           renamed = true
         ensure
-          FileUtils.rm_f([sealed, pending]) unless renamed
+          FileUtils.rm_f(created) unless renamed
         end
         File.rename(pending, location.key_file)
         @stderr.puts("New key in #{display(location.key_file)}")

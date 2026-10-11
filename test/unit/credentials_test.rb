@@ -80,6 +80,26 @@ class CredentialsTest < Minitest::Test
     end
   end
 
+  def test_create_never_writes_through_an_existing_path
+    Dir.mktmpdir do |dir|
+      target = File.join(dir, "target")
+      File.write(target, "keep")
+      File.symlink(target, File.join(dir, "master.key"))
+
+      assert_raises(Errno::EEXIST) { Credentials.create(File.join(dir, "master.key"), "new", perm: 0o600) }
+      assert_equal "keep", File.read(target)
+    end
+  end
+
+  def test_create_sets_the_mode_whatever_the_umask
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "credentials.yml.enc")
+      with_umask(0o077) { Credentials.create(path, "x", perm: 0o644) }
+
+      assert_equal 0o644, File.stat(path).mode & 0o777
+    end
+  end
+
   def test_write_leaves_no_temporary_file_when_it_fails
     Dir.mktmpdir do |dir|
       target = File.join(dir, "target")
@@ -88,6 +108,15 @@ class CredentialsTest < Minitest::Test
       assert_raises(SystemCallError) { Credentials.write(target, "x", perm: 0o600) }
       assert_equal ["target"], Dir.children(dir)
     end
+  end
+
+  private
+
+  def with_umask(mask)
+    previous = File.umask(mask)
+    yield
+  ensure
+    File.umask(previous)
   end
 
 end
