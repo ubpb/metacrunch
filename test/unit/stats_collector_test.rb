@@ -36,6 +36,15 @@ class StatsCollectorTest < Minitest::Test
     assert_equal({"KeyError" => 2}, collector.snapshot.failed)
   end
 
+  def test_source_failures_are_counted_without_a_step
+    collector = Metacrunch::StatsCollector.new(["map#1"])
+    collector.source_failed(ArgumentError.new("unreadable"))
+    stats = collector.snapshot
+
+    assert_equal 1, collector.failed_total
+    assert_equal [{"ArgumentError" => 1}, 0], [stats.failed, stats.steps["map#1"].failed]
+  end
+
   def test_step_time_is_tracked_only_when_profiling
     plain = Metacrunch::StatsCollector.new(["map#1"])
     profiled = Metacrunch::StatsCollector.new(["map#1"], profile: true)
