@@ -11,6 +11,7 @@ require_relative "cli/run"
 require_relative "cli/check"
 require_relative "cli/trace"
 require_relative "cli/new"
+require_relative "cli/credentials"
 
 module Metacrunch
   # The command line interface. Dispatches to a command by the first
@@ -19,7 +20,10 @@ module Metacrunch
   class Cli
 
     EXIT_CODES = {ok: 0, aborted: 1, usage: 2, ok_with_failures: 3}.freeze
-    COMMANDS = {"run" => RunCommand, "check" => CheckCommand, "trace" => TraceCommand, "new" => NewCommand}.freeze
+    COMMANDS = {
+      "run" => RunCommand, "check" => CheckCommand, "trace" => TraceCommand, "new" => NewCommand,
+      "credentials" => CredentialsCommand
+    }.freeze
 
     # The streams and environment the commands use instead of globals.
     Streams = Data.define(:stdin, :stdout, :stderr, :env)
@@ -62,14 +66,15 @@ module Metacrunch
     end
 
     def usage
-      commands = COMMANDS.map { |name, command| "  #{name.ljust(8)} #{command::SUMMARY}" }
+      width = [*COMMANDS.keys, "help"].map(&:size).max
+      commands = COMMANDS.map { |name, command| "  #{name.ljust(width)} #{command::SUMMARY}" }
+      commands << "  #{"help".ljust(width)} Show the help of a command"
       <<~TEXT
         Usage: metacrunch COMMAND [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]
                metacrunch JOB_FILE [JOB_PARAMS...] [ARGS...]    (same as run)
 
         Commands:
         #{commands.join("\n")}
-          help     Show the help of a command
 
         Options:
           -h, --help     Show this help
