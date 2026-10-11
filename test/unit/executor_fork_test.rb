@@ -92,6 +92,22 @@ class ExecutorForkTest < Minitest::Test
 
   end
 
+  class ExitingOpen
+
+    def open(_context) = exit(4)
+
+    def call(record) = record
+
+  end
+
+  class ExitingClose
+
+    def close = exit(5)
+
+    def call(record) = record
+
+  end
+
   def executor = Metacrunch::Executor::Fork.new(workers: 3, batch_size: 2)
 
   def test_records_keep_the_source_order_when_workers_take_different_time
@@ -273,6 +289,21 @@ class ExecutorForkTest < Minitest::Test
     error = assert_raises(SystemExit) { engine(pipeline).run }
 
     assert_equal 3, error.status
+  end
+
+  def test_exit_in_a_steps_open_or_close_ends_the_run_like_inline
+    opening = build_pipeline do
+      source [1]
+      map ExitingOpen.new
+    end
+    closing = build_pipeline do
+      source [1]
+      map ExitingClose.new
+    end
+    opened = assert_raises(SystemExit) { engine(opening).run }
+    closed = assert_raises(SystemExit) { engine(closing).run }
+
+    assert_equal [4, 5], [opened.status, closed.status]
   end
 
   def test_an_early_abort_stops_feeding_the_workers
