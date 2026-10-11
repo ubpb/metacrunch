@@ -78,6 +78,9 @@ module CredentialsHelper
     File.delete(path) if actions["delete"]
     Process.kill("INT", Process.ppid) if actions["interrupt_parent"]
     if actions["signal"]
+      # The system's action, so the editor ends by the signal without
+      # printing Ruby's Interrupt or SignalException.
+      trap(actions["signal"], "SYSTEM_DEFAULT")
       Process.kill(actions["signal"], Process.pid)
       sleep 1
     end
