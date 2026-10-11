@@ -29,6 +29,7 @@ module Metacrunch
         path = argv.shift
         raise UsageError, "no path given" unless path
         raise UsageError, "unexpected arguments: #{argv.join(" ")}" if argv.any?
+        raise UsageError, "#{path} is a directory; give a file name" if path.end_with?("/")
 
         path = "#{path}.rb" unless path.end_with?(".rb")
         write(files(path, File.basename(path, ".rb")))

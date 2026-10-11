@@ -29,6 +29,10 @@ class CliTest < Minitest::Test
     assert_equal cli("--help"), cli("help")
   end
 
+  def test_help_about_help_prints_the_usage
+    assert_equal cli("--help"), cli("help", "help")
+  end
+
   def test_help_for_a_command
     code, stdout, = cli("help", "run")
 
