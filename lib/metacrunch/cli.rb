@@ -10,6 +10,7 @@ require_relative "cli/job_command"
 require_relative "cli/run"
 require_relative "cli/check"
 require_relative "cli/trace"
+require_relative "cli/new"
 
 module Metacrunch
   # The command line interface. Dispatches to a command by the first
@@ -18,7 +19,7 @@ module Metacrunch
   class Cli
 
     EXIT_CODES = {ok: 0, aborted: 1, usage: 2, ok_with_failures: 3}.freeze
-    COMMANDS = {"run" => RunCommand, "check" => CheckCommand, "trace" => TraceCommand}.freeze
+    COMMANDS = {"run" => RunCommand, "check" => CheckCommand, "trace" => TraceCommand, "new" => NewCommand}.freeze
 
     # The streams and environment the commands use instead of globals.
     Streams = Data.define(:stdin, :stdout, :stderr, :env)
