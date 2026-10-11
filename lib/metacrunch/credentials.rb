@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "fileutils"
+require "securerandom"
 require "yaml"
 
 module Metacrunch
@@ -61,16 +63,36 @@ module Metacrunch
       raise CredentialsError, "cannot read #{path}: #{e.message.split(" @ ").first}", cause: nil
     end
 
-    # Writes content to path atomically: to a temporary file next to it,
-    # with mode perm, then renamed over path.
+    # Writes content to path atomically: to a new temporary file next to it
+    # (a random name), then renamed over path.
     def write(path, content, perm:)
-      temp = "#{path}.#{Process.pid}.tmp"
-      File.open(temp, "w", perm) { it.write(content) }
-      File.chmod(perm, temp)
-      File.rename(temp, path)
+      temp = "#{path}.#{SecureRandom.hex(8)}.tmp"
+      create(temp, content, perm:)
+      renamed = false
+      begin
+        File.rename(temp, path)
+        renamed = true
+      ensure
+        FileUtils.rm_f(temp) unless renamed
+      end
+      nil
+    end
+
+    # Creates path with content and exactly mode perm (whatever the umask).
+    # Raises Errno::EEXIST if path exists, so it never writes through a
+    # link planted there; removes what it created if it fails later.
+    def create(path, content, perm:)
+      opened = false
+      done = false
+      File.open(path, File::WRONLY | File::CREAT | File::EXCL, perm) do |file|
+        opened = true
+        file.write(content)
+      end
+      File.chmod(perm, path)
+      done = true
       nil
     ensure
-      File.unlink(temp) if temp && File.exist?(temp)
+      FileUtils.rm_f(path) if opened && !done
     end
 
   end

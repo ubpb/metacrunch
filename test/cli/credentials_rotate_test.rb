@@ -128,6 +128,33 @@ class CredentialsRotateTest < Minitest::Test
     end
   end
 
+  def test_rotate_refuses_while_a_new_key_from_an_earlier_rotate_waits
+    in_tmpdir do |root|
+      write_credentials(root, "a: 1\n")
+      File.write("#{key_file(root)}.new", "#{Key.generate.hex}\n")
+      before = snapshot(root)
+      code, _stdout, stderr = Dir.chdir(root) { cli("credentials", "rotate") }
+
+      assert_equal 2, code
+      assert_includes stderr, ".metacrunch/master.key.new exists: an earlier rotate was interrupted"
+      assert_equal before, snapshot(root)
+    end
+  end
+
+  def test_the_rotated_file_is_readable_for_others_whatever_the_umask
+    in_tmpdir do |root|
+      write_credentials(root, "a: 1\n")
+      previous = File.umask(0o077)
+      begin
+        Dir.chdir(root) { cli("credentials", "rotate") }
+      ensure
+        File.umask(previous)
+      end
+
+      assert_equal 0o644, file_mode(credentials_file(root))
+    end
+  end
+
   def test_rotate_needs_the_current_key_and_the_file
     in_tmpdir do |root|
       write_credentials(root, "a: 1\n", key_file: false)
