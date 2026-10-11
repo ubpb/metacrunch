@@ -139,6 +139,59 @@ class CredentialsEditTest < Minitest::Test
     end
   end
 
+  def test_unchanged_non_ascii_text_is_not_rewritten_under_a_non_utf8_locale
+    in_tmpdir do |root|
+      write_credentials(root, "name: Müller\n")
+      file = File.join(root, ".metacrunch", "credentials.yml.enc")
+      before = File.binread(file)
+      code, _stdout, stderr = with_default_external(Encoding::US_ASCII) { edit(root, scripted_editor(root)) }
+
+      assert_equal 0, code
+      assert_includes stderr, "No changes."
+      assert_equal before, File.binread(file)
+    end
+  end
+
+  def test_an_editor_killed_by_a_signal_saves_nothing
+    in_tmpdir do |root|
+      key = write_credentials(root, "a: 1\n")
+      code, _stdout, stderr = edit(root, scripted_editor(root, "a: 2\n", signal: "TERM"))
+
+      assert_equal 1, code
+      assert_match(/editor \S+ was killed by SIGTERM; nothing saved/, stderr)
+      assert_equal "a: 1\n", unseal(File.join(root, ".metacrunch", "credentials.yml.enc"), key)
+    end
+  end
+
+  def test_an_editor_ended_by_ctrl_c_ends_edit_like_ctrl_c
+    in_tmpdir do |root|
+      write_credentials(root, "a: 1\n")
+      code, = edit(root, scripted_editor(root, "a: 2\n", signal: "INT"))
+
+      assert_equal 130, code
+      refute_path_exists File.dirname(editor_calls(root).first["path"])
+    end
+  end
+
+  def test_an_editor_that_removes_the_file_saves_nothing
+    in_tmpdir do |root|
+      write_credentials(root, "a: 1\n")
+      code, _stdout, stderr = edit(root, scripted_editor(root, delete: true))
+
+      assert_equal 1, code
+      assert_includes stderr, "the editor removed credentials.yml; nothing saved"
+    end
+  end
+
+  def test_an_editor_that_cannot_be_started_saves_nothing
+    in_tmpdir do |root|
+      code, _stdout, stderr = edit(root, "/nonexistent/editor")
+
+      assert_equal 1, code
+      assert_includes stderr, "editor /nonexistent/editor could not be started; nothing saved"
+    end
+  end
+
   def test_invalid_yaml_without_a_terminal_saves_nothing
     in_tmpdir do |root|
       key = write_credentials(root, "a: 1\n")
@@ -201,6 +254,18 @@ class CredentialsEditTest < Minitest::Test
   end
 
   private
+
+  # Runs the block as under LANG=C, where File.read gives US-ASCII.
+  def with_default_external(encoding)
+    verbose = $VERBOSE
+    $VERBOSE = nil
+    previous = Encoding.default_external
+    Encoding.default_external = encoding
+    yield
+  ensure
+    Encoding.default_external = previous
+    $VERBOSE = verbose
+  end
 
   def edit(root, editor, *options, env: {}, stdin: "")
     Dir.chdir(root) { cli("credentials", "edit", *options, env: env.merge("EDITOR" => editor), stdin:) }

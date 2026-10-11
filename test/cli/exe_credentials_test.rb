@@ -33,6 +33,16 @@ class ExeCredentialsTest < Minitest::Test
     end
   end
 
+  def test_ctrl_c_while_the_editor_runs_reaches_only_the_editor
+    in_tmpdir do |root|
+      editor = scripted_editor(root, "a: 1\n", interrupt_parent: true)
+      _stdout, stderr, status = metacrunch("credentials", "edit", env: {"EDITOR" => editor}, chdir: root)
+
+      assert_equal 0, status.exitstatus, stderr
+      assert_path_exists File.join(root, ".metacrunch", "credentials.yml.enc")
+    end
+  end
+
   def test_production_with_the_key_variable_and_no_key_file
     in_tmpdir do |root|
       key = write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production", key_file: false)
