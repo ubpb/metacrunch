@@ -233,7 +233,8 @@ $ metacrunch credentials rotate -e production
 
 `edit` creates `.metacrunch/credentials.yml.enc`, which you commit, and the key `.metacrunch/master.key`, which you
 never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `credential: "fis.api_key"` reads `api_key`
-below `fis`. Quote values that YAML reads as numbers or booleans (`"0123"`, `"yes"`, `"on"`).
+below `fis`. Quote values that YAML reads as numbers or booleans (`"0123"`, `"yes"`, `"on"`). `edit` refuses to save
+invalid YAML and, on a terminal, offers to edit again.
 
 | Environment | File | Key |
 |---|---|---|
@@ -260,12 +261,16 @@ environment never falls back to the file without one.
 - **Rotation:** `rotate` encrypts a file with a new key and replaces the key file, or prints the new key if the old
   one came from `METACRUNCH_MASTER_KEY`. If a `master[.ENV].key.new` is left behind (rotate died between its two
   renames), check first: if `metacrunch credentials show` fails with "wrong key", the `.new` file holds the key of the
-  new file, so rename it to `master[.ENV].key`; otherwise delete it.
+  new file, so rename it to `master[.ENV].key`; otherwise delete it. `rotate` refuses to run while it exists.
 
 Keep in mind:
 
 - While the editor runs, `edit` keeps the plaintext in a temporary file (mode 0600 in a directory with mode 0700) and
-  removes it afterwards; only SIGKILL leaves it behind.
+  removes it afterwards; only SIGKILL leaves it behind. Ctrl-C meanwhile reaches only the editor.
+- Editors may keep copies of the plaintext: vim's swap and backup files, VS Code's Local History. Turn them off for
+  these files if that matters to you (in vim, for example, `EDITOR="vim -n -c 'set nobackup nowritebackup'"`).
+- `.metacrunch/.gitignore` keeps the keys in `.metacrunch/` out of git. A key in a directory given with
+  `--credentials` needs an ignore rule of its own.
 - The plaintext stays in the memory of every process that uses it, workers included.
 - Other processes of the same user can read `METACRUNCH_MASTER_KEY` from a process's environment
   (`/proc/PID/environ` on Linux).

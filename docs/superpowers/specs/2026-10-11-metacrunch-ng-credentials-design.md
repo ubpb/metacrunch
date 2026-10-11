@@ -91,6 +91,31 @@ Sub-projects 3 (declarative jobs) and 4 (Fix language) were dropped on
 | Secret on the command line | Allowed, with a warning |
 | Commands | `metacrunch credentials edit`, `show`, `rotate` |
 
+### 1.5 Revisions after the final review
+
+The implementation and its final review changed these points, all reflected
+in the sections below or in the code:
+
+- `Store#dig` is `Store#lookup`: it takes a dotted path, not keys (6).
+- No error that hides a value keeps the original error as its cause, and
+  parameter option errors drop `=value`, so a secret appears in no
+  "Caused by" line and in no "invalid option" message (4.3).
+- `rotate` with `METACRUNCH_MASTER_KEY` prints and flushes the new key
+  before it changes the file (5.4); a `master[.ENV].key.new` left from an
+  interrupted rotate stops the next one; cleanup also runs on Ctrl-C.
+- `.metacrunch/.gitignore` holds `master*.key*`, which covers leftovers.
+- Temporary files have random names, are created with `O_EXCL` and get
+  exactly their mode (3.5).
+- `edit` reads the edited file as UTF-8, names `VISUAL` or `EDITOR`
+  (whichever is set) in its hint, gives the hint also for an unchanged new
+  file, ignores SIGINT and SIGQUIT while the editor runs (an editor ended
+  by SIGINT ends the edit with 130), and reports an editor killed by a
+  signal or one that removed the file (5.2).
+- Unreadable key or credentials files and unexpandable directories are
+  `CredentialsError`s (exit status 2).
+- `~/.metacrunch` is recognized through links (5.1).
+- `Store` and `Location` have an `inspect` without key and values.
+
 ## 2. Files, keys and environments
 
 ### 2.1 Layout
@@ -422,7 +447,7 @@ used by any command.
 | `Credentials::Key` (new) | Generates keys, parses hex keys, knows where a key came from (for messages) |
 | `Credentials::Box` (new) | Format v1: encrypts plaintext to file content, decrypts and authenticates it |
 | `Credentials::Location` (new) | Finds the directory (2.2, 5.1), names the files of an environment, finds the key (2.4), validates environment names |
-| `Credentials::Store` (new) | Lazy: on the first `dig(path)` it locates, decrypts and parses once; `dig` returns the value or nil; `missing(path)` explains why a value is absent (4.5); logs the decrypted file at debug level |
+| `Credentials::Store` (new) | Lazy: on the first `lookup(path)` it locates, decrypts and parses once; `lookup` returns the value or nil; `missing(path)` explains why a value is absent (4.5); logs the decrypted file at debug level |
 | `Credentials::Editor` (new) | Temporary directory, editor process, YAML check, "edit again" loop |
 | `Cli::CredentialsCommand` (new) | `edit`, `show`, `rotate` |
 | `Params` | `credential:`, secret redaction, resolution with store and warning callable, messages for missing values |
@@ -492,7 +517,7 @@ These go into the Readme:
   variable before the file.
 - `Store`: lazy (no file is opened when every credential parameter gets its
   value from the command line or `env:`; checked against a directory whose
-  credentials file is unreadable); decrypts once; `dig` through nested
+  credentials file is unreadable); decrypts once; `lookup` through nested
   Hashes, missing keys, `nil`, non-Hash on the way; `missing` texts; YAML
   errors give line and column only; disallowed types; debug log line.
 - `Params`: resolution order; conversion of YAML types; required with every
