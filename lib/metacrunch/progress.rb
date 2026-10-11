@@ -5,8 +5,9 @@ require "io/console"
 module Metacrunch
   # Shows the progress of a run on stderr; an Engine monitor (start, stop).
   # In :line mode (stderr is a terminal) it redraws one status line; in :log
-  # mode it logs the status every 10 seconds. A background thread reads the
-  # live counters, so the engine does no extra work per record.
+  # mode it writes a log line every 10 seconds, also with -q, because it was
+  # asked for. A background thread reads the live counters, so the engine
+  # does no extra work per record.
   class Progress
 
     SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"].freeze
@@ -37,11 +38,13 @@ module Metacrunch
 
       def close = nil
 
+      # The flag is set first: if writing is interrupted (the thread is
+      # killed), clear_status still clears what was written.
       def status(text)
         @mutex.synchronize do
+          @status = true
           @io.write(CLEAR, fit(text))
           @io.flush
-          @status = true
         end
       end
 
@@ -76,12 +79,11 @@ module Metacrunch
 
     end
 
-    # output: the Output shared with the logger. logger: for :log mode.
-    # clock and thread can be replaced in tests.
-    def initialize(output, mode:, logger:, interval: INTERVALS.fetch(mode), clock: nil, thread: true)
+    # output: the Output shared with the logger. clock and thread can be
+    # replaced in tests.
+    def initialize(output, mode:, interval: INTERVALS.fetch(mode), clock: nil, thread: true)
       @output = output
       @mode = mode
-      @logger = logger
       @interval = interval
       @clock = clock || -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
       @threaded = thread
@@ -103,7 +105,9 @@ module Metacrunch
     end
 
     def tick
-      @mode == :line ? @output.status(line) : @logger.info(line)
+      return @output.status(line) if @mode == :line
+
+      @output.write(LOG_FORMATTER.call("INFO", Time.now, nil, line))
     end
 
     # The status: progress (bar or spinner), elapsed time, ETA and counts.

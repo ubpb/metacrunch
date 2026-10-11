@@ -69,6 +69,18 @@ class ProgressTest < Minitest::Test
 
   end
 
+  # An IO whose first write fails, like a thread killed while writing.
+  class FailingOnce < StringIO
+
+    def write(*)
+      return super if @failed
+
+      @failed = true
+      raise IOError, "interrupted"
+    end
+
+  end
+
   # A terminal that reports no size, like a fresh PTY.
   class SizelessTerminal < StringIO
 
@@ -119,7 +131,7 @@ class ProgressTest < Minitest::Test
 
   def test_an_error_in_the_display_does_not_reach_the_run
     @live.source = BrokenProgress.new
-    progress = Metacrunch::Progress.new(Output.new(StringIO.new), mode: :line, logger: nil, interval: 0.01)
+    progress = Metacrunch::Progress.new(Output.new(StringIO.new), mode: :line, interval: 0.01)
     _stdout, stderr = capture_io do
       progress.start(@live)
       sleep(0.05)
@@ -149,15 +161,14 @@ class ProgressTest < Minitest::Test
     assert_match(%r{read 10\.6k \(100\.0/s\)}, progress.line)
   end
 
-  def test_log_mode_logs_the_status
+  def test_log_mode_writes_log_lines_of_its_own
     io = StringIO.new
-    logger = Logger.new(io, formatter: ->(_severity, _time, _progname, message) { "#{message}\n" })
-    progress = Metacrunch::Progress.new(Output.new(StringIO.new), mode: :log, logger:, clock: @clock, thread: false)
+    progress = Metacrunch::Progress.new(Output.new(io), mode: :log, clock: @clock, thread: false)
     progress.start(@live)
     advance(10.0, read: 100)
     progress.tick
 
-    assert_equal "progress 00:00:10  read 100 (10.0/s)  written 0\n", io.string
+    assert_match(%r{\A\d\d:\d\d:\d\d INFO  progress 00:00:10  read 100 \(10\.0/s\)  written 0\n\z}, io.string)
   end
 
   def test_the_status_line_is_cleared_before_log_lines
@@ -178,6 +189,16 @@ class ProgressTest < Minitest::Test
     assert_equal "\r\e[2K012345678", io.string
   end
 
+  def test_a_status_line_interrupted_while_written_is_still_cleared
+    io = FailingOnce.new
+    output = Output.new(io)
+
+    assert_raises(IOError) { output.status("working") }
+    output.clear_status
+
+    assert_equal Output::CLEAR, io.string
+  end
+
   def test_a_terminal_without_a_size_gets_the_whole_line
     io = SizelessTerminal.new
     Output.new(io).status("working")
@@ -187,7 +208,7 @@ class ProgressTest < Minitest::Test
 
   def test_the_thread_draws_until_stopped
     io = StringIO.new
-    progress = Metacrunch::Progress.new(Output.new(io), mode: :line, logger: nil, interval: 0.01)
+    progress = Metacrunch::Progress.new(Output.new(io), mode: :line, interval: 0.01)
     progress.start(@live)
     sleep(0.05)
     progress.stop
@@ -199,7 +220,7 @@ class ProgressTest < Minitest::Test
   private
 
   def start(mode)
-    progress = Metacrunch::Progress.new(Output.new(StringIO.new), mode:, logger: nil, clock: @clock, thread: false)
+    progress = Metacrunch::Progress.new(Output.new(StringIO.new), mode:, clock: @clock, thread: false)
     progress.start(@live)
     progress
   end
