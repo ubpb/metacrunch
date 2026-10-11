@@ -15,10 +15,16 @@ module Metacrunch
     # which is removed in any case.
     class Editor
 
+      EDITOR_VARIABLES = ["VISUAL", "EDITOR"].freeze
+
+      # The variable that names the editor (VISUAL before EDITOR), or nil.
+      attr_reader :variable
+
       def initialize(env:, stdin:, stderr:)
         @env = env
         @stdin = stdin
         @stderr = stderr
+        @variable = EDITOR_VARIABLES.find { Credentials.present(env[it]) }
       end
 
       # Returns the edited text. name: the file name the editor sees. The
@@ -46,10 +52,9 @@ module Metacrunch
       private
 
       def editor_command
-        value = Credentials.present(@env["VISUAL"]) || Credentials.present(@env["EDITOR"])
-        raise CredentialsError, "set VISUAL or EDITOR to edit credentials" unless value
+        raise CredentialsError, "set VISUAL or EDITOR to edit credentials" unless variable
 
-        Shellwords.split(value)
+        Shellwords.split(@env[variable])
       end
 
       def run(command, path)
