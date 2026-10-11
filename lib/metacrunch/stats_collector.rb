@@ -89,10 +89,57 @@ module Metacrunch
       )
     end
 
+    # Returns the counts since the last take as Stats and sets them to
+    # zero. The step counters stay the same objects, so a chain built on
+    # them keeps counting. Workers report each batch this way.
+    def take
+      snapshot.tap { reset }
+    end
+
+    # Adds what another collector counted (a Stats from take or snapshot),
+    # e.g. a batch of a worker.
+    def absorb(stats)
+      @read += stats.read
+      @written += stats.written
+      add_counts(@rejected, stats.rejected)
+      add_counts(@marked, stats.marked)
+      add_counts(@failed, stats.failed)
+      @rejected_total += stats.rejected_total
+      @failed_total += stats.failed_total
+      stats.steps.each { |name, step| add_step(@steps.fetch(name), step) }
+    end
+
     private
 
     def now
       Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    end
+
+    def reset
+      @read = 0
+      @written = 0
+      @rejected = Hash.new(0)
+      @marked = Hash.new(0)
+      @failed = Hash.new(0)
+      @failed_total = 0
+      @rejected_total = 0
+      @steps.each_value do |counter|
+        counter.members.each { counter[it] = 0 }
+        counter.time = @profile ? 0.0 : nil
+      end
+    end
+
+    def add_counts(mine, theirs)
+      theirs.each { |key, count| mine[key] += count }
+    end
+
+    def add_step(counter, step)
+      counter.input += step.input
+      counter.output += step.output
+      counter.filtered += step.filtered
+      counter.rejected += step.rejected
+      counter.failed += step.failed
+      counter.time += step.time if counter.time && step.time
     end
 
   end

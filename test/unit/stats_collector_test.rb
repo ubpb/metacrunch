@@ -55,6 +55,36 @@ class StatsCollectorTest < Minitest::Test
     assert_operator collector.elapsed, :>=, 0
   end
 
+  def test_take_returns_the_counts_so_far_and_starts_again
+    collector = Metacrunch::StatsCollector.new(["map#1"])
+    counter = collector.counter("map#1")
+    collector.count_read
+    counter.input += 1
+    collector.mark("Odd")
+    first = collector.take
+    collector.count_read
+    second = collector.take
+
+    assert_equal [1, 1, {"Odd" => 1}], [first.read, first.steps["map#1"].input, first.marked]
+    assert_equal [1, 0, {}], [second.read, second.steps["map#1"].input, second.marked]
+    assert_same counter, collector.counter("map#1")
+  end
+
+  def test_absorb_adds_the_counts_of_another_collector
+    worker = Metacrunch::StatsCollector.new(["reject#1"], profile: true)
+    worker.count_read
+    worker.step_rejected("reject#1", "Patent")
+    worker.step_failed("reject#1", KeyError.new("x"))
+    worker.step_time("reject#1", 0.5)
+    parent = Metacrunch::StatsCollector.new(["reject#1"], profile: true)
+    2.times { parent.absorb(worker.snapshot) }
+    stats = parent.snapshot
+
+    assert_equal [2, {"Patent" => 2}, {"KeyError" => 2}], [stats.read, stats.rejected, stats.failed]
+    assert_equal [2, 2], [parent.rejected_total, parent.failed_total]
+    assert_in_delta 1.0, stats.steps["reject#1"].time
+  end
+
   def test_step_time_is_tracked_only_when_profiling
     plain = Metacrunch::StatsCollector.new(["map#1"])
     profiled = Metacrunch::StatsCollector.new(["map#1"], profile: true)
