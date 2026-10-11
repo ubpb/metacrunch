@@ -141,15 +141,22 @@ module Metacrunch
     end
 
     # Closes the opened components in reverse order and returns the first
-    # error, after trying to close all of them.
+    # error, after trying to close all of them. A signal raised while
+    # closing (e.g. SIGPIPE from a writer whose reader went away) is raised
+    # again once everything is closed.
     def close_components(opened)
       first_error = nil
+      signal = nil
       opened.reverse_each do |component|
         component.close if component.respond_to?(:close)
       rescue *RECOVERABLE => e
         @pipeline.logger.error("closing #{component.class} failed: #{e.class}: #{e.message}")
         first_error ||= e
+      rescue SignalException => e
+        signal ||= e
       end
+      raise signal if signal
+
       first_error
     end
 

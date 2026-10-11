@@ -56,6 +56,15 @@ class EngineLifecycleTest < Minitest::Test
 
   end
 
+  # Raises SIGPIPE when closed, like a writer whose reader went away.
+  class PipeClosingSink
+
+    def write(_record) = nil
+
+    def close = raise(SignalException, "PIPE")
+
+  end
+
   def test_opens_components_in_order_and_closes_them_in_reverse
     log = []
     run_pipeline do
@@ -186,6 +195,19 @@ class EngineLifecycleTest < Minitest::Test
 
     assert_equal [:aborted, "report broke"], [result.status, result.error.message]
     assert_equal [:aborted], seen
+  end
+
+  def test_signals_while_closing_are_raised_after_closing_everything
+    log = []
+    input = Component.new("source", log)
+    pipeline = build_pipeline do
+      source input
+      sink PipeClosingSink.new
+    end
+    error = assert_raises(SignalException) { Metacrunch::Engine.new(pipeline).run }
+
+    assert_equal Signal.list.fetch("PIPE"), error.signo
+    assert_includes log, "close source"
   end
 
   def test_profile_records_time_per_step

@@ -93,5 +93,122 @@ module Metacrunch
 
     end
 
+    # Sink: writes every record as one line of JSON. Values that are not
+    # JSON types (objects, Time, NaN) are refused instead of written as their
+    # to_s. A closed pipe (EPIPE, e.g. `| head`) ends the run like SIGPIPE:
+    # the writer raises SignalException("PIPE") and writes nothing afterwards.
+    class Writer
+
+      def initialize(target)
+        @target = target
+        @io = nil
+        @own = false
+        @broken = false
+      end
+
+      def open(_context)
+        @io, @own = output
+      end
+
+      def write(record, ctx)
+        emit(line(record, ctx))
+      end
+
+      def write_batch(records, ctxs)
+        emit(records.zip(ctxs).map { |record, ctx| line(record, ctx) }.join)
+      end
+
+      def close
+        io = @io
+        @io = nil
+        return unless io
+
+        guard { @own ? io.close : io.flush }
+      ensure
+        discard(io) if @own && io && !io.closed?
+      end
+
+      private
+
+      def line(record, ctx)
+        "#{JSON.generate(record, strict: true)}\n"
+      rescue JSON::GeneratorError => e
+        raise Error, "record at position #{ctx.position} is not JSON (#{record.class}): #{e.message}"
+      end
+
+      def emit(text)
+        guard { @io.write(text) }
+      end
+
+      # Turns EPIPE into SIGPIPE, once; afterwards nothing is written.
+      def guard
+        return if @broken
+
+        yield
+      rescue Errno::EPIPE
+        @broken = true
+        raise SignalException, "PIPE"
+      end
+
+      # Closes a file after a broken pipe; its buffer can no longer be written.
+      def discard(io)
+        io.close
+      rescue Errno::EPIPE
+        nil
+      end
+
+      # [io, own]: own IOs are closed, IOs from outside only flushed.
+      def output
+        return [$stdout, false] if @target == STDIO
+        return [@target, false] unless @target.is_a?(String)
+        return [Zlib::GzipWriter.open(@target), true] if @target.end_with?(GZIP)
+
+        [File.open(@target, "w"), true]
+      end
+
+    end
+
+    # Sink for the rejects and errors roles: writes every record with its
+    # context as an envelope (record, id, position, marks, rejection,
+    # failure). Values that are not JSON types are written as their inspect
+    # string, so diagnostics never stop a run.
+    class ContextWriter < Writer
+
+      private
+
+      def line(record, ctx)
+        "#{JSON.generate(envelope(record, ctx), strict: true)}\n"
+      end
+
+      def envelope(record, ctx)
+        plain = json?(record)
+        data = {"record" => plain ? record : record.inspect}
+        data["record_class"] = record.class.name unless plain
+        data.merge!("id" => json(ctx.id), "position" => ctx.position, "marks" => ctx.marks.map { note(it) })
+        data["rejection"] = note(ctx.rejection) if ctx.rejection
+        data["failure"] = failure(ctx.failure) if ctx.failure
+        data
+      end
+
+      def note(entry)
+        {"reason" => json(entry.reason), "step" => entry.step, "value" => json(entry.value)}
+      end
+
+      def failure(failure)
+        error = failure.error
+        {"step" => failure.step, "error" => error.class.name, "message" => json(error.message)}
+      end
+
+      def json(value) = json?(value) ? value : value.inspect
+
+      def json?(value)
+        JSON.generate(value, strict: true)
+        true
+      rescue JSON::GeneratorError
+        false
+      end
+
+    end
+
   end
 end
