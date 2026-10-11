@@ -21,8 +21,7 @@ class CredentialsStoreTest < Minitest::Test
       write_credentials(root, {"catalog" => {"api_key" => nil}, "port" => 9200})
       credentials = store(root)
 
-      assert_equal [nil, nil, nil],
-                   [credentials.lookup("catalog.api_key"), credentials.lookup("es.password"), credentials.lookup("port.x")]
+      assert_equal([nil, nil, nil], ["catalog.api_key", "es.password", "port.x"].map { credentials.lookup(it) })
     end
   end
 
@@ -131,7 +130,8 @@ class CredentialsStoreTest < Minitest::Test
   def test_origin_names_the_path_and_the_file
     credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: "/p/.metacrunch")
 
-    assert_equal "credential catalog.api_key in /p/.metacrunch/credentials.yml.enc", credentials.origin("catalog.api_key")
+    assert_equal "credential catalog.api_key in /p/.metacrunch/credentials.yml.enc",
+                 credentials.origin("catalog.api_key")
   end
 
   private
