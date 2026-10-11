@@ -57,6 +57,12 @@ class CredentialsTest < Minitest::Test
     end
   end
 
+  def test_yaml_errors_keep_no_psych_error_as_the_cause
+    error = assert_raises(Metacrunch::CredentialsError) { Credentials.load_yaml("a: *geheim\n", PATH) }
+
+    assert_nil error.cause
+  end
+
   def test_yaml_errors_do_not_quote_the_content
     error = assert_raises(Metacrunch::CredentialsError) { Credentials.load_yaml("password: \"geheim\n", PATH) }
 
