@@ -1,8 +1,6 @@
 *.gem
 .DS_Store
 /.bundle/
-/.yardoc/
 /coverage/
-/doc/
 /pkg/
 /tmp/
