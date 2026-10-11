@@ -7,10 +7,14 @@ module Metacrunch
   # slightly stale value is fine.
   class LiveStats
 
-    def initialize(collector, pipeline)
+    # workers: the number of processes that run steps.
+    def initialize(collector, pipeline, workers: 1)
       @collector = collector
       @pipeline = pipeline
+      @workers = workers
     end
+
+    attr_reader :workers
 
     def read = @collector.read
     def filtered = @collector.filtered_total

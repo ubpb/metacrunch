@@ -5,7 +5,7 @@ require "metacrunch/progress"
 
 class ProgressTest < Minitest::Test
 
-  Live = Struct.new(:read, :written, :filtered, :rejected, :failed, :source, :limit)
+  Live = Struct.new(:read, :written, :filtered, :rejected, :failed, :source, :limit, :workers)
   Output = Metacrunch::Progress::Output
 
   # A clock the test moves.
@@ -119,6 +119,14 @@ class ProgressTest < Minitest::Test
 
     assert_match(/ 25% /, sized)
     assert_match(/ 50% /, limited)
+  end
+
+  def test_shows_the_number_of_workers
+    @live.workers = 8
+    progress = start(:line)
+    advance(2.0, read: 20_000)
+
+    assert_equal "⠙ 00:00:02  8 workers  read 20.0k (10.0k/s)  written 0", progress.line
   end
 
   def test_unknown_or_infinite_sizes_are_ignored

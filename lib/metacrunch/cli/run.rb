@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "etc"
+
 module Metacrunch
   class Cli
     # metacrunch run: runs a job. A job without source reads JSON Lines from
@@ -43,6 +45,9 @@ module Metacrunch
 
           @options[:max_errors] = count
         end
+        parser.on("-w", "--workers N", "Run the steps in N processes; auto: one per core but one") do |value|
+          @workers = worker_count(value)
+        end
         parser.on("--stats PATH", "Write status and stats as JSON to PATH (- for stdout)") { @options[:stats] = it }
         parser.on("--[no-]progress", "Show progress on stderr (default: if stderr is a terminal)") { @progress = it }
       end
@@ -51,10 +56,22 @@ module Metacrunch
         options = RunOptions.new(**@options)
         built = build_pipeline(job, argv)
         pipeline = options.apply(built, stdin: @stdin, stdout: @stdout)
-        result = Engine.new(pipeline, monitor: progress(options.records_to_stdout?(built))).run
+        monitor = progress(options.records_to_stdout?(built))
+        result = Engine.new(pipeline, executor: Executor.for(@workers), monitor:).run
         code = report(result)
         write_stats(options.stats, result) if options.stats
         code
+      end
+
+      # The value of --workers as a number of processes.
+      def worker_count(value)
+        count = value == "auto" ? Executor.auto_workers : Integer(value, 10, exception: false)
+        raise UsageError, "--workers must be a positive number or auto" unless count&.positive?
+        if count > 1 && !Executor::Fork.supported?
+          raise UsageError, "--workers needs Process.fork, which this platform lacks"
+        end
+
+        count
       end
 
       # A status line if stderr is a terminal, log lines with --progress

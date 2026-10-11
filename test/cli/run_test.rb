@@ -6,6 +6,8 @@ require_relative "../fixtures/jobs/lib/counting_source"
 class RunTest < Minitest::Test
 
   include CliHelper
+  include Override
+  include ForkVariant::NoWorkerLeft
 
   # stdout whose reader went away.
   class ClosedPipe < StringIO
@@ -21,6 +23,41 @@ class RunTest < Minitest::Test
 
     assert_equal [0, "3\n6\n"], [code, stdout]
     assert_match(/INFO  ok: read 3, written 2, rejected 1 \(Negative: 1\)/, stderr)
+  end
+
+  def test_workers_give_the_same_output
+    code, stdout, stderr = cli("run", "-w", "2", job("numbers.rb"), "--factor", "3", "--", "1", "-2", "2")
+
+    assert_equal [0, "3\n6\n"], [code, stdout]
+    assert_match(/INFO  ok: read 3, written 2, rejected 1 \(Negative: 1\)/, stderr)
+  end
+
+  def test_invalid_worker_counts_are_usage_errors
+    zero = cli("run", "-w", "0", job("double.rb"), stdin: "1\n")
+    word = cli("run", "--workers", "many", job("double.rb"), stdin: "1\n")
+
+    assert_equal [2, 2], [zero.first, word.first]
+    assert_match(/--workers must be a positive number or auto/, word.last)
+  end
+
+  def test_auto_workers_leave_a_core_for_the_parent
+    seen = []
+    choose = lambda do |workers|
+      seen << workers
+      Metacrunch::Executor::Inline.new
+    end
+    override(Metacrunch::Executor, :for, choose) { cli("run", "-w", "auto", job("double.rb"), stdin: "1\n") }
+
+    assert_equal [Metacrunch::Executor.auto_workers], seen
+  end
+
+  def test_workers_need_fork
+    code, _stdout, stderr = override(Metacrunch::Executor::Fork, :supported?, -> { false }) do
+      cli("run", "-w", "2", job("double.rb"), stdin: "1\n")
+    end
+
+    assert_equal 2, code
+    assert_match(/--workers needs Process.fork, which this platform lacks/, stderr)
   end
 
   def test_usage_errors_exit_with_the_usage_code

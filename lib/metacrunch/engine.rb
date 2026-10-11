@@ -36,7 +36,7 @@ module Metacrunch
     def monitored
       return yield unless @monitor
 
-      @monitor.start(LiveStats.new(@stats, @pipeline))
+      @monitor.start(LiveStats.new(@stats, @pipeline, workers: @executor.workers))
       begin
         yield
       ensure
