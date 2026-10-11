@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Sanitizes titles like ris2fis: marks what it changes, rejects records
+# Sanitizes titles: marks what it changes, rejects records
 # without a title and fails on a broken year. Used to compare runs with and
 # without workers.
 Metacrunch.job do

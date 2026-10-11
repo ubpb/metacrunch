@@ -19,7 +19,7 @@ class CredentialsOptionsTest < Minitest::Test
 
   def test_the_credentials_option_names_the_directory
     in_tmpdir do |root|
-      write_credentials(File.join(root, "vault"), {"fis" => {"api_key" => SECRET}})
+      write_credentials(File.join(root, "vault"), {"catalog" => {"api_key" => SECRET}})
       job_file = write_file(root, "jobs/secret.rb", SECRET_JOB)
       code, stdout, = cli("run", "--credentials", File.join(root, "vault", ".metacrunch"), job_file)
 
@@ -86,7 +86,7 @@ class CredentialsOptionsTest < Minitest::Test
 
   # A project with credentials and the secret job; returns the job file.
   def project(root, environment: nil)
-    write_credentials(root, {"fis" => {"api_key" => SECRET}}, environment:)
+    write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment:)
     write_file(root, "jobs/secret.rb", SECRET_JOB)
   end
 

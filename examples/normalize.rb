@@ -5,7 +5,7 @@
 # whitespace in string values and drops empty fields. The id extractor makes
 # logs and rejects name records by their id.
 #
-#   metacrunch run examples/normalize.rb < examples/data/ris.jsonl | head -n 3
+#   metacrunch run examples/normalize.rb < examples/data/publications.jsonl | head -n 3
 #   metacrunch run examples/hello.rb | metacrunch run examples/normalize.rb
 Metacrunch.job do
   source id: ->(record) { record["id"] }

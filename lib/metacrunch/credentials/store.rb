@@ -14,7 +14,7 @@ module Metacrunch
         @data = nil
       end
 
-      # The value at path ("fis.api_key"), or nil. Raises CredentialsError if
+      # The value at path ("catalog.api_key"), or nil. Raises CredentialsError if
       # the credentials cannot be read.
       def lookup(path)
         data = load

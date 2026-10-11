@@ -24,9 +24,9 @@ class CredentialsBoxTest < Minitest::Test
   end
 
   def test_unseals_what_it_sealed_as_utf8
-    plaintext = Box.unseal(Box.seal("fis:\n  api_key: pässwörd\n", @key), @key, path: PATH)
+    plaintext = Box.unseal(Box.seal("catalog:\n  api_key: pässwörd\n", @key), @key, path: PATH)
 
-    assert_equal "fis:\n  api_key: pässwörd\n", plaintext
+    assert_equal "catalog:\n  api_key: pässwörd\n", plaintext
     assert_equal Encoding::UTF_8, plaintext.encoding
   end
 

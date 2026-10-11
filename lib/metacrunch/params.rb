@@ -85,7 +85,7 @@ module Metacrunch
 
     # Defaults are converted and checked like CLI values when the parameter
     # is declared, so a wrong default fails early. credential: a path in
-    # the credentials ("fis.api_key"); it makes the parameter secret.
+    # the credentials ("catalog.api_key"); it makes the parameter secret.
     def param(name, type = String, default: nil, required: false, env: nil, desc: nil, short: nil, credential: nil)
       name = check_name!(name)
       raise ArgumentError, "unsupported type #{type.inspect} for parameter #{name}" unless TYPES.include?(type)
@@ -171,7 +171,7 @@ module Metacrunch
     def check_credential!(name, path)
       return if path.nil? || (path.is_a?(String) && CREDENTIAL_PATH.match?(path))
 
-      raise ArgumentError, "parameter #{name}: credential must be a path like \"fis.api_key\", got #{path.inspect}"
+      raise ArgumentError, "parameter #{name}: credential must be a path like \"catalog.api_key\", got #{path.inspect}"
     end
 
     def default_value(definition, default)
@@ -239,8 +239,8 @@ module Metacrunch
       resolve(definition, nil, sources: -> { sources(definition, credentials) })
     end
 
-    # What was tried for a missing value, e.g. "FIS_API_KEY unset;
-    # fis.api_key not in FILE"; nil for a parameter without env: and
+    # What was tried for a missing value, e.g. "CATALOG_API_KEY unset;
+    # catalog.api_key not in FILE"; nil for a parameter without env: and
     # credential:.
     def sources(definition, credentials)
       tried = []

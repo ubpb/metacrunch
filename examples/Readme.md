@@ -9,7 +9,7 @@ shows and how to call it.
 | [`hello.rb`](hello.rb) | The smallest job: an Array as source, one step, JSON Lines on stdout. Executable through its `#!/usr/bin/env metacrunch` line. |
 | [`catalog.rb`](catalog.rb) | The whole DSL: parameters, `reject` with a reason, `filter`, marks, `flat_map`, the `rejects` and `errors` sinks, `on_error :skip`, an `after` hook, and a source of its own ([`lib/json_array_file.rb`](lib/json_array_file.rb)). |
 | [`normalize.rb`](normalize.rb) | A filter job for Unix pipes: no source, no sink, JSON Lines from stdin to stdout. |
-| [`sanitize.rb`](sanitize.rb) | Cleaning an RIS export like ris2fis: marks for every change, an issue report written by a sink that reads the marks ([`lib/issue_report.rb`](lib/issue_report.rb)), and workers (`-w`). |
+| [`sanitize.rb`](sanitize.rb) | Cleaning exported publication records: marks for every change, an issue report written by a sink that reads the marks ([`lib/issue_report.rb`](lib/issue_report.rb)), and workers (`-w`). |
 | [`test/catalog_test.rb`](test/catalog_test.rb) | Testing a job with `Metacrunch::Testing.run`, also with workers. |
 
 ```
@@ -18,8 +18,8 @@ $ metacrunch run examples/hello.rb
 $ metacrunch run examples/catalog.rb --output tmp examples/data/catalog.json
 $ metacrunch trace -n 3 examples/catalog.rb --output tmp examples/data/catalog.json
 $ metacrunch run examples/hello.rb | metacrunch run examples/normalize.rb
-$ metacrunch run -w 4 -i examples/data/ris.jsonl --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl \
-    examples/sanitize.rb --output tmp/ris.jsonl --issues tmp/issues.tsv
+$ metacrunch run -w 4 -i examples/data/publications.jsonl --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl \
+    examples/sanitize.rb --output tmp/publications.jsonl --issues tmp/issues.tsv
 $ bundle exec ruby -Ilib examples/test/catalog_test.rb
 ```
 

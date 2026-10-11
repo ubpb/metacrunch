@@ -9,10 +9,10 @@ class CredentialsCommandTest < Minitest::Test
 
   def test_show_prints_the_plaintext_and_names_the_file
     in_tmpdir do |root|
-      write_credentials(root, "fis:\n  api_key: geheim\n")
+      write_credentials(root, "catalog:\n  api_key: geheim\n")
       code, stdout, stderr = Dir.chdir(root) { cli("credentials", "show") }
 
-      assert_equal [0, "fis:\n  api_key: geheim\n"], [code, stdout]
+      assert_equal [0, "catalog:\n  api_key: geheim\n"], [code, stdout]
       assert_equal "Showing .metacrunch/credentials.yml.enc\n", stderr
     end
   end

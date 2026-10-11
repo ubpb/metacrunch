@@ -51,7 +51,7 @@ class ExamplesTest < Minitest::Test
   end
 
   def test_normalize_tidies_records_from_stdin
-    input = File.read(example("data/ris.jsonl"))
+    input = File.read(example("data/publications.jsonl"))
     stdout, stderr, status = metacrunch("run", example("normalize.rb"), stdin_data: input)
     titles = stdout.lines.filter_map { JSON.parse(it)["title"] }
 
@@ -83,7 +83,7 @@ class ExamplesTest < Minitest::Test
   # Runs sanitize.rb and returns its output, rejects, errors and issues files.
   def sanitize(dir, name, *options)
     files = ["out.jsonl", "rejects.jsonl", "errors.jsonl", "issues.tsv"].map { File.join(dir, "#{name}.#{it}") }
-    arguments = ["run", *options, "-i", example("data/ris.jsonl"), "--rejects", files[1], "--errors", files[2],
+    arguments = ["run", *options, "-i", example("data/publications.jsonl"), "--rejects", files[1], "--errors", files[2],
                  example("sanitize.rb"), "--output", files[0], "--issues", files[3]]
     _stdout, stderr, status = metacrunch(*arguments)
     raise "sanitize.rb failed (#{status.exitstatus}): #{stderr}" unless status.exitstatus == 3

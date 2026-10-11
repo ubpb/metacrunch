@@ -7,7 +7,7 @@
 # inline:    1 M records through 10 map steps, without sink, observer or
 #            monitor: time per step and record (best of three runs) and
 #            allocations per record.
-# expensive: 50 k records with string work like ris2fis (ROUNDS=4, about
+# expensive: 50 k records with string cleaning on every field (ROUNDS=4, about
 #            28 µs per record inline), inline and with 8 workers.
 # cheap:     1 M records through one cheap map, inline and with 8 workers.
 # jsonl:     1 M JSON Lines through a job without steps (exe/metacrunch),

@@ -12,11 +12,11 @@ class NewTest < Minitest::Test
 
   def test_creates_an_executable_filter_job_that_runs
     in_tmpdir do
-      code, stdout, = cli("new", "jobs/mab2json")
-      run_code, run_stdout, = cli("run", "jobs/mab2json.rb", stdin: "{\"id\":1}\n{\"x\":2}\n")
+      code, stdout, = cli("new", "jobs/marc2json")
+      run_code, run_stdout, = cli("run", "jobs/marc2json.rb", stdin: "{\"id\":1}\n{\"x\":2}\n")
 
-      assert_equal [0, "created jobs/mab2json.rb\n"], [code, stdout]
-      assert File.executable?("jobs/mab2json.rb")
+      assert_equal [0, "created jobs/marc2json.rb\n"], [code, stdout]
+      assert File.executable?("jobs/marc2json.rb")
       assert_equal [0, "{\"id\":1}\n"], [run_code, run_stdout]
     end
   end

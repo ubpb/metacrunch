@@ -12,9 +12,9 @@ class DiffTest < Minitest::Test
   end
 
   def test_nested_hashes_are_compared_by_path
-    changes = diff({"meta" => {"source" => "ris", "v" => 1}}, {"meta" => {"source" => "fis", "v" => 1}})
+    changes = diff({"meta" => {"source" => "marc", "v" => 1}}, {"meta" => {"source" => "mods", "v" => 1}})
 
-    assert_equal [[:changed, "meta.source", "ris", "fis"]], changes
+    assert_equal [[:changed, "meta.source", "marc", "mods"]], changes
   end
 
   def test_arrays_and_replaced_hashes_are_compared_as_a_whole

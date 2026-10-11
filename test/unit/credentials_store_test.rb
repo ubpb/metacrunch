@@ -9,20 +9,19 @@ class CredentialsStoreTest < Minitest::Test
 
   def test_looks_up_paths_through_nested_hashes
     in_tmpdir do |root|
-      write_credentials(root, {"fis" => {"api_key" => "sk-123"}, "port" => 9200})
+      write_credentials(root, {"catalog" => {"api_key" => "sk-123"}, "port" => 9200})
       credentials = store(root)
 
-      assert_equal ["sk-123", "9200"], [credentials.lookup("fis.api_key"), credentials.lookup("port")]
+      assert_equal ["sk-123", "9200"], [credentials.lookup("catalog.api_key"), credentials.lookup("port")]
     end
   end
 
   def test_missing_keys_nil_values_and_scalars_on_the_way_give_nil
     in_tmpdir do |root|
-      write_credentials(root, {"fis" => {"api_key" => nil}, "port" => 9200})
+      write_credentials(root, {"catalog" => {"api_key" => nil}, "port" => 9200})
       credentials = store(root)
 
-      assert_equal [nil, nil, nil],
-                   [credentials.lookup("fis.api_key"), credentials.lookup("es.password"), credentials.lookup("port.x")]
+      assert_equal([nil, nil, nil], ["catalog.api_key", "es.password", "port.x"].map { credentials.lookup(it) })
     end
   end
 
@@ -66,7 +65,7 @@ class CredentialsStoreTest < Minitest::Test
       write_credentials(root, {"a" => 1})
       dir = File.join(root, ".metacrunch")
 
-      assert_equal "fis.api_key not in #{dir}/credentials.yml.enc", store(root).missing("fis.api_key")
+      assert_equal "catalog.api_key not in #{dir}/credentials.yml.enc", store(root).missing("catalog.api_key")
       assert_equal "no credentials for environment production in #{dir}",
                    store(root, environment: "production").missing("a")
     end
@@ -83,8 +82,8 @@ class CredentialsStoreTest < Minitest::Test
   def test_without_a_directory_there_are_no_values
     credentials = Metacrunch::Credentials.store(job_file: nil, env: {})
 
-    assert_nil credentials.lookup("fis.api_key")
-    assert_equal "no credentials directory: no ~/.metacrunch/", credentials.missing("fis.api_key")
+    assert_nil credentials.lookup("catalog.api_key")
+    assert_equal "no credentials directory: no ~/.metacrunch/", credentials.missing("catalog.api_key")
   end
 
   def test_a_given_directory_must_exist
@@ -106,10 +105,10 @@ class CredentialsStoreTest < Minitest::Test
 
   def test_inspect_shows_neither_the_key_nor_the_values
     in_tmpdir do |root|
-      key = write_credentials(root, {"fis" => {"api_key" => "sk-123-geheim"}}, key_file: false)
+      key = write_credentials(root, {"catalog" => {"api_key" => "sk-123-geheim"}}, key_file: false)
       env = {"METACRUNCH_MASTER_KEY" => key.hex}
       credentials = Metacrunch::Credentials.store(job_file: nil, env:, directory: File.join(root, ".metacrunch"))
-      credentials.lookup("fis.api_key")
+      credentials.lookup("catalog.api_key")
 
       assert_equal "#<Metacrunch::Credentials::Store #{root}/.metacrunch/credentials.yml.enc>", credentials.inspect
       refute_includes Metacrunch::Credentials::Location.for_job(job_file: nil, env:).inspect, key.hex
@@ -131,7 +130,8 @@ class CredentialsStoreTest < Minitest::Test
   def test_origin_names_the_path_and_the_file
     credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: "/p/.metacrunch")
 
-    assert_equal "credential fis.api_key in /p/.metacrunch/credentials.yml.enc", credentials.origin("fis.api_key")
+    assert_equal "credential catalog.api_key in /p/.metacrunch/credentials.yml.enc",
+                 credentials.origin("catalog.api_key")
   end
 
   private

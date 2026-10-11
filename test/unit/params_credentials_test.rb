@@ -10,13 +10,13 @@ class ParamsCredentialsTest < Minitest::Test
   SECRET = "sk-123-geheim"
 
   def test_the_command_line_wins_over_env_and_credentials
-    with_credentials({"fis" => {"api_key" => "from-credentials"}}) do |credentials|
+    with_credentials({"catalog" => {"api_key" => "from-credentials"}}) do |credentials|
       params = api_key_schema
-      env = {"FIS_API_KEY" => "from-env"}
+      env = {"CATALOG_API_KEY" => "from-env"}
 
       assert_equal "from-cli", params.bind_argv(["--api-key", "from-cli"], env:, credentials:).api_key
       assert_equal "from-env", params.bind_argv([], env:, credentials:).api_key
-      assert_equal "from-credentials", params.bind_argv([], env: {"FIS_API_KEY" => ""}, credentials:).api_key
+      assert_equal "from-credentials", params.bind_argv([], env: {"CATALOG_API_KEY" => ""}, credentials:).api_key
     end
   end
 
@@ -66,7 +66,7 @@ class ParamsCredentialsTest < Minitest::Test
   end
 
   def test_a_hash_is_no_value
-    with_credentials({"fis" => {"api_key" => {"nested" => SECRET}}}) do |credentials|
+    with_credentials({"catalog" => {"api_key" => {"nested" => SECRET}}}) do |credentials|
       error = assert_raises(Metacrunch::ParamError) { api_key_schema.bind_argv([], env: {}, credentials:) }
 
       assert_match(/\(hidden\) is not a String/, error.message)
@@ -80,28 +80,28 @@ class ParamsCredentialsTest < Minitest::Test
         api_key_schema(required: true).bind_argv([], env: {}, credentials:)
       end
 
-      assert_equal "missing required parameter --api-key (FIS_API_KEY unset; fis.api_key not in " \
+      assert_equal "missing required parameter --api-key (CATALOG_API_KEY unset; catalog.api_key not in " \
                    "#{dir}/credentials.production.yml.enc)", error.message
     end
   end
 
   def test_a_missing_environment_file_is_named
-    with_credentials({"fis" => {"api_key" => SECRET}}) do |_credentials, dir|
+    with_credentials({"catalog" => {"api_key" => SECRET}}) do |_credentials, dir|
       credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: dir, environment: "production")
       error = assert_raises(Metacrunch::ParamError) do
         api_key_schema(required: true).bind_argv([], env: {}, credentials:)
       end
 
-      assert_equal "missing required parameter --api-key (FIS_API_KEY unset; no credentials for environment " \
+      assert_equal "missing required parameter --api-key (CATALOG_API_KEY unset; no credentials for environment " \
                    "production in #{dir})", error.message
     end
   end
 
   def test_without_credentials_the_message_says_so
-    params = schema { param :api_key, String, credential: "fis.api_key", required: true }
+    params = schema { param :api_key, String, credential: "catalog.api_key", required: true }
     error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}) }
 
-    assert_equal "missing required parameter --api-key (fis.api_key: no credentials)", error.message
+    assert_equal "missing required parameter --api-key (catalog.api_key: no credentials)", error.message
   end
 
   def test_a_missing_value_names_the_unset_variable
@@ -116,21 +116,21 @@ class ParamsCredentialsTest < Minitest::Test
       assert_raises(ArgumentError) { schema { param :x, String, credential: path } }.message
     end
 
-    assert_equal "parameter x: credential must be a path like \"fis.api_key\", got \"\"", errors.first
+    assert_equal "parameter x: credential must be a path like \"catalog.api_key\", got \"\"", errors.first
     assert_equal 5, errors.grep(/credential must be a path/).size
   end
 
   def test_help_shows_the_sources_of_a_secret_but_no_value
-    help = api_key_schema(required: true, desc: "FIS API key").help
+    help = api_key_schema(required: true, desc: "Catalog API key").help
 
-    assert_includes help, "FIS API key (required, secret, env: FIS_API_KEY, credential: fis.api_key)"
+    assert_includes help, "Catalog API key (required, secret, env: CATALOG_API_KEY, credential: catalog.api_key)"
   end
 
   def test_help_hides_the_default_of_a_secret
     help = api_key_schema(default: SECRET).help
 
     refute_includes help, SECRET
-    assert_includes help, "(secret, env: FIS_API_KEY, credential: fis.api_key)"
+    assert_includes help, "(secret, env: CATALOG_API_KEY, credential: catalog.api_key)"
   end
 
   def test_invalid_values_of_a_secret_are_hidden_from_every_source
@@ -168,7 +168,7 @@ class ParamsCredentialsTest < Minitest::Test
   def test_inspect_to_s_and_pp_show_secrets_as_secret
     params = schema do
       param :index, String
-      param :api_key, String, credential: "fis.api_key"
+      param :api_key, String, credential: "catalog.api_key"
     end
     values = params.bind_hash(index: "test", api_key: SECRET)
 
@@ -187,12 +187,12 @@ class ParamsCredentialsTest < Minitest::Test
     warnings = []
     api_key_schema.bind_argv(["--api-key", SECRET], env: {}, warn: ->(message) { warnings << message })
 
-    assert_equal ["--api-key is a secret; pass it by FIS_API_KEY or credentials instead"], warnings
+    assert_equal ["--api-key is a secret; pass it by CATALOG_API_KEY or credentials instead"], warnings
   end
 
   def test_without_env_the_warning_names_only_the_credentials
     warnings = []
-    params = schema { param :api_key, String, credential: "fis.api_key" }
+    params = schema { param :api_key, String, credential: "catalog.api_key" }
     params.bind_argv(["--api-key", SECRET], env: {}, warn: ->(message) { warnings << message })
 
     assert_equal ["--api-key is a secret; pass it by credentials instead"], warnings
@@ -202,9 +202,9 @@ class ParamsCredentialsTest < Minitest::Test
     warnings = []
     params = schema do
       param :index, String
-      param :api_key, String, env: "FIS_API_KEY", credential: "fis.api_key"
+      param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key"
     end
-    params.bind_argv(["--index", "x"], env: {"FIS_API_KEY" => SECRET}, warn: ->(message) { warnings << message })
+    params.bind_argv(["--index", "x"], env: {"CATALOG_API_KEY" => SECRET}, warn: ->(message) { warnings << message })
 
     assert_empty warnings
   end
@@ -216,14 +216,14 @@ class ParamsCredentialsTest < Minitest::Test
       params = api_key_schema
 
       assert_equal "cli", params.bind_argv(["--api-key", "cli"], env: {}, credentials:).api_key
-      assert_equal "env", params.bind_argv([], env: {"FIS_API_KEY" => "env"}, credentials:).api_key
+      assert_equal "env", params.bind_argv([], env: {"CATALOG_API_KEY" => "env"}, credentials:).api_key
       assert_raises(Metacrunch::CredentialsError) { params.bind_argv([], env: {}, credentials:) }
     end
   end
 
   def test_option_errors_do_not_echo_values
     params = schema do
-      param :api_key, String, credential: "fis.api_key"
+      param :api_key, String, credential: "catalog.api_key"
       param :dry, :bool
     end
     errors = [["--api-ky=#{SECRET}"], ["--dry=#{SECRET}"]].map do |argv|
@@ -243,7 +243,7 @@ class ParamsCredentialsTest < Minitest::Test
   def schema(&) = Metacrunch::Params.new.tap { |params| params.instance_exec(&) }
 
   def api_key_schema(**options)
-    settings = {env: "FIS_API_KEY", credential: "fis.api_key"}.merge(options)
+    settings = {env: "CATALOG_API_KEY", credential: "catalog.api_key"}.merge(options)
     schema { param :api_key, String, **settings }
   end
 

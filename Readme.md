@@ -4,9 +4,8 @@ metacrunch
 [![CI](https://github.com/ubpb/metacrunch/actions/workflows/ci.yml/badge.svg)](https://github.com/ubpb/metacrunch/actions/workflows/ci.yml)
 
 metacrunch is a small data processing and ETL (extract, transform, load) toolkit for Ruby. A job reads records
-from a **source**, passes them through **steps** and writes the results to a **sink**. At the University Library of
-Paderborn it transforms library metadata, e.g. MARCXML and MAB to JSON for Elasticsearch, or RIS exports for a
-research information system. Nothing in it is specific to library data.
+from a **source**, passes them through **steps** and writes the results to a **sink**. It is used for library metadata,
+for example to turn MARCXML records into JSON for a search index, but nothing in it is specific to library data.
 
 - Jobs are plain Ruby files. Steps, sources and sinks are blocks or small Ruby classes; there is no second language.
 - Steps say what they do: `map`, `filter`, `reject`, `flat_map`.
@@ -69,7 +68,7 @@ $ metacrunch run jobs/numbers.rb --factor 3 -- 1 2 -5
 
 A job without a sink writes its records to stdout as JSON Lines. Logs and the run summary go to stderr.
 
-A file can define several jobs, each with its own name (`Metacrunch.job "mab2es" do ... end`); `-j NAME` selects
+A file can define several jobs, each with its own name (`Metacrunch.job "marc2es" do ... end`); `-j NAME` selects
 one.
 
 More jobs with sample data, from the smallest one to a cleaning job with workers, are in [`examples/`](examples).
@@ -107,7 +106,7 @@ job's error policy. Note that JSON objects with duplicate keys count as invalid,
 | `flat_map` | an Enumerable of records (not a Hash) | 0..n |
 
 A step is a block or any object with `#call`, for example a class with `self.call`. Steps are named
-`map#1`, `filter#2`, … or explicitly: `map Mab2Primo, name: "mab2primo"`.
+`map#1`, `filter#2`, … or explicitly: `map MarcToJson, name: "marc2json"`.
 
 `filter` and `reject` take an optional reason (a String or Symbol). Records dropped with a reason are *rejected*:
 they are counted per reason and sent to the `rejects` sink. Without a reason they are *filtered*: counted, nothing
@@ -201,7 +200,7 @@ params do
   param :bulk,  Integer, default: 1000
   param :dry,   :bool, default: false
   param :tags,  Array
-  param :api_key, String, env: "FIS_API_KEY", credential: "fis.api_key"
+  param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key"
   args  :files, min: 1
 end
 ```
@@ -220,7 +219,7 @@ Parameters can read secrets, such as API keys and passwords, from encrypted file
 
 ```ruby
 params do
-  param :api_key, String, env: "FIS_API_KEY", credential: "fis.api_key", required: true
+  param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key", required: true
 end
 ```
 
@@ -232,8 +231,8 @@ $ metacrunch credentials rotate -e production
 ```
 
 `edit` creates `.metacrunch/credentials.yml.enc`, which you commit, and the key `.metacrunch/master.key`, which you
-never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `credential: "fis.api_key"` reads `api_key`
-below `fis`. Every value is read as its text and converted like a command-line value, so `0123`, `no` or `on` need no
+never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `credential: "catalog.api_key"` reads
+`api_key` below `catalog`. Every value is read as its text and converted like a command-line value, so `0123`, `no` or `on` need no
 quotes; an empty value, `~` and `null` mean "not set". `edit` refuses to save invalid YAML and, on a terminal, offers
 to edit again.
 
@@ -282,7 +281,7 @@ Keep in mind:
 ```
 $ metacrunch run [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]
 $ metacrunch JOB_FILE [JOB_PARAMS...] [ARGS...]      # short for run
-$ metacrunch run jobs/mab2es.rb --help                # the job's parameters
+$ metacrunch run jobs/marc2es.rb --help                # the job's parameters
 ```
 
 Options of `metacrunch` go before the job file; everything after it belongs to the job. Use `--` before job
@@ -304,7 +303,7 @@ you start it.
 | `--[no-]progress` | Progress on stderr; shown by default if stderr is a terminal and records do not go to the same terminal |
 | `-q`, `-v` | Log warnings only, or debug messages too |
 
-A job file that starts with `#!/usr/bin/env metacrunch` and is executable runs as `./jobs/mab2es.rb ...`.
+A job file that starts with `#!/usr/bin/env metacrunch` and is executable runs as `./jobs/marc2es.rb ...`.
 
 ### Pipes
 
@@ -312,7 +311,7 @@ A job without `source` reads JSON Lines from stdin, a job without `sink` writes 
 with each other and with other tools, and every stage runs in its own process:
 
 ```
-$ metacrunch run mab2json.rb dumps/*.xml | jq -c 'select(.year > 2000)' | metacrunch run json2es.rb --index test
+$ metacrunch run marc2json.rb dumps/*.xml | jq -c 'select(.year > 2000)' | metacrunch run json2es.rb --index test
 ```
 
 `source id: ->(record) { record["_id"] }` gives a job that reads stdin an id extractor. Only records survive a pipe,
@@ -326,7 +325,7 @@ quietly by SIGPIPE.
 source order, so a job gives the same results with and without workers.
 
 ```
-$ metacrunch run -w 8 jobs/sanitize.rb data/ris.json
+$ metacrunch run -w 8 jobs/sanitize.rb data/publications.jsonl
 ```
 
 Workers pay off when the steps are expensive. With about 28 µs of work per record, 8 workers were about 5× as fast.
@@ -365,10 +364,10 @@ $ export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 ### Debugging and checking jobs
 
 ```
-$ metacrunch trace -n 5 jobs/mab2es.rb --index test dumps/a.xml
-$ metacrunch trace --position 4711 jobs/mab2es.rb --index test dumps/a.xml
-$ metacrunch check jobs/mab2es.rb --index test dumps/a.xml
-$ metacrunch new --test jobs/mab2json.rb
+$ metacrunch trace -n 5 jobs/marc2es.rb --index test dumps/a.xml
+$ metacrunch trace --position 4711 jobs/marc2es.rb --index test dumps/a.xml
+$ metacrunch check jobs/marc2es.rb --index test dumps/a.xml
+$ metacrunch new --test jobs/marc2json.rb
 ```
 
 `trace` shows what every step does to the first records (or to the records at `--position`, or with `--id`): the
@@ -394,7 +393,7 @@ signal, so shells and `xargs` see the interruption. Data already written to stdo
 ### Running jobs from Ruby
 
 ```ruby
-job = Metacrunch.load_job("jobs/mab2es.rb")    # name: "mab2es" selects one of several jobs
+job = Metacrunch.load_job("jobs/marc2es.rb")    # name: "marc2es" selects one of several jobs
 result = job.run(["--index", "test", "dumps/a.xml"], workers: 4, limit: 1000)
 
 result.status    # :ok, :ok_with_failures or :aborted
@@ -415,7 +414,7 @@ defined with `Metacrunch.job` in a Rake task or an application runs the same way
 require "metacrunch/testing"
 
 result = Metacrunch::Testing.run(
-  Metacrunch.load_job("jobs/mab2es.rb"),
+  Metacrunch.load_job("jobs/marc2es.rb"),
   params: {index: "test", files: ["unused"]},
   source: [{"title" => "no id"}]
 )

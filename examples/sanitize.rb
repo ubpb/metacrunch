@@ -2,17 +2,17 @@
 
 require_relative "lib/issue_report"
 
-# Sanitizes an RIS export the way ris2fis does: cleans every string field,
+# Sanitizes exported publication records: cleans every string field,
 # marks what it changed, rejects records without a title and fails on a year
 # that is not a number. Records go to --output as JSON Lines, every mark to
 # --issues as a TSV report. On large exports the steps are expensive enough
 # for workers (-w) to pay off; the results are the same with and without.
 #
 #   mkdir -p tmp
-#   metacrunch run -w 4 -i examples/data/ris.jsonl --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl \
-#     --stats tmp/stats.json examples/sanitize.rb --output tmp/ris.jsonl --issues tmp/issues.tsv
+#   metacrunch run -w 4 -i examples/data/publications.jsonl --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl \
+#     --stats tmp/stats.json examples/sanitize.rb --output tmp/publications.jsonl --issues tmp/issues.tsv
 #
-# examples/data/ris.jsonl gives 187 records, 8 rejects (no title) and 5
+# examples/data/publications.jsonl gives 187 records, 8 rejects (no title) and 5
 # errors (year "n.d."); the exit status is 3, "finished, but records failed".
 Metacrunch.job "sanitize" do
   params do

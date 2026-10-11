@@ -11,12 +11,12 @@ class CredentialsEditTest < Minitest::Test
 
   def test_creates_key_gitignore_and_credentials
     in_tmpdir do |root|
-      code, _stdout, stderr = edit(root, scripted_editor(root, "fis:\n  api_key: pässwörd\n"))
+      code, _stdout, stderr = edit(root, scripted_editor(root, "catalog:\n  api_key: pässwörd\n"))
       dir = File.join(root, ".metacrunch")
       key = Key.parse(File.read(File.join(dir, "master.key")), source: "test")
 
       assert_equal 0, code, stderr
-      assert_equal "fis:\n  api_key: pässwörd\n", unseal(File.join(dir, "credentials.yml.enc"), key)
+      assert_equal "catalog:\n  api_key: pässwörd\n", unseal(File.join(dir, "credentials.yml.enc"), key)
       assert_equal ["master*.key*\n", 0o600],
                    [File.read(File.join(dir, ".gitignore")), File.stat(File.join(dir, "master.key")).mode & 0o777]
     end
@@ -49,7 +49,7 @@ class CredentialsEditTest < Minitest::Test
       template = editor_calls(root).first["before"]
 
       assert_includes template, "(environment: production)"
-      assert_includes template, "credential: \"fis.api_key\""
+      assert_includes template, "credential: \"catalog.api_key\""
       assert_path_exists File.join(root, ".metacrunch", "credentials.production.yml.enc")
     end
   end
