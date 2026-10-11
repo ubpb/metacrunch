@@ -196,6 +196,7 @@ you start it.
 | `--rejects PATH`, `--errors PATH` | Write rejected or failed records with their context; both may name the same file |
 | `-n`, `--limit N` | Process only the first N source records |
 | `--on-error abort\|skip`, `--max-errors N` | Override the job's error policy |
+| `-w`, `--workers N\|auto` | Run the steps in N worker processes (see Workers) |
 | `--stats PATH` | Write status and stats as JSON at the end (`-` for stdout) |
 | `--[no-]progress` | Progress on stderr; shown by default if stderr is a terminal and records do not go to the same terminal |
 | `-q`, `-v` | Log warnings only, or debug messages too |
@@ -214,6 +215,41 @@ $ metacrunch run marc2json.rb dumps/*.xml | jq -c 'select(.year > 2000)' | metac
 `source id: ->(record) { record["_id"] }` gives a job that reads stdin an id extractor. Only records survive a pipe,
 not their context. When the reader of the pipe stops (`| head`), the job flushes and closes its other sinks and ends
 quietly by SIGPIPE.
+
+### Workers
+
+`-w N` (`--workers N`) runs the steps in N worker processes; the source and the sinks stay in the main process.
+`-w auto` uses one worker per core but one. Records reach the sinks, the `rejects` and `errors` sinks and the log in
+source order, so a job gives the same results with and without workers.
+
+```
+$ metacrunch run -w 8 jobs/sanitize.rb data/publications.jsonl
+```
+
+Workers pay off when the steps are expensive. With about 28 µs of work per record, 8 workers were about 5× as fast.
+With cheap steps (a few `map`s over Hashes), sending records between processes costs more than it saves, and the
+job gets slower.
+
+- Records travel between the processes with `Marshal`. Records, the `value:` of marks and rejections and `ctx.store`
+  must be Marshal-able. A source that reads XML should yield Strings and leave the parsing (Nokogiri) to a step. An
+  exception that cannot be sent is replaced by a `Metacrunch::WorkerError` with the original class and message.
+- Each worker opens and closes the step components itself (`open`/`close`), so every worker has its own
+  connections. Data that the workers only read, such as lookup tables, belongs at job level or in a `before` hook:
+  the workers inherit it from the main process. Steps are opened after the `before` hooks, also without workers.
+- Records are sent in batches of 100, so a slow source (records trickling in through a pipe) delays a record until
+  its batch is full.
+- After an abort in the middle of a batch, the stats may count up to 99 records after the point of abort; the
+  records in the sinks are exact. With `profile true`, step times are summed over all workers.
+- `trace` always runs without workers. In tests, `Metacrunch::Testing.run(job, source: records, workers: 2)` checks
+  that a job's records cross the process boundary.
+
+On macOS, a worker can crash right after it starts if a gem initialized Objective-C in the main process (known for
+`pg` with GSSAPI and for proxy lookups in `net/http`). The error then names SIGABRT. Set this variable before you
+start the job:
+
+```
+$ export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+```
 
 ### Debugging and checking jobs
 
