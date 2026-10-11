@@ -4,17 +4,43 @@ metacrunch
 [![CI](https://github.com/ubpb/metacrunch/actions/workflows/ci.yml/badge.svg)](https://github.com/ubpb/metacrunch/actions/workflows/ci.yml)
 
 metacrunch is a small data processing and ETL (extract, transform, load) toolkit for Ruby. A job reads records
-from a **source**, passes them through **steps** and writes the results to a **sink**.
+from a **source**, passes them through **steps** and writes the results to a **sink**. At the University Library of
+Paderborn it transforms library metadata, e.g. MARCXML and MAB to JSON for Elasticsearch, or RIS exports for a
+research information system. Nothing in it is specific to library data.
+
+- Jobs are plain Ruby files. Steps, sources and sinks are blocks or small Ruby classes; there is no second language.
+- Steps say what they do: `map`, `filter`, `reject`, `flat_map`.
+- Rejected records keep their reason. The engine counts records per step and reason, and sends rejected and failed
+  records with their context to sinks of their own.
+- An error policy per job decides whether a failing record stops the run or is skipped.
+- Jobs read and write JSON Lines on stdin and stdout, so they chain with each other and with `jq`, `grep` or `sort`.
+- `-w N` runs the steps in N processes, with the results in source order.
+- `metacrunch trace` shows what each step does to a record; `Metacrunch::Testing` runs a job in a test.
+- One runtime dependency (`logger`).
 
 > metacrunch 5 is a redesign. Jobs written for 4.x must be rewritten, see the [changelog](CHANGELOG.md).
 
-Requires Ruby 4.0.
-
 ## Installation
 
+metacrunch 5 is not released yet; the latest version on RubyGems is 4.2.1. Until 5.0 is released, use it from Git
+with Bundler:
+
+```ruby
+# Gemfile
+gem "metacrunch", github: "ubpb/metacrunch"
 ```
-$ gem install metacrunch --pre
+
 ```
+$ bundle install
+$ bundle exec metacrunch --help
+```
+
+Requires Ruby 4.0. The commands in this Readme call `metacrunch`; with Bundler, prefix them with `bundle exec`.
+
+The extension gems of 4.x (`metacrunch-file`, `metacrunch-marcxml`, `metacrunch-elasticsearch`, `metacrunch-db`,
+`metacrunch-redis`) do not work with metacrunch 5 yet. Until they are ported, JSON Lines is built in (see
+[Sources](#sources) and [Sinks](#sinks)), and any other source or sink is a small class of your own, such as
+[`examples/lib/json_array_file.rb`](examples/lib/json_array_file.rb).
 
 ## A first job
 
@@ -42,6 +68,9 @@ $ metacrunch run jobs/numbers.rb --factor 3 -- 1 2 -5
 ```
 
 A job without a sink writes its records to stdout as JSON Lines. Logs and the run summary go to stderr.
+
+A file can define several jobs, each with its own name (`Metacrunch.job "mab2es" do ... end`); `-j NAME` selects
+one.
 
 More jobs with sample data, from the smallest one to a cleaning job with workers, are in [`examples/`](examples).
 
@@ -294,6 +323,22 @@ creates a filter job that runs right away, and with `--test` a Minitest test for
 
 After Ctrl-C or SIGTERM the job writes what its sinks have buffered, closes them, and `metacrunch` ends by the
 signal, so shells and `xargs` see the interruption. Data already written to stdout is kept.
+
+### Running jobs from Ruby
+
+```ruby
+job = Metacrunch.load_job("jobs/mab2es.rb")    # name: "mab2es" selects one of several jobs
+result = job.run(["--index", "test", "dumps/a.xml"], workers: 4, limit: 1000)
+
+result.status    # :ok, :ok_with_failures or :aborted
+result.error     # the error that aborted the run, or nil
+result.summary   # "ok: read 1000, written 998, rejected 2 (Patent: 2) in 0.41s ..."
+```
+
+`run` takes the job's parameters as command-line arguments, and the environment for parameters with `env:` as
+`env:` (default `ENV`). Invalid parameters raise `Metacrunch::ParamError`; errors while the job runs end up in the result. A job
+defined with `Metacrunch.job` in a Rake task or an application runs the same way. Logs go to `Metacrunch.logger`
+(stderr); assign another `Logger` or pass `logger:` to `run`.
 
 ## Testing jobs
 
