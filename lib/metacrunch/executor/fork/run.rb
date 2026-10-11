@@ -73,8 +73,14 @@ module Metacrunch
         # exception that ended the source, or nil.
         def feed
           Thread.current.report_on_exception = false
-          numbered_records.each_slice(@batch_size).with_index do |slice, batch|
-            break unless send_batch(@handles[batch % @workers], slice)
+          @batch = 0
+          @positions = []
+          @records = []
+          catch(:worker_gone) do
+            Inline.each_record(@pipeline.source, limit: @pipeline.limit, select: @select) do |record, position|
+              add(record, position)
+            end
+            send_batch
           end
           nil
         rescue Exception => e # rubocop:disable Lint/RescueException
@@ -83,34 +89,32 @@ module Metacrunch
           @handles.each { it.input.close unless it.input.closed? }
         end
 
-        # The selected source records as [position, record] pairs.
-        def numbered_records
-          Enumerator.new do |yielder|
-            Inline.each_record(@pipeline.source, limit: @pipeline.limit, select: @select) do |record, position|
-              yielder << [position, record]
-            end
-          end
-        end
-
-        # Returns false if the worker is gone: it ended after an error, which
-        # the main thread reports when it reaches that batch.
-        def send_batch(handle, slice)
-          positions, records = slice.transpose
-          Frame.write(handle.input, Marshal.dump([positions, records]))
-          true
-        rescue TypeError
-          undumpable_record(handle, positions, records)
-        rescue Errno::EPIPE
-          false
-        end
-
-        # Sends the records before the first one Marshal cannot dump, then
-        # raises like an error of the source.
-        def undumpable_record(handle, positions, records)
-          index, error = Dump.first_undumpable(records)
-          Frame.write(handle.input, Marshal.dump([positions.first(index), records.first(index)])) if index.positive?
-          raise Error, "record at position #{positions[index]} cannot be sent to a worker: #{error.message}; " \
+        # Adds a record to the batch as Marshal data, taken when it is read, so
+        # a source may reuse one object for all its records. Sends the batch
+        # when it is full. A record Marshal cannot dump ends the source after
+        # the records before it.
+        def add(record, position)
+          @records << Marshal.dump(record)
+          @positions << position
+          send_batch if @records.size >= @batch_size
+        rescue TypeError => e
+          send_batch
+          raise Error, "record at position #{position} cannot be sent to a worker: #{e.message}; " \
                        "with --workers, records must be Marshal-able (e.g. parse XML in a step, not in the source)"
+        end
+
+        # Sends the batch to the next worker. If that worker is gone, it ended
+        # after an error, which the main thread reports when it reaches that
+        # batch; the feeding stops.
+        def send_batch
+          return if @records.empty?
+
+          Frame.write(@handles[@batch % @workers].input, Marshal.dump([@positions, @records]))
+          @batch += 1
+          @positions = []
+          @records = []
+        rescue Errno::EPIPE
+          throw :worker_gone
         end
 
         # Applies batch k from worker k mod N until a worker sends :done

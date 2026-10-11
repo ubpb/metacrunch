@@ -206,6 +206,8 @@ is no CLI option.
 ### 3.2 Parent → worker
 
 One frame per batch: `[positions, records]`, two Arrays of equal length.
+Each element of `records` is the Marshal dump of one record, taken when
+the source yielded it, so a source may reuse one object for all records.
 Positions are consecutive unless `select` skipped records. The end of the
 batches is the end of file of the input pipe. If a record cannot be dumped,
 the feeder first sends the records before it as a batch.
@@ -555,9 +557,9 @@ inline (observer) stay outside the module.
 | Measurement | Target | Result |
 |---|---|---|
 | Inline engine, 1 M records through 10 `map` steps | About 64 ns per step and record, 4 allocations per record | 63.1 ns per step and record, 4.0 allocations per record (baseline before this sub-project: 63.8 ns) |
-| Expensive step (about 28 µs per record), `-w 8` | At least 4× inline | 29 µs per record inline: 34.4k records/s; 8 workers: 183k records/s, **5.3×** |
-| Cheap step (about 0.6 µs per record), `-w 8` | Measured and documented | 0.4 µs per record: inline 2.69 M records/s, 8 workers 0.75 M records/s (0.3×, slower) |
-| JSON Lines pass-through, `-w 8` | Measured and documented | 1 M lines: inline 1.37–1.41 M records/s, `-w 8` 0.50 M records/s |
+| Expensive step (about 28 µs per record), `-w 8` | At least 4× inline | 29 µs per record inline: 35.0k records/s; 8 workers: 178k records/s, **5.1×** |
+| Cheap step (about 0.6 µs per record), `-w 8` | Measured and documented | 0.4 µs per record: inline 2.76 M records/s, 8 workers 0.52 M records/s (0.2×, slower) |
+| JSON Lines pass-through, `-w 8` | Measured and documented | 1 M lines: inline 1.31–1.41 M records/s, `-w 8` 0.42 M records/s |
 
 The inline run of the expensive step is bimodal on this machine: 29 µs per
 record, or 47 µs when macOS runs the single process on an efficiency core.
@@ -565,6 +567,12 @@ The table uses the faster value; against the slower one, 8 workers reach
 about 8.5×. The workers reach about 180k records/s in every run. With cheap
 steps and with pass-through jobs, the parent (Marshal, source, sink) is the
 bottleneck, and workers make the job slower, as expected.
+
+The feeder dumps every record when the source yields it (one Marshal dump
+per record), so a source may reuse one object for all its records (found in
+the final review). That costs about 30 % of the throughput of cheap jobs
+with workers (0.75 M before) and nothing measurable with expensive steps
+(5.3× before).
 
 ## 12. Deferred
 

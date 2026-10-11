@@ -28,6 +28,20 @@ class ExecutorForkTest < Minitest::Test
 
   end
 
+  # Yields one Hash again and again, changed for each record, as readers do
+  # that save allocations.
+  class ReusingSource
+
+    def each
+      row = {}
+      (1..5).each do |number|
+        row["n"] = number
+        yield row
+      end
+    end
+
+  end
+
   # A step callable that appends "open PID" and "close PID" to a file.
   class PidLog
 
@@ -92,6 +106,17 @@ class ExecutorForkTest < Minitest::Test
     end
 
     assert_equal((1..12).map { it * 10 }, target.records)
+  end
+
+  def test_a_source_that_reuses_one_object_gives_the_records_it_yielded
+    target = CollectingSink.new
+    run_pipeline do
+      source ReusingSource.new
+      map { {"n" => it["n"] * 10} }
+      sink target
+    end
+
+    assert_equal([10, 20, 30, 40, 50], target.records.map { it["n"] })
   end
 
   def test_contexts_reach_the_sinks_with_marks_and_store

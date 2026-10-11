@@ -133,9 +133,12 @@ module Metacrunch
           nil
         end
 
-        # Returns the exception that stopped the batch, or nil. Signals pass.
+        # records: one Marshal dump per record (see Run#add). Returns the
+        # exception that stopped the batch, or nil. Signals pass.
         def process(positions, records)
-          positions.each_with_index { |position, index| @processor.call(records[index], position) }
+          positions.each_with_index do |position, index|
+            @processor.call(Marshal.load(records[index]), position) # rubocop:disable Security/MarshalLoad
+          end
           nil
         rescue SignalException
           raise
