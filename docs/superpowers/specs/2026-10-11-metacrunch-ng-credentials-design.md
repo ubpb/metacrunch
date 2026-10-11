@@ -433,7 +433,7 @@ used by any command.
 Layout:
 
 ```
-lib/metacrunch/credentials.rb            requires the parts below
+lib/metacrunch/credentials.rb            the module: constants, file names, YAML, atomic writes
 lib/metacrunch/credentials/key.rb
 lib/metacrunch/credentials/box.rb
 lib/metacrunch/credentials/location.rb
@@ -441,6 +441,9 @@ lib/metacrunch/credentials/store.rb
 lib/metacrunch/credentials/editor.rb
 lib/metacrunch/cli/credentials.rb
 ```
+
+`lib/metacrunch.rb` requires the parts; `lib/metacrunch/cli.rb` requires the
+editor and the command, which only the CLI uses.
 
 New requires, all from the standard library or default gems: `openssl`,
 `securerandom`, `yaml`, `tmpdir`, `shellwords`. Strict Base64 uses

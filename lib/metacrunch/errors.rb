@@ -7,6 +7,11 @@ module Metacrunch
   # Invalid or missing job parameters.
   class ParamError < Error; end
 
+  # Credentials could not be read: no key, a wrong key, a damaged file,
+  # invalid YAML or an invalid environment name. A ParamError, because it
+  # happens while parameters are bound; the CLI exits with 2.
+  class CredentialsError < ParamError; end
+
   # A step or sink broke its contract, e.g. a map step returned nil.
   class ContractError < Error; end
 
