@@ -37,7 +37,7 @@ module Metacrunch
     end
 
     # The Hash in decrypted YAML. Errors name the position, never the
-    # content, because Psych messages can quote it.
+    # content, and keep no cause, because Psych messages can quote it.
     def load_yaml(text, path)
       data = YAML.safe_load(text, aliases: true)
       return {} if data.nil?
@@ -45,11 +45,12 @@ module Metacrunch
 
       raise CredentialsError, "#{path} must contain a mapping at the top level"
     rescue Psych::DisallowedClass => e
-      raise CredentialsError, "unsupported value in #{path}: #{e.message[/unspecified class: (\S+)/, 1]} (quote it)"
+      type = e.message[/unspecified class: (\S+)/, 1]
+      raise CredentialsError, "unsupported value in #{path}: #{type} (quote it)", cause: nil
     rescue Psych::SyntaxError => e
-      raise CredentialsError, "invalid YAML in #{path} at line #{e.line}, column #{e.column}"
+      raise CredentialsError, "invalid YAML in #{path} at line #{e.line}, column #{e.column}", cause: nil
     rescue Psych::Exception
-      raise CredentialsError, "invalid YAML in #{path}"
+      raise CredentialsError, "invalid YAML in #{path}", cause: nil
     end
 
     # Writes content to path atomically: to a temporary file next to it,

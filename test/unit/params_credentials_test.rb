@@ -135,6 +135,20 @@ class ParamsCredentialsTest < Minitest::Test
     end
   end
 
+  def test_a_hidden_value_does_not_survive_as_the_cause
+    params = schema { param :pin, Integer, env: "PIN", credential: "pin" }
+    error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {"PIN" => SECRET}) }
+
+    assert_nil error.cause
+    refute_includes error.full_message(highlight: false), SECRET
+  end
+
+  def test_a_hidden_default_does_not_survive_as_the_cause
+    error = assert_raises(ArgumentError) { schema { param :pin, Integer, credential: "pin", default: SECRET } }
+
+    refute_includes error.full_message(highlight: false), SECRET
+  end
+
   def test_an_invalid_default_of_a_secret_is_hidden
     error = assert_raises(ArgumentError) { schema { param :pin, Integer, credential: "pin", default: SECRET } }
 

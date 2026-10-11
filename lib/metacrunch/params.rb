@@ -180,7 +180,8 @@ module Metacrunch
     rescue ParamError
       expected = TYPE_NAMES.fetch(definition.type)
       shown = definition.secret? ? HIDDEN : default.inspect
-      raise ArgumentError, "invalid default for parameter #{definition.name}: #{shown} is not #{expected}"
+      # No cause: the converter's error would repeat the value.
+      raise ArgumentError, "invalid default for parameter #{definition.name}: #{shown} is not #{expected}", cause: nil
     end
 
     def option_parser(given)
@@ -273,13 +274,14 @@ module Metacrunch
     end
 
     # The hint applies to values that YAML did not read as Strings (no,
-    # 0123) where a String is expected.
+    # 0123) where a String is expected. No cause: the converter's error
+    # (Integer(), Float(), "not a boolean") would repeat a hidden value.
     def invalid!(definition, raw, origin, hint = nil)
       expected = TYPE_NAMES.fetch(definition.type)
       from = origin ? " from #{origin}" : ""
       shown = definition.secret? ? HIDDEN : raw.inspect
       note = hint && definition.type == String && !raw.is_a?(String) ? "; #{hint}" : ""
-      raise ParamError, "invalid value for #{definition.option}#{from}: #{shown} is not #{expected}#{note}"
+      raise ParamError, "invalid value for #{definition.option}#{from}: #{shown} is not #{expected}#{note}", cause: nil
     end
 
     # Bound values are frozen, so a default Array cannot leak changes from
