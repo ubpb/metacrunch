@@ -12,7 +12,7 @@ module Metacrunch
       SUMMARY = "Edit, show or rotate encrypted credentials"
       USAGE = "credentials edit|show|rotate [-e ENV] [--credentials DIR]"
       SUBCOMMANDS = ["edit", "show", "rotate"].freeze
-      GITIGNORE = "master*.key\n"
+      GITIGNORE = "master*.key*\n"
       TEMPLATE = <<~YAML
         # Credentials for metacrunch jobs%<environment>s. They are encrypted when you save.
         # A parameter reads a value with credential: "fis.api_key":

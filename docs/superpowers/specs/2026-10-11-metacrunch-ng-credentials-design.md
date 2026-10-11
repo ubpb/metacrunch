@@ -98,7 +98,7 @@ Sub-projects 3 (declarative jobs) and 4 (Fix language) were dropped on
 ```
 project/
 ├── .metacrunch/
-│   ├── .gitignore                       # master*.key, created by edit
+│   ├── .gitignore                       # master*.key*, created by edit
 │   ├── credentials.yml.enc              # no environment
 │   ├── credentials.production.yml.enc
 │   ├── master.key                       # not committed
@@ -358,7 +358,7 @@ Every subcommand first names its file on stderr, e.g.
      is neither, a new key is written to `master[.ENV].key` (0600), and
      stderr says `Created .metacrunch/master.production.key: keep it safe;
      it is not committed`.
-   - `.metacrunch/.gitignore` with the line `master*.key` is created if it
+   - `.metacrunch/.gitignore` with the line `master*.key*` (keys and their leftovers) is created if it
      does not exist. The project's own `.gitignore` is not touched.
    - The plaintext starts as a commented YAML template that shows the path
      syntax.
