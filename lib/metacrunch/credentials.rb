@@ -31,6 +31,11 @@ module Metacrunch
 
     def present(value) = (value unless value.nil? || value.empty?)
 
+    # The store for a run: Location.for_job with the run's options.
+    def store(job_file:, env:, logger: nil, environment: nil, directory: nil)
+      Store.new(Location.for_job(job_file:, env:, environment:, directory:), logger:)
+    end
+
     # The Hash in decrypted YAML. Errors name the position, never the
     # content, because Psych messages can quote it.
     def load_yaml(text, path)
