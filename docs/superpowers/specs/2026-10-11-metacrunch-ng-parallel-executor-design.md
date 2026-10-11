@@ -2,7 +2,7 @@
 
 - Date: 2026-10-11
 - Branch: `metacrunch-ng`
-- Status: draft
+- Status: approved; implemented
 - Builds on: [sub-project 1 spec](2026-10-10-metacrunch-ng-core-design.md),
   [sub-project 2 spec](2026-10-10-metacrunch-ng-cli-pipes-design.md)
 
@@ -549,15 +549,22 @@ inline (observer) stay outside the module.
 
 ## 11. Measurements
 
-`bench/executor.rb` is committed. Measured on Ruby 4.0.7 +YJIT, arm64 macOS,
-filled in at the end of the implementation:
+`bench/executor.rb` is committed. Measured on Ruby 4.0.7 +YJIT, arm64 macOS
+(18 cores):
 
 | Measurement | Target | Result |
 |---|---|---|
-| Inline engine, 1 M records through 10 `map` steps | About 64 ns per step and record, 4 allocations per record | |
-| Expensive step (about 28 µs per record), `-w 8` | At least 4× inline | |
-| Cheap step (about 0.6 µs per record), `-w 8` | Measured and documented | |
-| JSON Lines pass-through, `-w 8` | Measured and documented | |
+| Inline engine, 1 M records through 10 `map` steps | About 64 ns per step and record, 4 allocations per record | 63.1 ns per step and record, 4.0 allocations per record (baseline before this sub-project: 63.8 ns) |
+| Expensive step (about 28 µs per record), `-w 8` | At least 4× inline | 29 µs per record inline: 34.4k records/s; 8 workers: 183k records/s, **5.3×** |
+| Cheap step (about 0.6 µs per record), `-w 8` | Measured and documented | 0.4 µs per record: inline 2.69 M records/s, 8 workers 0.75 M records/s (0.3×, slower) |
+| JSON Lines pass-through, `-w 8` | Measured and documented | 1 M lines: inline 1.37–1.41 M records/s, `-w 8` 0.50 M records/s |
+
+The inline run of the expensive step is bimodal on this machine: 29 µs per
+record, or 47 µs when macOS runs the single process on an efficiency core.
+The table uses the faster value; against the slower one, 8 workers reach
+about 8.5×. The workers reach about 180k records/s in every run. With cheap
+steps and with pass-through jobs, the parent (Marshal, source, sink) is the
+bottleneck, and workers make the job slower, as expected.
 
 ## 12. Deferred
 
