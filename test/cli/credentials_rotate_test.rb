@@ -56,6 +56,40 @@ class CredentialsRotateTest < Minitest::Test
     end
   end
 
+  # stdout of a pipe whose reader has gone.
+  class ClosedOutput < StringIO
+
+    def write(*) = raise(Errno::EPIPE)
+
+  end
+
+  def test_with_the_key_variable_nothing_changes_if_the_new_key_cannot_be_printed
+    in_tmpdir do |root|
+      old_key = write_credentials(root, "a: 1\n", key_file: false)
+      env = {"METACRUNCH_MASTER_KEY" => old_key.hex}
+      code = Dir.chdir(root) do
+        Metacrunch::Cli.new(stdout: ClosedOutput.new, stderr: StringIO.new, env:).run(["credentials", "rotate"])
+      end
+
+      refute_equal 0, code
+      assert_equal "a: 1\n", unseal(credentials_file(root), old_key)
+    end
+  end
+
+  def test_with_the_key_variable_a_failed_write_says_that_the_printed_key_is_void
+    in_tmpdir do |root|
+      old_key = write_credentials(root, "a: 1\n", key_file: false)
+      env = {"METACRUNCH_MASTER_KEY" => old_key.hex}
+      failing = ->(*, **) { raise Errno::EACCES, "test" }
+      code, _stdout, stderr = override(Metacrunch::Credentials, :write, failing) do
+        Dir.chdir(root) { cli("credentials", "rotate", env:) }
+      end
+
+      assert_equal 2, code
+      assert_includes stderr, "the printed key is void; the old key still works"
+    end
+  end
+
   def test_a_failure_before_the_renames_changes_nothing
     in_tmpdir do |root|
       write_credentials(root, "a: 1\n")
