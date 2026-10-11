@@ -32,9 +32,7 @@ module Metacrunch
         explicit = explicit_directory(directory, env)
         return new(File.expand_path(explicit, cwd), environment:, env:, explicit: true) if explicit
 
-        personal = personal_directory(env)
-        personal = File.realpath(personal) if personal && File.directory?(personal)
-        found = upward(File.realpath(cwd), skip: personal)
+        found = upward(File.realpath(cwd), skip: personal_directory(env))
         new(found || File.join(cwd, DIRECTORY), environment:, env:, searched: "no #{DIRECTORY}/ above #{cwd}")
       end
 
@@ -47,12 +45,13 @@ module Metacrunch
         home && File.join(home, DIRECTORY)
       end
 
-      # The nearest DIRECTORY at or above start, except skip.
+      # The nearest DIRECTORY at or above start, except skip. File.identical?
+      # also recognizes skip through links (a ~/.metacrunch from dotfiles).
       def self.upward(start, skip: nil)
         dir = start
         loop do
           candidate = File.join(dir, DIRECTORY)
-          return candidate if candidate != skip && File.directory?(candidate)
+          return candidate if File.directory?(candidate) && !(skip && File.identical?(candidate, skip))
 
           parent = File.dirname(dir)
           return if parent == dir
