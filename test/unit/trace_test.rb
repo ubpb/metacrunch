@@ -153,8 +153,13 @@ class TraceTest < Minitest::Test
 
     assert_equal <<~TEXT, output
       #1
-        map#1   in:  {"a":1}
-                out: {"a":1,"b":2}
+        map#1   in:  {
+                       "a": 1
+                     }
+                out: {
+                       "a": 1,
+                       "b": 2
+                     }
         sink    1 record (not written)
       traced 1 record: 1 to sink
     TEXT
