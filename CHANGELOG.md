@@ -15,6 +15,7 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
 - `options` is replaced by `params { param ...; args ... }`. `ARGV` is no longer used.
 - The CLI has commands (`run`, `check`, `trace`, `new`); `metacrunch JOB_FILE` still runs a job. Options of
   `metacrunch` go before the job file. It no longer changes into the job's directory and returns defined exit codes.
+- `-v` now means `--verbose`; the version is shown with `metacrunch --version` only.
 - `Metacrunch::TestUtils` is replaced by `Metacrunch::Testing`.
 - Requires Ruby 4.0. ActiveSupport and colorize are no longer dependencies.
 
