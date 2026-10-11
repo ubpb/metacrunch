@@ -233,6 +233,9 @@ job gets slower.
 - Records travel between the processes with `Marshal`. Records, the `value:` of marks and rejections and `ctx.store`
   must be Marshal-able. A source that reads XML should yield Strings and leave the parsing (Nokogiri) to a step. An
   exception that cannot be sent is replaced by a `Metacrunch::WorkerError` with the original class and message.
+- Libraries must be loaded before the workers start: `require` them at job level, not in a step's `open` or `call`
+  and not while the source reads. A record of a class that only one of the processes knows stops the run with an
+  error that says so.
 - Each worker opens and closes the step components itself (`open`/`close`), so every worker has its own
   connections. Data that the workers only read, such as lookup tables, belongs at job level or in a `before` hook:
   the workers inherit it from the main process. Steps are opened after the `before` hooks, also without workers.

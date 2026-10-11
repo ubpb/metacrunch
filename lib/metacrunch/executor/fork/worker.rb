@@ -137,13 +137,23 @@ module Metacrunch
         # exception that stopped the batch, or nil. Signals pass.
         def process(positions, records)
           positions.each_with_index do |position, index|
-            @processor.call(Marshal.load(records[index]), position) # rubocop:disable Security/MarshalLoad
+            @processor.call(load_record(records[index], position), position)
           end
           nil
         rescue SignalException
           raise
         rescue Exception => e # rubocop:disable Lint/RescueException
           e
+        end
+
+        # Records come only from the parent. A record of a class this process
+        # does not know (Marshal raises ArgumentError) comes from a library
+        # the parent loaded after the fork.
+        def load_record(data, position)
+          Marshal.load(data) # rubocop:disable Security/MarshalLoad
+        rescue ArgumentError => e
+          raise Error, "record at position #{position} cannot be read in a worker (#{e.message}); " \
+                       "with --workers, require libraries at job level, not while the source reads"
         end
 
         # Writes a frame and clears the events. A :batch frame carries what
