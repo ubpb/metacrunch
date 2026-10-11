@@ -207,7 +207,8 @@ is no CLI option.
 
 One frame per batch: `[positions, records]`, two Arrays of equal length.
 Positions are consecutive unless `select` skipped records. The end of the
-batches is the end of file of the input pipe.
+batches is the end of file of the input pipe. If a record cannot be dumped,
+the feeder first sends the records before it as a batch.
 
 ### 3.3 Worker → parent: batch results
 
@@ -231,6 +232,10 @@ applies the events in order: `[:log, line]` is written with `logger << line`
 raises it after the events (4.1). An exception raised while applying an
 event (a sink error, `max_errors`) stops the batch at that event.
 
+`state` is a `Context::State` (3.6). A worker sends `:deliver` events only if
+the pipeline has a sink and `:reject` events only if it has a `rejects` sink;
+`:fail` events always, because the parent counts them for `max_errors`.
+
 `StatsCollector#take` returns a snapshot and sets all counters to zero,
 keeping the counter objects the chain holds. Marks are counted in the worker
 when they happen (`on_mark`), so they are part of the batch's stats.
@@ -240,8 +245,8 @@ when they happen (`on_mark`), so they are part of the batch's stats.
 - After opening its step callables, the worker sends
   `{type: :ready, events: [logs], error: nil}`, or the error of `open` and
   ends. The parent reads the `:ready` frames of all workers, in worker
-  order, before it starts the feeder. An error aborts the run before any
-  record is read (after the logs of all workers that sent theirs).
+  order, before it starts the feeder. The first error aborts the run before
+  any record is read.
 - After the end of file of its input, the worker closes its step callables
   and sends `{type: :done, events: [logs], error: close_error}`. The parent
   logs a close error and makes it the run's error if there is no other one,
@@ -274,7 +279,8 @@ The parent writes the line with `logger << line` when it reaches the event.
 
 The context is converted explicitly, without Marshal hooks:
 
-- `Context#to_state` returns `[id, position, step, marks, store, rejection, failure]`.
+- `Context#to_state` returns a `Context::State`, a `Data` with `id`,
+  `position`, `step`, `marks`, `store`, `rejection` and `failure`.
 - `Context.from_state(state, logger:)` builds a context in the parent with
   the parent's logger, so `ctx.logger` works in sinks. It has no `on_mark`:
   marks were counted in the worker.
@@ -310,9 +316,12 @@ Exceptions are not the job's choice (they come from libraries), so they do
 not abort the run. An exception that cannot be dumped (`failure.error`, the
 `error` of a batch result, or any `cause` in their chain) is replaced by a
 `Metacrunch::WorkerError < Metacrunch::Error` that keeps the original class
-name (`#original_class`), the message (`"Original::Class: message"`) and the
-backtrace. The stats still count the original class, because they were
-counted in the worker.
+name (`#original_class`), its message (`#original_message`; `#message` is
+`"Original::Class: message"`) and the backtrace. A `StepError` whose cause
+cannot be dumped stays a `StepError` with the same message; only its cause
+is replaced. The stats still count the original class, because they were
+counted in the worker. `JsonLines::ContextWriter` writes the original class
+and message, so an `errors` file looks the same with and without workers.
 
 The normal path costs nothing extra: the culprit is searched only after a
 dump failed.
@@ -350,7 +359,8 @@ signals, before the engine flushes the sinks:
 2. Close both pipes of every worker. A worker that writes gets `EPIPE`.
 3. Send `SIGTERM` to the workers that are still running. A worker closes its
    step callables (best effort) and ends by the signal (3.4).
-4. Wait up to 5 seconds for each worker (`STOP_TIMEOUT`), then send
+4. Wait up to 5 seconds for the workers (`STOP_TIMEOUT`, keyword
+   `stop_timeout:` of `Executor::Fork.new`), then send
    `SIGKILL` and reap it.
 
 After a normal end the workers have already ended; the parent only reaps
@@ -450,13 +460,16 @@ boundary.
 
 ```
 lib/metacrunch/
+  components.rb                 OpenContext, Components.open/close (from Engine)
   processor.rb                  Processor: chain, contexts, error policy (from Engine)
   sink_outlet.rb                SinkOutlet: sinks, failure count, max_errors
   executor.rb                   Executor.for
   executor/inline.rb            Executor::Inline (+ each_record)
-  executor/fork.rb              Executor::Fork: pool, feeder, ordered apply, stop
+  executor/fork.rb              Executor::Fork: options, supported?
+  executor/fork/run.rb          One run: pool, feeder, ordered apply, stop
   executor/fork/worker.rb       Worker loop, BatchOutlet, log buffer
   executor/fork/frame.rb        Length-prefixed Marshal frames
+  executor/fork/dump.rb         Dumping with replacements and culprit search
   context.rb                    + to_state, from_state
   stats_collector.rb            + take, absorb
   live_stats.rb                 + workers
