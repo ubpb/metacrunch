@@ -95,7 +95,7 @@ class ExeTest < Minitest::Test
 
   def test_shows_progress_on_a_terminal
     output = +""
-    PTY.spawn(*command("run", fixture("slow.rb"))) do |reader, _writer, pid|
+    PTY.spawn(*command("run", "-o", File::NULL, fixture("slow.rb"))) do |reader, _writer, pid|
       begin
         reader.each_line { output << it }
       rescue Errno::EIO
@@ -104,8 +104,7 @@ class ExeTest < Minitest::Test
       Process.wait(pid)
     end
 
-    assert_includes output, "\e[2K"
-    assert_match(/read \d+/, output)
+    assert_match(/\e\[2K[━─]{20} \d+% 00:00:00  /, output)
   end
 
   private

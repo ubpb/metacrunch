@@ -93,6 +93,18 @@ class RunFlagsTest < Minitest::Test
     assert_includes stderr.string, "\r\e[2K"
   end
 
+  def test_no_progress_by_default_when_records_go_to_the_same_terminal
+    shared = TerminalOutput.new
+    separate = TerminalOutput.new
+    Metacrunch::Cli.new(stdin: StringIO.new, stdout: TerminalOutput.new, stderr: shared, env: {})
+                   .run(["run", job("slow.rb")])
+    Metacrunch::Cli.new(stdin: StringIO.new, stdout: TerminalOutput.new, stderr: separate, env: {})
+                   .run(["run", "-o", File.join(@dir, "out.jsonl"), job("slow.rb")])
+
+    refute_includes shared.string, "\e[2K"
+    assert_includes separate.string, "\e[2K"
+  end
+
   def test_no_progress_when_quiet_or_disabled
     quiet = TerminalOutput.new
     disabled = TerminalOutput.new
