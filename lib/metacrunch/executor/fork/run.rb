@@ -48,7 +48,11 @@ module Metacrunch
 
         def start_workers
           Process.warmup
-          @workers.times { @handles << spawn(@handles.size + 1) }
+          @workers.times do
+            # A signal that arrives during the fork is raised once the worker
+            # is tracked, so stop ends it.
+            Thread.handle_interrupt(Object => :never) { @handles << spawn(@handles.size + 1) }
+          end
           @pipeline.logger.debug { "started #{@workers} workers (pids #{@handles.map(&:pid).join(", ")})" }
         end
 
@@ -61,7 +65,7 @@ module Metacrunch
           [input, feed, results, output].each(&:binmode)
           pid = Process.fork do
             inherited = [feed, results, *@handles.flat_map { [it.input, it.output] }]
-            Worker.main(@pipeline, input, output, inherited:)
+            Thread.handle_interrupt(Object => :immediate) { Worker.main(@pipeline, input, output, inherited:) }
           end
           input.close
           output.close
