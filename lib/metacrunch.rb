@@ -21,6 +21,7 @@ require_relative "metacrunch/executor/inline"
 require_relative "metacrunch/engine"
 require_relative "metacrunch/job"
 require_relative "metacrunch/loader"
+require_relative "metacrunch/json_lines"
 
 module Metacrunch
 

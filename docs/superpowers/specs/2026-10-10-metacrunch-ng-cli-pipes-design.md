@@ -181,9 +181,11 @@ writer flushes it). The CLI passes its injected streams as IO objects.
   a default gem).
 - Each line is parsed with `JSON.parse`, so a record can be any JSON value.
   Objects become Hashes with String keys.
-- A line that does not parse (including invalid UTF-8; both raise
-  `JSON::ParserError` with json 3.0.2) is yielded as
-  `Metacrunch::InvalidRecord.new(raw: line, error: e)` (3.4).
+- A line that does not parse is yielded as
+  `Metacrunch::InvalidRecord.new(raw: line, error: e)` (3.4). So is a line
+  that is not valid UTF-8 (error: `JSON::ParserError`, "invalid UTF-8"):
+  json 3.0.2 accepts invalid UTF-8 inside strings, and the writer would
+  refuse such a record later.
 - `progress` returns the fraction of bytes read (0.0 to 1.0) for files,
   including `.gz` files (position in the compressed file), and `nil` for
   stdin and other IO objects (5.2).
