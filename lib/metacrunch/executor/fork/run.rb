@@ -163,11 +163,17 @@ module Metacrunch
           raise frame[:error] if frame[:error]
         end
 
-        # A worker that closed its output without a whole frame has ended.
+        # A worker that closed its output without a whole frame has ended. A
+        # frame that holds an object of a class this process does not know
+        # (Marshal raises ArgumentError) comes from a library the worker
+        # loaded after the fork.
         def read(handle)
           Frame.read(handle.output) || ended(handle)
         rescue Frame::Truncated
           ended(handle)
+        rescue ArgumentError => e
+          raise Error, "worker #{handle.number} sent an object of a class this process does not know (#{e.message}); " \
+                       "with --workers, require libraries at job level, not in a step"
         end
 
         # Raises the signal the worker ended by (SIGINT, SIGTERM), as if this

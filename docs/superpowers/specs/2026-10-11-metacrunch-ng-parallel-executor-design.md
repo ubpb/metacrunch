@@ -328,6 +328,13 @@ and message, so an `errors` file looks the same with and without workers.
 The normal path costs nothing extra: the culprit is searched only after a
 dump failed.
 
+Classes must be known on both sides. A library that a step requires in
+`open` or `call`, or that the source requires while it reads, is loaded in
+only one process; Marshal then cannot load the object on the other side
+(`ArgumentError: undefined class/module`). The run aborts with an `Error`
+that says so and asks to require libraries at job level (found in the final
+review).
+
 ## 4. Errors, aborts and signals
 
 ### 4.1 Error policy

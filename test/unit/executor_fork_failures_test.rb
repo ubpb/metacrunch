@@ -42,6 +42,21 @@ class ExecutorForkFailuresTest < Minitest::Test
 
   end
 
+  # Requires a library only when it is read, after the workers started.
+  class LazySource
+
+    def initialize(path, name)
+      @path = path
+      @name = name
+    end
+
+    def each
+      require @path
+      yield Object.const_get(@name).new(1)
+    end
+
+  end
+
   # Opens slowly, like a connection that hangs.
   class SlowOpen
 
@@ -213,6 +228,36 @@ class ExecutorForkFailuresTest < Minitest::Test
       end
 
       refute_path_exists marker
+    end
+  end
+
+  def test_a_class_loaded_only_in_a_worker_gives_a_clear_error
+    Dir.mktmpdir do |dir|
+      name = "LoadedInAWorker#{Process.pid}"
+      path = File.join(dir, "lazy.rb")
+      File.write(path, "#{name} = Struct.new(:n)\n")
+      result = run_pipeline do
+        source [1]
+        map do |record|
+          require path
+          Object.const_get(name).new(record)
+        end
+        sink CollectingSink.new
+      end
+
+      assert_match(/\Aworker 1 sent an object of a class this process does not know \(.*#{name}\); /,
+                   result.error.message)
+    end
+  end
+
+  def test_a_class_loaded_by_the_source_after_the_workers_started_gives_a_clear_error
+    Dir.mktmpdir do |dir|
+      name = "LoadedBySource#{Process.pid}"
+      path = File.join(dir, "lazy.rb")
+      File.write(path, "#{name} = Struct.new(:n)\n")
+      result = run_pipeline { source LazySource.new(path, name) }
+
+      assert_match(/\Arecord at position 1 cannot be read in a worker \(.*#{name}\); /, result.error.message)
     end
   end
 
