@@ -126,6 +126,22 @@ class RunOptionsTest < Minitest::Test
                   "--output and --stats name the same file: #{same}"], messages
   end
 
+  def test_links_to_the_same_file_are_recognized
+    real = File.join(@dir, "real")
+    FileUtils.mkdir_p(real)
+    input = File.join(real, "in.jsonl")
+    File.write(input, "1\n")
+    File.symlink(real, File.join(@dir, "link"))
+    File.link(input, File.join(@dir, "hard.jsonl"))
+    pipeline = build_pipeline { source [1] }
+    conflicts = [RunOptions.new(input:, output: File.join(@dir, "link", "in.jsonl")),
+                 RunOptions.new(input:, output: File.join(@dir, "hard.jsonl")),
+                 RunOptions.new(output: File.join(real, "new.jsonl"), stats: File.join(@dir, "link", "new.jsonl"))]
+    messages = conflicts.map { |options| assert_raises(Metacrunch::UsageError) { apply(options, pipeline) }.message }
+
+    assert_equal(3, messages.count { it.include?("name the same file") })
+  end
+
   def test_limit_and_error_policy_override_the_job
     pipeline = build_pipeline do
       source [1]
