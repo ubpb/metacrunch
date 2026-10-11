@@ -80,6 +80,16 @@ class TraceTest < Minitest::Test
     TEXT
   end
 
+  def test_failure_locations_point_into_the_job_not_into_gems
+    output = trace_run do
+      source ["{"]
+      map { JSON.parse(it) }
+      on_error :skip
+    end
+
+    assert_match(%r{failed: JSON::ParserError: .*  \(test/unit/trace_test\.rb:\d+\)$}, output)
+  end
+
   def test_shows_other_records_in_full
     output = trace_run do
       source [1, 2]

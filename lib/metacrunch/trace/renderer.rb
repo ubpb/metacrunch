@@ -12,6 +12,8 @@ module Metacrunch
       COLORS = {header: 1, dim: 2, removed: 31, failed: 31, added: 32, changed: 33, note: 36}.freeze
       # Backtrace lines in here are metacrunch's own, not the job's.
       LIB = "#{File.expand_path("../..", __dir__)}/".freeze
+      # Neither are lines from gems or the standard library.
+      LIBRARIES = [LIB, "<internal:", "#{RbConfig::CONFIG["rubylibdir"]}/", *Gem.path.map { "#{it}/" }].freeze
 
       def initialize(full:, color:, width:, name_width:)
         @full = full
@@ -112,10 +114,12 @@ module Metacrunch
         value.inspect
       end
 
-      # The first backtrace line outside metacrunch, relative to the working
-      # directory, without the method name.
+      # The first backtrace line from the job's own code (not metacrunch, a
+      # gem or the standard library), else the first outside metacrunch;
+      # relative to the working directory, without the method name.
       def location(error)
-        line = error.backtrace&.find { !it.start_with?(LIB, "<internal:") }
+        backtrace = error.backtrace || []
+        line = backtrace.find { !it.start_with?(*LIBRARIES) } || backtrace.find { !it.start_with?(LIB) }
         line&.delete_prefix("#{Dir.pwd}/")&.sub(/:in .*\z/, "")
       end
 
