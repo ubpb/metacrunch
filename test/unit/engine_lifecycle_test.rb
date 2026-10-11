@@ -65,7 +65,7 @@ class EngineLifecycleTest < Minitest::Test
 
   end
 
-  def test_opens_components_in_order_and_closes_them_in_reverse
+  def test_opens_source_and_sinks_then_steps_and_closes_in_reverse
     log = []
     run_pipeline do
       source Component.new("source", log)
@@ -73,10 +73,21 @@ class EngineLifecycleTest < Minitest::Test
       sink Component.new("sink", log)
       rejects Component.new("rejects", log)
     end
-    expected = ["open source", "open step", "open sink", "open rejects",
-                "close rejects", "close sink", "close step", "close source"]
+    expected = ["open source", "open sink", "open rejects", "open step",
+                "close step", "close rejects", "close sink", "close source"]
 
     assert_equal expected, log
+  end
+
+  def test_steps_open_after_the_before_hooks
+    log = []
+    run_pipeline do
+      source Component.new("source", log)
+      map Component.new("step", log)
+      before { log << "before" }
+    end
+
+    assert_equal ["open source", "before", "open step", "close step", "close source"], log
   end
 
   def test_open_receives_params_and_logger
