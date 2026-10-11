@@ -115,6 +115,9 @@ in the sections below or in the code:
   `CredentialsError`s (exit status 2).
 - `~/.metacrunch` is recognized through links (5.1).
 - `Store` and `Location` have an `inspect` without key and values.
+- YAML scalars are read as their text (3.4), so values that YAML 1.1 would
+  retype (`no`, `0123`, `on:` as a key) keep their meaning without quotes,
+  and lists must hold texts.
 
 ## 2. Files, keys and environments
 
@@ -223,10 +226,13 @@ as text; its content stays opaque.
 
 ### 3.4 Plaintext
 
-UTF-8 YAML, read with `YAML.safe_load(text, aliases: true)`: only plain
-types (String, Integer, Float, true, false, nil, Array, Hash). Anchors and
-aliases may share values inside one file. Other types (a date written as
-`2026-10-11`) are an error that names the type and suggests quoting. The top
+UTF-8 YAML of mappings, sequences and scalars. Every scalar is read as its
+text, without the YAML 1.1 guesses: `0123`, `no`, `on` and `2026-10-11` stay
+the texts `"0123"`, `"no"`, `"on"` and `"2026-10-11"`, also as keys. Only an
+empty value, `~` and `null` (without quotes) mean nil. Values are then
+converted like command-line values (4.2), so nothing needs quotes. Anchors,
+aliases and merge keys (`<<`) may share values inside one file. Tags of Ruby
+classes (`!ruby/object:...`) are an error that names the class. The top
 level must be a Hash; an empty file or one with only comments counts as
 `{}`.
 
@@ -293,8 +299,9 @@ For each parameter, the first that gives a value:
 
 A required parameter without value is an error (4.5). Values from the
 credentials are converted and checked like values from the command line:
-`"42"` and `42` both give an Integer, a YAML list gives an Array, `true`
-and `"yes"` give true. A Hash is never a valid value.
+`42` gives an Integer, `0123` the Integer 123 (or the String `"0123"`), a
+YAML list of texts gives an Array, `true`, `yes` and `1` give true. A Hash,
+and a list with anything but texts, is never a valid value.
 
 `Params#bind_argv(argv, env:, credentials:, warn:)` gets the credentials as
 a lazy store object (6) and a callable for warnings. `bind_hash` (used by

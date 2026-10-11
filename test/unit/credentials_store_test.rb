@@ -12,7 +12,7 @@ class CredentialsStoreTest < Minitest::Test
       write_credentials(root, {"fis" => {"api_key" => "sk-123"}, "port" => 9200})
       credentials = store(root)
 
-      assert_equal ["sk-123", 9200], [credentials.lookup("fis.api_key"), credentials.lookup("port")]
+      assert_equal ["sk-123", "9200"], [credentials.lookup("fis.api_key"), credentials.lookup("port")]
     end
   end
 

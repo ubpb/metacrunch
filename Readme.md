@@ -233,8 +233,9 @@ $ metacrunch credentials rotate -e production
 
 `edit` creates `.metacrunch/credentials.yml.enc`, which you commit, and the key `.metacrunch/master.key`, which you
 never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `credential: "fis.api_key"` reads `api_key`
-below `fis`. Quote values that YAML reads as numbers or booleans (`"0123"`, `"yes"`, `"on"`). `edit` refuses to save
-invalid YAML and, on a terminal, offers to edit again.
+below `fis`. Every value is read as its text and converted like a command-line value, so `0123`, `no` or `on` need no
+quotes; an empty value, `~` and `null` mean "not set". `edit` refuses to save invalid YAML and, on a terminal, offers
+to edit again.
 
 | Environment | File | Key |
 |---|---|---|

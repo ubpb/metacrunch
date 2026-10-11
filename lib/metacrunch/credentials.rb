@@ -15,6 +15,17 @@ module Metacrunch
     DIRECTORY_VARIABLE = "METACRUNCH_CREDENTIALS"
     ENVIRONMENT_NAME = /\A[a-z0-9_-]+\z/
 
+    # Reads every plain scalar as its text, so that credential values are
+    # converted like command-line values (YAML 1.1 would make "no" false and
+    # "0123" 83). The forms of null stay nil.
+    class TextScanner < Psych::ScalarScanner
+
+      NULL = ["", "~", "null", "Null", "NULL"].freeze
+
+      def tokenize(string) = NULL.include?(string) ? nil : string
+
+    end
+
     module_function
 
     def file_name(environment) = environment ? "credentials.#{environment}.yml.enc" : "credentials.yml.enc"
@@ -38,10 +49,14 @@ module Metacrunch
       Store.new(Location.for_job(job_file:, env:, environment:, directory:), logger:)
     end
 
-    # The Hash in decrypted YAML. Errors name the position, never the
-    # content, and keep no cause, because Psych messages can quote it.
+    # The Hash in decrypted YAML, with texts for all scalars (TextScanner).
+    # Anchors, aliases and merge keys work; tags of Ruby classes do not.
+    # Errors name the position, never the content, and keep no cause,
+    # because Psych messages can quote it.
     def load_yaml(text, path)
-      data = YAML.safe_load(text, aliases: true)
+      document = Psych.parse(text) or return {}
+      loader = Psych::ClassLoader::Restricted.new([], [])
+      data = Psych::Visitors::ToRuby.new(TextScanner.new(loader), loader).accept(document)
       return {} if data.nil?
       return data if data.is_a?(Hash)
 

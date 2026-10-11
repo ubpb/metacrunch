@@ -34,7 +34,7 @@ module Metacrunch
       String => ->(value) { value.is_a?(String) },
       Integer => ->(value) { value.is_a?(Integer) },
       Float => ->(value) { value.is_a?(Float) },
-      Array => ->(value) { value.is_a?(Array) },
+      Array => ->(value) { value.is_a?(Array) && value.all?(String) },
       :bool => ->(value) { [true, false].include?(value) }
     }.freeze
 
@@ -48,7 +48,6 @@ module Metacrunch
 
     CREDENTIAL_PATH = /\A[^.]+(\.[^.]+)*\z/
     HIDDEN = "(hidden)"
-    QUOTE_HINT = "quote it in the credentials file"
 
     # Shows secret parameters as [secret] in inspect, to_s and pp. The
     # values class defines SECRETS.
@@ -235,9 +234,7 @@ module Metacrunch
       return resolve(definition, raw, origin: "environment variable #{definition.env}") unless raw.nil?
 
       raw = credentials&.lookup(definition.credential) if definition.credential
-      unless raw.nil?
-        return resolve(definition, raw, origin: credentials.origin(definition.credential), hint: QUOTE_HINT)
-      end
+      return resolve(definition, raw, origin: credentials.origin(definition.credential)) unless raw.nil?
 
       resolve(definition, nil, sources: -> { sources(definition, credentials) })
     end
@@ -259,31 +256,29 @@ module Metacrunch
       "#{definition.option} is a secret; pass it by #{by} instead"
     end
 
-    def resolve(definition, raw, origin: nil, hint: nil, sources: nil)
-      value = raw.nil? ? definition.default : frozen_copy(convert(definition, raw, origin:, hint:))
+    def resolve(definition, raw, origin: nil, sources: nil)
+      value = raw.nil? ? definition.default : frozen_copy(convert(definition, raw, origin:))
       return value unless definition.required && value.nil?
 
       detail = sources&.call
       raise ParamError, "missing required parameter #{definition.option}#{" (#{detail})" if detail}"
     end
 
-    def convert(definition, raw, origin: nil, hint: nil)
+    def convert(definition, raw, origin: nil)
       value = raw.is_a?(String) ? CONVERTERS.fetch(definition.type).call(raw) : raw
       value = value.to_f if definition.type == Float && value.is_a?(Integer)
-      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin, hint)
+      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin)
     rescue ArgumentError, TypeError
-      invalid!(definition, raw, origin, hint)
+      invalid!(definition, raw, origin)
     end
 
-    # The hint applies to values that YAML did not read as Strings (no,
-    # 0123) where a String is expected. No cause: the converter's error
-    # (Integer(), Float(), "not a boolean") would repeat a hidden value.
-    def invalid!(definition, raw, origin, hint = nil)
+    # No cause: the converter's error (Integer(), Float(), "not a boolean")
+    # would repeat a hidden value.
+    def invalid!(definition, raw, origin)
       expected = TYPE_NAMES.fetch(definition.type)
       from = origin ? " from #{origin}" : ""
       shown = definition.secret? ? HIDDEN : raw.inspect
-      note = hint && definition.type == String && !raw.is_a?(String) ? "; #{hint}" : ""
-      raise ParamError, "invalid value for #{definition.option}#{from}: #{shown} is not #{expected}#{note}", cause: nil
+      raise ParamError, "invalid value for #{definition.option}#{from}: #{shown} is not #{expected}", cause: nil
     end
 
     # Bound values are frozen, so a default Array cannot leak changes from
