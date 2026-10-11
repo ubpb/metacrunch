@@ -149,13 +149,14 @@ class ExecutorForkWorkerTest < Minitest::Test
     drive(build_pipeline(logger:, &), batches)
   end
 
-  # Runs a worker in this process: writes the batches to its input, then
-  # returns the frames it wrote. The frames of these tests fit in a pipe
+  # Runs a worker in this process: writes the batches to its input (each
+  # record dumped on its own, as Run does), then returns the frames it
+  # wrote. The frames of these tests fit in a pipe
   # buffer, so nothing has to read while the worker runs.
   def drive(pipeline, batches)
     input, feed = IO.pipe
     results, output = IO.pipe
-    batches.each { Frame.write(feed, Marshal.dump(it)) }
+    batches.each { |positions, records| Frame.write(feed, Marshal.dump([positions, records.map { Marshal.dump(it) }])) }
     feed.close
     begin
       Metacrunch::Executor::Fork::Worker.new(pipeline).run(input, output)
