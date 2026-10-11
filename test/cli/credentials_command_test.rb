@@ -67,6 +67,18 @@ class CredentialsCommandTest < Minitest::Test
     end
   end
 
+  def test_show_of_an_unreadable_file_is_a_usage_error
+    skip "root reads every file" if Process.euid.zero?
+    in_tmpdir do |root|
+      write_credentials(root, "a: 1\n")
+      File.chmod(0o000, File.join(root, ".metacrunch", "credentials.yml.enc"))
+      code, _stdout, stderr = Dir.chdir(root) { cli("credentials", "show") }
+
+      assert_equal 2, code
+      assert_includes stderr, "Error: cannot read #{root}/.metacrunch/credentials.yml.enc: Permission denied"
+    end
+  end
+
   def test_missing_unknown_and_extra_subcommands_are_usage_errors
     assert_equal [2, 2, 2], [cli("credentials").first, cli("credentials", "list").first,
                              cli("credentials", "show", "extra").first]

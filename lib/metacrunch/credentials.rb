@@ -53,6 +53,14 @@ module Metacrunch
       raise CredentialsError, "invalid YAML in #{path}", cause: nil
     end
 
+    # The bytes of a credentials or key file. Errors name the file and the
+    # reason ("Permission denied"), as a CredentialsError.
+    def read(path)
+      File.binread(path)
+    rescue SystemCallError => e
+      raise CredentialsError, "cannot read #{path}: #{e.message.split(" @ ").first}", cause: nil
+    end
+
     # Writes content to path atomically: to a temporary file next to it,
     # with mode perm, then renamed over path.
     def write(path, content, perm:)

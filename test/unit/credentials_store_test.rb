@@ -116,6 +116,18 @@ class CredentialsStoreTest < Minitest::Test
     end
   end
 
+  def test_an_unreadable_credentials_file_is_a_credentials_error
+    skip "root reads every file" if Process.euid.zero?
+    in_tmpdir do |root|
+      write_credentials(root, {"a" => 1})
+      file = File.join(root, ".metacrunch", "credentials.yml.enc")
+      File.chmod(0o000, file)
+      error = assert_raises(Metacrunch::CredentialsError) { store(root).lookup("a") }
+
+      assert_equal "cannot read #{file}: Permission denied", error.message
+    end
+  end
+
   def test_origin_names_the_path_and_the_file
     credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: "/p/.metacrunch")
 

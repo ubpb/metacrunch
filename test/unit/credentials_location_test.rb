@@ -130,6 +130,27 @@ class CredentialsLocationTest < Minitest::Test
                  "create /p/.metacrunch/master.production.key", error.message
   end
 
+  def test_an_unexpandable_directory_is_a_credentials_error
+    error = assert_raises(Metacrunch::CredentialsError) do
+      Location.for_job(job_file: nil, env: {}, directory: "~nosuchuser-metacrunch/x")
+    end
+
+    assert_equal "invalid credentials directory ~nosuchuser-metacrunch/x", error.message
+  end
+
+  def test_an_unreadable_key_file_is_a_credentials_error
+    skip "root reads every file" if Process.euid.zero?
+    in_tmpdir do |root|
+      write_credentials(root, {})
+      key_file = File.join(root, ".metacrunch", "master.key")
+      File.chmod(0o000, key_file)
+      location = Location.for_job(job_file: nil, env: {}, directory: File.join(root, ".metacrunch"))
+      error = assert_raises(Metacrunch::CredentialsError) { location.key }
+
+      assert_equal "cannot read #{key_file}: Permission denied", error.message
+    end
+  end
+
   def test_the_command_searches_above_the_working_directory
     in_tmpdir do |root|
       FileUtils.mkdir_p([File.join(root, ".metacrunch"), File.join(root, "jobs")])

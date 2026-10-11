@@ -15,7 +15,7 @@ module Metacrunch
       def self.for_job(job_file:, env:, environment: nil, directory: nil)
         environment = Credentials.environment(environment, env)
         explicit = explicit_directory(directory, env)
-        return new(File.expand_path(explicit), environment:, env:, explicit: true) if explicit
+        return new(expand(explicit), environment:, env:, explicit: true) if explicit
 
         personal = personal_directory(env)
         found = job_file && upward(File.dirname(File.realpath(job_file)))
@@ -30,7 +30,7 @@ module Metacrunch
       def self.for_command(cwd:, env:, environment: nil, directory: nil)
         environment = Credentials.environment(environment, env)
         explicit = explicit_directory(directory, env)
-        return new(File.expand_path(explicit, cwd), environment:, env:, explicit: true) if explicit
+        return new(expand(explicit, cwd), environment:, env:, explicit: true) if explicit
 
         found = upward(File.realpath(cwd), skip: personal_directory(env))
         new(found || File.join(cwd, DIRECTORY), environment:, env:, searched: "no #{DIRECTORY}/ above #{cwd}")
@@ -38,6 +38,13 @@ module Metacrunch
 
       def self.explicit_directory(option, env)
         Credentials.present(option) || Credentials.present(env[DIRECTORY_VARIABLE])
+      end
+
+      # "~nosuchuser/x" cannot be expanded.
+      def self.expand(directory, base = nil)
+        File.expand_path(directory, base)
+      rescue ArgumentError
+        raise CredentialsError, "invalid credentials directory #{directory}", cause: nil
       end
 
       def self.personal_directory(env)
@@ -60,7 +67,7 @@ module Metacrunch
         end
       end
 
-      private_class_method :explicit_directory, :personal_directory, :upward
+      private_class_method :explicit_directory, :expand, :personal_directory, :upward
 
       def initialize(directory, environment:, env:, explicit: false, searched: nil)
         @directory = directory
@@ -87,7 +94,7 @@ module Metacrunch
         return Key.parse(value, source: KEY_VARIABLE) if value
         return unless key_file && File.file?(key_file)
 
-        Key.parse(File.read(key_file), source: key_file)
+        Key.parse(Credentials.read(key_file), source: key_file)
       end
 
       def key!
