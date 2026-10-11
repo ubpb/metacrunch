@@ -127,7 +127,7 @@ module Metacrunch
         sink: @sinks[:sink], rejects: @sinks[:rejects], errors: @sinks[:errors],
         on_error: @on_error, max_errors: @max_errors, profile: @profile,
         before_hooks: @before_hooks.dup.freeze, after_hooks: @after_hooks.dup.freeze,
-        params: @values, logger: @logger
+        params: @values, logger: @logger, limit: nil
       )
     end
 

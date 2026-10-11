@@ -32,15 +32,15 @@ module Metacrunch
 
     end
 
-    def initialize(pipeline, executor: Executor::Inline.new, observer: nil)
+    def initialize(pipeline, executor: Executor::Inline.new, observer: nil, select: nil)
       @pipeline = pipeline
       @executor = executor
       @observer = observer
+      @select = select
     end
 
     def run
-      raise ArgumentError, "the pipeline has no source" unless @pipeline.source
-
+      validate!
       @stats = StatsCollector.new(@pipeline.steps.map(&:name), profile: @pipeline.profile)
       @on_mark = @stats.method(:mark)
       error = execute
@@ -49,6 +49,15 @@ module Metacrunch
     end
 
     private
+
+    def validate!
+      raise ArgumentError, "the pipeline has no source" unless @pipeline.source
+
+      limit = @pipeline.limit
+      return if limit.nil? || (limit.is_a?(Integer) && limit.positive?)
+
+      raise ArgumentError, "limit must be a positive Integer, got #{limit.inspect}"
+    end
 
     def status_for(error)
       return :aborted if error
@@ -81,7 +90,9 @@ module Metacrunch
       open_components(opened)
       @pipeline.before_hooks.each(&:call)
       chain = build_chain
-      @executor.run(@pipeline.source) { |record, position| ingest(chain, record, position) }
+      @executor.run(@pipeline.source, limit: @pipeline.limit, select: @select) do |record, position|
+        ingest(chain, record, position)
+      end
       sinks.each(&:flush)
     end
 

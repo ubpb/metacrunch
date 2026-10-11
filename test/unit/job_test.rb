@@ -52,6 +52,12 @@ class JobTest < Minitest::Test
     assert_equal [:index], job.describe.definitions.keys
   end
 
+  def test_run_accepts_a_limit
+    job = Metacrunch.job { source [1, 2, 3] }
+
+    assert_equal 2, job.run([], logger: Logger.new(nil), limit: 2).stats.read
+  end
+
   def test_a_job_needs_a_recipe
     assert_raises(ArgumentError) { Metacrunch::Job.new("empty") }
   end
