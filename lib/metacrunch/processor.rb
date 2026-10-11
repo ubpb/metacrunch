@@ -115,7 +115,7 @@ module Metacrunch
 
     # flat_map: streams each child downstream as the step's Enumerable
     # yields it. Children forwarded before an error in the step's own
-    # iteration stay forwarded; a reject! during the iteration stops it.
+    # iteration stay forwarded; a reject! during the iteration ends it.
     # The observer's step_out comes after the children went downstream.
     def flat_map_link(step, counter, downstream)
       lambda do |record, ctx|
@@ -137,6 +137,8 @@ module Metacrunch
           end
         rescue DownstreamFailure => e
           raise e.original, cause: e.original.cause
+        rescue Context::Rejected
+          next fail_record(step, record, ctx, foreign_rejection) unless ctx.rejected?
         rescue *Engine::RECOVERABLE => e
           next fail_record(step, record, ctx, e)
         ensure
@@ -153,7 +155,9 @@ module Metacrunch
     end
 
     # Calls a map, filter or reject step. Returns the output record or
-    # DROPPED. Raises ContractError if the step breaks its contract.
+    # DROPPED. Raises ContractError if the step breaks its contract. A
+    # reject! ends the step; the rescue lives here and in flat_map_link,
+    # not in a method of its own, to keep a call off the hot path.
     def evaluate(step, record, ctx)
       result = timed(step) { step.call(record, ctx) }
       return DROPPED if ctx.rejected?
@@ -163,7 +167,15 @@ module Metacrunch
       when :filter then kept(step, record, ctx, result)
       else kept(step, record, ctx, !result)
       end
+    rescue Context::Rejected
+      raise foreign_rejection unless ctx.rejected?
+
+      DROPPED
     end
+
+    # A Rejected for a record that is not rejected comes from the context
+    # of another record.
+    def foreign_rejection = ContractError.new("reject! was called on the context of another record")
 
     def timed(step)
       return yield unless @pipeline.profile
@@ -179,7 +191,7 @@ module Metacrunch
     def kept(step, record, ctx, keep)
       return record if keep
 
-      ctx.reject!(step.reason) if step.reason
+      ctx.record_rejection(step.reason) if step.reason
       DROPPED
     end
 

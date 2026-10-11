@@ -145,6 +145,133 @@ class EngineTest < Minitest::Test
     assert_equal({"Odd" => 1}, result.stats.rejected)
   end
 
+  def test_reject_from_the_context_ends_the_step
+    rejected = CollectingSink.new
+    run_pipeline do
+      source [1]
+      filter do |_record, ctx|
+        ctx.reject!("Odd")
+        ctx.mark("After the rejection")
+      end
+      rejects rejected
+    end
+
+    assert_equal([["Odd", []]], rejected.contexts.map { [it.rejection.reason, it.marks] })
+  end
+
+  def test_reject_ends_a_flat_map_step_before_it_returns_children
+    target = CollectingSink.new
+    rejected = CollectingSink.new
+    run_pipeline do
+      source ["parent"]
+      flat_map do |_record, ctx|
+        ctx.reject!("Stop")
+        ctx.mark("After the rejection")
+        [1, 2]
+      end
+      sink target
+      rejects rejected
+    end
+
+    assert_equal [[], [["Stop", []]]], [target.records, rejected.contexts.map { [it.rejection.reason, it.marks] }]
+  end
+
+  def test_a_rescue_in_the_step_does_not_intercept_a_rejection
+    rejected = CollectingSink.new
+    run_pipeline do
+      source [1]
+      map do |record, ctx|
+        begin
+          ctx.reject!("Odd")
+          ctx.mark("Continued")
+        rescue StandardError
+          ctx.mark("Rescued")
+        end
+        record
+      end
+      rejects rejected
+    end
+
+    assert_equal([["Odd", []]], rejected.contexts.map { [it.rejection.reason, it.marks] })
+  end
+
+  def test_a_rejection_the_step_rescues_still_rejects_the_record
+    target = CollectingSink.new
+    rejected = CollectingSink.new
+    swallow = lambda do |ctx, reason|
+      ctx.reject!(reason)
+    rescue Exception # rubocop:disable Lint/RescueException
+      nil
+    end
+    run_pipeline do
+      source [1, 2, 3]
+      map do |record, ctx|
+        next swallow.call(ctx, "In map") if record == 1
+
+        record
+      end
+      flat_map do |record, ctx|
+        next swallow.call(ctx, "In flat_map") if record == 2
+
+        Enumerator.new do |yielder|
+          swallow.call(ctx, "In iteration") if record == 3
+          yielder << record
+        end
+      end
+      sink target
+      rejects rejected
+    end
+
+    assert_equal [[], [["In map", "map#1"], ["In flat_map", "flat_map#2"], ["In iteration", "flat_map#2"]]],
+                 [target.records, rejected.contexts.map { [it.rejection.reason, it.rejection.step] }]
+  end
+
+  def test_reject_on_the_context_of_another_record_fails_a_flat_map_iteration
+    failed = CollectingSink.new
+    run_pipeline do
+      source [1, 2]
+      first = nil
+      flat_map do |record, ctx|
+        first ||= ctx
+        Enumerator.new do |yielder|
+          first.reject!("Too late") if record == 2
+          yielder << record
+        end
+      end
+      sink CollectingSink.new
+      errors failed
+      on_error :skip
+    end
+
+    assert_equal [[2], [["flat_map#1", Metacrunch::ContractError]]],
+                 [failed.records, failed.contexts.map { [it.failure.step, it.failure.error.class] }]
+  end
+
+  def test_reject_on_the_context_of_another_record_fails_the_step
+    target = CollectingSink.new
+    failed = CollectingSink.new
+    run_pipeline do
+      source ["parent"]
+      parent = nil
+      flat_map do |_record, ctx|
+        parent = ctx
+        [1]
+      end
+      map(name: "late") do |record|
+        parent.reject!("Too late")
+        record
+      end
+      sink target
+      errors failed
+      on_error :skip
+    end
+
+    failure = failed.contexts.first.failure
+
+    assert_equal [[], [1], ["late", Metacrunch::ContractError]],
+                 [target.records, failed.records, [failure.step, failure.error.class]]
+  end
+
   def test_flat_map_children_get_their_own_context
     target = CollectingSink.new
     result = run_pipeline do
@@ -257,6 +384,7 @@ class EngineTest < Minitest::Test
         Enumerator.new do |yielder|
           yielder << 1
           ctx.reject!("Stop")
+          ctx.mark("After the rejection")
           yielder << 2
         end
       end
@@ -264,7 +392,7 @@ class EngineTest < Minitest::Test
       rejects rejected
     end
 
-    assert_equal [[1], ["parent"]], [target.records, rejected.records]
+    assert_equal [[1], ["parent"], [[]]], [target.records, rejected.records, rejected.contexts.map(&:marks)]
   end
 
   def test_observer_sees_a_matching_step_out_for_every_flat_map_step_in

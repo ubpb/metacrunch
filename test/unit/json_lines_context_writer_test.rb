@@ -19,7 +19,7 @@ class JsonLinesContextWriterTest < Minitest::Test
     @ctx.step = "map#3"
     @ctx.mark("No title")
     @ctx.step = "reject#4"
-    @ctx.reject!("Not public", value: false)
+    @ctx.record_rejection("Not public", value: false)
     expected = {
       "record" => {"_id" => 18}, "id" => 18, "position" => 2,
       "marks" => [{"reason" => "No title", "step" => "map#3", "value" => nil}],

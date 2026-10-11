@@ -86,6 +86,9 @@ in the sections below:
 - `Testing.run` reports `written: 0` for jobs without a sink (5.6).
 - The executable ends by the signal (`SIGINT`, `SIGTERM`) that stopped the run (6).
 - `-h` is reserved as a short option for help (5.5).
+- `reject!` ends the step at once by raising `Context::Rejected`; it used
+  to set a flag only, so code after it ran on (2.5). Changed before
+  sub-project 4.
 
 ## 2. Data model and contracts
 
@@ -152,7 +155,7 @@ The id becomes `ctx.id`. Without `id:`, `ctx.id` is `nil`.
 - **Streaming.** `flat_map` passes each child on as its Enumerable yields it.
   An error raised by the step's own iteration is a failure of that step;
   children forwarded before it stay forwarded. A `reject!` during the
-  iteration stops it. Errors from later steps and sinks are not counted as
+  iteration ends it. Errors from later steps and sinks are not counted as
   failures of the `flat_map` step, and a `rescue => e` inside the step's
   Enumerable cannot catch them.
 
@@ -189,7 +192,7 @@ The engine creates one context per record emitted by the source.
 | `id` | From the source's `id:` extractor, else `nil` |
 | `position` | 1-based number of the record in the source |
 | `step` | Name of the step currently processing the record |
-| `reject!(reason, value: nil)` | Reason: a non-empty String or Symbol (converted to String), else `ContractError`. Stops processing this record immediately. The engine records a rejection (`reason`, `value`, `step`) and sends the record to the `rejects` sink. The step's return value is ignored. |
+| `reject!(reason, value: nil)` | Reason: a non-empty String or Symbol (converted to String), else `ContractError`. Stops processing this record immediately: it records a rejection (`reason`, `value`, `step`) and ends the step by raising `Context::Rejected` (an `Exception`, so `rescue => e` in a step does not catch it). The engine rescues it around every step and sends the record to the `rejects` sink. If the step rescues it anyway and returns, the record is still rejected and the return value is ignored. Called on the context of another record, it fails the step with `ContractError`. |
 | `rejected?`, `rejection` | Rejection data (`Data`: `reason`, `value`, `step`) or `nil` |
 | `mark(reason, value: nil)` | Records a non-fatal note; the record continues. Same reason rules as `reject!`. |
 | `marks` | Array of marks (`Data`: `reason`, `value`, `step`) |

@@ -4,13 +4,21 @@ require "test_helper"
 
 class ContextTest < Minitest::Test
 
-  def test_reject_records_reason_value_and_step
+  def test_reject_records_reason_value_and_step_and_ends_the_step
     ctx = build_context
     ctx.step = "reject#2"
-    ctx.reject!("Patent", value: "patent")
 
+    assert_raises(Metacrunch::Context::Rejected) { ctx.reject!("Patent", value: "patent") }
     assert_predicate ctx, :rejected?
     assert_equal Metacrunch::Rejection.new(reason: "Patent", value: "patent", step: "reject#2"), ctx.rejection
+  end
+
+  def test_record_rejection_records_without_ending_the_step
+    ctx = build_context
+    ctx.step = "filter#1"
+    ctx.record_rejection("Not public", value: false)
+
+    assert_equal Metacrunch::Rejection.new(reason: "Not public", value: false, step: "filter#1"), ctx.rejection
   end
 
   def test_mark_keeps_the_record_and_reports_the_reason
@@ -40,7 +48,7 @@ class ContextTest < Minitest::Test
 
   def test_reasons_are_strings
     ctx = build_context
-    ctx.reject!(:patent)
+    ctx.record_rejection(:patent)
 
     assert_equal "patent", ctx.rejection.reason
     assert_raises(Metacrunch::ContractError) { build_context.reject!(nil) }
@@ -79,7 +87,7 @@ class ContextTest < Minitest::Test
     ctx.step = "map#1"
     ctx.mark("Odd", value: 1)
     ctx.store["seen"] = true
-    ctx.reject!("Bad")
+    ctx.record_rejection("Bad")
     ctx.failure = Metacrunch::Failure.new(error: ArgumentError.new("x"), step: "map#1")
     io = StringIO.new
     state = Marshal.load(Marshal.dump(ctx.to_state))
