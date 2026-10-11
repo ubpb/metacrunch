@@ -20,7 +20,7 @@ module Metacrunch
         # catalog:
         #   api_key: secret
         #
-        # Quote values that YAML reads as numbers or booleans: "0123", "yes", "on".
+        # Values are read as text and converted like command-line values; no quotes needed.
       YAML
 
       private

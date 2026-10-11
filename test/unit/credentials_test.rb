@@ -11,8 +11,7 @@ class CredentialsTest < Minitest::Test
   YAML_ERRORS = {
     "a: [\n" => "invalid YAML in #{PATH} at line 2, column 1",
     "- a\n" => "#{PATH} must contain a mapping at the top level",
-    "d: 2026-10-11\n" => "unsupported value in #{PATH}: Date (quote it)",
-    "s: :sym\n" => "unsupported value in #{PATH}: Symbol (quote it)",
+    "x: !ruby/object:Object {}\n" => "unsupported value in #{PATH}: Object (quote it)",
     "a: *missing\n" => "invalid YAML in #{PATH}"
   }.freeze
 
@@ -39,10 +38,23 @@ class CredentialsTest < Minitest::Test
     assert_equal 4, messages.grep(/\Ainvalid environment /).size
   end
 
-  def test_reads_plain_yaml_types_and_aliases
-    data = Credentials.load_yaml("x: &k v\ny: *k\nn: 1\nok: true\nl: [a, b]\n", PATH)
+  def test_reads_every_scalar_as_its_text
+    text = "n: 1\npin: 0123\nok: true\nno: off\nd: 2026-10-11\ns: :sym\nl: [a, 2]\nq: \"x\"\n"
 
-    assert_equal({"x" => "v", "y" => "v", "n" => 1, "ok" => true, "l" => ["a", "b"]}, data)
+    assert_equal({"n" => "1", "pin" => "0123", "ok" => "true", "no" => "off", "d" => "2026-10-11", "s" => ":sym",
+                  "l" => ["a", "2"], "q" => "x"}, Credentials.load_yaml(text, PATH))
+  end
+
+  def test_the_forms_of_null_stay_nil
+    data = Credentials.load_yaml("a:\nb: ~\nc: null\nd: \"null\"\n", PATH)
+
+    assert_equal({"a" => nil, "b" => nil, "c" => nil, "d" => "null"}, data)
+  end
+
+  def test_anchors_aliases_and_merge_keys_work
+    data = Credentials.load_yaml("x: &k v\ny: *k\nbase: &b {a: 1}\nm:\n  <<: *b\n  c: 2\n", PATH)
+
+    assert_equal({"x" => "v", "y" => "v", "base" => {"a" => "1"}, "m" => {"a" => "1", "c" => "2"}}, data)
   end
 
   def test_a_file_with_only_comments_is_empty

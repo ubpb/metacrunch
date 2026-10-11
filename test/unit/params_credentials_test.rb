@@ -42,16 +42,26 @@ class ParamsCredentialsTest < Minitest::Test
     end
   end
 
-  def test_asks_to_quote_values_that_yaml_did_not_read_as_strings
-    with_credentials("pin: 0123\npassword: no\n") do |credentials, dir|
-      messages = ["pin", "password"].map do |path|
-        params = schema { param :value, String, credential: path }
-        assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, credentials:) }.message
+  def test_values_keep_the_text_that_yaml_1_1_would_retype
+    with_credentials("pin: 0123\npassword: no\nport: 0123\ndry: 1\n") do |credentials|
+      params = schema do
+        param :pin, String, credential: "pin"
+        param :password, String, credential: "password"
+        param :port, Integer, credential: "port"
+        param :dry, :bool, credential: "dry"
       end
 
-      assert_equal "invalid value for --value from credential pin in #{dir}/credentials.yml.enc: (hidden) is not " \
-                   "a String; quote it in the credentials file", messages.first
-      assert_match(/\(hidden\) is not a String; quote it in the credentials file\z/, messages.last)
+      assert_equal({pin: "0123", password: "no", port: 123, dry: true},
+                   params.bind_argv([], env: {}, credentials:).to_h)
+    end
+  end
+
+  def test_list_elements_must_be_texts
+    with_credentials("hosts: [es1, {port: 9200}]\n") do |credentials|
+      params = schema { param :hosts, Array, credential: "hosts" }
+      error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, credentials:) }
+
+      assert_match(/\(hidden\) is not a comma-separated list/, error.message)
     end
   end
 
