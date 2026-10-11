@@ -60,8 +60,7 @@ class JsonLinesReaderTest < Minitest::Test
 
   def test_progress_grows_while_reading
     reader = Reader.new(write("big.jsonl", "\"#{"x" * 10}\"\n" * 3000))
-    values = []
-    reader.each { values << reader.progress }
+    values = reader.enum_for(:each).map { reader.progress }
 
     assert(values.any? { it.positive? && it < 1.0 })
     assert_equal values, values.sort
@@ -93,9 +92,7 @@ class JsonLinesReaderTest < Minitest::Test
   private
 
   def read(reader)
-    records = []
-    reader.each { records << it }
-    records
+    reader.enum_for(:each).to_a
   end
 
   def write(name, content)
