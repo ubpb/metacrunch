@@ -88,10 +88,15 @@ module Metacrunch
         {on_error: policy, max_errors: policy == :skip ? max_errors || pipeline.max_errors : nil}
       end
 
-      # Only one option may use stdout. A job without sink uses it for its
+      # Only one option may use stdout; --rejects and --errors share one
+      # writer and count as one. A job without sink uses stdout for its
       # records unless -o is given.
       def check_stdout!(pipeline)
-        options = {"--output" => output, "--rejects" => rejects, "--errors" => errors, "--stats" => stats}
+        options = if rejects == JsonLines::STDIO && errors == JsonLines::STDIO
+          {"--output" => output, "--rejects/--errors" => rejects, "--stats" => stats}
+        else
+          {"--output" => output, "--rejects" => rejects, "--errors" => errors, "--stats" => stats}
+        end
         users = options.select { |_option, path| path == JsonLines::STDIO }.keys
         users.unshift("the default output (the job has no sink)") if output.nil? && pipeline.sink.nil?
         return if users.size < 2
