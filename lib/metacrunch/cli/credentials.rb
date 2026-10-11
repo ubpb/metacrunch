@@ -64,13 +64,15 @@ module Metacrunch
         key = existing ? location.key! : location.key
         text = existing ? unseal(location, key) : template(location.environment)
         @stderr.puts("Editing #{display(file)}")
+        editor = Credentials::Editor.new(env: @env, stdin: @stdin, stderr: @stderr)
         edited = editor.edit(text, name: File.basename(file, ".enc")) { Credentials.load_yaml(it, file) }
-        return no_changes if existing && edited == text
+        return no_changes(editor) if existing && edited == text
 
         prepare(location.directory) unless existing
         key ||= create_key(location)
         Credentials.write(file, Credentials::Box.seal(edited, key), perm: 0o644)
         @stderr.puts("Saved #{display(file)}")
+        @stderr.puts("The file still holds the template. #{wait_hint(editor)}") if edited == text
         EXIT_CODES[:ok]
       end
 
@@ -78,11 +80,14 @@ module Metacrunch
         format(TEMPLATE, environment: environment ? " (environment: #{environment})" : "")
       end
 
-      def editor = Credentials::Editor.new(env: @env, stdin: @stdin, stderr: @stderr)
-
-      def no_changes
-        @stderr.puts("No changes. If your editor returns at once, make it wait, e.g. EDITOR=\"code --wait\".")
+      def no_changes(editor)
+        @stderr.puts("No changes. #{wait_hint(editor)}")
         EXIT_CODES[:ok]
+      end
+
+      # A GUI editor that returns at once leaves the text unchanged.
+      def wait_hint(editor)
+        "If your editor returns at once, make it wait, e.g. #{editor.variable}=\"code --wait\"."
       end
 
       # A new directory gets a .gitignore that keeps the keys out of git.

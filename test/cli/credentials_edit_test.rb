@@ -108,6 +108,25 @@ class CredentialsEditTest < Minitest::Test
     end
   end
 
+  def test_an_unchanged_template_is_saved_with_the_hint_to_make_the_editor_wait
+    in_tmpdir do |root|
+      code, _stdout, stderr = edit(root, scripted_editor(root))
+
+      assert_equal 0, code
+      assert_includes stderr, "Saved .metacrunch/credentials.yml.enc\nThe file still holds the template. If your " \
+                              "editor returns at once, make it wait, e.g. EDITOR=\"code --wait\"."
+    end
+  end
+
+  def test_the_hint_names_visual_when_visual_is_set
+    in_tmpdir do |root|
+      write_credentials(root, "a: 1\n")
+      _code, _stdout, stderr = Dir.chdir(root) { cli("credentials", "edit", env: {"VISUAL" => scripted_editor(root)}) }
+
+      assert_includes stderr, "make it wait, e.g. VISUAL=\"code --wait\"."
+    end
+  end
+
   def test_invalid_yaml_without_a_terminal_saves_nothing
     in_tmpdir do |root|
       key = write_credentials(root, "a: 1\n")
