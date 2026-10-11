@@ -164,6 +164,13 @@ class ParamsTest < Minitest::Test
     assert_match(/FILES  Input files  \(1 or more arguments\)/, help)
   end
 
+  def test_job_is_no_longer_reserved
+    schema = Metacrunch::Params.new
+    schema.param :job
+
+    assert_equal "x", schema.bind_argv(["--job", "x"], env: {}).job
+  end
+
   private
 
   def schema(&)

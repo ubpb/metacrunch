@@ -9,9 +9,10 @@ module Metacrunch
   class Params
 
     TYPES = [String, Integer, Float, :bool, Array].freeze
-    # Used by the CLI. Names of methods of the bound params object (to_h,
-    # with, ...) are checked when a parameter is declared.
-    RESERVED = [:help, :job].freeze
+    # Used by the CLI for the job's help. Names of methods of the bound
+    # params object (to_h, with, ...) are checked when a parameter is
+    # declared.
+    RESERVED = [:help].freeze
     RESERVED_SHORT = "-h"
     TRUE_VALUES = ["true", "yes", "on", "1"].freeze
     FALSE_VALUES = ["false", "no", "off", "0"].freeze

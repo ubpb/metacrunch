@@ -5,8 +5,9 @@ require "metacrunch/cli"
 
 code = Metacrunch::Cli.new.run(ARGV)
 
-# After Ctrl-C or SIGTERM (exit code 128 + signal number), end by the signal
-# itself, so callers such as shells, xargs or make see the interruption.
+# After Ctrl-C, SIGTERM or a closed stdout (exit code 128 + signal number),
+# end by the signal itself, so callers such as shells, xargs or make see the
+# interruption.
 # Raising SignalException (instead of killing the process) lets Ruby flush
 # stdout and run at_exit hooks first, then re-raise the signal without
 # printing anything.
