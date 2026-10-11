@@ -69,29 +69,47 @@ module Metacrunch
       end
 
       # Yields the IO to read lines from and the File for progress (nil for
-      # stdin and IO objects). Files are closed when each ends, also by break.
-      def with_input(&)
+      # stdin, IO objects, pipes and FIFOs, which have no size or position).
+      # Files are closed when each ends, also by break.
+      def with_input
         return yield($stdin, nil) if @target == STDIO
         return yield(@target, nil) unless @target.is_a?(String)
 
         File.open(@target, "rb") do |file|
-          @size = file.size
+          regular = file.stat.file?
+          @size = regular ? file.size : nil
           @done = 0
-          @target.end_with?(GZIP) ? with_gzip(file, &) : yield(file, file)
-          @done = @size
-        end
-      end
-
-      def with_gzip(file)
-        gzip = Zlib::GzipReader.new(file)
-        begin
-          yield gzip, file
-        ensure
-          gzip.finish
+          yield @target.end_with?(GZIP) ? GzipMembers.new(file) : file, regular ? file : nil
+          @done = @size if regular
         end
       end
 
     end
+
+    # The lines of all members of a gzip stream, as zcat reads them. Files
+    # written with `cat a.gz b.gz` or `gzip >>` have several members.
+    class GzipMembers
+
+      def initialize(io)
+        @io = io
+      end
+
+      def each_line(&)
+        loop do
+          gzip = Zlib::GzipReader.new(@io)
+          begin
+            gzip.each_line(&)
+            unused = gzip.unused
+          ensure
+            gzip.finish
+          end
+          @io.ungetbyte(unused) if unused
+          break if @io.eof?
+        end
+      end
+
+    end
+    private_constant :GzipMembers
 
     # Sink: writes every record as one line of JSON. Values that are not
     # JSON types (objects, Time, NaN) are refused instead of written as their

@@ -73,6 +73,23 @@ class JsonLinesReaderTest < Minitest::Test
     assert_equal [{"a" => 1}, {"a" => 2}], read(Reader.new(path))
   end
 
+  def test_reads_pipes_and_fifos_past_the_progress_sample
+    fifo = File.join(@dir, "fifo")
+    File.mkfifo(fifo)
+    writer = Thread.new { File.write(fifo, "1\n" * 3000) }
+    records = read(Reader.new(fifo))
+    writer.join
+
+    assert_equal 3000, records.size
+  end
+
+  def test_reads_all_members_of_a_gzip_file
+    path = File.join(@dir, "two.jsonl.gz")
+    File.binwrite(path, gzip("{\"part\":1}\n") + gzip("{\"part\":2}\n{\"part\":3}\n"))
+
+    assert_equal([1, 2, 3], read(Reader.new(path)).map { it["part"] })
+  end
+
   def test_dash_reads_stdin
     original = $stdin
     $stdin = StringIO.new("1\n")
@@ -93,6 +110,14 @@ class JsonLinesReaderTest < Minitest::Test
 
   def read(reader)
     reader.enum_for(:each).to_a
+  end
+
+  def gzip(text)
+    io = StringIO.new
+    writer = Zlib::GzipWriter.new(io)
+    writer.write(text)
+    writer.finish
+    io.string
   end
 
   def write(name, content)
