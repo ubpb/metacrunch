@@ -367,7 +367,9 @@ $ jq -r '.rejection.reason // .failure.error' out/bad.jsonl | sort | uniq -c
 
 ### 5.1 When
 
-- On by default if stderr is a terminal and `-q` is not given.
+- On by default if stderr is a terminal and `-q` is not given, except when
+  records (output, rejects or errors) go to stdout and stdout is a terminal
+  too: the status line would mix with them.
 - `--no-progress` turns it off.
 - `--progress` without a terminal (cron, systemd, a log file) logs one
   `INFO` line every 10 seconds instead of the live line, so a long run shows

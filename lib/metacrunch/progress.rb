@@ -64,8 +64,12 @@ module Metacrunch
         width && text.size >= width ? text[0, width - 1] : text
       end
 
+      # nil if unknown; a terminal without a size reports 0 columns.
       def terminal_width
-        @io.winsize[1] if @io.respond_to?(:winsize)
+        return unless @io.respond_to?(:winsize)
+
+        width = @io.winsize[1]
+        width if width.positive?
       rescue SystemCallError
         nil
       end

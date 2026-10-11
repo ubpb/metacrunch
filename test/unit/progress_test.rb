@@ -69,6 +69,13 @@ class ProgressTest < Minitest::Test
 
   end
 
+  # A terminal that reports no size, like a fresh PTY.
+  class SizelessTerminal < StringIO
+
+    def winsize = [0, 0]
+
+  end
+
   def setup
     @clock = Clock.new
     @live = Live.new(read: 0, written: 0, filtered: 0, rejected: 0, failed: 0, source: Object.new, limit: nil)
@@ -169,6 +176,13 @@ class ProgressTest < Minitest::Test
     Output.new(io).status("0123456789abc")
 
     assert_equal "\r\e[2K012345678", io.string
+  end
+
+  def test_a_terminal_without_a_size_gets_the_whole_line
+    io = SizelessTerminal.new
+    Output.new(io).status("working")
+
+    assert_equal "\r\e[2Kworking", io.string
   end
 
   def test_the_thread_draws_until_stopped

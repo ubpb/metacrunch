@@ -49,19 +49,26 @@ module Metacrunch
 
       def execute_job(job, argv)
         options = RunOptions.new(**@options)
-        pipeline = options.apply(build_pipeline(job, argv), stdin: @stdin, stdout: @stdout)
-        result = Engine.new(pipeline, monitor: progress).run
+        built = build_pipeline(job, argv)
+        pipeline = options.apply(built, stdin: @stdin, stdout: @stdout)
+        result = Engine.new(pipeline, monitor: progress(options.records_to_stdout?(built))).run
         write_stats(options.stats, result) if options.stats
         report(result)
       end
 
       # A status line if stderr is a terminal, log lines with --progress
-      # otherwise; none with -q unless --progress is given.
-      def progress
-        enabled = @progress.nil? ? @stderr.tty? && @log_level < Logger::WARN : @progress
+      # otherwise. Off by default with -q, and when records go to stdout on
+      # the same terminal, where the line would mix with them.
+      def progress(records_to_stdout)
+        enabled = @progress
+        enabled = default_progress?(records_to_stdout) if enabled.nil?
         return unless enabled
 
         Progress.new(log_output, mode: @stderr.tty? ? :line : :log, logger:)
+      end
+
+      def default_progress?(records_to_stdout)
+        @stderr.tty? && @log_level < Logger::WARN && !(records_to_stdout && @stdout.tty?)
       end
 
       def log_output

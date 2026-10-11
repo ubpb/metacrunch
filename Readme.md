@@ -196,7 +196,7 @@ you start it.
 | `-n`, `--limit N` | Process only the first N source records |
 | `--on-error abort\|skip`, `--max-errors N` | Override the job's error policy |
 | `--stats PATH` | Write status and stats as JSON at the end (`-` for stdout) |
-| `--[no-]progress` | Progress on stderr; shown by default if stderr is a terminal |
+| `--[no-]progress` | Progress on stderr; shown by default if stderr is a terminal and records do not go to the same terminal |
 | `-q`, `-v` | Log warnings only, or debug messages too |
 
 A job file that starts with `#!/usr/bin/env metacrunch` and is executable runs as `./jobs/mab2es.rb ...`.

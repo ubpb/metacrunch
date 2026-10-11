@@ -23,6 +23,12 @@ module Metacrunch
         )
       end
 
+      # True if records (the output, rejects or errors) are written to
+      # stdout.
+      def records_to_stdout?(pipeline)
+        [output, rejects, errors].include?(JsonLines::STDIO) || (output.nil? && pipeline.sink.nil?)
+      end
+
       # Only the input: -i, or JSON Lines from stdin for a job without
       # source (the filter default).
       def apply_input(pipeline, stdin:)
