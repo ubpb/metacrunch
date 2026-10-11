@@ -462,7 +462,8 @@ boundary.
   corrected.
 - `Stats` keeps its shape. With `profile true`, step times are summed over
   all workers and may exceed the run's duration. This is documented.
-- At `DEBUG` level the parent logs `started 8 workers (pids 4711-4718)` and,
+- At `DEBUG` level the parent logs `started 8 workers (pids 4711, 4712, ...)`
+  (pids need not be consecutive) and,
   at the end, the exit of each worker.
 
 ## 8. Layout
@@ -552,6 +553,9 @@ inline (observer) stay outside the module.
     job level or in a `before` hook;
   - records are processed in batches of 100, which delays slow sources;
   - stats after an abort (4.4) and with `profile true`;
+  - Marshal does not keep the frozen state of records, the source runs in a
+    thread of its own, and large records need memory for several batches
+    (found in the final review);
   - macOS: `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES`.
 - Readme, "Running jobs": `-w`.
 - CHANGELOG: `--workers`; steps are now opened after the `before` hooks.
