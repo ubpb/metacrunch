@@ -44,6 +44,7 @@ module Metacrunch
         case subcommand
         when "edit" then edit_credentials(location)
         when "show" then show_credentials(location)
+        when "rotate" then rotate_credentials(location)
         end
       rescue Credentials::EditAborted => e
         @stderr.puts("Error: #{e.message}")
@@ -96,6 +97,49 @@ module Metacrunch
         Credentials.write(location.key_file, "#{key.hex}\n", perm: 0o600)
         @stderr.puts("Created #{display(location.key_file)}: keep it safe; it is not committed")
         key
+      end
+
+      def rotate_credentials(location)
+        file = existing_file(location)
+        old_key = location.key!
+        plaintext = unseal(location, old_key)
+        key = Credentials::Key.generate
+        @stderr.puts("Rotating #{display(file)}")
+        if old_key.source == Credentials::KEY_VARIABLE
+          rotate_variable_key(location, plaintext, key)
+        else
+          rotate_key_file(location, plaintext, key)
+        end
+        EXIT_CODES[:ok]
+      end
+
+      # The new key goes to stdout once; whoever set the variable updates it.
+      def rotate_variable_key(location, plaintext, key)
+        Credentials.write(location.file, Credentials::Box.seal(plaintext, key), perm: 0o644)
+        @stdout.puts(key.hex)
+        @stderr.puts("Update #{Credentials::KEY_VARIABLE} wherever it is set; the old key no longer works")
+        return unless File.file?(location.key_file)
+
+        @stderr.puts("Warning: #{display(location.key_file)} still holds the old key; replace or remove it")
+      end
+
+      # Both new files are written before either is renamed, so an error
+      # until then changes nothing. If the second rename fails,
+      # KEY_FILE.new holds the key of the new credentials file.
+      def rotate_key_file(location, plaintext, key)
+        sealed = "#{location.file}.#{Process.pid}.tmp"
+        pending = "#{location.key_file}.new"
+        begin
+          File.open(sealed, "w", 0o644) { it.write(Credentials::Box.seal(plaintext, key)) }
+          File.open(pending, "w", 0o600) { it.write("#{key.hex}\n") }
+          File.chmod(0o600, pending)
+          File.rename(sealed, location.file)
+        rescue StandardError
+          FileUtils.rm_f([sealed, pending])
+          raise
+        end
+        File.rename(pending, location.key_file)
+        @stderr.puts("New key in #{display(location.key_file)}")
       end
 
       # The credentials file of location; raises if it or its directory is
