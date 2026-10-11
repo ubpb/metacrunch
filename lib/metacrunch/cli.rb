@@ -51,7 +51,7 @@ module Metacrunch
     end
 
     def help(name)
-      return show(usage) unless name
+      return show(usage) if name.nil? || name == "help"
       return usage_error("unknown command #{name}") unless COMMANDS.key?(name)
 
       command(name).run(["--help"])

@@ -49,6 +49,16 @@ class NewTest < Minitest::Test
     end
   end
 
+  def test_a_directory_is_not_a_job_path
+    in_tmpdir do
+      code, _stdout, stderr = cli("new", "jobs/")
+
+      assert_equal 2, code
+      assert_match(%r{jobs/ is a directory; give a file name}, stderr)
+      refute_path_exists "jobs/.rb"
+    end
+  end
+
   def test_a_path_is_required
     assert_match(/Error: no path given/, cli("new")[2])
   end
