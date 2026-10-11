@@ -65,7 +65,7 @@ module Metacrunch
           [input, feed, results, output].each(&:binmode)
           pid = Process.fork do
             inherited = [feed, results, *@handles.flat_map { [it.input, it.output] }]
-            Thread.handle_interrupt(Object => :immediate) { Worker.main(@pipeline, input, output, inherited:) }
+            Worker.main(@pipeline, input, output, inherited:)
           end
           input.close
           output.close

@@ -60,13 +60,17 @@ module Metacrunch
         # the child must close. The process ends without the at_exit
         # handlers, finalizers and write buffers inherited from the parent,
         # also when a second signal arrives while it ends. A signal ends it by
-        # that signal.
+        # that signal. The fork happens under handle_interrupt(Object =>
+        # :never); interrupts are allowed again only inside the begin below,
+        # so a signal pending since the fork ends the process here, too.
         def self.main(pipeline, input, output, inherited: [])
           status = 1
           begin
-            HOST_SIGNALS.each { Signal.trap(it, "DEFAULT") }
-            inherited.each(&:close)
-            new(pipeline).run(input, output)
+            Thread.handle_interrupt(Object => :immediate) do
+              HOST_SIGNALS.each { Signal.trap(it, "DEFAULT") }
+              inherited.each(&:close)
+              new(pipeline).run(input, output)
+            end
             status = 0
           rescue SignalException => e
             Signal.trap(e.signo, "SYSTEM_DEFAULT")
