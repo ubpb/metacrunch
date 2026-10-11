@@ -57,6 +57,21 @@ class TraceCommandTest < Minitest::Test
     assert_match(/^traced 1 record: 1 to sink$/, stdout)
   end
 
+  def test_ids_need_an_id_extractor
+    code, _stdout, stderr = cli("trace", "--id", "1", job("double.rb"), stdin: "1\n")
+
+    assert_equal 2, code
+    assert_match(/--id needs a job whose source has an id extractor/, stderr)
+  end
+
+  def test_repeated_positions_are_traced_once_and_stop_the_source
+    input = StringIO.new("1\n" * 100)
+    _code, stdout, = cli("trace", "--position", "2,2", job("double.rb"), stdin: input)
+
+    assert_match(/^traced 1 record: /, stdout)
+    refute_predicate input, :eof?
+  end
+
   def test_usage_errors
     assert_match(/use either --position or --id/, cli("trace", "--position", "1", "--id", "a", job("double.rb"))[2])
     assert_match(/--position needs positive numbers, got x/, cli("trace", "--position", "x", job("double.rb"))[2])

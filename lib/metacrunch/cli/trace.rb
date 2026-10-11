@@ -29,9 +29,9 @@ module Metacrunch
           @limit = count
         end
         parser.on("--position LIST", Array, "Trace only these positions, e.g. 12,4711") do |list|
-          @positions = list.map { position(it) }
+          @positions = list.map { position(it) }.uniq
         end
-        parser.on("--id LIST", Array, "Trace only records with these ids") { @ids = it }
+        parser.on("--id LIST", Array, "Trace only records with these ids") { @ids = it.uniq }
         parser.on("--full", "Show whole records instead of changes") { @full = true }
         parser.on("-i", "--input PATH", "Read JSON Lines from PATH (- for stdin) instead of the job's source") do |path|
           @input = path
@@ -42,6 +42,10 @@ module Metacrunch
         raise UsageError, "use either --position or --id" if @positions && @ids
 
         pipeline = traced_pipeline(build_pipeline(job, argv))
+        if @ids && pipeline.id_extractor.nil?
+          raise UsageError, "--id needs a job whose source has an id extractor (source ..., id: ...)"
+        end
+
         trace = Metacrunch::Trace.new(@stdout, pipeline:, positions: @positions, ids: @ids, full: @full,
                                                color: color?, width:)
         result = Engine.new(pipeline, observer: trace, select: trace.method(:trace?)).run
