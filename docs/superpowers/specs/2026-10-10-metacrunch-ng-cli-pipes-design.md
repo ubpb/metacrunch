@@ -2,7 +2,7 @@
 
 - Date: 2026-10-10
 - Branch: `metacrunch-ng`
-- Status: draft, awaiting review
+- Status: approved; implemented
 - Builds on: [sub-project 1 spec](2026-10-10-metacrunch-ng-core-design.md)
 
 ## 1. Context
@@ -684,9 +684,14 @@ branches.
 
 ## 13. Measurements
 
-To be filled in during implementation:
+Measured on Ruby 4.0.7 +YJIT, arm64 macOS (best of two runs):
 
-- Engine cost per step and record without observer and monitor (compared
-  with sub-project 1).
-- Throughput of a pass-through job: `metacrunch run pass.rb < 1M.jsonl >
-  /dev/null`, and with `.gz` input.
+| Measurement | Sub-project 1 (76f0b75) | Sub-project 2 |
+|---|---|---|
+| Engine, 1 M records through 10 `map` steps, no observer or monitor | 65.4 ns per step and record, 4.0 allocations per record | 63.6 ns per step and record, 4.0 allocations per record |
+| Pass-through job (`Metacrunch.job {}`), 1 M JSON Lines (72 MB) from stdin to stdout | – | 1.30 M records/s |
+| Same, `-i 1m.jsonl.gz` (8.6 MB) | – | 1.15 M records/s |
+
+The seams of sub-project 2 (invalid records, limit, select, monitor) cost
+nothing measurable per record. JSON parsing and generation (json 3.0.2)
+are fast enough that a pipe stage is rarely the bottleneck of a job.

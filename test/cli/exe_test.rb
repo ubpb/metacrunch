@@ -1,12 +1,19 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "json"
 require "open3"
+require "pty"
+require "shellwords"
+require "tmpdir"
 
 class ExeTest < Minitest::Test
 
   ROOT = File.expand_path("../..", __dir__)
   NUMBERS = File.join(ROOT, "test", "fixtures", "jobs", "numbers.rb")
+  JOBS = File.join(ROOT, "test", "fixtures", "jobs")
+  LIB = File.join(ROOT, "lib")
+  EXE = File.join(ROOT, "exe", "metacrunch")
 
   def test_prints_data_on_stdout_and_logs_on_stderr
     stdout, stderr, status = metacrunch(NUMBERS, "--factor", "2", "1", "2")
@@ -41,7 +48,73 @@ class ExeTest < Minitest::Test
     refute_match(/SignalException|Interrupt \(/, stderr)
   end
 
+  def test_jobs_chain_through_pipes
+    filter = Shellwords.join([RbConfig.ruby, "-rjson", "-ne", "puts $_ if JSON.parse($_)[\"n\"].odd?"])
+    pipeline = [Shellwords.join(command("run", fixture("emit.rb"))), filter,
+                Shellwords.join(command("run", fixture("tag.rb")))].join(" | ")
+    stdout, stderr, status = Open3.capture3("sh", "-c", pipeline)
+    records = stdout.lines.map { JSON.parse(it) }
+
+    assert_predicate status, :success?, stderr
+    assert_equal([1, 3, 5], records.map { it["n"] })
+    assert(records.all? { it["tagged"] })
+  end
+
+  def test_a_closed_pipe_ends_the_job_by_sigpipe_and_flushes_other_sinks
+    Dir.mktmpdir do |dir|
+      rejects = File.join(dir, "rejects.jsonl")
+      errors = File.join(dir, "stderr")
+      reader, writer = IO.pipe
+      pid = Process.spawn(*command("run", "--rejects", rejects, fixture("endless.rb")), out: writer, err: errors)
+      writer.close
+      first = reader.gets
+      reader.close
+      _pid, status = Process.wait2(pid)
+      reasons = File.readlines(rejects).map { JSON.parse(it).dig("rejection", "reason") }
+
+      assert_equal ["{\"n\":1}\n", Signal.list.fetch("PIPE")], [first, status.termsig]
+      assert_empty File.read(errors)
+      assert_equal ["Even"], reasons.uniq
+    end
+  end
+
+  def test_jobs_created_by_new_run_through_their_shebang_line
+    Dir.mktmpdir do |dir|
+      bin = File.join(dir, "bin")
+      FileUtils.mkdir_p(bin)
+      wrapper = "#!/bin/sh\nexec #{Shellwords.join([RbConfig.ruby, "-I", LIB, EXE])} \"$@\"\n"
+      File.write(File.join(bin, "metacrunch"), wrapper)
+      File.chmod(0o755, File.join(bin, "metacrunch"))
+      env = {"PATH" => "#{bin}:#{ENV.fetch("PATH")}"}
+      Open3.capture3(env, "metacrunch", "new", "jobs/pass.rb", chdir: dir)
+      stdout, stderr, status = Open3.capture3(env, "./jobs/pass.rb", stdin_data: "{\"id\":1}\n", chdir: dir)
+
+      assert_equal [0, "{\"id\":1}\n"], [status.exitstatus, stdout], stderr
+    end
+  end
+
+  def test_shows_progress_on_a_terminal
+    output = +""
+    PTY.spawn(*command("run", fixture("slow.rb"))) do |reader, _writer, pid|
+      begin
+        reader.each_line { output << it }
+      rescue Errno::EIO
+        nil # Linux: the child closed the terminal
+      end
+      Process.wait(pid)
+    end
+
+    assert_includes output, "\e[2K"
+    assert_match(/read \d+/, output)
+  end
+
   private
+
+  def command(*)
+    [RbConfig.ruby, "-I", LIB, EXE, *]
+  end
+
+  def fixture(name) = File.join(JOBS, name)
 
   def metacrunch(*)
     Open3.capture3(RbConfig.ruby, "-I", File.join(ROOT, "lib"), File.join(ROOT, "exe", "metacrunch"), *)
