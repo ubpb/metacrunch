@@ -6,8 +6,9 @@ module Metacrunch
   class SinkAdapter
 
     # sink: the wrapped object. delivered: records the sink has accepted,
-    # i.e. write or write_batch returned without raising.
-    attr_reader :sink, :delivered
+    # i.e. write or write_batch returned without raising. batch: the batch
+    # size or nil.
+    attr_reader :sink, :delivered, :batch
 
     def initialize(sink, batch: nil)
       raise ArgumentError, "sink must respond to #write, got #{sink.inspect}" unless sink.respond_to?(:write)
