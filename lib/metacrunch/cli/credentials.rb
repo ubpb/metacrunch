@@ -114,9 +114,18 @@ module Metacrunch
       end
 
       # The new key goes to stdout once; whoever set the variable updates it.
+      # It is printed (and flushed) before the file changes, so a closed
+      # stdout leaves the file with the old key.
       def rotate_variable_key(location, plaintext, key)
-        Credentials.write(location.file, Credentials::Box.seal(plaintext, key), perm: 0o644)
+        sealed = Credentials::Box.seal(plaintext, key)
         @stdout.puts(key.hex)
+        @stdout.flush
+        begin
+          Credentials.write(location.file, sealed, perm: 0o644)
+        rescue SystemCallError => e
+          raise CredentialsError, "cannot write #{location.file} (#{e.class.name}): the printed key is void; " \
+                                  "the old key still works"
+        end
         @stderr.puts("Update #{Credentials::KEY_VARIABLE} wherever it is set; the old key no longer works")
         return unless File.file?(location.key_file)
 
