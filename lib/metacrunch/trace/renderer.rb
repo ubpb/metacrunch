@@ -47,7 +47,7 @@ module Metacrunch
       end
 
       def child_lines(child, number, parent_input, depth, lines)
-        texts = @full ? [show(child.record)] : changes(parent_input, child.record)
+        texts = @full ? block("", child.record) : changes(parent_input, child.record)
         lines << row(depth, "[#{number}]", texts.first)
         texts.drop(1).each { lines << row(depth, "", it) }
         child.steps.each { step(it, depth + 1, lines) }
@@ -79,8 +79,23 @@ module Metacrunch
       end
 
       def full(node)
-        outputs = node.outputs.map { "out: #{show(it)}" }
-        ["in:  #{show(node.input)}", *(outputs.empty? ? ["out: (none)"] : outputs)]
+        outputs = node.outputs.flat_map { block("out: ", it) }
+        [*block("in:  ", node.input), *(outputs.empty? ? ["out: (none)"] : outputs)]
+      end
+
+      # A value as pretty JSON: the first line after the label, the others
+      # aligned below it.
+      def block(label, value)
+        first, *rest = pretty(value).lines(chomp: true)
+        ["#{label}#{first}", *rest.map { "#{" " * label.size}#{it}" }]
+      end
+
+      def pretty(value)
+        return value.text if value.is_a?(Opaque)
+
+        JSON.pretty_generate(value, strict: true)
+      rescue JSON::GeneratorError
+        value.inspect
       end
 
       def changes(before, after)
