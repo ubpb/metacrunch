@@ -60,8 +60,8 @@ module Metacrunch
           results, output = IO.pipe
           [input, feed, results, output].each(&:binmode)
           pid = Process.fork do
-            [feed, results, *@handles.flat_map { [it.input, it.output] }].each(&:close)
-            Worker.main(@pipeline, input, output)
+            inherited = [feed, results, *@handles.flat_map { [it.input, it.output] }]
+            Worker.main(@pipeline, input, output, inherited:)
           end
           input.close
           output.close

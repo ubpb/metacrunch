@@ -32,6 +32,16 @@ class ExecutorForkFailuresTest < Minitest::Test
 
   end
 
+  # Raises a second signal when the worker asks for its number, like SIGTERM
+  # from the parent arriving while a worker ends by SIGINT.
+  class DoubleSignal < SignalException
+
+    def initialize = super("INT")
+
+    def signo = raise(SignalException, "TERM")
+
+  end
+
   # Opens slowly, like a connection that hangs.
   class SlowOpen
 
@@ -169,6 +179,43 @@ class ExecutorForkFailuresTest < Minitest::Test
     end
   end
 
+  def test_a_second_signal_while_a_worker_ends_runs_no_inherited_at_exit_handler
+    Dir.mktmpdir do |dir|
+      marker = File.join(dir, "at_exit")
+      parent = Process.pid
+      pipeline = build_pipeline do
+        source [1]
+        before { at_exit { File.write(marker, "ran") unless Process.pid == parent } }
+        map { raise DoubleSignal }
+      end
+      run_ignoring_signals(pipeline)
+
+      refute_path_exists marker
+    end
+  end
+
+  def test_workers_do_not_run_signal_handlers_of_the_host
+    Dir.mktmpdir do |dir|
+      marker = File.join(dir, "trap")
+      previous = Signal.trap("TERM") { File.write(marker, "the host's handler ran") }
+      begin
+        run_pipeline do
+          source [1, 2, 3, 4]
+          map do |record|
+            raise "boom" if record == 1
+
+            sleep(2)
+            record
+          end
+        end
+      ensure
+        Signal.trap("TERM", previous)
+      end
+
+      refute_path_exists marker
+    end
+  end
+
   def test_sigint_to_the_parent_while_workers_open_their_steps
     pipeline = build_pipeline do
       source [1]
@@ -187,6 +234,12 @@ class ExecutorForkFailuresTest < Minitest::Test
   end
 
   private
+
+  def run_ignoring_signals(pipeline)
+    engine(pipeline).run
+  rescue SignalException
+    nil
+  end
 
   def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
