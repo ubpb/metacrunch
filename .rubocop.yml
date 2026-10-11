@@ -18,3 +18,8 @@ Style/FrozenStringLiteralComment:
 Lint/UnreachableLoop:
   Exclude:
     - "test/**/*"
+
+# Tests load what they have just dumped.
+Security/MarshalLoad:
+  Exclude:
+    - "test/**/*"

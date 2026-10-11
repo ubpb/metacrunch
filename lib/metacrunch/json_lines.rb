@@ -217,8 +217,14 @@ module Metacrunch
 
       def failure(failure)
         error = failure.error
-        {"step" => failure.step, "error" => error.class.name, "message" => json(error.message)}
+        {"step" => failure.step, "error" => error_class(error), "message" => json(error_message(error))}
       end
+
+      # A WorkerError stands for an exception of a worker; it is written as
+      # that exception, as without workers.
+      def error_class(error) = error.is_a?(WorkerError) ? error.original_class : error.class.name
+
+      def error_message(error) = error.is_a?(WorkerError) ? error.original_message : error.message
 
       def json(value)
         value = value.scrub if value.is_a?(String)

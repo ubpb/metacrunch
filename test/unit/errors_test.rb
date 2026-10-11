@@ -17,4 +17,11 @@ class ErrorsTest < Minitest::Test
     assert_equal "step map#2 failed at position 5: KeyError: boom", error.message
   end
 
+  def test_worker_error_names_the_original_exception
+    error = Metacrunch::WorkerError.new("Net::Broken", "socket closed")
+
+    assert_equal "Net::Broken: socket closed", error.message
+    assert_equal ["Net::Broken", "socket closed"], [error.original_class, error.original_message]
+  end
+
 end
