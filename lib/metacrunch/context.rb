@@ -14,6 +14,11 @@ module Metacrunch
     # boundary between a worker and the parent (Executor::Fork).
     State = Data.define(:id, :position, :step, :marks, :store, :rejection, :failure)
 
+    # Raised by reject! to end the step; the engine rescues it around every
+    # step. It inherits from Exception on purpose, so a `rescue => e` in a
+    # step cannot swallow the rejection.
+    class Rejected < Exception; end # rubocop:disable Lint/InheritException
+
     attr_reader :id, :position, :marks, :store, :rejection
     attr_accessor :step, :failure
 
@@ -51,9 +56,17 @@ module Metacrunch
       @sealed = false
     end
 
-    # Stops processing of this record. The engine sends it to the rejects
-    # sink and ignores the return value of the current step.
+    # Stops processing of this record: records the rejection and ends the
+    # current step by raising Rejected. The engine sends the record to the
+    # rejects sink.
     def reject!(reason, value: nil)
+      record_rejection(reason, value:)
+      raise Rejected, @rejection.reason
+    end
+
+    # Records a rejection without ending the step. The engine uses it for
+    # filter and reject steps with a reason; steps call reject!.
+    def record_rejection(reason, value: nil)
       ensure_writable!
       @rejection = Rejection.new(reason: Context.reason(reason), value:, step:)
       nil

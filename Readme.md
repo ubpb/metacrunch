@@ -108,12 +108,17 @@ end
 | Method | |
 |---|---|
 | `ctx.id`, `ctx.position`, `ctx.step` | Record id, position in the source, current step |
-| `ctx.reject!(reason, value: nil)` | Stop this record; it goes to the `rejects` sink |
+| `ctx.reject!(reason, value: nil)` | Stop this record: ends the step at once; the record goes to the `rejects` sink |
 | `ctx.mark(reason, value: nil)`, `ctx.marks` | Non-fatal notes; the record continues |
 | `ctx.store` | Hash for per-record data shared between steps |
 | `ctx.logger` | Logger that prefixes messages with the record id |
 
 `flat_map` gives every emitted record its own copy of the context.
+
+`reject!` ends the step by raising `Metacrunch::Context::Rejected`, so no `return` or `next` is needed after it. The
+engine rescues it around every step. It is an `Exception`, not a `StandardError`: a `rescue => e` in the step does not
+catch it, but a `rescue Exception` would, so do not use one around `reject!`. Call `reject!` only on the context the
+step got; on the context of another record it fails the step with a `ContractError`.
 
 Optional parameters do not count, so methods such as `method(:Integer)` or `JSON.method(:generate)` can be used as
 steps directly: `map(&method(:Integer))`. A step written as `->(record, ctx = nil)` gets `nil` for `ctx`.

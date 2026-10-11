@@ -21,7 +21,7 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
 
 ### Added
 
-- Per-record context with `reject!`, `mark`, `store` and a record logger.
+- Per-record context with `reject!` (ends the step), `mark`, `store` and a record logger.
 - `rejects` and `errors` sinks.
 - Error policy `on_error :abort | :skip` with `max_errors`.
 - Run results with stats per step and reason; `profile` for step timing.
