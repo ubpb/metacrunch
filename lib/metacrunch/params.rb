@@ -121,7 +121,9 @@ module Metacrunch
       end
       build(values, positional)
     rescue OptionParser::ParseError => e
-      raise ParamError, e.message
+      # Without "=value" and without cause: a mistyped option may carry a
+      # secret (--api-ky=...).
+      raise ParamError, "#{e.reason}: #{e.args.map { it.sub(/=.*/m, "") }.join(" ")}", cause: nil
     end
 
     # Binds a Hash, e.g. in tests. Values may already have the declared
