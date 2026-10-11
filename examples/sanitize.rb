@@ -9,8 +9,9 @@ require_relative "lib/issue_report"
 # for workers (-w) to pay off; the results are the same with and without.
 #
 #   mkdir -p tmp
-#   metacrunch run -w 4 -i examples/data/publications.jsonl --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl \
-#     --stats tmp/stats.json examples/sanitize.rb --output tmp/publications.jsonl --issues tmp/issues.tsv
+#   bundle exec metacrunch run -w 4 -i examples/data/publications.jsonl \
+#     --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl --stats tmp/stats.json \
+#     examples/sanitize.rb --output tmp/publications.jsonl --issues tmp/issues.tsv
 #
 # examples/data/publications.jsonl gives 187 records, 8 rejects (no title) and 5
 # errors (year "n.d."); the exit status is 3, "finished, but records failed".

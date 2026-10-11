@@ -10,10 +10,11 @@ require "openssl"
 # in examples/credentials/.metacrunch/, the nearest .metacrunch/ above this
 # file (see "Credentials" in the Readme).
 #
-#   metacrunch run -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb | head -n 2
-#   metacrunch run -v -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb > /dev/null
-#   PSEUDONYM_PEPPER=another metacrunch run -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb
-#   metacrunch credentials show --credentials examples/credentials/.metacrunch
+#   bundle exec metacrunch run -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb | head -n 2
+#   bundle exec metacrunch run -v -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb > /dev/null
+#   PSEUDONYM_PEPPER=another bundle exec metacrunch run -i examples/data/publications.jsonl \
+#     examples/credentials/pseudonymize.rb | head -n 2
+#   bundle exec metacrunch credentials show --credentials examples/credentials/.metacrunch
 #
 # -v logs which credentials file was decrypted; PSEUDONYM_PEPPER wins over
 # the credentials. The key in examples/credentials/.metacrunch/master.key is

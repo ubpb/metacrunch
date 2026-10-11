@@ -8,9 +8,9 @@ require_relative "lib/json_array_file"
 # rejects and errors sinks, the error policy and an after hook.
 #
 #   mkdir -p tmp
-#   metacrunch run examples/catalog.rb --output tmp examples/data/catalog.json
-#   metacrunch trace -n 3 examples/catalog.rb --output tmp examples/data/catalog.json
-#   metacrunch run examples/catalog.rb --help
+#   bundle exec metacrunch run examples/catalog.rb --output tmp examples/data/catalog.json
+#   bundle exec metacrunch trace -n 3 examples/catalog.rb --output tmp examples/data/catalog.json
+#   bundle exec metacrunch run examples/catalog.rb --help
 #
 # examples/data/catalog.json gives 7 records, 2 rejects (not public) and 1
 # error (a year that is not a number); the exit status is 3, "finished, but

@@ -1,8 +1,8 @@
 # Examples
 
-Runnable jobs with sample data. They need nothing but metacrunch. Run them from the root of the repository; in a
-checkout, use `bundle exec exe/metacrunch` instead of `metacrunch`. Every file starts with a comment that says what it
-shows and how to call it.
+Runnable jobs with sample data. They need nothing but metacrunch. Run them from the root of the repository with
+`bundle exec`, as below, so that they use the metacrunch of the checkout and not one installed as a gem. Every file
+starts with a comment that says what it shows and how to call it.
 
 | File | Shows |
 |---|---|
@@ -15,14 +15,14 @@ shows and how to call it.
 
 ```
 $ mkdir -p tmp
-$ metacrunch run examples/hello.rb
-$ metacrunch run examples/catalog.rb --output tmp examples/data/catalog.json
-$ metacrunch trace -n 3 examples/catalog.rb --output tmp examples/data/catalog.json
-$ metacrunch run examples/hello.rb | metacrunch run examples/normalize.rb
-$ metacrunch run -w 4 -i examples/data/publications.jsonl --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl \
+$ bundle exec metacrunch run examples/hello.rb
+$ bundle exec metacrunch run examples/catalog.rb --output tmp examples/data/catalog.json
+$ bundle exec metacrunch trace -n 3 examples/catalog.rb --output tmp examples/data/catalog.json
+$ bundle exec metacrunch run examples/hello.rb | bundle exec metacrunch run examples/normalize.rb
+$ bundle exec metacrunch run -w 4 -i examples/data/publications.jsonl --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl \
     examples/sanitize.rb --output tmp/publications.jsonl --issues tmp/issues.tsv
-$ metacrunch run -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb | head -n 2
-$ metacrunch credentials show --credentials examples/credentials/.metacrunch
+$ bundle exec metacrunch run -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb | head -n 2
+$ bundle exec metacrunch credentials show --credentials examples/credentials/.metacrunch
 $ bundle exec ruby -Ilib examples/test/catalog_test.rb
 ```
 
