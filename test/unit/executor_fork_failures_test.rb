@@ -6,6 +6,7 @@ require "tmpdir"
 class ExecutorForkFailuresTest < Minitest::Test
 
   include PipelineHelper
+  include Override
   include ForkVariant::NoWorkerLeft
 
   # Marshal cannot dump it: it holds an IO.
@@ -276,6 +277,22 @@ class ExecutorForkFailuresTest < Minitest::Test
     assert_operator now - started, :<, 5
   ensure
     signal&.join
+  end
+
+  def test_sigint_right_after_a_fork_leaves_no_worker_behind
+    pipeline = build_pipeline do
+      source [1]
+      map { it }
+    end
+    real_fork = Process.method(:fork)
+    fork_then_interrupt = lambda do |&block|
+      pid = real_fork.call(&block)
+      Process.kill("INT", Process.pid)
+      sleep(0.1)
+      pid
+    end
+
+    assert_raises(Interrupt) { override(Process, :fork, fork_then_interrupt) { engine(pipeline).run } }
   end
 
   private
