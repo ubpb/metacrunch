@@ -138,8 +138,24 @@ module Metacrunch
 
     def ingest(chain, record, position)
       @stats.count_read
+      return fail_invalid(record, position) if record.is_a?(InvalidRecord)
+
       id = @pipeline.id_extractor&.call(record)
       chain.call(record, Context.new(id:, position:, logger: @pipeline.logger, on_mark: @on_mark))
+    end
+
+    # A record the source could not read fails as the pseudo-step "source".
+    # The observer sees it like a step without output.
+    def fail_invalid(invalid, position)
+      ctx = Context.new(id: nil, position:, logger: @pipeline.logger, on_mark: @on_mark)
+      ctx.step = SOURCE_STEP
+      @observer&.step_in(SOURCE_STEP, invalid.raw, ctx)
+      begin
+        @stats.source_failed(invalid.error)
+        handle_failure(SOURCE_STEP, invalid.raw, ctx, invalid.error)
+      ensure
+        @observer&.step_out(SOURCE_STEP, [], ctx)
+      end
     end
 
     def build_chain
@@ -162,8 +178,7 @@ module Metacrunch
         begin
           output = evaluate(step, record, ctx)
         rescue *RECOVERABLE => e
-          @observer&.step_out(step.name, [], ctx)
-          next fail_record(step, record, ctx, e)
+          next fail_observed(step, record, ctx, e)
         end
         @observer&.step_out(step.name, output.equal?(DROPPED) ? [] : [output], ctx)
         if ctx.rejected?
@@ -274,12 +289,24 @@ module Metacrunch
       @pipeline.rejects&.write(record, ctx)
     end
 
+    # Applies the error policy first, so the observer sees ctx.failure
+    # under :skip.
+    def fail_observed(step, record, ctx, error)
+      fail_record(step, record, ctx, error)
+    ensure
+      @observer&.step_out(step.name, [], ctx)
+    end
+
     def fail_record(step, record, ctx, error)
       @stats.step_failed(step.name, error)
-      step_error = StepError.new(step: step.name, record_id: ctx.id, position: ctx.position, error:)
+      handle_failure(step.name, record, ctx, error)
+    end
+
+    def handle_failure(name, record, ctx, error)
+      step_error = StepError.new(step: name, record_id: ctx.id, position: ctx.position, error:)
       raise step_error, cause: error if @pipeline.on_error == :abort
 
-      ctx.failure = Failure.new(error:, step: step.name)
+      ctx.failure = Failure.new(error:, step: name)
       ctx.logger.error(step_error.message)
       @pipeline.errors&.write(record, ctx)
       check_max_errors(step_error)

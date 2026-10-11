@@ -4,6 +4,7 @@ require "logger"
 
 require_relative "metacrunch/version"
 require_relative "metacrunch/errors"
+require_relative "metacrunch/invalid_record"
 require_relative "metacrunch/record_logger"
 require_relative "metacrunch/context"
 require_relative "metacrunch/stats"

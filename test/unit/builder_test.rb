@@ -14,6 +14,7 @@ class BuilderTest < Minitest::Test
     "callable_and_block" => proc { source([]); map(->(record) { record }) { it } },
     "neither_callable_nor_block" => proc { source([]); map },
     "duplicate_step_name" => proc { source([]); map(name: "x") { it }; map(name: "x") { it } },
+    "reserved_step_name" => proc { source([]); map(name: "source") { it } },
     "unknown_error_policy" => proc { source([]); on_error :ignore },
     "max_errors_without_skip" => proc { source([]); on_error :abort, max_errors: 3 },
     "negative_max_errors" => proc { source([]); on_error :skip, max_errors: -1 },

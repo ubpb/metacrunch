@@ -7,6 +7,8 @@ module Metacrunch
 
     StepCounter = Struct.new(:input, :output, :filtered, :rejected, :failed, :time)
 
+    attr_reader :failed_total
+
     def initialize(step_names, profile: false)
       @profile = profile
       @read = 0
@@ -14,6 +16,7 @@ module Metacrunch
       @rejected = Hash.new(0)
       @marked = Hash.new(0)
       @failed = Hash.new(0)
+      @failed_total = 0
       @steps = step_names.to_h { |name| [name, StepCounter.new(0, 0, 0, 0, 0, profile ? 0.0 : nil)] }
       @started_at = now
     end
@@ -43,7 +46,14 @@ module Metacrunch
 
     def step_failed(name, error)
       @steps.fetch(name).failed += 1
+      source_failed(error)
+    end
+
+    # A record the source could not read (InvalidRecord). It has no step,
+    # so only the job-level counts change.
+    def source_failed(error)
       @failed[error.class.name] += 1
+      @failed_total += 1
     end
 
     def step_time(name, seconds)
@@ -52,10 +62,6 @@ module Metacrunch
 
     def mark(reason)
       @marked[reason] += 1
-    end
-
-    def failed_total
-      @failed.values.sum
     end
 
     def snapshot

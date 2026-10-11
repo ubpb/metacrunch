@@ -4,6 +4,10 @@ module Metacrunch
 
   STEP_KINDS = [:map, :filter, :reject, :flat_map].freeze
 
+  # Failures of the source (InvalidRecord) are reported under this name; no
+  # step may use it.
+  SOURCE_STEP = "source"
+
   # One step of a pipeline. reason is set for filter/reject steps that
   # reject (instead of silently filter) the records they drop.
   Step = Data.define(:kind, :callable, :name, :reason, :pass_context) do

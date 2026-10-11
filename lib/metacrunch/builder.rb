@@ -174,6 +174,7 @@ module Metacrunch
       raise ArgumentError, "#{kind}: a callable or a block is required" unless implementation
 
       name = (name || "#{kind}##{@steps.size + 1}").to_s
+      raise ArgumentError, "the step name #{SOURCE_STEP} is reserved" if name == SOURCE_STEP
       raise ArgumentError, "duplicate step name #{name}" if @steps.any? { |step| step.name == name }
 
       @steps << Step.build(kind, implementation, name:, reason:)
