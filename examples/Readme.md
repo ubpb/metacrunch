@@ -10,6 +10,7 @@ shows and how to call it.
 | [`catalog.rb`](catalog.rb) | The whole DSL: parameters, `reject` with a reason, `filter`, marks, `flat_map`, the `rejects` and `errors` sinks, `on_error :skip`, an `after` hook, and a source of its own ([`lib/json_array_file.rb`](lib/json_array_file.rb)). |
 | [`normalize.rb`](normalize.rb) | A filter job for Unix pipes: no source, no sink, JSON Lines from stdin to stdout. |
 | [`sanitize.rb`](sanitize.rb) | Cleaning exported publication records: marks for every change, an issue report written by a sink that reads the marks ([`lib/issue_report.rb`](lib/issue_report.rb)), and workers (`-w`). |
+| [`credentials/pseudonymize.rb`](credentials/pseudonymize.rb) | Encrypted credentials: a secret parameter (`credential:`) read from [`credentials/.metacrunch/`](credentials/.metacrunch), whose key is public on purpose, so the example runs. Replaces author names with keyed pseudonyms. |
 | [`test/catalog_test.rb`](test/catalog_test.rb) | Testing a job with `Metacrunch::Testing.run`, also with workers. |
 
 ```
@@ -20,6 +21,8 @@ $ metacrunch trace -n 3 examples/catalog.rb --output tmp examples/data/catalog.j
 $ metacrunch run examples/hello.rb | metacrunch run examples/normalize.rb
 $ metacrunch run -w 4 -i examples/data/publications.jsonl --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl \
     examples/sanitize.rb --output tmp/publications.jsonl --issues tmp/issues.tsv
+$ metacrunch run -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb | head -n 2
+$ metacrunch credentials show --credentials examples/credentials/.metacrunch
 $ bundle exec ruby -Ilib examples/test/catalog_test.rb
 ```
 

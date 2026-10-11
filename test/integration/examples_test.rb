@@ -3,6 +3,7 @@
 require "test_helper"
 require "json"
 require "open3"
+require "openssl"
 require "shellwords"
 require "tmpdir"
 
@@ -12,6 +13,9 @@ class ExamplesTest < Minitest::Test
 
   ROOT = File.expand_path("../..", __dir__)
   EXAMPLES = File.join(ROOT, "examples")
+  # Settings of the developer's shell that would change a run.
+  CLEAN_ENV = {"METACRUNCH_ENV" => nil, "METACRUNCH_CREDENTIALS" => nil, "METACRUNCH_MASTER_KEY" => nil,
+               "PSEUDONYM_PEPPER" => nil}.freeze
 
   def test_hello_greets_on_stdout
     stdout, stderr, status = metacrunch("run", example("hello.rb"))
@@ -70,6 +74,32 @@ class ExamplesTest < Minitest::Test
     end
   end
 
+  def test_pseudonymize_replaces_every_author_with_a_pseudonym
+    stdout, stderr, status = pseudonymize
+    authors = stdout.lines.flat_map { JSON.parse(it)["authors"] }
+
+    assert_predicate status, :success?, stderr
+    assert_equal 400, authors.size
+    assert_empty authors.grep_v(/\Aauthor-\h{12}\z/)
+  end
+
+  def test_pseudonymize_gives_one_pseudonym_per_name
+    input = File.readlines(example("data/publications.jsonl")).map { JSON.parse(it)["authors"] }
+    output = pseudonymize.first.lines.map { JSON.parse(it)["authors"] }
+    pairs = input.flatten.map { it.split.join(" ") }.zip(output.flatten).uniq
+
+    assert_equal ["Doe, Jane", "Poe, Edgar", "Roe, Richard"], pairs.map(&:first).sort
+    assert_equal 3, pairs.map(&:last).uniq.size
+  end
+
+  def test_pseudonymize_takes_the_pepper_from_the_environment_first
+    stdout, = pseudonymize(env: {"PSEUDONYM_PEPPER" => "another pepper"})
+    expected = "author-#{OpenSSL::HMAC.hexdigest("SHA256", "another pepper", "Doe, Jane")[0, 12]}"
+
+    assert_equal expected, JSON.parse(stdout.lines.first)["authors"].first
+    refute_equal expected, JSON.parse(pseudonymize.first.lines.first)["authors"].first
+  end
+
   def test_the_example_tests_pass
     arguments = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), example("test/catalog_test.rb")]
     stdout, stderr, status = Open3.capture3(*arguments)
@@ -91,8 +121,12 @@ class ExamplesTest < Minitest::Test
     files.map { File.read(it) }
   end
 
-  def metacrunch(*, stdin_data: "")
-    Open3.capture3(*command(*), stdin_data:)
+  def pseudonymize(env: {})
+    metacrunch("run", "-i", example("data/publications.jsonl"), example("credentials/pseudonymize.rb"), env:)
+  end
+
+  def metacrunch(*, stdin_data: "", env: {})
+    Open3.capture3(CLEAN_ENV.merge(env), *command(*), stdin_data:)
   end
 
   def command(*)

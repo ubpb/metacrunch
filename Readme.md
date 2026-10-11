@@ -241,7 +241,8 @@ to edit again.
 | none | `.metacrunch/credentials.yml.enc` | `.metacrunch/master.key` |
 | `-e production` or `METACRUNCH_ENV=production` | `.metacrunch/credentials.production.yml.enc` | `.metacrunch/master.production.key` |
 
-Each environment has its own file and key, so laptops and CI need not hold the production key. A run with an
+[`examples/credentials`](examples/credentials) has a runnable example. Each environment has its own file and key, so
+laptops and CI need not hold the production key. A run with an
 environment never falls back to the file without one.
 
 - **Where:** `--credentials DIR` or `METACRUNCH_CREDENTIALS`, else the nearest `.metacrunch/` above the job file,
