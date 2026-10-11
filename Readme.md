@@ -43,6 +43,8 @@ $ metacrunch run jobs/numbers.rb --factor 3 -- 1 2 -5
 
 A job without a sink writes its records to stdout as JSON Lines. Logs and the run summary go to stderr.
 
+More jobs with sample data, from the smallest one to a cleaning job with workers, are in [`examples/`](examples).
+
 ## Records
 
 A record can be any Ruby object. Records that leave a job should be `Hash` objects with `String` keys, because
