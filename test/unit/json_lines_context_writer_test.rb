@@ -44,6 +44,12 @@ class JsonLinesContextWriterTest < Minitest::Test
     assert_equal Time.at(0).utc.inspect, data["marks"].first["value"]
   end
 
+  def test_writes_strings_with_invalid_utf8_scrubbed
+    data = JSON.parse(write("\xFF{oops"))
+
+    assert_equal ["\uFFFD{oops", nil], [data["record"], data["record_class"]]
+  end
+
   def test_writes_messages_with_invalid_utf8
     @ctx.failure = Metacrunch::Failure.new(error: JSON::ParserError.new("unexpected character: '\xFF'"),
                                            step: "source")
