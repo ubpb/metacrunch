@@ -201,16 +201,74 @@ params do
   param :bulk,  Integer, default: 1000
   param :dry,   :bool, default: false
   param :tags,  Array
+  param :api_key, String, env: "FIS_API_KEY", credential: "fis.api_key"
   args  :files, min: 1
 end
 ```
 
 `params` must be the first statement of a job. Values come from the command line, then the environment
-variable (`env:`, an empty variable counts as unset), then the default. Types: `String`, `Integer`, `Float`,
-`:bool`, `Array` (comma-separated). Defaults are converted and checked when declared (`Integer, default: "1000"`
+variable (`env:`, an empty variable counts as unset), then the credentials (`credential:`, see
+[Credentials](#credentials)), then the default. Types: `String`, `Integer`, `Float`, `:bool`, `Array`
+(comma-separated). Defaults are converted and checked when declared (`Integer, default: "1000"`
 gives 1000). Use the values with `params.index`; they are frozen. Options must be spelled out (`--ind` is not
 `--index`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and `-h` is reserved
 for help.
+
+## Credentials
+
+Parameters can read secrets, such as API keys and passwords, from encrypted files in the project:
+
+```ruby
+params do
+  param :api_key, String, env: "FIS_API_KEY", credential: "fis.api_key", required: true
+end
+```
+
+```
+$ metacrunch credentials edit                    # opens $VISUAL or $EDITOR
+$ metacrunch credentials edit -e production
+$ metacrunch credentials show -e production
+$ metacrunch credentials rotate -e production
+```
+
+`edit` creates `.metacrunch/credentials.yml.enc`, which you commit, and the key `.metacrunch/master.key`, which you
+never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `credential: "fis.api_key"` reads `api_key`
+below `fis`. Quote values that YAML reads as numbers or booleans (`"0123"`, `"yes"`, `"on"`).
+
+| Environment | File | Key |
+|---|---|---|
+| none | `.metacrunch/credentials.yml.enc` | `.metacrunch/master.key` |
+| `-e production` or `METACRUNCH_ENV=production` | `.metacrunch/credentials.production.yml.enc` | `.metacrunch/master.production.key` |
+
+Each environment has its own file and key, so laptops and CI need not hold the production key. A run with an
+environment never falls back to the file without one.
+
+- **Where:** `--credentials DIR` or `METACRUNCH_CREDENTIALS`, else the nearest `.metacrunch/` above the job file,
+  else `~/.metacrunch/` for personal credentials. The directory found decides alone; `-v` logs the file that was
+  decrypted. `metacrunch credentials` looks above the working directory and uses `~/.metacrunch/` only with
+  `--credentials ~/.metacrunch`.
+- **Key:** `METACRUNCH_MASTER_KEY`, else the key file. In containers and CI, set `METACRUNCH_MASTER_KEY`; with Kamal,
+  list it under `env: secret:` and provide it in `.kamal/secrets`.
+- **Order:** a parameter's value comes from the command line, its `env:` variable, the credentials, then the default,
+  so an environment variable overrides a credential. Credentials are decrypted only if a value is needed: a container
+  that sets every variable needs neither key nor file. Leave out `env:` to make sure that no inherited variable
+  overrides a secret.
+- **Secrets:** a parameter with `credential:` is secret. `--help`, error messages and `params.inspect` hide its value,
+  and a value on the command line, where `ps` and the shell history show it, gives a warning. What a job does with the
+  value, such as logging it or putting it into an exception, is not hidden. `Metacrunch::Testing.run` never reads
+  credentials; pass values with `params:`.
+- **Rotation:** `rotate` encrypts a file with a new key and replaces the key file, or prints the new key if the old
+  one came from `METACRUNCH_MASTER_KEY`. If it is interrupted between its two renames, `master[.ENV].key.new` holds
+  the key of the new file; rename it to `master[.ENV].key`.
+
+Keep in mind:
+
+- While the editor runs, `edit` keeps the plaintext in a temporary file (mode 0600 in a directory with mode 0700) and
+  removes it afterwards; only SIGKILL leaves it behind.
+- The plaintext stays in the memory of every process that uses it, workers included.
+- Other processes of the same user can read `METACRUNCH_MASTER_KEY` from a process's environment
+  (`/proc/PID/environ` on Linux).
+- A lost key cannot be recovered: delete the file and create it again with `edit`.
 
 ## Running jobs
 
@@ -227,6 +285,8 @@ you start it.
 | Option | |
 |---|---|
 | `-j`, `--job NAME` | Select a job in a file that defines several |
+| `-e`, `--environment NAME` | Credentials environment (default: `METACRUNCH_ENV`) |
+| `--credentials DIR` | Credentials directory (default: `METACRUNCH_CREDENTIALS`, then `.metacrunch/` above the job file, then `~/.metacrunch/`) |
 | `-i`, `--input PATH` | Read JSON Lines from PATH (`-` for stdin) instead of the job's source |
 | `-o`, `--output PATH` | Write JSON Lines to PATH (`-` for stdout) instead of the job's sink |
 | `--rejects PATH`, `--errors PATH` | Write rejected or failed records with their context; both may name the same file |
@@ -336,7 +396,9 @@ result.summary   # "ok: read 1000, written 998, rejected 2 (Patent: 2) in 0.41s 
 ```
 
 `run` takes the job's parameters as command-line arguments, and the environment for parameters with `env:` as
-`env:` (default `ENV`). Invalid parameters raise `Metacrunch::ParamError`; errors while the job runs end up in the result. A job
+`env:` (default `ENV`). Credentials follow the same `env:` (`METACRUNCH_ENV`, `METACRUNCH_CREDENTIALS`,
+`METACRUNCH_MASTER_KEY`, `HOME`) and are searched from the job's file. Invalid parameters and unreadable credentials
+raise `Metacrunch::ParamError`; errors while the job runs end up in the result. A job
 defined with `Metacrunch.job` in a Rake task or an application runs the same way. Logs go to `Metacrunch.logger`
 (stderr); assign another `Logger` or pass `logger:` to `run`.
 

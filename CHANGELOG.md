@@ -39,3 +39,6 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
 - `metacrunch run -w N` (`--workers N|auto`) runs the steps in N worker processes, with the results in source
   order; `Job#run`, `Testing.run` and `Engine` take workers as well. Step components are opened after the `before`
   hooks.
+- Encrypted credentials: parameters read secrets with `credential:` from `.metacrunch/credentials[.ENV].yml.enc`,
+  after the command line and `env:`, and hide them in help texts, errors and `inspect`. `metacrunch credentials
+  edit|show|rotate` manages the files; `run`, `check` and `trace` take `-e`/`--environment` and `--credentials`.

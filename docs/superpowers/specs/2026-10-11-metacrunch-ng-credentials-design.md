@@ -2,7 +2,7 @@
 
 - Date: 2026-10-11
 - Branch: `metacrunch-ng`
-- Status: approved design; not implemented
+- Status: approved; implemented
 - Builds on: [sub-project 1 spec](2026-10-10-metacrunch-ng-core-design.md)
   (parameters, 5.5), [sub-project 2 spec](2026-10-10-metacrunch-ng-cli-pipes-design.md)
   (CLI commands)
