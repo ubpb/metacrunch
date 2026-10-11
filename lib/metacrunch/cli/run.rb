@@ -44,14 +44,28 @@ module Metacrunch
           @options[:max_errors] = count
         end
         parser.on("--stats PATH", "Write status and stats as JSON to PATH (- for stdout)") { @options[:stats] = it }
+        parser.on("--[no-]progress", "Show progress on stderr (default: if stderr is a terminal)") { @progress = it }
       end
 
       def execute_job(job, argv)
         options = RunOptions.new(**@options)
         pipeline = options.apply(build_pipeline(job, argv), stdin: @stdin, stdout: @stdout)
-        result = Engine.new(pipeline).run
+        result = Engine.new(pipeline, monitor: progress).run
         write_stats(options.stats, result) if options.stats
         report(result)
+      end
+
+      # A status line if stderr is a terminal, log lines with --progress
+      # otherwise; none with -q unless --progress is given.
+      def progress
+        enabled = @progress.nil? ? @stderr.tty? && @log_level < Logger::WARN : @progress
+        return unless enabled
+
+        Progress.new(log_output, mode: @stderr.tty? ? :line : :log, logger:)
+      end
+
+      def log_output
+        @log_output ||= Progress::Output.new(@stderr)
       end
 
       def write_stats(path, result)

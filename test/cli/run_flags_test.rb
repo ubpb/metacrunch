@@ -84,6 +84,25 @@ class RunFlagsTest < Minitest::Test
     assert_match(/stdout is used by both the default output \(the job has no sink\) and --rejects/, stderr)
   end
 
+  def test_progress_is_shown_on_a_terminal
+    stderr = TerminalOutput.new
+    code, = cli("run", job("slow.rb"), stderr:)
+
+    assert_equal 0, code
+    assert_match(%r{read \d+ \(.*/s\)  written \d+}, stderr.string)
+    assert_includes stderr.string, "\r\e[2K"
+  end
+
+  def test_no_progress_when_quiet_or_disabled
+    quiet = TerminalOutput.new
+    disabled = TerminalOutput.new
+    cli("run", "-q", job("slow.rb"), stderr: quiet)
+    cli("run", "--no-progress", job("slow.rb"), stderr: disabled)
+
+    refute_includes quiet.string, "\e[2K"
+    refute_includes disabled.string, "\e[2K"
+  end
+
   def test_help_lists_the_run_options
     stdout = cli("run", "--help")[1]
 
