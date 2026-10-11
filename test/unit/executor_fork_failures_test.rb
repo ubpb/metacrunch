@@ -89,9 +89,13 @@ class ExecutorForkFailuresTest < Minitest::Test
   end
 
   def test_a_crash_by_sigabrt_points_to_the_objc_variable_on_macos
-    result = run_pipeline do
-      source [1]
-      map { Process.kill("ABRT", Process.pid) }
+    result = nil
+    # The worker's Ruby prints a crash report for SIGABRT on stderr.
+    capture_subprocess_io do
+      result = run_pipeline do
+        source [1]
+        map { Process.kill("ABRT", Process.pid) }
+      end
     end
     hint = result.error.message.include?("OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES")
 
