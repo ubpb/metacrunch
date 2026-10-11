@@ -65,7 +65,7 @@ module Metacrunch
         enabled = default_progress?(records_to_stdout) if enabled.nil?
         return unless enabled
 
-        Progress.new(log_output, mode: @stderr.tty? ? :line : :log, logger:)
+        Progress.new(log_output, mode: @stderr.tty? ? :line : :log)
       end
 
       def default_progress?(records_to_stdout)
