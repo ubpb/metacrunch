@@ -150,6 +150,17 @@ class CredentialsLocationTest < Minitest::Test
     end
   end
 
+  def test_the_command_skips_a_home_directory_that_is_a_link
+    in_tmpdir do |root|
+      home = File.join(root, "home")
+      FileUtils.mkdir_p([File.join(root, "dotfiles", "metacrunch"), File.join(home, "new")])
+      File.symlink(File.join(root, "dotfiles", "metacrunch"), File.join(home, ".metacrunch"))
+      location = Location.for_command(cwd: File.join(home, "new"), env: {"HOME" => home})
+
+      assert_equal File.join(home, "new", ".metacrunch"), location.directory
+    end
+  end
+
   def test_the_command_takes_the_home_directory_when_it_is_given
     in_tmpdir do |home|
       FileUtils.mkdir_p([File.join(home, ".metacrunch"), File.join(home, "new")])
