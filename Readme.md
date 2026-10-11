@@ -257,8 +257,9 @@ environment never falls back to the file without one.
   value, such as logging it or putting it into an exception, is not hidden. `Metacrunch::Testing.run` never reads
   credentials; pass values with `params:`.
 - **Rotation:** `rotate` encrypts a file with a new key and replaces the key file, or prints the new key if the old
-  one came from `METACRUNCH_MASTER_KEY`. If it is interrupted between its two renames, `master[.ENV].key.new` holds
-  the key of the new file; rename it to `master[.ENV].key`.
+  one came from `METACRUNCH_MASTER_KEY`. If a `master[.ENV].key.new` is left behind (rotate died between its two
+  renames), check first: if `metacrunch credentials show` fails with "wrong key", the `.new` file holds the key of the
+  new file, so rename it to `master[.ENV].key`; otherwise delete it.
 
 Keep in mind:
 
