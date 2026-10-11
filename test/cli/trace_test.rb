@@ -9,6 +9,13 @@ class TraceCommandTest < Minitest::Test
 
   CATALOG = File.expand_path("../fixtures/catalog.json", __dir__)
 
+  # stdout whose reader went away (`| head`, quitting less).
+  class ClosedPipe < StringIO
+
+    def write(*) = raise(Errno::EPIPE)
+
+  end
+
   def test_traces_the_first_records_without_writing
     Dir.mktmpdir do |dir|
       code, stdout, = cli("trace", "-n", "2", job("catalog.rb"), "--output", dir, CATALOG)
@@ -33,6 +40,14 @@ class TraceCommandTest < Minitest::Test
     assert_equal 0, code
     assert_includes stdout, "  map#1   1 → 2\n"
     assert_includes stdout, "  source  failed: JSON::ParserError"
+  end
+
+  def test_a_closed_stdout_ends_quietly_with_the_sigpipe_code
+    stderr = StringIO.new
+    command = Metacrunch::Cli.new(stdin: StringIO.new("1\n2\n"), stdout: ClosedPipe.new, stderr:, env: {})
+
+    assert_equal 141, command.run(["trace", job("double.rb")])
+    assert_empty stderr.string
   end
 
   def test_usage_errors

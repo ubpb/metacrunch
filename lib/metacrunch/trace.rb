@@ -71,7 +71,7 @@ module Metacrunch
     # Prints the last record and the summary. Call after the run.
     def finish
       flush_record
-      @io.puts(@renderer.summary(@totals))
+      emit(@renderer.summary(@totals))
     end
 
     private
@@ -104,8 +104,16 @@ module Metacrunch
       return unless @record
 
       @totals[:to_sink] += @record.to_sink
-      @io.puts(@renderer.record(@record))
+      emit(@renderer.record(@record))
       @record = nil
+    end
+
+    # A closed pipe (`| head`, quitting less) ends the run like SIGPIPE, as
+    # with the JSON Lines writers.
+    def emit(text)
+      @io.puts(text)
+    rescue Errno::EPIPE
+      raise SignalException, "PIPE"
     end
 
     # The step list for a context seen for the first time: the record's own
