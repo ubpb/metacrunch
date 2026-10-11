@@ -211,6 +211,19 @@ class ParamsCredentialsTest < Minitest::Test
     end
   end
 
+  def test_option_errors_do_not_echo_values
+    params = schema do
+      param :api_key, String, credential: "fis.api_key"
+      param :dry, :bool
+    end
+    errors = [["--api-ky=#{SECRET}"], ["--dry=#{SECRET}"]].map do |argv|
+      assert_raises(Metacrunch::ParamError) { params.bind_argv(argv, env: {}) }
+    end
+
+    assert_equal ["invalid option: --api-ky", "needless argument: --dry"], errors.map(&:message)
+    assert_empty errors.map { it.full_message(highlight: false) }.grep(/#{SECRET}/)
+  end
+
   def test_bind_hash_ignores_credentials
     assert_nil api_key_schema.bind_hash({}).api_key
   end
