@@ -86,9 +86,10 @@ module Metacrunch
 
     def start(live)
       @live = live
+      @size = known_size(live.source)
       @started = @clock.call
       @samples = [[@started, 0]]
-      @thread = Thread.new { loop { sleep(@interval); tick } } if @threaded
+      @thread = start_thread if @threaded
     end
 
     def stop
@@ -109,6 +110,30 @@ module Metacrunch
     end
 
     private
+
+    # Draws until stopped. An error in the display (e.g. from a source's
+    # progress) ends the display, never the run.
+    def start_thread
+      Thread.new do
+        Thread.current.report_on_exception = false
+        loop do
+          sleep(@interval)
+          tick
+        end
+      rescue StandardError
+        nil
+      end
+    end
+
+    # Read once, on the run's thread: a source's size may be expensive or
+    # unsafe to call while the source is read. count is never called: it
+    # would iterate.
+    def known_size(source)
+      size = source.size if source.respond_to?(:size)
+      size if size.is_a?(Integer) && size.positive?
+    rescue StandardError
+      nil
+    end
 
     def head(elapsed, done)
       percent = done && "#{(done * 100).floor}%"
@@ -141,13 +166,12 @@ module Metacrunch
     end
 
     # The share of the input done, from the source's progress or size or
-    # the limit; nil if unknown. count is never called: it would iterate.
+    # the limit; nil if unknown.
     def fraction(read)
       source = @live.source
-      size = source.respond_to?(:size) ? source.size : nil
       limit = @live.limit
       candidates = [source.respond_to?(:progress) ? source.progress : nil]
-      candidates << read.fdiv(size) if size.is_a?(Integer) && size.positive?
+      candidates << read.fdiv(@size) if @size
       candidates << read.fdiv(limit) if limit
       done = candidates.compact.max
       done && [done, 1.0].min
