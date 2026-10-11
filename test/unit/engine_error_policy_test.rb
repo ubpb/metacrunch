@@ -115,3 +115,10 @@ class EngineErrorPolicyTest < Minitest::Test
   end
 
 end
+
+ForkVariant.define(
+  EngineErrorPolicyTest,
+  inline_only: [
+    :test_zero_max_errors_stops_at_the_first_failure_after_recording_it
+  ]
+)

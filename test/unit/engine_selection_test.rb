@@ -35,7 +35,7 @@ class EngineSelectionTest < Minitest::Test
       source tracking
       sink target
     end
-    result = Metacrunch::Engine.new(pipeline.with(limit: 2)).run
+    result = engine(pipeline.with(limit: 2)).run
 
     assert_equal [:ok, [1, 2]], [result.status, target.records]
     assert_equal [2, true], [tracking.yielded, tracking.finished]
@@ -48,7 +48,7 @@ class EngineSelectionTest < Minitest::Test
       flat_map { [it, it] }
       sink target
     end
-    Metacrunch::Engine.new(pipeline.with(limit: 1)).run
+    engine(pipeline.with(limit: 1)).run
 
     assert_equal [1, 1], target.records
   end
@@ -65,7 +65,7 @@ class EngineSelectionTest < Minitest::Test
       seen << [record, position]
       position != 2
     end
-    result = Metacrunch::Engine.new(pipeline, select:).run
+    result = engine(pipeline, select:).run
 
     assert_equal ["A", "C"], target.records
     assert_equal [["a", 1], ["b", 2], ["c", 3]], seen
@@ -79,16 +79,18 @@ class EngineSelectionTest < Minitest::Test
       source tracking
       sink target
     end
-    Metacrunch::Engine.new(pipeline.with(limit: 2), select: ->(_record, position) { position.even? }).run
+    engine(pipeline.with(limit: 2), select: ->(_record, position) { position.even? }).run
 
     assert_equal [[2, 4], 4], [target.records, tracking.yielded]
   end
 
   def test_invalid_limits_are_rejected
     pipeline = build_pipeline { source [1] }
-    error = assert_raises(ArgumentError) { Metacrunch::Engine.new(pipeline.with(limit: 0)).run }
+    error = assert_raises(ArgumentError) { engine(pipeline.with(limit: 0)).run }
 
     assert_equal "limit must be a positive Integer, got 0", error.message
   end
 
 end
+
+ForkVariant.define(EngineSelectionTest)

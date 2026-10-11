@@ -110,3 +110,11 @@ class EngineInvalidRecordTest < Minitest::Test
   end
 
 end
+
+ForkVariant.define(
+  EngineInvalidRecordTest,
+  inline_only: [
+    :test_the_observer_sees_invalid_records_as_the_source_step,
+    :test_the_observer_sees_the_failure_of_a_step_under_skip
+  ]
+)

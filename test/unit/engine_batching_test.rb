@@ -93,7 +93,7 @@ class EngineBatchingTest < Minitest::Test
       sink target, batch: 10
     end
 
-    assert_raises(Interrupt) { Metacrunch::Engine.new(pipeline).run }
+    assert_raises(Interrupt) { engine(pipeline).run }
     assert_equal [1, 2, 3, 4, 5], target.records
   end
 
@@ -130,3 +130,11 @@ class EngineBatchingTest < Minitest::Test
   end
 
 end
+
+ForkVariant.define(
+  EngineBatchingTest,
+  inline_only: [
+    :test_interrupt_writes_the_records_that_completed_the_pipeline,
+    :test_sigterm_flushes_like_interrupt
+  ]
+)
