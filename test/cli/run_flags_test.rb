@@ -70,6 +70,14 @@ class RunFlagsTest < Minitest::Test
                  [data["status"], data.dig("error", "class"), data.dig("stats", "read")]
   end
 
+  def test_output_files_in_missing_directories_are_usage_errors
+    stats = File.join(@dir, "missing", "stats.json")
+    code, stdout, stderr = cli("run", "--stats", stats, job("double.rb"), stdin: "1\n")
+
+    assert_equal [2, ""], [code, stdout]
+    assert_match(/--stats: directory does not exist: .*missing/, stderr)
+  end
+
   def test_stats_on_stdout
     code, stdout, = cli("run", "--stats", "-", "-o", File.join(@dir, "out.jsonl"), job("double.rb"), stdin: "1\n")
 

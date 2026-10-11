@@ -52,8 +52,9 @@ module Metacrunch
         built = build_pipeline(job, argv)
         pipeline = options.apply(built, stdin: @stdin, stdout: @stdout)
         result = Engine.new(pipeline, monitor: progress(options.records_to_stdout?(built))).run
+        code = report(result)
         write_stats(options.stats, result) if options.stats
-        report(result)
+        code
       end
 
       # A status line if stderr is a terminal, log lines with --progress
