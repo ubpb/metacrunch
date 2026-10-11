@@ -202,13 +202,30 @@ class ExecutorForkFailuresTest < Minitest::Test
   def test_a_second_signal_while_a_worker_ends_runs_no_inherited_at_exit_handler
     Dir.mktmpdir do |dir|
       marker = File.join(dir, "at_exit")
-      parent = Process.pid
       pipeline = build_pipeline do
         source [1]
-        before { at_exit { File.write(marker, "ran") unless Process.pid == parent } }
+        before { mark_at_exit_in_children(marker) }
         map { raise DoubleSignal }
       end
       run_ignoring_signals(pipeline)
+
+      refute_path_exists marker
+    end
+  end
+
+  def test_a_signal_pending_since_the_fork_runs_no_inherited_at_exit_handler
+    Dir.mktmpdir do |dir|
+      marker = File.join(dir, "at_exit")
+      mark_at_exit_in_children(marker)
+      real_fork = Process.method(:fork)
+      fork_with_pending_term = lambda do |&block|
+        # Deferred: the fork runs under handle_interrupt(Object => :never).
+        real_fork.call do
+          Process.kill("TERM", Process.pid)
+          block.call
+        end
+      end
+      override(Process, :fork, fork_with_pending_term) { run_ignoring_signals(build_pipeline { source [1] }) }
 
       refute_path_exists marker
     end
@@ -300,6 +317,13 @@ class ExecutorForkFailuresTest < Minitest::Test
   end
 
   private
+
+  # An at_exit handler (it stays for the rest of the test run) that marks a
+  # forked child running it, as long as the marker's directory exists.
+  def mark_at_exit_in_children(marker)
+    parent = Process.pid
+    at_exit { File.write(marker, "ran") if Process.pid != parent && File.directory?(File.dirname(marker)) }
+  end
 
   def run_ignoring_signals(pipeline)
     engine(pipeline).run
