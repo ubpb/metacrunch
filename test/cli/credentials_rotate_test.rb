@@ -103,6 +103,19 @@ class CredentialsRotateTest < Minitest::Test
     end
   end
 
+  def test_an_interrupt_before_the_renames_leaves_no_new_files
+    in_tmpdir do |root|
+      old_key = write_credentials(root, "a: 1\n")
+      code = override(File, :rename, ->(*) { raise Interrupt }) do
+        Dir.chdir(root) { cli("credentials", "rotate").first }
+      end
+
+      assert_equal 130, code
+      assert_equal ["credentials.yml.enc", "master.key"], Dir.children(File.join(root, ".metacrunch")).sort
+      assert_equal "a: 1\n", unseal(credentials_file(root), old_key)
+    end
+  end
+
   def test_when_the_second_rename_fails_the_new_key_waits_in_a_new_file
     in_tmpdir do |root|
       old_key = write_credentials(root, "a: 1\n")

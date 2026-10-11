@@ -137,20 +137,21 @@ module Metacrunch
         @stderr.puts("Warning: #{display(location.key_file)} still holds the old key; replace or remove it")
       end
 
-      # Both new files are written before either is renamed, so an error
-      # until then changes nothing. If the second rename fails,
+      # Both new files are written before either is renamed, so an error or
+      # an interrupt until then changes nothing. If the second rename fails,
       # KEY_FILE.new holds the key of the new credentials file.
       def rotate_key_file(location, plaintext, key)
         sealed = "#{location.file}.#{Process.pid}.tmp"
         pending = "#{location.key_file}.new"
+        renamed = false
         begin
           File.open(sealed, "w", 0o644) { it.write(Credentials::Box.seal(plaintext, key)) }
           File.open(pending, "w", 0o600) { it.write("#{key.hex}\n") }
           File.chmod(0o600, pending)
           File.rename(sealed, location.file)
-        rescue StandardError
-          FileUtils.rm_f([sealed, pending])
-          raise
+          renamed = true
+        ensure
+          FileUtils.rm_f([sealed, pending]) unless renamed
         end
         File.rename(pending, location.key_file)
         @stderr.puts("New key in #{display(location.key_file)}")
