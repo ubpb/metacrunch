@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "json"
+require "rbconfig"
+require "shellwords"
 require "tmpdir"
 require "yaml"
 
@@ -53,5 +56,42 @@ module CredentialsHelper
   end
 
   def unseal(path, key) = Metacrunch::Credentials::Box.unseal(File.binread(path), key, path:)
+
+  # The editor script: logs every call to calls.jsonl (path, modes, the
+  # text it found), writes contents[n] on the n-th call (keeps the text if
+  # there is none) and exits with the status in its directory.
+  EDITOR_SCRIPT = <<~RUBY
+    # frozen_string_literal: true
+
+    require "json"
+
+    path = ARGV.fetch(0)
+    log = File.join(__dir__, "calls.jsonl")
+    calls = File.exist?(log) ? File.readlines(log).size : 0
+    File.open(log, "a") do |file|
+      file.puts(JSON.generate("path" => path, "mode" => File.stat(path).mode & 0o777,
+                              "dir_mode" => File.stat(File.dirname(path)).mode & 0o777, "before" => File.read(path)))
+    end
+    contents = JSON.parse(File.read(File.join(__dir__, "contents.json")))
+    File.write(path, contents[calls]) if contents[calls]
+    exit Integer(File.read(File.join(__dir__, "status")))
+  RUBY
+
+  # An EDITOR command that writes contents[n] on its n-th call and ends with
+  # status. Its files live in ROOT/editor.
+  def scripted_editor(root, *contents, status: 0)
+    dir = File.join(root, "editor")
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "editor.rb"), EDITOR_SCRIPT)
+    File.write(File.join(dir, "contents.json"), JSON.generate(contents))
+    File.write(File.join(dir, "status"), status.to_s)
+    Shellwords.join([RbConfig.ruby, File.join(dir, "editor.rb")])
+  end
+
+  # The calls of the scripted editor below root.
+  def editor_calls(root)
+    log = File.join(root, "editor", "calls.jsonl")
+    File.exist?(log) ? File.readlines(log).map { JSON.parse(it) } : []
+  end
 
 end
