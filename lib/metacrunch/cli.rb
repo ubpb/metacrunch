@@ -2,6 +2,7 @@
 
 require "optparse"
 require_relative "../metacrunch"
+require_relative "progress"
 require_relative "cli/run_options"
 require_relative "cli/command"
 require_relative "cli/job_command"
