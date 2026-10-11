@@ -20,7 +20,7 @@ module Metacrunch
       def run(argv)
         argv = argv.dup
         parser = option_parser
-        parser.order!(argv)
+        parse(parser, argv)
         return show(parser.help) if @help
 
         execute(argv)
@@ -51,6 +51,18 @@ module Metacrunch
       end
 
       def define_options(_parser) = nil
+
+      # Options end at the first argument that is not an option.
+      def parse(parser, argv) = parser.order!(argv)
+
+      # -e and --credentials, for the commands that read credentials.
+      # directory_help: the description lines of --credentials.
+      def credentials_options(parser, *directory_help)
+        parser.on("-e", "--environment NAME", "Credentials environment (default: METACRUNCH_ENV)") do |name|
+          @environment = name
+        end
+        parser.on("--credentials DIR", *directory_help) { @credentials = it }
+      end
 
       def logger
         @logger ||= Metacrunch.build_logger(log_output).tap { it.level = @log_level }
