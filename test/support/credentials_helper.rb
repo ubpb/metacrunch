@@ -74,16 +74,26 @@ module CredentialsHelper
     end
     contents = JSON.parse(File.read(File.join(__dir__, "contents.json")))
     File.write(path, contents[calls]) if contents[calls]
+    actions = JSON.parse(File.read(File.join(__dir__, "actions.json")))
+    File.delete(path) if actions["delete"]
+    Process.kill("INT", Process.ppid) if actions["interrupt_parent"]
+    if actions["signal"]
+      Process.kill(actions["signal"], Process.pid)
+      sleep 1
+    end
     exit Integer(File.read(File.join(__dir__, "status")))
   RUBY
 
   # An EDITOR command that writes contents[n] on its n-th call and ends with
-  # status. Its files live in ROOT/editor.
-  def scripted_editor(root, *contents, status: 0)
+  # status. Its files live in ROOT/editor. actions: delete: true removes
+  # the file, interrupt_parent: true sends SIGINT to metacrunch, signal:
+  # "TERM" ends the editor by that signal.
+  def scripted_editor(root, *contents, status: 0, **actions)
     dir = File.join(root, "editor")
     FileUtils.mkdir_p(dir)
     File.write(File.join(dir, "editor.rb"), EDITOR_SCRIPT)
     File.write(File.join(dir, "contents.json"), JSON.generate(contents))
+    File.write(File.join(dir, "actions.json"), JSON.generate(actions))
     File.write(File.join(dir, "status"), status.to_s)
     Shellwords.join([RbConfig.ruby, File.join(dir, "editor.rb")])
   end

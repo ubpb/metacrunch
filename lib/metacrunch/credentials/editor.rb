@@ -16,6 +16,9 @@ module Metacrunch
     class Editor
 
       EDITOR_VARIABLES = ["VISUAL", "EDITOR"].freeze
+      # Like git, metacrunch ignores these while the editor runs, so Ctrl-C
+      # reaches only the editor.
+      IGNORED_SIGNALS = ["INT", "QUIT"].select { Signal.list.key?(it) }.freeze
 
       # The variable that names the editor (VISUAL before EDITOR), or nil.
       attr_reader :variable
@@ -37,7 +40,7 @@ module Metacrunch
           File.open(path, "w", 0o600) { it.write(text) }
           loop do
             run(command, path)
-            edited = File.read(path)
+            edited = read(path, name)
             begin
               yield edited
               return edited
@@ -57,12 +60,38 @@ module Metacrunch
         Shellwords.split(@env[variable])
       end
 
+      # An editor ended by SIGINT ends the edit like Ctrl-C (exit 130).
       def run(command, path)
-        started = system(*command, path)
-        return if started
+        status = wait_for(spawn(command, path))
+        return if status.success?
+        raise Interrupt if status.termsig == Signal.list["INT"]
 
-        reason = started.nil? ? "could not be started" : "exited with status #{Process.last_status.exitstatus}"
+        reason = if status.signaled?
+          "was killed by SIG#{Signal.signame(status.termsig)}"
+        else
+          "exited with status #{status.exitstatus}"
+        end
         raise EditAborted, "editor #{command.first} #{reason}; nothing saved"
+      end
+
+      def spawn(command, path)
+        Process.spawn(*command, path)
+      rescue SystemCallError
+        raise EditAborted, "editor #{command.first} could not be started; nothing saved"
+      end
+
+      def wait_for(pid)
+        previous = IGNORED_SIGNALS.to_h { [it, trap(it, "IGNORE")] }
+        Process.wait2(pid).last
+      ensure
+        previous&.each { |signal, handler| trap(signal, handler) }
+      end
+
+      # The editor saves UTF-8, whatever the locale says.
+      def read(path, name)
+        File.read(path, encoding: Encoding::UTF_8)
+      rescue Errno::ENOENT
+        raise EditAborted, "the editor removed #{name}; nothing saved"
       end
 
       def again?
