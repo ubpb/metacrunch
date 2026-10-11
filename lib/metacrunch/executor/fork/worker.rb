@@ -51,18 +51,31 @@ module Metacrunch
 
         end
 
-        # Runs a worker in the forked child and ends the process without the
-        # at_exit handlers and write buffers inherited from the parent. A
-        # signal ends it by that signal.
-        def self.main(pipeline, input, output)
-          new(pipeline).run(input, output)
-          Process.exit!(0)
-        rescue SignalException => e
-          Signal.trap(e.signo, "SYSTEM_DEFAULT")
-          Process.kill(e.signo, Process.pid)
-          Process.exit!(128 + e.signo)
-        rescue Exception # rubocop:disable Lint/RescueException
-          Process.exit!(1)
+        # Signals whose handlers the child resets: a program that runs jobs
+        # with workers may trap them, and its handlers must not run in a
+        # worker.
+        HOST_SIGNALS = ["INT", "TERM", "HUP", "QUIT", "USR1", "USR2", "CHLD"].freeze
+
+        # Runs a worker in the forked child. inherited: the parent's pipe ends
+        # the child must close. The process ends without the at_exit
+        # handlers, finalizers and write buffers inherited from the parent,
+        # also when a second signal arrives while it ends. A signal ends it by
+        # that signal.
+        def self.main(pipeline, input, output, inherited: [])
+          status = 1
+          begin
+            HOST_SIGNALS.each { Signal.trap(it, "DEFAULT") }
+            inherited.each(&:close)
+            new(pipeline).run(input, output)
+            status = 0
+          rescue SignalException => e
+            Signal.trap(e.signo, "SYSTEM_DEFAULT")
+            Process.kill(e.signo, Process.pid)
+          rescue Exception # rubocop:disable Lint/RescueException
+            status = 1
+          ensure
+            Process.exit!(status)
+          end
         end
 
         def initialize(pipeline)
