@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "fileutils"
-require "pathname"
 
 module Metacrunch
   class Cli
@@ -43,9 +42,7 @@ module Metacrunch
         templates = {path => job_template(name, path)}
         templates[File.join("test", "#{name}_test.rb")] = test_template(name, path) if @test
         existing = templates.keys.select { File.exist?(it) }
-        if existing.any? && !@force
-          raise UsageError, "#{existing.join(", ")} already exists; use --force to overwrite"
-        end
+        raise UsageError, "#{existing.join(", ")} already exists; use --force to overwrite" if existing.any? && !@force
 
         templates
       end
