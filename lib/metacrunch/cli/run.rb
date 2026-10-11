@@ -10,11 +10,54 @@ module Metacrunch
       SUMMARY = "Run a job"
       USAGE = "run [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]"
 
+      def initialize(streams)
+        super
+        @options = {}
+      end
+
       private
 
+      def define_options(parser)
+        super
+        parser.separator("")
+        parser.on("-i", "--input PATH", "Read JSON Lines from PATH (- for stdin) instead of the job's source") do |path|
+          @options[:input] = path
+        end
+        parser.on("-o", "--output PATH", "Write JSON Lines to PATH (- for stdout) instead of the job's sink") do |path|
+          @options[:output] = path
+        end
+        parser.on("--rejects PATH", "Write rejected records with their context to PATH") { @options[:rejects] = it }
+        parser.on("--errors PATH", "Write failed records with their context to PATH") { @options[:errors] = it }
+        parser.on("-n", "--limit N", Integer, "Process only the first N source records") do |count|
+          raise UsageError, "--limit must be at least 1" unless count.positive?
+
+          @options[:limit] = count
+        end
+        parser.on("--on-error POLICY", "abort or skip, instead of the job's error policy") do |policy|
+          raise UsageError, "--on-error must be abort or skip" unless ["abort", "skip"].include?(policy)
+
+          @options[:on_error] = policy.to_sym
+        end
+        parser.on("--max-errors N", Integer, "Stop after more than N failed records (needs skip)") do |count|
+          raise UsageError, "--max-errors must not be negative" if count.negative?
+
+          @options[:max_errors] = count
+        end
+        parser.on("--stats PATH", "Write status and stats as JSON to PATH (- for stdout)") { @options[:stats] = it }
+      end
+
       def execute_job(job, argv)
-        pipeline = RunOptions.new.apply(build_pipeline(job, argv), stdin: @stdin, stdout: @stdout)
-        report(Engine.new(pipeline).run)
+        options = RunOptions.new(**@options)
+        pipeline = options.apply(build_pipeline(job, argv), stdin: @stdin, stdout: @stdout)
+        result = Engine.new(pipeline).run
+        write_stats(options.stats, result) if options.stats
+        report(result)
+      end
+
+      def write_stats(path, result)
+        error = result.error && {"class" => result.error.class.name, "message" => result.error.message}
+        json = JSON.pretty_generate({"status" => result.status, "error" => error, "stats" => result.stats.to_h})
+        path == JsonLines::STDIO ? @stdout.puts(json) : File.write(path, "#{json}\n")
       end
 
       # Logs the error and its cause once each (a StepError message already
