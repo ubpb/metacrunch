@@ -179,7 +179,7 @@ class TraceTest < Minitest::Test
   end
 
   def test_a_job_without_steps
-    assert_equal "#1\n  sink    1 record (not written)\ntraced 1 record: 1 to sink\n", trace_run { source [1] }
+    assert_equal("#1\n  sink    1 record (not written)\ntraced 1 record: 1 to sink\n", trace_run { source [1] })
   end
 
   private
