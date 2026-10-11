@@ -60,7 +60,24 @@ module Metacrunch
 
       def target(path, stdout) = path == JsonLines::STDIO ? stdout : path
 
-      def key(path) = path == JsonLines::STDIO ? path : File.expand_path(path)
+      # Identifies a file across spellings and symlinks: existing files by
+      # their real path, new ones by their real directory.
+      def key(path)
+        return path if path == JsonLines::STDIO
+
+        expanded = File.expand_path(path)
+        return File.realpath(expanded) if File.exist?(expanded)
+
+        directory = File.dirname(expanded)
+        File.join(File.exist?(directory) ? File.realpath(directory) : directory, File.basename(expanded))
+      end
+
+      # Also through hard links and, on case-insensitive file systems, case.
+      def same_file?(first, second)
+        return true if key(first) == key(second)
+
+        File.exist?(first) && File.exist?(second) && File.identical?(first, second)
+      end
 
       def error_policy(pipeline)
         policy = on_error || pipeline.on_error
@@ -90,7 +107,7 @@ module Metacrunch
         files = options.reject { |_option, path| path.nil? || path == JsonLines::STDIO }
         files.to_a.combination(2).each do |(first, first_path), (second, second_path)|
           next if [first, second] == ["--rejects", "--errors"]
-          next unless key(first_path) == key(second_path)
+          next unless same_file?(first_path, second_path)
 
           raise UsageError, "#{first} and #{second} name the same file: #{second_path}"
         end
