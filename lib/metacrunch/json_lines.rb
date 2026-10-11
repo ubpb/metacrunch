@@ -191,7 +191,8 @@ module Metacrunch
     # Sink for the rejects and errors roles: writes every record with its
     # context as an envelope (record, id, position, marks, rejection,
     # failure). Values that are not JSON types are written as their inspect
-    # string, so diagnostics never stop a run.
+    # string and strings with invalid UTF-8 scrubbed, so diagnostics never
+    # stop a run.
     class ContextWriter < Writer
 
       private
@@ -201,8 +202,8 @@ module Metacrunch
       end
 
       def envelope(record, ctx)
-        plain = json?(record)
-        data = {"record" => plain ? record : record.inspect}
+        plain = record.is_a?(String) || json?(record)
+        data = {"record" => plain ? json(record) : record.inspect}
         data["record_class"] = record.class.name unless plain
         data.merge!("id" => json(ctx.id), "position" => ctx.position, "marks" => ctx.marks.map { note(it) })
         data["rejection"] = note(ctx.rejection) if ctx.rejection
@@ -219,7 +220,10 @@ module Metacrunch
         {"step" => failure.step, "error" => error.class.name, "message" => json(error.message)}
       end
 
-      def json(value) = json?(value) ? value : value.inspect
+      def json(value)
+        value = value.scrub if value.is_a?(String)
+        json?(value) ? value : value.inspect
+      end
 
       def json?(value)
         JSON.generate(value, strict: true)
