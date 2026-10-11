@@ -95,10 +95,22 @@ module Metacrunch
         # Returns false if the worker is gone: it ended after an error, which
         # the main thread reports when it reaches that batch.
         def send_batch(handle, slice)
-          Frame.write(handle.input, Marshal.dump(slice.transpose))
+          positions, records = slice.transpose
+          Frame.write(handle.input, Marshal.dump([positions, records]))
           true
+        rescue TypeError
+          undumpable_record(handle, positions, records)
         rescue Errno::EPIPE
           false
+        end
+
+        # Sends the records before the first one Marshal cannot dump, then
+        # raises like an error of the source.
+        def undumpable_record(handle, positions, records)
+          index, error = Dump.first_undumpable(records)
+          Frame.write(handle.input, Marshal.dump([positions.first(index), records.first(index)])) if index.positive?
+          raise Error, "record at position #{positions[index]} cannot be sent to a worker: #{error.message}; " \
+                       "with --workers, records must be Marshal-able (e.g. parse XML in a step, not in the source)"
         end
 
         # Applies batch k from worker k mod N until a worker sends :done
@@ -157,26 +169,57 @@ module Metacrunch
         # Raises the signal the worker ended by (SIGINT, SIGTERM), as if this
         # process had got it, else an Error.
         def ended(handle)
-          status = reap(handle)
+          status = reap(handle, deadline)
           raise Interrupt if status.termsig == INTERRUPT
           raise SignalException, TERMINATE if status.termsig == TERMINATE
 
-          raise Error, "worker #{handle.number} (pid #{handle.pid}) ended unexpectedly"
+          message = "worker #{handle.number} (pid #{handle.pid}) ended unexpectedly (#{describe(status)})"
+          raise Error, "#{message}#{hint(status)}"
         end
 
-        def reap(handle)
-          handle.status ||= Process.waitpid2(handle.pid).last
+        # Waits for a worker until the deadline, then kills it. Returns its
+        # status.
+        def reap(handle, limit)
+          return handle.status if handle.status
+
+          loop do
+            result = Process.waitpid2(handle.pid, Process::WNOHANG)
+            return handle.status = result.last if result
+            break if now >= limit
+
+            sleep(0.01)
+          end
+          Process.kill("KILL", handle.pid)
+          handle.status = Process.waitpid2(handle.pid).last
+        end
+
+        def deadline = now + @stop_timeout
+
+        def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+        def describe(status)
+          status.signaled? ? "killed by SIG#{Signal.signame(status.termsig)}" : "exit status #{status.exitstatus}"
+        end
+
+        # On macOS a forked child crashes with SIGABRT if a gem initialized
+        # Objective-C in the parent.
+        def hint(status)
+          return "" unless RUBY_PLATFORM.include?("darwin") && status.termsig == Signal.list.fetch("ABRT")
+
+          "; on macOS, a gem that uses Objective-C needs OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES (see the Readme)"
         end
 
         # Ends the feeder and the workers. After a normal end the workers have
-        # ended already and are only reaped; otherwise they get SIGTERM.
+        # ended already and are only reaped; otherwise they get SIGTERM and,
+        # after the stop timeout, SIGKILL.
         def stop
           @feeder&.kill&.join
           @handles.each(&:close)
           @handles.each { terminate(it) } unless @finished
+          limit = deadline
           @handles.each do |handle|
-            reap(handle)
-            @pipeline.logger.debug { "worker #{handle.number} (pid #{handle.pid}) ended: #{handle.status}" }
+            reap(handle, limit)
+            @pipeline.logger.debug { "worker #{handle.number} (pid #{handle.pid}) ended: #{describe(handle.status)}" }
           end
         end
 
