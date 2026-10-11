@@ -172,7 +172,7 @@ module Metacrunch
       end
 
       def unseal(location, key = location.key!)
-        Credentials::Box.unseal(File.binread(location.file), key, path: location.file)
+        Credentials::Box.unseal(Credentials.read(location.file), key, path: location.file)
       end
 
       # path relative to the working directory if it is below it.

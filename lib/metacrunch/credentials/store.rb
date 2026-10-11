@@ -59,7 +59,7 @@ module Metacrunch
         end
         return unless File.file?(location.file)
 
-        plaintext = Box.unseal(File.binread(location.file), location.key!, path: location.file)
+        plaintext = Box.unseal(Credentials.read(location.file), location.key!, path: location.file)
         @logger&.debug("credentials: #{location.file}")
         Credentials.load_yaml(plaintext, location.file)
       end
