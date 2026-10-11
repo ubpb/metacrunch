@@ -96,7 +96,7 @@ module Metacrunch
           return unless ready?
 
           error = process_batches(input)
-          close_error = @processor.close
+          close_error = close_steps
           send_frame(:done, error: close_error) unless error
         rescue SignalException
           @processor.close
@@ -112,14 +112,28 @@ module Metacrunch
           logger.reopen(LogBuffer.new(@events)) if logger.is_a?(::Logger)
         end
 
+        # Opens the step callables and sends :ready, with the exception that
+        # open raised, also an exit, as inline. Signals pass.
         def ready?
           @processor.open
           send_frame(:ready)
           true
-        rescue *Engine::RECOVERABLE => e
-          @processor.close
+        rescue SignalException
+          raise
+        rescue Exception => e # rubocop:disable Lint/RescueException
+          close_steps
           send_frame(:ready, error: e)
           false
+        end
+
+        # Closes the step callables and returns the first error, also an exit,
+        # which the parent raises as inline. Signals pass.
+        def close_steps
+          @processor.close
+        rescue SignalException
+          raise
+        rescue Exception => e # rubocop:disable Lint/RescueException
+          e
         end
 
         # Returns the error that ended a batch, or nil at the end of the
