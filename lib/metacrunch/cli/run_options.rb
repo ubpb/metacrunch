@@ -2,6 +2,7 @@
 
 module Metacrunch
   class Cli
+
     # The options of `metacrunch run` that change the pipeline: source and
     # sinks replaced by JSON Lines, the filter default, the limit and the
     # error policy. Paths may be "-" for stdin or stdout.
@@ -27,9 +28,7 @@ module Metacrunch
       def apply_input(pipeline, stdin:)
         return pipeline.with(source: JsonLines::Reader.new(input == JsonLines::STDIO ? stdin : input)) if input
         return pipeline if pipeline.source
-        if stdin.tty?
-          raise UsageError, "job has no source and stdin is a terminal; pipe JSON Lines in or use -i PATH"
-        end
+        raise UsageError, "job has no source and stdin is a terminal; pipe JSON Lines in or use -i PATH" if stdin.tty?
 
         pipeline.with(source: JsonLines::Reader.new(stdin))
       end
@@ -91,5 +90,6 @@ module Metacrunch
         end
       end
     end
+
   end
 end
