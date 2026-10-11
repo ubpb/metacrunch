@@ -22,10 +22,6 @@ A job file is plain Ruby:
 
 ```ruby
 # jobs/numbers.rb
-class StdoutSink
-  def write(record) = $stdout.puts(record)
-end
-
 Metacrunch.job "numbers" do
   params do
     param :factor, Integer, default: 2, desc: "Multiplier"
@@ -36,18 +32,16 @@ Metacrunch.job "numbers" do
 
   reject("Negative") { it.negative? }
   map { it * params.factor }
-
-  sink StdoutSink.new
 end
 ```
 
 ```
-$ metacrunch jobs/numbers.rb --factor 3 -- 1 2 -5
+$ metacrunch run jobs/numbers.rb --factor 3 -- 1 2 -5
 3
 6
 ```
 
-Data goes to stdout, logs and the run summary go to stderr.
+A job without a sink writes its records to stdout as JSON Lines. Logs and the run summary go to stderr.
 
 ## Records
 
@@ -65,6 +59,11 @@ source MySource.new(params.files), id: ->(record) { record["_id"] }
 ```
 
 `id:` gives every record an id for logs and errors.
+
+`Metacrunch::JsonLines::Reader.new(path)` reads JSON Lines (`-` for stdin, `.gz` files are decompressed). A source
+can yield `Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines
+that are not valid JSON or not valid UTF-8. Invalid records fail like a step (the pseudo-step `source`) under the
+job's error policy.
 
 ## Steps
 
@@ -131,6 +130,10 @@ With `batch:` the sink gets `write_batch` calls with up to that many records; th
 when the job aborts or is interrupted, so `batch:` never changes which records arrive. One object used as both
 `sink` and `rejects` (or `errors`) is opened and closed once.
 
+`Metacrunch::JsonLines::Writer.new(path)` writes JSON Lines (`-` for stdout, `.gz` files are compressed) and refuses
+values that are not JSON types. `Metacrunch::JsonLines::ContextWriter` writes every record with its context (id,
+position, marks, rejection, failure), which suits the `rejects` and `errors` roles.
+
 ## Errors
 
 ```ruby
@@ -175,23 +178,69 @@ for help.
 ## Running jobs
 
 ```
-$ metacrunch [-h|-v] JOB_FILE [--job NAME] [JOB_PARAMS...] [ARGS...]
-$ metacrunch jobs/marc2es.rb --help
+$ metacrunch run [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]
+$ metacrunch JOB_FILE [JOB_PARAMS...] [ARGS...]      # short for run
+$ metacrunch run jobs/marc2es.rb --help                # the job's parameters
 ```
 
-`--job NAME` selects a job if the file defines several. Use `--` before arguments that start with `-`.
-The CLI does not change the working directory: relative paths are relative to where you start it.
+Options of `metacrunch` go before the job file; everything after it belongs to the job. Use `--` before job
+arguments that start with `-`. The CLI does not change the working directory: relative paths are relative to where
+you start it.
+
+| Option | |
+|---|---|
+| `-j`, `--job NAME` | Select a job in a file that defines several |
+| `-i`, `--input PATH` | Read JSON Lines from PATH (`-` for stdin) instead of the job's source |
+| `-o`, `--output PATH` | Write JSON Lines to PATH (`-` for stdout) instead of the job's sink |
+| `--rejects PATH`, `--errors PATH` | Write rejected or failed records with their context; both may name the same file |
+| `-n`, `--limit N` | Process only the first N source records |
+| `--on-error abort\|skip`, `--max-errors N` | Override the job's error policy |
+| `--stats PATH` | Write status and stats as JSON at the end (`-` for stdout) |
+| `--[no-]progress` | Progress on stderr; shown by default if stderr is a terminal |
+| `-q`, `-v` | Log warnings only, or debug messages too |
+
+A job file that starts with `#!/usr/bin/env metacrunch` and is executable runs as `./jobs/marc2es.rb ...`.
+
+### Pipes
+
+A job without `source` reads JSON Lines from stdin, a job without `sink` writes JSON Lines to stdout. Such jobs chain
+with each other and with other tools, and every stage runs in its own process:
+
+```
+$ metacrunch run marc2json.rb dumps/*.xml | jq -c 'select(.year > 2000)' | metacrunch run json2es.rb --index test
+```
+
+`source id: ->(record) { record["_id"] }` gives a job that reads stdin an id extractor. Only records survive a pipe,
+not their context. When the reader of the pipe stops (`| head`), the job flushes and closes its other sinks and ends
+quietly by SIGPIPE.
+
+### Debugging and checking jobs
+
+```
+$ metacrunch trace -n 5 jobs/marc2es.rb --index test dumps/a.xml
+$ metacrunch trace --position 4711 jobs/marc2es.rb --index test dumps/a.xml
+$ metacrunch check jobs/marc2es.rb --index test dumps/a.xml
+$ metacrunch new --test jobs/marc2json.rb
+```
+
+`trace` shows what every step does to the first records (or to the records at `--position`, or with `--id`): the
+changed keys of Hash records, marks, rejections and failures, and the records a `flat_map` emits. It writes nothing:
+all sinks are replaced. `--full` shows whole records.
+
+`check` loads the job, binds its parameters and builds it, without opening, reading or running anything. `new`
+creates a filter job that runs right away, and with `--test` a Minitest test for it.
 
 | Exit code | Meaning |
 |---|---|
 | 0 | ok |
 | 1 | aborted |
-| 2 | usage error (job file, parameters) |
+| 2 | usage error (command, options, job file, parameters; `check` found the job invalid) |
 | 3 | finished, but records failed (`on_error :skip`) |
 | 130 | interrupted by Ctrl-C (SIGINT) |
+| 141 | stdout was closed by the reader (SIGPIPE) |
 | 143 | terminated (SIGTERM) |
 
-After Ctrl-C or SIGTERM the job writes what its sinks have buffered, closes them, and `exe/metacrunch` ends by the
+After Ctrl-C or SIGTERM the job writes what its sinks have buffered, closes them, and `metacrunch` ends by the
 signal, so shells and `xargs` see the interruption. Data already written to stdout is kept.
 
 ## Testing jobs
