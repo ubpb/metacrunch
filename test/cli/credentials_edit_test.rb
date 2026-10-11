@@ -17,8 +17,20 @@ class CredentialsEditTest < Minitest::Test
 
       assert_equal 0, code, stderr
       assert_equal "catalog:\n  api_key: pässwörd\n", unseal(File.join(dir, "credentials.yml.enc"), key)
-      assert_equal ["master*.key\n", 0o600],
+      assert_equal ["master*.key*\n", 0o600],
                    [File.read(File.join(dir, ".gitignore")), File.stat(File.join(dir, "master.key")).mode & 0o777]
+    end
+  end
+
+  def test_the_gitignore_keeps_keys_and_their_leftovers_out_of_git
+    in_tmpdir do |root|
+      system("git", "-C", root, "init", "-q", exception: true)
+      edit(root, scripted_editor(root, "a: 1\n"))
+      paths = [".metacrunch/master.key", ".metacrunch/master.production.key.new", ".metacrunch/master.key.123.tmp"]
+      ignored = paths.select { system("git", "-C", root, "check-ignore", "-q", it) }
+
+      assert_equal paths, ignored
+      refute system("git", "-C", root, "check-ignore", "-q", ".metacrunch/credentials.yml.enc")
     end
   end
 
