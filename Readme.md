@@ -337,6 +337,13 @@ than it saves: 8 workers handled 0.5 M records/s, inline 2.8 M records/s.
   must be Marshal-able. A source that reads XML should yield Strings and leave the parsing (Nokogiri) to a step. An
   exception that cannot be sent is replaced by a `Metacrunch::WorkerError` with the original class and message.
   Marshal does not keep the frozen state: a frozen source record arrives unfrozen in the steps.
+- Workers speed up only the steps. The main process reads the source, sends and receives the records and writes the
+  sinks; with cheap steps or many workers it sets the pace. Like XML, JSON Lines are best parsed in a step, in the
+  workers: `-i` and `JsonLines::Reader` parse in the main process. With records of about 360 bytes and 4 workers, a
+  source that yields the lines, `File.foreach(params.input, chomp: true)`, with `map { JSON.parse(it) }` as the first
+  step handled 0.31 M instead of 0.19 M records/s. Such a job takes its file as a parameter, not with `-i`. Its `id:`
+  gets the line, not the parsed record (`line["id"]` is just `"id"`), and it does without the reader's handling of
+  `.gz` files, blank lines and invalid UTF-8.
 - Libraries must be loaded before the workers start: `require` them at job level, not in a step's `open` or `call`
   and not while the source reads. A record of a class that only one of the processes knows stops the run with an
   error that says so.
