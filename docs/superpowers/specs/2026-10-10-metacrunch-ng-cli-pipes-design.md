@@ -438,6 +438,8 @@ metacrunch trace [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]
 
 - The sink, `rejects` and `errors` sinks are replaced by null sinks. They are
   constructed but never opened; nothing is written.
+- `before` and `after` hooks do not run: a hook may change the outside world
+  (e.g. switch an index alias), which a trace must not do.
 - The error policy is always `:skip` without limit: failures are shown and
   do not end the trace.
 - With `--position` or `--id`, records are read until all selected records

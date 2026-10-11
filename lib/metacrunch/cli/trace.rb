@@ -3,7 +3,8 @@
 module Metacrunch
   class Cli
     # metacrunch trace: shows what each step does to the first records. All
-    # sinks are replaced by null sinks; failures are shown and skipped.
+    # sinks are replaced by null sinks and no before/after hook runs, so a
+    # trace changes nothing; failures are shown and skipped.
     class TraceCommand < JobCommand
 
       NAME = "trace"
@@ -54,7 +55,8 @@ module Metacrunch
       def traced_pipeline(pipeline)
         null = SinkAdapter.new(Metacrunch::Trace::NullSink.new)
         RunOptions.new(input: @input).apply_input(pipeline, stdin: @stdin).with(
-          sink: null, rejects: null, errors: null, on_error: :skip, max_errors: nil, limit:
+          sink: null, rejects: null, errors: null, on_error: :skip, max_errors: nil, limit:,
+          before_hooks: [], after_hooks: []
         )
       end
 
