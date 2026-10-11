@@ -227,12 +227,13 @@ $ metacrunch run -w 8 jobs/sanitize.rb data/publications.jsonl
 ```
 
 Workers pay off when the steps are expensive. With about 28 µs of work per record, 8 workers were about 5× as fast.
-With cheap steps (a few `map`s over Hashes), sending records between processes costs more than it saves, and the
-job gets slower.
+With cheap steps (a few `map`s over Hashes, about 0.4 µs per record), sending records between processes costs more
+than it saves: 8 workers handled 0.5 M records/s, inline 2.8 M records/s.
 
 - Records travel between the processes with `Marshal`. Records, the `value:` of marks and rejections and `ctx.store`
   must be Marshal-able. A source that reads XML should yield Strings and leave the parsing (Nokogiri) to a step. An
   exception that cannot be sent is replaced by a `Metacrunch::WorkerError` with the original class and message.
+  Marshal does not keep the frozen state: a frozen source record arrives unfrozen in the steps.
 - Libraries must be loaded before the workers start: `require` them at job level, not in a step's `open` or `call`
   and not while the source reads. A record of a class that only one of the processes knows stops the run with an
   error that says so.
@@ -240,7 +241,11 @@ job gets slower.
   connections. Data that the workers only read, such as lookup tables, belongs at job level or in a `before` hook:
   the workers inherit it from the main process. Steps are opened after the `before` hooks, also without workers.
 - Records are sent in batches of 100, so a slow source (records trickling in through a pipe) delays a record until
-  its batch is full.
+  its batch is full. Each process holds a few batches: with records of 1 MB, the main process needs several hundred
+  MB more than without workers.
+- The source is read in a thread of its own. A source that relies on thread-local state (`Thread.current[...]`,
+  e.g. a database connection per thread) or that continues an external enumerator (`Enumerator#next`) begun in
+  `open` behaves differently than without workers.
 - After an abort in the middle of a batch, the stats may count up to 99 records after the point of abort; the
   records in the sinks are exact. With `profile true`, step times are summed over all workers.
 - `trace` always runs without workers. In tests, `Metacrunch::Testing.run(job, source: records, workers: 2)` checks

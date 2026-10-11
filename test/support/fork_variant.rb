@@ -3,9 +3,10 @@
 # Runs the tests of an engine test class a second time, with the steps in
 # two worker processes and batches of three records, so batch boundaries
 # fall inside the data: Executor::Fork must give the results of inline
-# runs. inline_only names the tests that cannot run with workers (an
+# runs. inline_only names the tests that cannot run with workers: an
 # observer, state shared with a step, a step that opens in this process,
-# exact stats after an abort in the middle of a batch).
+# exact stats after an abort in the middle of a batch, or a signal raised
+# in a step, which discards the worker's batch in flight (spec 4.3).
 module ForkVariant
 
   # Fails a test that leaves a child process behind.
