@@ -1,0 +1,12 @@
+[
+  {"_id": "1", "public": true, "title": "Programming Ruby", "year": 2004, "isbns": ["978-0974514055"]},
+  {"_id": "2", "public": true, "title": "The Ruby Way", "year": 2015, "isbns": ["978-0321714633", "978-0134315324"]},
+  {"_id": "3", "public": false, "title": "Internal Report", "year": 2021, "isbns": []},
+  {"_id": "4", "public": true, "title": "Ancient Herbal", "year": 1550, "isbns": []},
+  {"_id": "5", "public": true, "title": null, "year": 2001, "isbns": []},
+  {"_id": "6", "public": true, "title": "Metadata Basics", "year": "unknown", "isbns": []},
+  {"_id": "7", "public": true, "title": "Eloquent Ruby", "year": 2011, "isbns": ["978-0321584106"]},
+  {"_id": "8", "public": false, "title": "Draft", "year": 2023, "isbns": []},
+  {"_id": "9", "public": true, "title": "Library Science", "year": 1999},
+  {"_id": "10", "public": true, "title": "Practical Object-Oriented Design", "year": 2018, "isbns": ["978-0134456478"]}
+]
