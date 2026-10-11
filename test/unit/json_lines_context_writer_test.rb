@@ -36,6 +36,14 @@ class JsonLinesContextWriterTest < Minitest::Test
                  JSON.parse(write("{\"id\": 47"))["failure"])
   end
 
+  def test_writes_worker_errors_as_the_original_exception
+    error = Metacrunch::WorkerError.new("Net::Broken", "socket closed")
+    @ctx.failure = Metacrunch::Failure.new(error:, step: "map#1")
+
+    assert_equal({"step" => "map#1", "error" => "Net::Broken", "message" => "socket closed"},
+                 JSON.parse(write(1))["failure"])
+  end
+
   def test_writes_values_that_are_not_json_as_inspect_strings
     @ctx.mark("Odd", value: Time.at(0).utc)
     data = JSON.parse(write(Opaque.new))

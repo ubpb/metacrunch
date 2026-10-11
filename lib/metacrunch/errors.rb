@@ -31,4 +31,19 @@ module Metacrunch
 
   end
 
+  # Stands in for an exception that a worker process cannot send to the
+  # parent because Marshal cannot dump it (e.g. it holds an IO). Keeps the
+  # original class name, message and backtrace.
+  class WorkerError < Error
+
+    attr_reader :original_class, :original_message
+
+    def initialize(original_class, original_message)
+      @original_class = original_class
+      @original_message = original_message
+      super("#{original_class}: #{original_message}")
+    end
+
+  end
+
 end
