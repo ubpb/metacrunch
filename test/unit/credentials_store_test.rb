@@ -104,6 +104,18 @@ class CredentialsStoreTest < Minitest::Test
     end
   end
 
+  def test_inspect_shows_neither_the_key_nor_the_values
+    in_tmpdir do |root|
+      key = write_credentials(root, {"catalog" => {"api_key" => "sk-123-geheim"}}, key_file: false)
+      env = {"METACRUNCH_MASTER_KEY" => key.hex}
+      credentials = Metacrunch::Credentials.store(job_file: nil, env:, directory: File.join(root, ".metacrunch"))
+      credentials.lookup("catalog.api_key")
+
+      assert_equal "#<Metacrunch::Credentials::Store #{root}/.metacrunch/credentials.yml.enc>", credentials.inspect
+      refute_includes Metacrunch::Credentials::Location.for_job(job_file: nil, env:).inspect, key.hex
+    end
+  end
+
   def test_origin_names_the_path_and_the_file
     credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: "/p/.metacrunch")
 

@@ -73,6 +73,9 @@ module Metacrunch
 
       def explicit? = @explicit
 
+      # Without @env, which may hold METACRUNCH_MASTER_KEY.
+      def inspect = "#<#{self.class.name} #{directory || "without directory"} environment=#{environment.inspect}>"
+
       def exist? = !directory.nil? && File.directory?(directory)
 
       def file = directory && File.join(directory, Credentials.file_name(environment))

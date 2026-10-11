@@ -24,6 +24,10 @@ module Metacrunch
       # Where a value came from, for messages.
       def origin(path) = "credential #{path} in #{@location.file}"
 
+      # Names the file only: the decrypted values must not show up in
+      # debuggers or error reports.
+      def inspect = "#<#{self.class.name} #{@location.file || "without directory"}>"
+
       # Why path has no value, for the message about a missing parameter.
       def missing(path)
         location = @location
