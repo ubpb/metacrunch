@@ -224,8 +224,8 @@ $ metacrunch new --test jobs/marc2json.rb
 ```
 
 `trace` shows what every step does to the first records (or to the records at `--position`, or with `--id`): the
-changed keys of Hash records, marks, rejections and failures, and the records a `flat_map` emits. It writes nothing:
-all sinks are replaced. `--full` shows whole records.
+changed keys of Hash records, marks, rejections and failures, and the records a `flat_map` emits. It changes
+nothing: all sinks are replaced, and `before` and `after` hooks do not run. `--full` shows whole records.
 
 `check` loads the job, binds its parameters and builds it, without opening, reading or running anything. `new`
 creates a filter job that runs right away, and with `--test` a Minitest test for it.

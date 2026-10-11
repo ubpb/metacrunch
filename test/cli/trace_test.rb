@@ -50,6 +50,13 @@ class TraceCommandTest < Minitest::Test
     assert_empty stderr.string
   end
 
+  def test_runs_no_hooks
+    code, stdout, = cli("trace", job("hooked.rb"))
+
+    assert_equal 0, code
+    assert_match(/^traced 1 record: 1 to sink$/, stdout)
+  end
+
   def test_usage_errors
     assert_match(/use either --position or --id/, cli("trace", "--position", "1", "--id", "a", job("double.rb"))[2])
     assert_match(/--position needs positive numbers, got x/, cli("trace", "--position", "x", job("double.rb"))[2])
