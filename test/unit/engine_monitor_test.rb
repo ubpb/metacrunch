@@ -54,6 +54,13 @@ class EngineMonitorTest < Minitest::Test
     assert_equal [:start, :stop], interrupted.events.map(&:first)
   end
 
+  def test_the_monitor_knows_the_number_of_workers
+    monitor = RecordingMonitor.new
+    engine(build_pipeline { source [1] }, monitor:).run
+
+    assert_equal executor.workers, monitor.live.workers
+  end
+
   def test_failures_and_time_are_live
     monitor = RecordingMonitor.new
     pipeline = build_pipeline do

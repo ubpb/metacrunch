@@ -25,10 +25,11 @@ module Metacrunch
     # Runs the job with CLI-style arguments. Raises ParamError for invalid
     # arguments and lets errors from the recipe itself (e.g. a component
     # constructor or a DSL mistake) propagate. Errors while the pipeline
-    # runs end up in the Result. limit stops after that many records.
-    def run(argv = [], env: ENV, logger: Metacrunch.logger, observer: nil, limit: nil)
+    # runs end up in the Result. limit stops after that many records;
+    # workers runs the steps in that many processes.
+    def run(argv = [], env: ENV, logger: Metacrunch.logger, observer: nil, limit: nil, workers: nil)
       built = pipeline(binder: ->(schema) { schema.bind_argv(argv, env:) }, logger:)
-      Engine.new(built.with(limit:), observer:).run
+      Engine.new(built.with(limit:), observer:, executor: Executor.for(workers)).run
     end
 
     # The declared parameters. Builds no source, step or sink.

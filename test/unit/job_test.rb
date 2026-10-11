@@ -4,6 +4,8 @@ require "test_helper"
 
 class JobTest < Minitest::Test
 
+  include ForkVariant::NoWorkerLeft
+
   SILENT = Logger.new(nil)
 
   def test_run_binds_cli_arguments_and_returns_the_result
@@ -21,6 +23,18 @@ class JobTest < Minitest::Test
 
     assert_equal :ok, result.status
     assert_equal [3, 6], target.records
+  end
+
+  def test_run_with_workers_gives_the_same_records
+    target = CollectingSink.new
+    job = Metacrunch.job do
+      source [1, 2, 3, 4]
+      map { it * 2 }
+      sink target
+    end
+    result = job.run([], logger: SILENT, workers: 2)
+
+    assert_equal [:ok, [2, 4, 6, 8]], [result.status, target.records]
   end
 
   def test_each_run_builds_a_fresh_pipeline

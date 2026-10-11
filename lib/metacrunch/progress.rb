@@ -110,11 +110,12 @@ module Metacrunch
       @output.write(LOG_FORMATTER.call("INFO", Time.now, nil, line))
     end
 
-    # The status: progress (bar or spinner), elapsed time, ETA and counts.
+    # The status: progress (bar or spinner), elapsed time, ETA, the number
+    # of workers and counts.
     def line
       now = @clock.call
       read = @live.read
-      [head(now - @started, fraction(read)), counts(read, rate(now, read))].join("  ")
+      [head(now - @started, fraction(read)), workers, counts(read, rate(now, read))].compact.join("  ")
     end
 
     private
@@ -153,6 +154,11 @@ module Metacrunch
       return "progress" if @mode == :log
 
       done ? bar(done) : spinner
+    end
+
+    def workers
+      count = @live.workers
+      "#{count} workers" if count && count > 1
     end
 
     def counts(read, rate)

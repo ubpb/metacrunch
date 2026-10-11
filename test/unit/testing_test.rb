@@ -5,6 +5,8 @@ require "metacrunch/testing"
 
 class TestingTest < Minitest::Test
 
+  include ForkVariant::NoWorkerLeft
+
   # Fails if the job's own source or sinks are used.
   class Untouchable
 
@@ -21,6 +23,13 @@ class TestingTest < Minitest::Test
 
     assert_equal [:ok_with_failures, [1]], [result.status, result.records]
     assert_equal([[9, "Too large"]], result.rejects.map { |record, rejection| [record, rejection.reason] })
+    assert_equal([[0, "zero"]], result.errors.map { |record, failure| [record, failure.error.message] })
+  end
+
+  def test_runs_jobs_with_workers
+    result = Metacrunch::Testing.run(build_job, params: {limit: 5}, source: [1, 0, 9], workers: 2)
+
+    assert_equal [:ok_with_failures, [1]], [result.status, result.records]
     assert_equal([[0, "zero"]], result.errors.map { |record, failure| [record, failure.error.message] })
   end
 

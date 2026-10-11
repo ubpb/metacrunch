@@ -41,8 +41,9 @@ module Metacrunch
     # params are bound like CLI values (strings are converted), without
     # environment lookup. The job's sinks are built but never opened.
     # Records are collected even if the job has no sink; stats.written is
-    # 0 then, as in a real run.
-    def run(job, params: {}, source: nil, logger: Logger.new(nil))
+    # 0 then, as in a real run. workers: run the steps in that many
+    # processes, to check that the job's records cross process boundaries.
+    def run(job, params: {}, source: nil, logger: Logger.new(nil), workers: nil)
       unless source.nil? || source.respond_to?(:each)
         raise ArgumentError, "source must respond to #each, got #{source.inspect}"
       end
@@ -55,7 +56,7 @@ module Metacrunch
       raise ArgumentError, "the job has no source; pass source:" unless source
 
       pipeline = pipeline.with(source:, **adapters)
-      result = Engine.new(pipeline).run
+      result = Engine.new(pipeline, executor: Executor.for(workers)).run
       Result.new(
         records: memory[:sink].records,
         rejects: memory[:rejects].records.zip(memory[:rejects].contexts.map(&:rejection)),
