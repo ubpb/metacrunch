@@ -5,26 +5,28 @@ require "zlib"
 
 module Metacrunch
   # A source and sinks for JSON Lines: one JSON value per line. Each takes a
-  # path, "-" for stdin or stdout, or an IO object; IO objects are never
-  # closed. Paths ending in ".gz" are read and written with gzip.
+  # path (String or Pathname), "-" for stdin or stdout, or an IO object; IO
+  # objects are never closed. Paths ending in ".gz" are read and written with
+  # gzip.
   module JsonLines
 
     STDIO = "-"
     GZIP = ".gz"
 
     # Source: yields every line parsed with JSON.parse. A line that is not
-    # valid JSON (or not valid UTF-8) is yielded as InvalidRecord, so the
-    # job's error policy decides. Blank lines are skipped.
+    # valid JSON (or not valid UTF-8, or has duplicate keys) is yielded as
+    # InvalidRecord, so the job's error policy decides. Blank lines and byte
+    # order marks (also of concatenated files) are skipped.
     class Reader
 
       # How often (in lines) the position in a file is sampled for #progress.
       PROGRESS_EVERY = 1024
-      BOM = "﻿"
+      BOM = "\uFEFF"
       BLANK = Object.new.freeze
       private_constant :BLANK
 
       def initialize(target)
-        @target = target
+        @target = target.is_a?(Pathname) ? target.to_s : target
         @size = nil
         @done = 0
       end
@@ -36,7 +38,7 @@ module Metacrunch
             lines += 1
             @done = file.pos if file && (lines % PROGRESS_EVERY).zero?
             line.force_encoding(Encoding::UTF_8)
-            line.delete_prefix!(BOM) if lines == 1
+            line.delete_prefix!(BOM)
             record = parse(line)
             yield record unless record.equal?(BLANK)
           end
@@ -118,7 +120,7 @@ module Metacrunch
     class Writer
 
       def initialize(target)
-        @target = target
+        @target = target.is_a?(Pathname) ? target.to_s : target
         @io = nil
         @own = false
         @broken = false

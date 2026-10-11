@@ -63,7 +63,8 @@ source MySource.new(params.files), id: ->(record) { record["_id"] }
 `Metacrunch::JsonLines::Reader.new(path)` reads JSON Lines (`-` for stdin, `.gz` files are decompressed). A source
 can yield `Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines
 that are not valid JSON or not valid UTF-8. Invalid records fail like a step (the pseudo-step `source`) under the
-job's error policy.
+job's error policy. Note that JSON objects with duplicate keys count as invalid, and numbers beyond the Float range
+(`1e400`) are read as `Infinity`, which the writer refuses.
 
 ## Steps
 
