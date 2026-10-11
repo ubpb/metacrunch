@@ -74,6 +74,24 @@ class ContextTest < Minitest::Test
     refute_predicate record_logger, :debug?
   end
 
+  def test_a_state_rebuilds_the_context_with_another_logger
+    ctx = build_context
+    ctx.step = "map#1"
+    ctx.mark("Odd", value: 1)
+    ctx.store["seen"] = true
+    ctx.reject!("Bad")
+    ctx.failure = Metacrunch::Failure.new(error: ArgumentError.new("x"), step: "map#1")
+    io = StringIO.new
+    state = Marshal.load(Marshal.dump(ctx.to_state))
+    copy = Metacrunch::Context.from_state(state, logger: Metacrunch.build_logger(io))
+    copy.logger.info("rebuilt")
+
+    assert_equal [ctx.id, ctx.position, ctx.step, ctx.marks, ctx.store],
+                 [copy.id, copy.position, copy.step, copy.marks, copy.store]
+    assert_equal [ctx.rejection, "x"], [copy.rejection, copy.failure.error.message]
+    assert_match(/INFO  \[rec1\] rebuilt/, io.string)
+  end
+
   private
 
   def build_context(id: "rec1", logger: Logger.new(nil), on_mark: nil)

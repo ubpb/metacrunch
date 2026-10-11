@@ -10,6 +10,10 @@ module Metacrunch
   # emits and passes it to steps and sinks that accept a second argument.
   class Context
 
+    # What a sink can read of a context, as plain values. It crosses the
+    # boundary between a worker and the parent (Executor::Fork).
+    State = Data.define(:id, :position, :step, :marks, :store, :rejection, :failure)
+
     attr_reader :id, :position, :marks, :store, :rejection
     attr_accessor :step, :failure
 
@@ -22,16 +26,26 @@ module Metacrunch
       raise ContractError, "a reason must be a non-empty String or Symbol, got #{reason.inspect}"
     end
 
+    # A context from a State, with this process's logger. It counts no
+    # marks: they were counted where they were made.
+    def self.from_state(state, logger:)
+      new(id: state.id, position: state.position, logger:, marks: state.marks, store: state.store,
+          rejection: state.rejection).tap do |ctx|
+        ctx.step = state.step
+        ctx.failure = state.failure
+      end
+    end
+
     # on_mark is called with the reason of every mark, so marks are counted
     # when they happen (once, even if a flat_map copies the context later).
-    def initialize(id:, position:, logger:, on_mark: nil, marks: [], store: {})
+    def initialize(id:, position:, logger:, on_mark: nil, marks: [], store: {}, rejection: nil)
       @id = id
       @position = position
       @base_logger = logger
       @on_mark = on_mark
       @marks = marks
       @store = store
-      @rejection = nil
+      @rejection = rejection
       @failure = nil
       @step = nil
       @sealed = false
@@ -61,6 +75,8 @@ module Metacrunch
     def logger
       @logger ||= RecordLogger.new(@base_logger, id.nil? ? "##{position}" : id)
     end
+
+    def to_state = State.new(id:, position:, step:, marks:, store:, rejection:, failure:)
 
     # A copy for one child of a flat_map step: same id and position, own
     # marks and store.
