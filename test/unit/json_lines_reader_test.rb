@@ -30,8 +30,16 @@ class JsonLinesReaderTest < Minitest::Test
     assert_equal [{"a" => 1}, 2, 3], read(Reader.new(StringIO.new("{\"a\":1}\r\n2\r\n3")))
   end
 
-  def test_ignores_a_byte_order_mark
-    assert_equal [1, 2], read(Reader.new(StringIO.new("﻿1\n2\n")))
+  def test_ignores_byte_order_marks_also_of_concatenated_files
+    assert_equal [1, 2, 3], read(Reader.new(StringIO.new("\uFEFF1\n2\n\uFEFF3\n")))
+  end
+
+  def test_lines_with_duplicate_keys_are_invalid
+    assert_instance_of Metacrunch::InvalidRecord, read(Reader.new(StringIO.new("{\"a\":1,\"a\":2}\n"))).first
+  end
+
+  def test_accepts_pathnames
+    assert_equal [1, 2], read(Reader.new(Pathname(write("in.jsonl", "1\n2\n"))))
   end
 
   def test_invalid_lines_become_invalid_records
