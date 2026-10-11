@@ -32,10 +32,11 @@ module Metacrunch
 
     end
 
-    def initialize(pipeline, executor: Executor::Inline.new, observer: nil, select: nil)
+    def initialize(pipeline, executor: Executor::Inline.new, observer: nil, monitor: nil, select: nil)
       @pipeline = pipeline
       @executor = executor
       @observer = observer
+      @monitor = monitor
       @select = select
     end
 
@@ -43,12 +44,25 @@ module Metacrunch
       validate!
       @stats = StatsCollector.new(@pipeline.steps.map(&:name), profile: @pipeline.profile)
       @on_mark = @stats.method(:mark)
-      error = execute
+      error = monitored { execute }
       @stats.count_written(@pipeline.sink.delivered) if @pipeline.sink
       run_after_hooks(Result.new(status: status_for(error), error:, stats: @stats.snapshot))
     end
 
     private
+
+    # Tells the monitor about the run. stop runs in any case, also after an
+    # abort or a signal.
+    def monitored
+      return yield unless @monitor
+
+      @monitor.start(LiveStats.new(@stats, @pipeline))
+      begin
+        yield
+      ensure
+        @monitor.stop
+      end
+    end
 
     def validate!
       raise ArgumentError, "the pipeline has no source" unless @pipeline.source

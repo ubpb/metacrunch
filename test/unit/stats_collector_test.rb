@@ -45,6 +45,16 @@ class StatsCollectorTest < Minitest::Test
     assert_equal [{"ArgumentError" => 1}, 0], [stats.failed, stats.steps["map#1"].failed]
   end
 
+  def test_live_totals
+    collector = Metacrunch::StatsCollector.new(["filter#1", "reject#2"])
+    collector.count_read
+    collector.counter("filter#1").filtered += 1
+    collector.step_rejected("reject#2", "Patent")
+
+    assert_equal [1, 1, 1], [collector.read, collector.filtered_total, collector.rejected_total]
+    assert_operator collector.elapsed, :>=, 0
+  end
+
   def test_step_time_is_tracked_only_when_profiling
     plain = Metacrunch::StatsCollector.new(["map#1"])
     profiled = Metacrunch::StatsCollector.new(["map#1"], profile: true)

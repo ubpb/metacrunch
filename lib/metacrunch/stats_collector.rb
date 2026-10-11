@@ -7,7 +7,7 @@ module Metacrunch
 
     StepCounter = Struct.new(:input, :output, :filtered, :rejected, :failed, :time)
 
-    attr_reader :failed_total
+    attr_reader :read, :rejected_total, :failed_total
 
     def initialize(step_names, profile: false)
       @profile = profile
@@ -17,6 +17,7 @@ module Metacrunch
       @marked = Hash.new(0)
       @failed = Hash.new(0)
       @failed_total = 0
+      @rejected_total = 0
       @steps = step_names.to_h { |name| [name, StepCounter.new(0, 0, 0, 0, 0, profile ? 0.0 : nil)] }
       @started_at = now
     end
@@ -42,6 +43,7 @@ module Metacrunch
     def step_rejected(name, reason)
       @steps.fetch(name).rejected += 1
       @rejected[reason] += 1
+      @rejected_total += 1
     end
 
     def step_failed(name, error)
@@ -64,16 +66,26 @@ module Metacrunch
       @marked[reason] += 1
     end
 
+    # Iterates only the step counters, whose Hash never changes during a
+    # run, so another thread may call it.
+    def filtered_total
+      @steps.each_value.sum(&:filtered)
+    end
+
+    def elapsed
+      now - @started_at
+    end
+
     def snapshot
       Stats.new(
         read: @read,
         written: @written,
-        filtered: @steps.each_value.sum(&:filtered),
+        filtered: filtered_total,
         rejected: @rejected.dup,
         marked: @marked.dup,
         failed: @failed.dup,
         steps: @steps.transform_values { |counter| StepStats.new(**counter.to_h) },
-        duration: now - @started_at
+        duration: elapsed
       )
     end
 
