@@ -1,23 +1,25 @@
-# coding: utf-8
-lib = File.expand_path("../lib", __FILE__)
-$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require "metacrunch/marcxml/version"
+# frozen_string_literal: true
+
+require_relative "lib/metacrunch/marcxml/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = "metacrunch-marcxml"
-  spec.version       = Metacrunch::Marcxml::VERSION
-  spec.authors       = ["René Sprotte"]
-  spec.email         = "r.sprotte@ub.uni-paderborn.de"
-  spec.summary       = %q{MARCXML package for the metacrunch ETL toolkit.}
-  spec.homepage      = "http://github.com/ubpb/metacrunch-marcxml"
-  spec.license       = "MIT"
+  spec.name     = "metacrunch-marcxml"
+  spec.version  = Metacrunch::Marcxml::VERSION
+  spec.authors  = ["René Sprotte"]
+  spec.summary  = "MARCXML for metacrunch: an ordered record model, a fast parser, a source and a sink"
+  spec.homepage = "https://github.com/ubpb/metacrunch-marcxml"
+  spec.license  = "MIT"
 
-  spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
-  spec.bindir        = "exe"
-  spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
-  spec.require_paths = ["lib"]
+  spec.required_ruby_version = ">= 4.0"
 
-  spec.add_dependency "activesupport", ">= 5.1"
-  spec.add_dependency "ox",            ">= 2.11"
+  spec.metadata = {
+    "source_code_uri" => spec.homepage,
+    "changelog_uri" => "#{spec.homepage}/blob/master/CHANGELOG.md",
+    "rubygems_mfa_required" => "true"
+  }
+
+  spec.files = Dir["lib/**/*.rb", "CHANGELOG.md", "License.txt", "Readme.md"]
+
+  spec.add_dependency "metacrunch", ">= 5.0.0.pre", "< 6"
+  spec.add_dependency "ox", "~> 2.14"
 end
-
