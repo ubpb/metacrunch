@@ -342,6 +342,9 @@ source Metacrunch::Marcxml::Reader.new(params.files, normalize: :nfc),
   under the job's error policy. With `parse: false` it yields the strings.
 - Errors of an input as a whole (missing file, broken gzip) raise and stop
   the run, as for every source.
+- `each` without a block returns an Enumerator. `normalize:` with
+  `parse: false` raises `ArgumentError`; normalizing then belongs in the step
+  that parses.
 - `progress`: bytes read of all files (compressed position for gzip and
   tar.gz) divided by their total size; nil when a target is stdin, an IO or
   not a regular file.

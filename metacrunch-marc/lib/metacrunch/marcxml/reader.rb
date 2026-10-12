@@ -26,13 +26,20 @@ module Metacrunch
 
         @targets.each { check_target(it) }
         Marcxml.check_normalize(normalize)
+        if normalize && !parse
+          raise ArgumentError, "normalize: needs parse: true; with parse: false normalize in the step that parses: " \
+                               "Marcxml.parse(xml, normalize: :nfc)"
+        end
         @parse = parse
         @normalize = normalize
         @total = nil
         @done = 0
       end
 
+      # Without a block an Enumerator.
       def each
+        return enum_for(:each) unless block_given?
+
         @total = total_size
         @done = 0
         finished = 0
