@@ -285,6 +285,9 @@ its end tag, without parsing:
 - Text before the first record (XML declaration, `<collection>`) and after
   the last one is skipped. A record keeps its bytes; namespace declarations
   of the collection are not copied into it, which the parser does not need.
+- A record cut off by the end of the input (an interrupted download) is
+  yielded as it is, from its start tag on, so parsing it raises
+  `ParseError` and the `Reader` yields an `InvalidRecord`.
 - Limit, documented: an end tag inside CDATA or a comment cuts a record.
 
 ## 6. Serializing

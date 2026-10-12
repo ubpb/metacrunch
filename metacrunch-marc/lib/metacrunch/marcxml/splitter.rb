@@ -5,8 +5,8 @@ module Metacrunch
     # Cuts MARCXML into record strings without parsing it (Marcxml.each_xml).
     # The record element name, with its prefix, is taken from the first
     # record start tag; a record runs from a start tag to the next matching
-    # end tag. An end tag inside CDATA or a comment cuts a record there.
-    # Internal.
+    # end tag. An end tag inside CDATA or a comment cuts a record there; a
+    # record cut off by the end of the input is yielded as it is. Internal.
     class Splitter
 
       CHUNK_SIZE = 65_536
@@ -35,6 +35,8 @@ module Metacrunch
             break
           end
         end
+        rest = remainder
+        yield rest if rest
       end
 
       private
@@ -70,6 +72,16 @@ module Metacrunch
         @start = %r{<#{Regexp.escape(prefix)}record[\s>/]}n
         @end_tag = "</#{prefix}record>".b
         true
+      end
+
+      # The rest of the input from a record start tag on, at its end: a
+      # record the input cut off, which fails when it is parsed. nil if
+      # there is none.
+      def remainder
+        return unless @start
+
+        first = @buffer.index(@start, @position)
+        first && slice(first, @buffer.bytesize)
       end
 
       # Drops the buffer but its last bytes. Returns nil.
