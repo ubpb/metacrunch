@@ -1,171 +1,192 @@
-metacrunch-marcxml
-==================
+# metacrunch-marcxml
 
-[![Gem Version](https://badge.fury.io/rb/metacrunch-marcxml.svg)](http://badge.fury.io/rb/metacrunch-marcxml)
-[![Code Climate](https://codeclimate.com/github/ubpb/metacrunch-marcxml/badges/gpa.svg)](https://codeclimate.com/github/ubpb/metacrunch-marcxml)
-[![Test Coverage](https://codeclimate.com/github/ubpb/metacrunch-marcxml/badges/coverage.svg)](https://codeclimate.com/github/ubpb/metacrunch-marcxml/coverage)
-[![CircleCI](https://circleci.com/gh/ubpb/metacrunch-marcxml.svg?style=svg)](https://circleci.com/gh/ubpb/metacrunch-marcxml)
-
-This is the official [MARCXML](http://www.loc.gov/standards/marcxml/) package for the [metacrunch ETL toolkit](https://github.com/ubpb/metacrunch). It allows you to access MARCXML data by a simple and powerful Ruby API.
-
-There is no runtime dependency to metacrunch, so it's fine to use this gem in any Ruby application where you need to access MARCXML data.
-
-*Note: Before 2.0 this package was named `metacrunch-mab2` and has been renamed to `metacrunch-marcxml`. Due to this renaming and further development there are breaking API changes if you upgrade from 1.x to 2.x.*
-
-
-Installation
-------------
-
-Include the gem in your `Gemfile`
-
-```ruby
-gem "metacrunch-marcxml", "~> 4.0.0"
-```
-
-and run `$ bundle install` to install it.
-
-Or install it manually
-
-```
-$ gem install metacrunch-marcxml
-```
-
-
-Usage example
--------------
-
-*Note: For working examples on how to use this package in a metacrunch job check out our [demo repository](https://github.com/ubpb/metacrunch-demo).*
-
-#### Loading the library
+MARCXML for [metacrunch](https://github.com/ubpb/metacrunch): an ordered record model with a plain Ruby API, a fast
+parser that keeps the data as written, a serializer, and a source and a sink for metacrunch jobs.
 
 ```ruby
 require "metacrunch/marcxml"
+
+Metacrunch.job do
+  params { args :files, min: 1 }
+
+  source Metacrunch::Marcxml::Reader.new(params.files), id: ->(record) { record["001"]&.value }
+
+  map do |record|
+    {
+      "id" => record["001"]&.value,
+      "title" => record.field("245")&.join("a", "b", separator: " : "),
+      "authors" => record.values(["100", "700"], "a"),
+      "isbns" => record.values("020", "a")
+    }
+  end
+end
 ```
 
-#### Parsing a [MARCXML file](http://d-nb.info/982392028/about/marcxml)
+```
+$ metacrunch run jobs/marcxml2jsonl.rb records.xml.gz > records.jsonl
+```
+
+More in [`examples/`](examples): MARCXML to JSON Lines, and a cleanup job that writes MARCXML again.
+
+## Installation
 
 ```ruby
-# Load a MARCXML file (from a remote location in this example).
-require "open-uri"
-marcxml = URI.open("http://d-nb.info/982392028/about/marcxml"){|io| io.read}
-
-# Now parse the file
-record = Metacrunch::Marcxml.parse(marcxml)
-# .. or 
-record = Metacrunch::Marcxml[marcxml]
-# .. or
-record = Metacrunch::Marcxml(marcxml)
+# Gemfile
+gem "metacrunch-marcxml"
 ```
-If the MARCXML contains a collection of records you can set `collecton_mode: true` to get an array of all records. If set to false (the default) you get the first record.
+
+Requires Ruby 4.0 and metacrunch 5. The only other dependency is [Ox](https://github.com/ohler55/ox).
+
+## Records
+
+A `Metacrunch::Marcxml::Record` has a `leader` (a String or nil), a `type` (the `type` attribute of `<record>`, e.g.
+`"Bibliographic"`, or nil) and `fields`, an Array of `ControlField`s and `DataField`s in document order. A
+`DataField` has a `tag`, two indicators (`ind1`, `ind2`; blank is `" "`) and `subfields`, an Array of `Subfield`s
+with a `code` and a `value`. Tags and codes are Strings and are not checked, so local tags such as `852H` and codes
+such as `as` work.
+
+### Querying
 
 ```ruby
-# Parse a record collection
-marcxml = %{
-    <collection>
-        <record>...</record>
-        <record>...</record>
-        <record>...</record>
-    </collection>
-}
-records      = Metacrunch::Marcxml.parse(marcxml, collection_mode: true)
-first_record = Metacrunch::Marcxml.parse(marcxml, collection_mode: false)
+record.fields("650")                              # an Array of fields, in record order
+record.fields("100", "700")                       # several tags
+record.fields("600".."699")                       # a Range of tags
+record.fields(/\A6/)                              # a Regexp
+record.fields("856", ind1: "4", ind2: ["0", " "]) # indicators: a String or an Array
+record.field("245")                               # the first match or nil; record["245"] is the same
+record.values("650", "a", ind2: "7")              # the values of $a of the matching fields
+record.value("264", "b", ind2: "1")               # the first of those values or nil
+record.values("001")                              # control fields give their value
+record["008"]&.[](35..37)                         # positions of a control field
+record.leader&.[](6)
+
+field = record.field("245")
+field.values("a", "b")                            # in field order; without codes all values
+field.value("a")                                  # the first; field["a"] is the same
+field.join("a", "b", separator: " : ")            # nil if there is no value
+field.subfields("a")                              # an Array of Subfields
 ```
 
-#### Reading the leader
+`fields` and `subfields` without arguments return the record's and the field's own Arrays; a query with arguments
+returns a new Array. Results are plain Arrays, so they chain with `flat_map`, `filter_map` and friends:
+`record.fields("856", ind1: "4").flat_map { it.values("u") }`.
+
+### Changing
 
 ```ruby
-leader = record.leader
-# => #<Metacrunch::Marcxml::Record::Leader:0x00007f93741ddc10 ...>
-
-leader.value
-# => "00000pam a2200000 c 4500"
+record.add(Metacrunch::Marcxml::DataField.new("650", " ", "7", [["a", "Linked data"], ["2", "gnd"]]))
+record.append(Metacrunch::Marcxml::ControlField.new("009", "x"))
+record.remove("856", ind1: "4", ind2: "2")        # returns the removed fields
+field.add("a", "Value")                           # appends a subfield
+field.remove("x")                                 # returns the removed subfields
+field.ind1 = "1"
+copy = record.dup                                 # a deep copy
 ```
 
-#### Reading control fields
+`add` inserts a field before the first field whose tag sorts after its tag; `append` adds it at the end. `remove`
+without arguments removes all fields (all subfields).
+
+### Output
+
+- `record.to_xml` returns the record as MARCXML; `namespace: false` leaves out `xmlns`.
+- `record.to_h` returns MARC-in-JSON: `{"leader" => "...", "fields" => [{"001" => "..."}, {"245" => {"ind1" => "1",
+  "ind2" => "0", "subfields" => [{"a" => "..."}]}}]}`.
+- `record.to_s` and `inspect` show one line per field as MarcEdit does (`=245  10$aTitle$bSubtitle`), so records are
+  readable in `metacrunch trace` and in test failures.
+
+## Parsing
 
 ```ruby
-controlfield = record.controlfield("005")
-# => #<Metacrunch::Marcxml::Document::Controlfield:0x007fd4c5120ec0 ...>
-
-tag = controlfield.tag
-# => "005"
-
-value = controlfield.value
-# => "20130926112144.0"
+Metacrunch::Marcxml.parse(xml)                     # exactly one record from a String
+Metacrunch::Marcxml.each(io_or_string) { ... }     # every record, streaming
+Metacrunch::Marcxml.each_xml(io_or_string) { ... } # every record as a String, without parsing it
 ```
 
-#### Reading data fields / sub fields
+`each` and `each_xml` read Strings and IO-like objects (files, `Zlib::GzipReader`, pipes); without a block they
+return an Enumerator. Read large inputs from a file or an IO rather than from a String in memory. Parsing takes about
+25 µs per record of 3 KB in [`bench/parse.rb`](bench/parse.rb) (Ruby 4.0 with YJIT on an arm64 Mac); the time grows
+with the size of the records, by about 8 µs per KB.
+
+The parser keeps what the data says:
+
+- whitespace at the start, at the end and inside values, and line breaks (XML itself turns `\r\n` into `\n`);
+- the order of fields and subfields, repeated control fields, empty subfields;
+- CDATA, entities, and values interrupted by comments;
+- elements with a namespace prefix (`<marc:record>`), the `type` attribute, and a leader anywhere in the record.
+
+A missing or empty indicator becomes `" "`. With `normalize: :nfc` values are normalized to Unicode NFC (some systems
+export decomposed characters); by default they are left as they are.
+
+`Metacrunch::Marcxml::ParseError` reports input that is not well-formed (with `line` and `column`), input that ends
+inside a record, values that are not valid UTF-8 (MARCXML is UTF-8), and `parse` with no record or several. Several
+records without a `<collection>` around them are not well-formed XML for `each`; `each_xml` and the `Reader` read them.
+Ox, the XML parser underneath, does not validate and accepts some input that is not well-formed.
+
+`each_xml` cuts the input at the end tags of the records; an end tag inside a CDATA section or a comment cuts a record
+there.
+
+## In metacrunch jobs
+
+### Reader
 
 ```ruby
-# Find fields matching tag=100 and ind1=1 (author)
-datafield_set = record.datafields("100", ind1: "1")
-# => #<Metacrunch::Marcxml::Document::DatafieldSet:0x007fd4c4ce4b40 ...>
-
-first_author = datafield_set.first # set is an Enumerable
-# => #<Metacrunch::Marcxml::Document::Datafield:0x007fd4c5129480 ...>
-
-# Get the sub fields matching code=a (author name)
-subfield_set = first_author.subfields("a")
-# => #<Metacrunch::Marcxml::Document::SubfieldSet:0x007fd4c4c779f0 ...>
-
-# because sub field "a" is not repeatable we know there can only be one match
-first_author_subfield = subfield_set.first # subfield_set is an Enumerable
-# => #<Metacrunch::Marcxml::Document::Subfield:0x007fd4c5129660 ...>
-
-first_author_name = first_author_subfield.value
-# => "Orwell, George"
-
-# ... this can be a one liner
-first_author_name = record.datafields(100, ind1: "1").subfields("a").values.first
+source Metacrunch::Marcxml::Reader.new(params.files, normalize: :nfc), id: ->(record) { record["001"]&.value }
 ```
 
-#### Direct value access using a query string
+Reads one target or an Array of them: paths (`.xml`, `.gz`, `.tar`, `.tar.gz`, `.tgz`; every file in an archive is
+read as MARCXML), `"-"` for stdin, or IOs, which it does not close. A record that is not well-formed becomes a
+`Metacrunch::InvalidRecord` and fails under the job's error policy; the records after it are read. An error of a whole
+input (a missing file, a broken gzip file) stops the run. The progress display shows how much of the files has been
+read.
 
-*FEATURE IS EXPERIMENTAL AND SUBJECT TO CHANGE*
-
-Access fields as described above is flexible but very verbose. Most of the time you know your data and you are interested in a simple and direct way to access the field values.
-
-For this case we provide a way to query field values using a simple query string.
+### Writer
 
 ```ruby
-# Get the value of control field "005"
-record["005"]
-# => "20130926112144.0"
-
-# Get the first value of data field tag=100, ind1=1, sub field code=a
-record["1001*a"].first
-# => "Orwell, George"
+sink Metacrunch::Marcxml::Writer.new(params.output)   # a path (".gz" compresses), "-" for stdout, or an IO
 ```
 
-The query string syntax is simple. Each query string starts with three letters for the tag. If the tag starts with `00` it is considered a query for a control field value. Otherwise it is considered a data field / sub field query. In that case the next two characters are used to match ind1 and ind2. The default value is `*` which matches every indicator value. `#`, `-` and `_` are interpreted as `blank`. The last characters are used to match the code of the sub fields. To query for more than one sub field code you may separate them using commas.
+Writes one `<collection>` with a `<record>` per record. The closing tag is written also when a run aborts, so the file
+stays well-formed. A value with a character that XML 1.0 cannot represent (a control character other than tab and
+line breaks) stops the run with the record's position.
 
-By default sub field values are flattened. To get an array of matching sub field values for each matching data field set `flatten_subfields: false`.
+### Workers
 
-By default only the values are returned. That means you can't see from which sub field the value was extracted. If you query for just one sub field this information is not needed. But if you query for more than one sub field it may be useful. To get the sub field value and the sub field code to can set `values_as_hash: true`. This works for control fields as well.
-
-**Examples**
+`--workers` sends records between processes with `Marshal`. A parsed record costs much more to send than its XML: in
+`bench/parse.rb`, 42 µs per record for a parsed record and 1 µs for its XML string. With workers, let the reader
+yield the XML and parse it in the first step:
 
 ```ruby
-record["1001#a"] 
-# => [["Orwell, George"]]
-
-record["1001#a", flatten_subfields: true] 
-# => ["Orwell, George"]
-
-record["020**a,c"]
-# => [
-#      ["9783548267456", "kart. : EUR 6.00 (DE), EUR 6.20 (AT), sfr 11.00"],
-#      ["3548267459", "kart. : EUR 6.00 (DE), EUR 6.20 (AT), sfr 11.00"]
-#    ]
-
-record["264#1a,b,c", flatten_subfields: true]
-# => ["Berlin", "Ullstein", "2007"]
-
-record["264#1a,b,c", flatten_subfields: true, values_as_hash: true]
-# => [{"a"=>"Berlin"}, {"b"=>"Ullstein"}, {"c"=>"2007"}]
+source Metacrunch::Marcxml::Reader.new(params.files, parse: false)
+map(name: "parse") { Metacrunch::Marcxml.parse(it) }
 ```
 
-License
--------
+`id:` then gets the XML string.
 
-metacrunch-marcxml is available at [github](https://github.com/ubpb/metacrunch-marcxml) under [MIT license](https://github.com/ubpb/metacrunch-marcxml/blob/master/License.txt).
+### Testing jobs
+
+```ruby
+records = Metacrunch::Marcxml.each(<<~XML).to_a
+  <collection>
+    <record><controlfield tag="001">1</controlfield></record>
+  </collection>
+XML
+result = Metacrunch::Testing.run(job, source: records)
+```
+
+## Upgrading from 4.x
+
+See the [changelog](CHANGELOG.md) for all changes. The most common ones:
+
+| 4.x | 5 |
+|---|---|
+| `Metacrunch::Marcxml.parse(xml, collection_mode: true)` | `Metacrunch::Marcxml.each(xml).to_a` |
+| `record.datafields("245", ind2: "0").subfields("a").values` | `record.values("245", "a", ind2: "0")` |
+| `record["100**a"]` | `record.values("100", "a")` |
+| `record.controlfield("001").value` | `record["001"]&.value` |
+| `record.leader.value` | `record.leader` |
+| `datafield.subfields("a").first&.value` | `datafield.value("a")` |
+| `ind1: :blank` | `ind1: " "` |
+
+## License
+
+MIT; see [License.txt](License.txt).
