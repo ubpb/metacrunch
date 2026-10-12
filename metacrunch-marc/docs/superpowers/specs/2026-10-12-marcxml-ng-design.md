@@ -348,8 +348,10 @@ sink Metacrunch::Marcxml::Writer.new(params.output)
 
 - `open` writes `<?xml version="1.0" encoding="UTF-8"?>` and
   `<collection xmlns="http://www.loc.gov/MARC21/slim">`.
-- `write(record, ctx)` and `write_batch(records, ctxs)` write
-  `to_xml(namespace: false)` with every line indented by two more spaces.
+- `write(record, ctx)` and `write_batch(records, ctxs)` write each record
+  as `to_xml(namespace: false)` would, with every element indented by two
+  more spaces; the indentation never goes into a value (a value with a line
+  break stays unchanged).
 - `close` writes `</collection>`, also after an aborted run, and closes its
   own file (an IO from outside is only flushed). A run without records
   gives an empty collection.

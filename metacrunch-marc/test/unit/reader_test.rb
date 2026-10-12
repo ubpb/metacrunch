@@ -91,7 +91,7 @@ class ReaderTest < Minitest::Test
   end
 
   def test_normalize
-    path = write("nfd.xml", %(<record><controlfield tag="001">Müller</controlfield></record>))
+    path = write("nfd.xml", %(<record><controlfield tag="001">Mu\u0308ller</controlfield></record>))
 
     assert_equal "Müller", read(Reader.new(path, normalize: :nfc)).first["001"].value
   end

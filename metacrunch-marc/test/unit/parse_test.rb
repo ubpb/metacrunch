@@ -100,7 +100,7 @@ class ParseTest < Minitest::Test
   end
 
   def test_reads_input_with_a_byte_order_mark
-    record = Marcxml.parse(%(﻿<record><controlfield tag="001">x</controlfield></record>))
+    record = Marcxml.parse(%(\uFEFF<record><controlfield tag="001">x</controlfield></record>))
 
     assert_equal "x", record["001"].value
   end
@@ -112,9 +112,9 @@ class ParseTest < Minitest::Test
   end
 
   def test_normalize_nfc
-    xml = %(<record><controlfield tag="001">Müller</controlfield></record>)
+    xml = %(<record><controlfield tag="001">Mu\u0308ller</controlfield></record>)
 
-    assert_equal "Müller", Marcxml.parse(xml)["001"].value
+    assert_equal "Mu\u0308ller", Marcxml.parse(xml)["001"].value
     assert_equal "Müller", Marcxml.parse(xml, normalize: :nfc)["001"].value
   end
 

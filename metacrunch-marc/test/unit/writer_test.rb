@@ -77,6 +77,16 @@ class WriterTest < Minitest::Test
     assert_equal [Marcxml::Record.new], Marcxml.each(io.string).to_a
   end
 
+  def test_keeps_values_with_line_breaks
+    records = Marcxml.each(fixture("edge.xml")).to_a
+    io = StringIO.new
+    writer = open_writer(io)
+    records.each { writer.write(it, @ctx) }
+    writer.close
+
+    assert_equal records, Marcxml.each(io.string).to_a
+  end
+
   def test_writes_files_and_gzip_files
     records = Marcxml.each(fixture("collection.xml")).to_a
     ["out.xml", "out.xml.gz"].each do |name|
