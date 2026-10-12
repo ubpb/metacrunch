@@ -124,6 +124,16 @@ class ReaderTest < Minitest::Test
     assert_equal "Müller", read(Reader.new(path, normalize: :nfc)).first["001"].value
   end
 
+  def test_each_without_a_block_is_an_enumerator
+    assert_equal ["book-1", "article-1"], ids(Reader.new(fixture_path("collection.xml")).each.first(2))
+  end
+
+  def test_normalize_needs_parse
+    error = assert_raises(ArgumentError) { Reader.new("a.xml", parse: false, normalize: :nfc) }
+
+    assert_match(/Marcxml\.parse\(xml, normalize: :nfc\)/, error.message)
+  end
+
   def test_rejects_invalid_arguments
     assert_raises(ArgumentError) { Reader.new([]) }
     assert_raises(ArgumentError) { Reader.new(42) }
