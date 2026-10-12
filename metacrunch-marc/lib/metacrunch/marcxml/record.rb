@@ -16,8 +16,6 @@ module Metacrunch
     # Strings; with an indicator filter, control fields never match.
     class Record
 
-      ANY_TAG = [].freeze
-
       attr_accessor :leader, :type
 
       def initialize(leader: nil, fields: [], type: nil)
@@ -43,7 +41,8 @@ module Metacrunch
         nil
       end
 
-      def [](tag) = field(tag)
+      # field(tag) for one tag.
+      def [](tag) = tag.is_a?(String) ? index[tag]&.first : field(tag)
 
       # The values of the matching fields, in record order: of data fields
       # those of these codes (all without codes), of control fields their
@@ -51,9 +50,9 @@ module Metacrunch
       def values(tags, *codes, ind1: nil, ind2: nil)
         codes = Codes.check(codes)
         found = []
-        each_match([tags], ind1, ind2) do |field|
+        each_tag(tags, ind1, ind2) do |field|
           if field.is_a?(DataField)
-            field.subfields.each { |subfield| found << subfield.value if codes.empty? || codes.include?(subfield.code) }
+            field.each_subfield { |subfield| found << subfield.value if codes.empty? || codes.include?(subfield.code) }
           elsif codes.empty?
             found << field.value
           end
@@ -64,9 +63,9 @@ module Metacrunch
       # The first of those values, or nil.
       def value(tags, *codes, ind1: nil, ind2: nil)
         codes = Codes.check(codes)
-        each_match([tags], ind1, ind2) do |field|
+        each_tag(tags, ind1, ind2) do |field|
           if field.is_a?(DataField)
-            field.subfields.each { |subfield| return subfield.value if codes.empty? || codes.include?(subfield.code) }
+            field.each_subfield { |subfield| return subfield.value if codes.empty? || codes.include?(subfield.code) }
           elsif codes.empty?
             return field.value
           end
@@ -168,19 +167,34 @@ module Metacrunch
       # Tag => fields with that tag, in record order.
       def index = @index ||= @fields.group_by(&:tag)
 
-      # Yields the matching fields in record order. One String tag, the most
-      # common query, goes through the index, and indicators are checked only
-      # for its fields; other tag matchers scan the fields.
+      # Yields the fields that match tags, an Array of tag matchers, in
+      # record order.
       def each_match(tags, ind1, ind2, &)
-        tag = tags.first
-        if tags.size != 1 || !tag.is_a?(String)
-          filter = Filter.new(tags, ind1, ind2)
-          @fields.each { yield it if filter.matches?(it) }
-        elsif ind1.nil? && ind2.nil?
-          index[tag]&.each(&)
+        return each_tag(tags.first, ind1, ind2, &) if tags.size == 1
+
+        filter = Filter.new(tags, ind1, ind2)
+        @fields.each { yield it if filter.matches?(it) }
+      end
+
+      # Yields the fields that match one tag matcher, in record order. A
+      # String tag, the most common query, goes through the index and checks
+      # indicators only for its fields, without allocating; other matchers
+      # scan the fields.
+      def each_tag(tag, ind1, ind2, &)
+        unless tag.is_a?(String)
+          filter = Filter.new([tag], ind1, ind2)
+          return @fields.each { yield it if filter.matches?(it) }
+        end
+
+        Filter.indicator(ind1, "ind1")
+        Filter.indicator(ind2, "ind2")
+        fields = index[tag]
+        return unless fields
+
+        if ind1.nil? && ind2.nil?
+          fields.each(&)
         else
-          filter = Filter.new(ANY_TAG, ind1, ind2)
-          index[tag]&.each { yield it if filter.matches?(it) }
+          fields.each { yield it if Filter.indicators?(it, ind1, ind2) }
         end
       end
 
