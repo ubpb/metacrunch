@@ -102,7 +102,7 @@ module Metacrunch
         elsif name.end_with?(".tar")
           each_entry(input, &)
         elsif name.end_with?(".gz")
-          gunzip(input, &)
+          members(input, &)
         else
           yield input
         end
@@ -115,9 +115,53 @@ module Metacrunch
         gzip&.finish
       end
 
+      def members(io)
+        gzip = GzipMembers.new(io)
+        yield gzip
+      ensure
+        gzip&.finish
+      end
+
       def each_entry(io)
         Gem::Package::TarReader.new(io).each { |entry| yield entry if entry.file? }
       end
+
+      # The content of all members of a gzip stream, as zcat reads it: files
+      # written with `cat a.gz b.gz` or `gzip >>` have several. Data after
+      # the last member that is not gzip raises Zlib::GzipFile::Error.
+      class GzipMembers
+
+        def initialize(io)
+          @io = io
+          @gzip = Zlib::GzipReader.new(io)
+        end
+
+        def read(length)
+          loop do
+            chunk = @gzip.read(length)
+            return chunk unless chunk.nil? || chunk.empty?
+            return unless next_member?
+          end
+        end
+
+        def finish
+          @gzip.finish unless @gzip.closed?
+        end
+
+        private
+
+        def next_member?
+          unused = @gzip.unused
+          @gzip.finish
+          @io.ungetbyte(unused) if unused
+          return false if @io.eof?
+
+          @gzip = Zlib::GzipReader.new(@io)
+          true
+        end
+
+      end
+      private_constant :GzipMembers
 
       def record(xml)
         Marcxml.parse(xml, normalize: @normalize)

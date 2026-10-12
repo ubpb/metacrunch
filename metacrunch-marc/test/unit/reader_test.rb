@@ -53,6 +53,18 @@ class ReaderTest < Minitest::Test
     assert_equal IDS, ids(read(Reader.new(path)))
   end
 
+  def test_reads_all_members_of_a_gzip_file
+    path = write("cat.xml.gz", Zlib.gzip(fixture("collection.xml")) + Zlib.gzip(fixture("local.xml")))
+
+    assert_equal [*IDS, "local-1"], ids(read(Reader.new(path)))
+  end
+
+  def test_garbage_after_gzip_data_raises
+    path = write("garbage.xml.gz", "#{Zlib.gzip(fixture("collection.xml"))}garbage")
+
+    assert_raises(Zlib::GzipFile::Error) { read(Reader.new(path)) }
+  end
+
   def test_reads_tar_archives
     archive = tar("a.xml" => fixture("collection.xml"), "b.xml" => fixture("local.xml"))
     paths = [write("records.tar", archive), write("records.tar.gz", Zlib.gzip(archive)),
