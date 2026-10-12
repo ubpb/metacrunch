@@ -129,6 +129,10 @@ Ox, the XML parser underneath, does not validate and accepts some input that is 
 `each_xml` cuts the input at the end tags of the records; an end tag inside a CDATA section or a comment cuts a record
 there.
 
+Elements are matched by their local name, whatever their namespace. Formats that wrap MARCXML in an element of their
+own called `record`, such as OAI-PMH responses (`ListRecords`), are therefore not read correctly yet; take the MARC
+records out of the wrapper first.
+
 ## In metacrunch jobs
 
 ### Reader
