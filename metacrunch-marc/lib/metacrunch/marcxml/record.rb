@@ -99,6 +99,10 @@ module Metacrunch
         json
       end
 
+      # The record as MARCXML; namespace: false leaves out xmlns (a
+      # <collection> declares it).
+      def to_xml(namespace: true) = Serializer.record(self, namespace:)
+
       # One line per field in the mnemonic form of MarcEdit, the leader as
       # "=LDR".
       def to_s
