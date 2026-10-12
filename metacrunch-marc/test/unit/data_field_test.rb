@@ -143,4 +143,11 @@ class DataFieldTest < Minitest::Test
     assert_nil DataField.new(nil).dup.tag
   end
 
+  def test_the_tag_is_frozen_and_fixed
+    field = DataField.new(+"245")
+
+    assert_predicate field.tag, :frozen?
+    refute_respond_to field, :tag=
+  end
+
 end

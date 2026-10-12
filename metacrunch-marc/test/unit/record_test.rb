@@ -43,11 +43,53 @@ class RecordTest < Minitest::Test
     assert_match(/a field must be a ControlField or a DataField/, error.message)
   end
 
-  def test_fields_without_arguments_is_the_records_own_array
+  def test_fields_are_frozen
     record = sample
-    record.fields << ControlField.new("009", "x")
 
-    assert_equal "009", record.fields.last.tag
+    assert_predicate record.fields, :frozen?
+    assert_raises(FrozenError) { record.fields << ControlField.new("009", "x") }
+  end
+
+  def test_new_copies_the_fields
+    list = [ControlField.new("001", "1")]
+    record = Record.new(fields: list)
+    list << ControlField.new("002", "2")
+
+    assert_equal ["001"], tags(record.fields)
+  end
+
+  def test_queries_see_changes
+    record = sample
+    record.value("500", "a")
+    record.add(DataField.new("500", " ", " ", [["a", "Note"]]))
+
+    assert_equal "Note", record.value("500", "a")
+    record.remove("500")
+
+    assert_nil record.value("500", "a")
+  end
+
+  def test_remove_with_a_block
+    record = sample
+    removed = record.remove("650") { it.ind2 == "7" }
+
+    assert_equal(["Metadata"], removed.map { it["a"] })
+    assert_equal ["Libraries"], record.values("650", "a")
+  end
+
+  def test_remove_by_a_block_only
+    removed = sample.remove { it.tag.start_with?("85") }
+
+    assert_equal ["852H", "856", "856"], tags(removed)
+  end
+
+  def test_clear_removes_all_fields
+    record = sample
+    removed = record.clear
+
+    assert_equal 10, removed.size
+    assert_empty record.fields
+    assert_nil record["001"]
   end
 
   def test_fields_by_tag
@@ -111,6 +153,19 @@ class RecordTest < Minitest::Test
     assert_nil sample.value("999")
   end
 
+  def test_value_of_control_fields
+    assert_equal "123", sample.value("001")
+    assert_nil sample.value("001", "a")
+  end
+
+  def test_remove_without_a_match_changes_nothing
+    record = sample
+    fields = record.fields
+
+    assert_empty record.remove("999")
+    assert_same fields, record.fields
+  end
+
   def test_add_inserts_by_tag
     record = sample
     record.add(DataField.new("500", " ", " ", [["a", "Note"]]))
@@ -152,7 +207,7 @@ class RecordTest < Minitest::Test
     record = sample
     error = assert_raises(ArgumentError) { record.remove(*[]) }
 
-    assert_match(/fields\.clear/, error.message)
+    assert_match(/clear removes all fields/, error.message)
     assert_equal 10, record.fields.size
   end
 

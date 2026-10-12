@@ -51,4 +51,11 @@ class ControlFieldTest < Minitest::Test
     assert_equal ControlField.new(nil, nil), ControlField.new(nil, nil).dup
   end
 
+  def test_the_tag_is_frozen_and_fixed
+    field = ControlField.new(+"001", "1")
+
+    assert_predicate field.tag, :frozen?
+    refute_respond_to field, :tag=
+  end
+
 end

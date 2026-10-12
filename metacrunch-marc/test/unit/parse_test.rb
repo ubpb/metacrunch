@@ -229,6 +229,13 @@ class ParseTest < Minitest::Test
     assert_equal "invalid UTF-8 in attribute tag", error.message
   end
 
+  def test_characters_xml_cannot_represent_in_attributes
+    xml = %(<record><datafield tag="5&#1;0"><subfield code="a">x</subfield></datafield></record>)
+    error = assert_raises(Marcxml::ParseError) { Marcxml.parse(xml) }
+
+    assert_equal %(attribute tag: "\\u0001" cannot be represented in XML 1.0), error.message
+  end
+
   def test_encoding_errors_of_the_block_are_not_parse_errors
     assert_raises(Encoding::CompatibilityError) do
       Marcxml.each("<record/>") { raise Encoding::CompatibilityError, "from the block" }
