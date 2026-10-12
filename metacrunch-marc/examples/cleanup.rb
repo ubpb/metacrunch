@@ -6,10 +6,13 @@ require "metacrunch/marcxml"
 # spaces in titles, drops links to cover images (856 with second indicator
 # 2) and records the cleanup in field 883.
 #
-#   bundle exec metacrunch run examples/cleanup.rb --output tmp/clean.xml examples/data/catalog.xml
+#   bundle exec metacrunch run examples/cleanup.rb --target tmp/clean.xml examples/data/catalog.xml
+#
+# The parameter is not called output: metacrunch's own -o/--output, given
+# before the job file, would replace the MARCXML sink with JSON Lines.
 Metacrunch.job do
   params do
-    param :output, String, default: "-", desc: "MARCXML file for the cleaned records (- for stdout)"
+    param :target, String, default: "-", desc: "MARCXML file for the cleaned records (- for stdout)"
     args :files, min: 1
   end
 
@@ -31,5 +34,5 @@ Metacrunch.job do
     record.add(Metacrunch::Marcxml::DataField.new("883", " ", " ", [["a", "metacrunch cleanup example"]]))
   end
 
-  sink Metacrunch::Marcxml::Writer.new(params.output)
+  sink Metacrunch::Marcxml::Writer.new(params.target)
 end

@@ -23,7 +23,7 @@ class ExamplesTest < Minitest::Test
   def test_cleanup_writes_marcxml
     Dir.mktmpdir do |dir|
       output = File.join(dir, "clean.xml")
-      _stdout, stderr, status = metacrunch("run", example("cleanup.rb"), "--output", output,
+      _stdout, stderr, status = metacrunch("run", example("cleanup.rb"), "--target", output,
                                            example("data/catalog.xml"))
       records = Metacrunch::Marcxml.each(File.read(output)).to_a
 
