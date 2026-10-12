@@ -136,6 +136,18 @@ class RecordTest < Minitest::Test
     assert_equal "ger", sample["008"][35..37]
   end
 
+  def test_brackets_with_a_repeated_tag_give_the_first_field
+    assert_equal "Metadata", sample["650"]["a"]
+  end
+
+  def test_tags_repeated_more_than_twice_keep_record_order
+    subjects = ["One", "Two", "Three", "Four"].map { DataField.new("650", " ", "4", [["a", it]]) }
+    record = Record.new(fields: [ControlField.new("001", "1"), *subjects])
+
+    assert_equal ["One", "Two", "Three", "Four"], record.values("650", "a")
+    assert_equal "Two", record.fields("650")[1]["a"]
+  end
+
   def test_brackets_with_other_tag_matchers
     assert_equal "852H", sample[/\A85/].tag
     assert_raises(ArgumentError) { sample[245] }

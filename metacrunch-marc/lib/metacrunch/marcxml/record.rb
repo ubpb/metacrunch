@@ -42,7 +42,12 @@ module Metacrunch
       end
 
       # field(tag) for one tag.
-      def [](tag) = tag.is_a?(String) ? index[tag]&.first : field(tag)
+      def [](tag)
+        return field(tag) unless tag.is_a?(String)
+
+        entry = index[tag]
+        entry.is_a?(Array) ? entry.first : entry
+      end
 
       # The values of the matching fields, in record order: of data fields
       # those of these codes (all without codes), of control fields their
@@ -164,8 +169,25 @@ module Metacrunch
         @index = nil
       end
 
-      # Tag => fields with that tag, in record order.
-      def index = @index ||= @fields.group_by(&:tag)
+      # Tag => the field with that tag, or an Array of the fields in record
+      # order if the tag repeats. Most tags do not repeat, so most entries
+      # need no Array of their own.
+      def index = @index ||= build_index
+
+      def build_index
+        index = {}
+        @fields.each do |field|
+          entry = index[field.tag]
+          if entry.nil?
+            index[field.tag] = field
+          elsif entry.is_a?(Array)
+            entry << field
+          else
+            index[field.tag] = [entry, field]
+          end
+        end
+        index
+      end
 
       # Yields the fields that match tags, an Array of tag matchers, in
       # record order.
@@ -188,13 +210,13 @@ module Metacrunch
 
         Filter.indicator(ind1, "ind1")
         Filter.indicator(ind2, "ind2")
-        fields = index[tag]
-        return unless fields
-
-        if ind1.nil? && ind2.nil?
-          fields.each(&)
+        entry = index[tag]
+        if !entry.is_a?(Array)
+          yield entry if entry && Filter.indicators?(entry, ind1, ind2)
+        elsif ind1.nil? && ind2.nil?
+          entry.each(&)
         else
-          fields.each { yield it if Filter.indicators?(it, ind1, ind2) }
+          entry.each { yield it if Filter.indicators?(it, ind1, ind2) }
         end
       end
 
