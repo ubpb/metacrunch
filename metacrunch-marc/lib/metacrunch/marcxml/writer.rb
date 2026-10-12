@@ -55,7 +55,7 @@ module Metacrunch
                 "record at position #{ctx.position} is not a Metacrunch::Marcxml::Record (#{record.class})"
         end
 
-        record.to_xml(namespace: false).each_line.map { "  #{it}" }.join
+        Serializer.record(record, namespace: false, indent: "  ")
       rescue SerializeError => e
         raise Metacrunch::Error, "record at position #{ctx.position} cannot be written as MARCXML: #{e.message}"
       end

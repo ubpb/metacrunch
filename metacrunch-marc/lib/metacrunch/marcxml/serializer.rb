@@ -3,45 +3,47 @@
 module Metacrunch
   module Marcxml
     # Writes a Record as MARCXML (Record#to_xml): one element per line,
-    # indented by two spaces per level. Internal.
+    # indented by two spaces per level. indent goes before every element,
+    # never into a value. Internal.
     module Serializer
 
       # Characters XML 1.0 cannot represent, also not as references.
-      FORBIDDEN = /[\x00-\x08\x0B\x0C\x0E-\x1F￾￿]/
+      FORBIDDEN = /[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/
 
       TEXT = {"&" => "&amp;", "<" => "&lt;", ">" => "&gt;", "\r" => "&#13;"}.freeze
       ATTRIBUTE = TEXT.merge("\"" => "&quot;", "\t" => "&#9;", "\n" => "&#10;").freeze
 
       module_function
 
-      def record(record, namespace:)
-        xml = +"<record"
+      def record(record, namespace:, indent: "")
+        xml = "#{indent}<record"
         xml << " xmlns=\"#{NAMESPACE}\"" if namespace
         xml << " type=\"#{attribute(record.type, "type")}\"" if record.type
         xml << ">\n"
-        xml << "  <leader>#{text(record.leader, "leader")}</leader>\n" if record.leader
-        record.fields.each { field(xml, it) }
-        xml << "</record>\n"
+        xml << "#{indent}  <leader>#{text(record.leader, "leader")}</leader>\n" if record.leader
+        record.fields.each { field(xml, it, indent) }
+        xml << "#{indent}</record>\n"
       end
 
-      def field(xml, field)
+      def field(xml, field, indent)
         where = "field #{field.tag}"
         tag = attribute(field.tag, where)
         if field.is_a?(ControlField)
-          xml << "  <controlfield tag=\"#{tag}\">#{text(field.value, where)}</controlfield>\n"
+          xml << "#{indent}  <controlfield tag=\"#{tag}\">#{text(field.value, where)}</controlfield>\n"
         else
-          data_field(xml, field, tag, where)
+          data_field(xml, field, tag, where, indent)
         end
       end
 
-      def data_field(xml, field, tag, where)
-        xml << "  <datafield tag=\"#{tag}\" ind1=\"#{attribute(field.ind1, where)}\" " \
+      def data_field(xml, field, tag, where, indent)
+        xml << "#{indent}  <datafield tag=\"#{tag}\" ind1=\"#{attribute(field.ind1, where)}\" " \
                "ind2=\"#{attribute(field.ind2, where)}\">\n"
         field.subfields.each do |subfield|
           at = "#{where} $#{subfield.code}"
-          xml << "    <subfield code=\"#{attribute(subfield.code, at)}\">#{text(subfield.value, at)}</subfield>\n"
+          xml << "#{indent}    <subfield code=\"#{attribute(subfield.code, at)}\">" \
+                 "#{text(subfield.value, at)}</subfield>\n"
         end
-        xml << "  </datafield>\n"
+        xml << "#{indent}  </datafield>\n"
       end
 
       def text(value, where) = escape(value, where, /[&<>\r]/, TEXT)

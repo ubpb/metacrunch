@@ -70,7 +70,7 @@ class ToXmlTest < Minitest::Test
   end
 
   def test_rejects_characters_xml_cannot_represent
-    ["\u0001", "\u000B", "\u001F", "￾", "￿"].each do |char|
+    ["\u0001", "\u000B", "\u001F", "\uFFFE", "\uFFFF"].each do |char|
       record = Record.new(fields: [DataField.new("245", "1", "0", [["a", "x#{char}y"]])])
       error = assert_raises(Marcxml::SerializeError) { record.to_xml }
 
