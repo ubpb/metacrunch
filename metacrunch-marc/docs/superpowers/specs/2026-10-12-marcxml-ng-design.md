@@ -338,7 +338,11 @@ source Metacrunch::Marcxml::Reader.new(params.files, normalize: :nfc),
   closed; files are closed when `each` ends, also by `break` or an error.
 - Kind by name: `.tar.gz` and `.tgz` (tar in gzip), `.tar`, `.gz`, else
   plain XML. A `.gz` file is read with all its members, as zcat does
-  (`cat a.gz b.gz`); data after the last member that is not gzip raises. Every regular file in a tar archive is read as MARCXML, in
+  (`cat a.gz b.gz`); data after the last member that is not gzip raises.
+  A regular file that starts with the gzip magic bytes is read as gzip
+  whatever its name; a plain regular file that does not start with `<`
+  (after a byte order mark and whitespace) raises `Metacrunch::Error`, so
+  input that is not XML does not pass as zero records. Every regular file in a tar archive is read as MARCXML, in
   archive order.
 - `each` splits each input with `each_xml`. With `parse: true` it parses
   each record string and yields the `Record`; a `ParseError` yields
