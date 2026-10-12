@@ -49,6 +49,13 @@ class DataFieldTest < Minitest::Test
     assert_equal ["a", "b", "a"], title.subfields("b", "a").map(&:code)
   end
 
+  def test_each_subfield_yields_in_field_order
+    codes = []
+    title.each_subfield { codes << it.code }
+
+    assert_equal ["a", "b", "c", "a"], codes
+  end
+
   def test_values
     assert_equal ["Title", "Subtitle", "Jane Doe", "Second"], title.values
     assert_equal ["Title", "Second"], title.values("a")

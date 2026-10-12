@@ -136,6 +136,11 @@ class RecordTest < Minitest::Test
     assert_equal "ger", sample["008"][35..37]
   end
 
+  def test_brackets_with_other_tag_matchers
+    assert_equal "852H", sample[/\A85/].tag
+    assert_raises(ArgumentError) { sample[245] }
+  end
+
   def test_values_of_data_fields
     assert_equal ["Title", "Subtitle"], sample.values("245")
     assert_equal ["Metadata"], sample.values("650", "a", ind2: "7")

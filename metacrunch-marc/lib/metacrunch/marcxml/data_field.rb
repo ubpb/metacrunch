@@ -37,6 +37,10 @@ module Metacrunch
         codes.empty? ? @subfields : @subfields.select { codes.include?(it.code) }
       end
 
+      # Yields every subfield in field order. Unlike subfields, it allocates
+      # nothing, which matters in queries.
+      def each_subfield(&) = @subfields.each(&)
+
       # The values of the subfields with these codes (all without codes), in
       # field order.
       def values(*codes) = subfields(*codes).map(&:value)
