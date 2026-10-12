@@ -431,3 +431,6 @@ splitting, serializing and Marshal; it does not run in CI.
   extension.
 - `from_h` and a MARC-in-JSON source.
 - Moving the core into a gem of its own.
+- Matching `record` by namespace (MARC 21 slim or none) instead of by local
+  name only, so that wrappers with their own `record` element, such as
+  OAI-PMH responses, are read. Until then the Readme names the limit.
