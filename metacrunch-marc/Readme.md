@@ -124,7 +124,8 @@ inside a record, values, names and attributes that are not valid UTF-8 (MARCXML 
 XML 1.0 cannot represent (control characters other than tab and line breaks, also as `&#31;`), and `parse` with no
 record or several. Several
 records without a `<collection>` around them are not well-formed XML for `each`; `each_xml` and the `Reader` read them.
-Ox, the XML parser underneath, does not validate and accepts some input that is not well-formed.
+Ox, the XML parser underneath, does not validate and accepts some input that is not well-formed; a reference `&#0;`,
+which XML does not allow, cuts the value off there.
 
 `each_xml` cuts the input at the end tags of the records; an end tag inside a CDATA section or a comment cuts a record
 there.

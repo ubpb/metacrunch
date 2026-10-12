@@ -275,8 +275,8 @@ Metacrunch::Marcxml.each_xml(input) { |xml| }             # record strings
   XML); `each_xml` and the `Reader` still read them.
 - `parse` with no record or more than one.
 
-Ox is not a validating parser and accepts some malformed input; the
-Readme says so.
+Ox is not a validating parser and accepts some malformed input, and it
+cuts a value off at `&#0;`; the Readme says so.
 
 ## 5. Splitting
 
