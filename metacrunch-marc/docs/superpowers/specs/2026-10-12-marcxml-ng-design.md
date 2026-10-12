@@ -330,7 +330,8 @@ source Metacrunch::Marcxml::Reader.new(params.files, normalize: :nfc),
   Array of those; an empty Array raises `ArgumentError`. IOs are never
   closed; files are closed when `each` ends, also by `break` or an error.
 - Kind by name: `.tar.gz` and `.tgz` (tar in gzip), `.tar`, `.gz`, else
-  plain XML. Every regular file in a tar archive is read as MARCXML, in
+  plain XML. A `.gz` file is read with all its members, as zcat does
+  (`cat a.gz b.gz`); data after the last member that is not gzip raises. Every regular file in a tar archive is read as MARCXML, in
   archive order.
 - `each` splits each input with `each_xml`. With `parse: true` it parses
   each record string and yields the `Record`; a `ParseError` yields
@@ -426,5 +427,4 @@ splitting, serializing and Marshal; it does not run in CI.
   tags have exactly three characters; four-character local tags need an
   extension.
 - `from_h` and a MARC-in-JSON source.
-- Multi-member gzip files (`cat a.gz b.gz`).
 - Moving the core into a gem of its own.

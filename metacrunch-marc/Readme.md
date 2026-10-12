@@ -135,8 +135,8 @@ there.
 source Metacrunch::Marcxml::Reader.new(params.files, normalize: :nfc), id: ->(record) { record["001"]&.value }
 ```
 
-Reads one target or an Array of them: paths (`.xml`, `.gz`, `.tar`, `.tar.gz`, `.tgz`; every file in an archive is
-read as MARCXML), `"-"` for stdin, or IOs, which it does not close. A record that is not well-formed becomes a
+Reads one target or an Array of them: paths (`.xml`, `.gz` with all its members as `zcat` reads them, `.tar`,
+`.tar.gz`, `.tgz`; every file in an archive is read as MARCXML), `"-"` for stdin, or IOs, which it does not close. A record that is not well-formed becomes a
 `Metacrunch::InvalidRecord` and fails under the job's error policy; the records after it are read. So does a record
 that the end of a file cuts off, e.g. after an interrupted download. An error of a whole
 input (a missing file, a broken gzip file) stops the run. The progress display shows how much of the files has been
