@@ -239,7 +239,8 @@ Metacrunch::Marcxml.each_xml(input) { |xml| }             # record strings
 - `each` takes a String or an IO-like object (`readpartial` or `read`) and
   yields every record; without a block it returns an Enumerator. A String
   is wrapped in an internal reader with `readpartial`, never in a
-  `StringIO` (see 1.5).
+  `StringIO` (see 1.5); a `StringIO` reaches Ox through `readpartial` only,
+  since Ox reads its string directly otherwise.
 - `normalize:` is nil or `:nfc`; anything else raises `ArgumentError`.
 
 ### 4.2 Rules

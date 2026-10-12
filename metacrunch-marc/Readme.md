@@ -104,8 +104,8 @@ Metacrunch::Marcxml.each(io_or_string) { ... }     # every record, streaming
 Metacrunch::Marcxml.each_xml(io_or_string) { ... } # every record as a String, without parsing it
 ```
 
-`each` and `each_xml` read Strings and IO-like objects (files, `Zlib::GzipReader`, pipes); without a block they
-return an Enumerator. Read large inputs from a file or an IO rather than from a String in memory. Parsing takes about
+`each` and `each_xml` read Strings and IO-like objects (files, `StringIO`, `Zlib::GzipReader`, pipes); without a block
+they return an Enumerator. All of them are read in chunks, so the time grows in proportion to the input. Parsing takes about
 28 µs per record of 3 KB in [`bench/parse.rb`](bench/parse.rb) (Ruby 4.0 with YJIT on an arm64 Mac); the time grows
 with the size of the records, by about 9 µs per KB.
 

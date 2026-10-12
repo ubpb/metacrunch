@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "stringio"
 require_relative "marcxml/version"
 require_relative "marcxml/errors"
 require_relative "marcxml/subfield"
@@ -9,6 +10,7 @@ require_relative "marcxml/filter"
 require_relative "marcxml/record"
 require_relative "marcxml/serializer"
 require_relative "marcxml/string_source"
+require_relative "marcxml/io_source"
 require_relative "marcxml/parser"
 require_relative "marcxml/splitter"
 
@@ -46,7 +48,7 @@ module Metacrunch
         check_normalize(normalize)
         return enum_for(:each, input, normalize:) unless block
 
-        Parser.run(input.is_a?(String) ? StringSource.new(input) : input, normalize:, &block)
+        Parser.run(source(input), normalize:, &block)
         nil
       end
 
@@ -68,6 +70,16 @@ module Metacrunch
       end
 
       private
+
+      # Ox is superlinear on a String and a StringIO; both reach it through
+      # readpartial.
+      def source(input)
+        case input
+        when String then StringSource.new(input)
+        when StringIO then IoSource.new(input)
+        else input
+        end
+      end
 
       def check_input(input)
         return if input.is_a?(String) || input.respond_to?(:readpartial) || input.respond_to?(:read)

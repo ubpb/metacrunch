@@ -5,6 +5,7 @@
 #
 #   bundle exec ruby --yjit bench/parse.rb [RECORDS]
 require "metacrunch/marcxml"
+require "stringio"
 require "tmpdir"
 
 Marcxml = Metacrunch::Marcxml
@@ -45,6 +46,7 @@ Dir.mktmpdir do |dir|
   puts "#{COUNT} records of #{File.size(path) / COUNT} bytes, Ruby #{RUBY_VERSION}#{yjit}"
 
   measure("each (from a file)") { File.open(path) { |io| Marcxml.each(io) { nil } } }
+  measure("each (from a StringIO)") { Marcxml.each(StringIO.new(File.read(path))) { nil } }
   measure("each_xml (from a file)") { File.open(path) { |io| Marcxml.each_xml(io) { nil } } }
   xmls = File.open(path) { Marcxml.each_xml(it).to_a }
   measure("parse (one record string)") { xmls.each { Marcxml.parse(it) } }

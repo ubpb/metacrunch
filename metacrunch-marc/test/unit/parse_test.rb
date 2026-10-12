@@ -92,6 +92,19 @@ class ParseTest < Minitest::Test
     inputs&.each(&:close)
   end
 
+  # Ox reads a StringIO's string directly, which is superlinear in its size.
+  def test_a_stringio_reaches_ox_through_readpartial
+    received = nil
+    original = Ox.method(:sax_parse)
+    Ox.define_singleton_method(:sax_parse) { |_handler, io, **| received = io }
+    Marcxml.each(StringIO.new("<record/>")) { nil }
+
+    refute_kind_of StringIO, received
+    assert_respond_to received, :readpartial
+  ensure
+    Ox.define_singleton_method(:sax_parse, original)
+  end
+
   def test_values_are_utf8_without_an_xml_declaration
     value = Marcxml.parse(%(<record><controlfield tag="001">Müller</controlfield></record>))["001"].value
 
