@@ -2,6 +2,9 @@
 
 require_relative "marcxml/version"
 require_relative "marcxml/errors"
+require_relative "marcxml/subfield"
+require_relative "marcxml/control_field"
+require_relative "marcxml/data_field"
 
 module Metacrunch
   # MARCXML for metacrunch: an ordered record model (Record, ControlField,
