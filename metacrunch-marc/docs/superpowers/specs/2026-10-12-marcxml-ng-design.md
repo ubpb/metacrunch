@@ -264,7 +264,9 @@ Metacrunch::Marcxml.each_xml(input) { |xml| }             # record strings
 - A syntax error Ox reports through the handler's `error` callback.
 - Input that ends inside a record.
 - A value that is not valid UTF-8, named by its field (`field 245 $a:
-  invalid UTF-8`).
+  invalid UTF-8`), and invalid UTF-8 in names or attribute values.
+- A value with a character XML 1.0 cannot represent, raw or as a reference
+  (`&#31;`), so such a record fails alone instead of in the writer.
 - Several records without a `<collection>` around them (not well-formed
   XML); `each_xml` and the `Reader` still read them.
 - `parse` with no record or more than one.

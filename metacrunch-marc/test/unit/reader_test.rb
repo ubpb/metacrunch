@@ -86,6 +86,15 @@ class ReaderTest < Minitest::Test
     assert_equal [Marcxml::Record, Marcxml::Record, Metacrunch::InvalidRecord], items.map(&:class)
   end
 
+  def test_a_control_character_makes_an_invalid_record
+    xml = ["<collection>", %(<record><controlfield tag="001">1</controlfield></record>),
+           "<record><controlfield tag=\"001\">2\x1F</controlfield></record>",
+           %(<record><controlfield tag="001">3</controlfield></record>), "</collection>"].join
+    items = read(Reader.new(write("control.xml", xml)))
+
+    assert_equal [Marcxml::Record, Metacrunch::InvalidRecord, Marcxml::Record], items.map(&:class)
+  end
+
   def test_values_that_are_not_utf8_make_an_invalid_record
     xml = "<collection><record><controlfield tag=\"001\">M\xFCller</controlfield></record></collection>".b
 

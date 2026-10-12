@@ -22,12 +22,15 @@ def record(number)
   Marcxml::Record.new(leader: "00000nam a2200000 c 4500", type: "Bibliographic", fields:)
 end
 
+# The best of three runs.
 def measure(label)
-  GC.start
-  started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  yield
-  micros = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1_000_000 / COUNT
-  puts "#{label.ljust(36)} #{format("%.1f", micros).rjust(8)} µs/record"
+  seconds = Array.new(3) do
+    GC.start
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    yield
+    Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+  end.min
+  puts "#{label.ljust(36)} #{format("%.1f", seconds * 1_000_000 / COUNT).rjust(8)} µs/record"
 end
 
 records = Array.new(COUNT) { record(it) }

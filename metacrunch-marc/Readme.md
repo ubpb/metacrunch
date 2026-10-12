@@ -104,8 +104,8 @@ Metacrunch::Marcxml.each_xml(io_or_string) { ... } # every record as a String, w
 
 `each` and `each_xml` read Strings and IO-like objects (files, `Zlib::GzipReader`, pipes); without a block they
 return an Enumerator. Read large inputs from a file or an IO rather than from a String in memory. Parsing takes about
-25 µs per record of 3 KB in [`bench/parse.rb`](bench/parse.rb) (Ruby 4.0 with YJIT on an arm64 Mac); the time grows
-with the size of the records, by about 8 µs per KB.
+28 µs per record of 3 KB in [`bench/parse.rb`](bench/parse.rb) (Ruby 4.0 with YJIT on an arm64 Mac); the time grows
+with the size of the records, by about 9 µs per KB.
 
 The parser keeps what the data says:
 
@@ -118,7 +118,9 @@ A missing or empty indicator becomes `" "`. With `normalize: :nfc` values are no
 export decomposed characters); by default they are left as they are.
 
 `Metacrunch::Marcxml::ParseError` reports input that is not well-formed (with `line` and `column`), input that ends
-inside a record, values that are not valid UTF-8 (MARCXML is UTF-8), and `parse` with no record or several. Several
+inside a record, values, names and attributes that are not valid UTF-8 (MARCXML is UTF-8), values with characters that
+XML 1.0 cannot represent (control characters other than tab and line breaks, also as `&#31;`), and `parse` with no
+record or several. Several
 records without a `<collection>` around them are not well-formed XML for `each`; `each_xml` and the `Reader` read them.
 Ox, the XML parser underneath, does not validate and accepts some input that is not well-formed.
 
@@ -147,13 +149,14 @@ sink Metacrunch::Marcxml::Writer.new(params.output)   # a path (".gz" compresses
 ```
 
 Writes one `<collection>` with a `<record>` per record. The closing tag is written also when a run aborts, so the file
-stays well-formed. A value with a character that XML 1.0 cannot represent (a control character other than tab and
-line breaks) stops the run with the record's position.
+stays well-formed. A value set in a step with a character that XML 1.0 cannot represent (a control character other
+than tab and line breaks) stops the run with the record's position; records read with such a character are already
+`InvalidRecord`s.
 
 ### Workers
 
 `--workers` sends records between processes with `Marshal`. A parsed record costs much more to send than its XML: in
-`bench/parse.rb`, 42 µs per record for a parsed record and 1 µs for its XML string. With workers, let the reader
+`bench/parse.rb`, 40 µs per record for a parsed record and 1 µs for its XML string. With workers, let the reader
 yield the XML and parse it in the first step:
 
 ```ruby
