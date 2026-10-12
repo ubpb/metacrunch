@@ -16,6 +16,10 @@ module Metacrunch
       HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<collection xmlns=\"#{NAMESPACE}\">\n".freeze
       FOOTER = "</collection>\n"
 
+      # A String record must start with a record element, e.g. from
+      # Record#to_xml(namespace: false) in a worker.
+      RECORD_START = %r{\A\s*<(?:[A-Za-z_][\w.-]*:)?record[\s>/]}
+
       def initialize(target)
         @target = target.is_a?(Pathname) ? target.to_s : target
         @io = nil
@@ -49,15 +53,26 @@ module Metacrunch
 
       private
 
+      # A Record is serialized here; a String with a record element (record
+      # XML serialized in a worker, cheaper to send) is written as it is.
       def xml(record, ctx)
-        unless record.is_a?(Record)
+        case record
+        when Record then Serializer.record(record, namespace: false, indent: "  ")
+        when String then record_xml(record, ctx)
+        else
           raise Metacrunch::Error,
                 "record at position #{ctx.position} is not a Metacrunch::Marcxml::Record (#{record.class})"
         end
-
-        Serializer.record(record, namespace: false, indent: "  ")
       rescue SerializeError => e
         raise Metacrunch::Error, "record at position #{ctx.position} cannot be written as MARCXML: #{e.message}"
+      end
+
+      def record_xml(xml, ctx)
+        unless xml.match?(RECORD_START)
+          raise Metacrunch::Error, "record at position #{ctx.position} is a String but not a <record> element"
+        end
+
+        xml.end_with?("\n") ? xml : "#{xml}\n"
       end
 
       def emit(text)

@@ -155,7 +155,7 @@ read.
 sink Metacrunch::Marcxml::Writer.new(params.output)   # a path (".gz" compresses), "-" for stdout, or an IO
 ```
 
-Writes one `<collection>` with a `<record>` per record. The closing tag is written also when a run aborts, so the file
+Writes one `<collection>` with a `<record>` per record; records are `Record`s or record XML as a String (see Workers). The closing tag is written also when a run aborts, so the file
 stays well-formed. A value set in a step with a character that XML 1.0 cannot represent (a control character other
 than tab and line breaks) stops the run with the record's position; records read with such a character are already
 `InvalidRecord`s.
@@ -169,9 +169,13 @@ yield the XML and parse it in the first step:
 ```ruby
 source Metacrunch::Marcxml::Reader.new(params.files, parse: false)
 map(name: "parse") { Metacrunch::Marcxml.parse(it) }
+# ... steps ...
+map(name: "serialize") { it.to_xml(namespace: false) }   # MARC to MARC: send XML back too
+sink Metacrunch::Marcxml::Writer.new(params.output)
 ```
 
-`id:` then gets the XML string.
+`id:` then gets the XML string. The writer writes a String that starts with a `<record>` element as it is, so a MARC
+to MARC job can serialize in the workers as well; a job that ends in Hashes needs no last step.
 
 ### Testing jobs
 
