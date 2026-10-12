@@ -12,6 +12,8 @@ module Metacrunch
     # Strings; with an indicator filter, control fields never match.
     class Record
 
+      ANY_TAG = [].freeze
+
       attr_accessor :leader, :type
 
       def initialize(leader: nil, fields: [], type: nil)
@@ -26,14 +28,15 @@ module Metacrunch
       def fields(*tags, ind1: nil, ind2: nil)
         return @fields if tags.empty? && ind1.nil? && ind2.nil?
 
-        filter = Filter.new(tags, ind1, ind2)
-        @fields.select { filter.matches?(it) }
+        found = []
+        each_match(tags, ind1, ind2) { found << it }
+        found
       end
 
       # The first matching field, or nil.
       def field(*tags, ind1: nil, ind2: nil)
-        filter = Filter.new(tags, ind1, ind2)
-        @fields.find { filter.matches?(it) }
+        each_match(tags, ind1, ind2) { return it } # rubocop:disable Lint/UnreachableLoop -- ends at the first match
+        nil
       end
 
       def [](tag) = field(tag)
@@ -42,18 +45,30 @@ module Metacrunch
       # those of these codes (all without codes), of control fields their
       # value when no codes are given.
       def values(tags, *codes, ind1: nil, ind2: nil)
-        codes = codes.flatten
-        fields(tags, ind1:, ind2:).flat_map do |field|
+        codes = Codes.check(codes)
+        found = []
+        each_match([tags], ind1, ind2) do |field|
           if field.is_a?(DataField)
-            field.values(*codes)
-          else
-            codes.empty? ? [field.value] : []
+            field.subfields.each { |subfield| found << subfield.value if codes.empty? || codes.include?(subfield.code) }
+          elsif codes.empty?
+            found << field.value
           end
         end
+        found
       end
 
       # The first of those values, or nil.
-      def value(tags, *codes, ind1: nil, ind2: nil) = values(tags, *codes, ind1:, ind2:).first
+      def value(tags, *codes, ind1: nil, ind2: nil)
+        codes = Codes.check(codes)
+        each_match([tags], ind1, ind2) do |field|
+          if field.is_a?(DataField)
+            field.subfields.each { |subfield| return subfield.value if codes.empty? || codes.include?(subfield.code) }
+          elsif codes.empty?
+            return field.value
+          end
+        end
+        nil
+      end
 
       # Inserts the field before the first field whose tag sorts after its
       # tag (String#<=>), else at the end. Returns self.
@@ -125,6 +140,22 @@ module Metacrunch
         @leader = source.leader&.dup
         @type = source.type&.dup
         @fields = source.fields.map(&:dup)
+      end
+
+      # Yields the matching fields in record order. With one String tag, the
+      # most common query, tags are compared directly and indicators are
+      # checked only for fields with that tag.
+      def each_match(tags, ind1, ind2)
+        tag = tags.first
+        if tags.size != 1 || !tag.is_a?(String)
+          filter = Filter.new(tags, ind1, ind2)
+          @fields.each { yield it if filter.matches?(it) }
+        elsif ind1.nil? && ind2.nil?
+          @fields.each { yield it if it.tag == tag }
+        else
+          filter = Filter.new(ANY_TAG, ind1, ind2)
+          @fields.each { yield it if it.tag == tag && filter.matches?(it) }
+        end
       end
 
       def check_field(field)

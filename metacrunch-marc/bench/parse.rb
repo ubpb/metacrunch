@@ -51,6 +51,18 @@ Dir.mktmpdir do |dir|
   xmls = File.open(path) { Marcxml.each_xml(it).to_a }
   measure("parse (one record string)") { xmls.each { Marcxml.parse(it) } }
   measure("to_xml") { records.each(&:to_xml) }
+  measure("8 queries") do
+    records.each do |r|
+      r["001"]&.value
+      r.field("540", ind2: "1")
+      r.values("580", "a", ind1: "1", ind2: ["0", "2", " "])
+      r.values("160", "a", "0", ind1: "1")
+      r.value("220", "a")
+      r.fields("700").map { it.value("a") }
+      r.values("100", "a", ind1: "1")
+      r.values("400", "b")
+    end
+  end
   measure("Marshal round trip of a record") { records.each { Marshal.load(Marshal.dump(it)) } }
   measure("Marshal round trip of its XML") { xmls.each { Marshal.load(Marshal.dump(it)) } }
 
