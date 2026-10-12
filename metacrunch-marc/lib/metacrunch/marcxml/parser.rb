@@ -13,12 +13,20 @@ module Metacrunch
 
       OPTIONS = {skip: :skip_none, convert_special: true, smart: false}.freeze
 
+      UNREPRESENTABLE = "cannot be represented in XML 1.0"
+
       # Parses input (an object with readpartial or read) and passes each
       # Record to block. normalize: nil or :nfc.
       def self.run(input, normalize:, &block)
         parser = new(normalize, block)
         Ox.sax_parse(parser, input, **OPTIONS)
         parser.finish
+      rescue EncodingError => e
+        # Ox makes Symbols of names; invalid bytes in a name raise here.
+        # Errors of the block are passed on as they are.
+        raise if parser.nil? || parser.in_block?
+
+        raise ParseError, "invalid UTF-8 in markup (#{e.message})"
       end
 
       def initialize(normalize, block)
@@ -34,6 +42,7 @@ module Metacrunch
         @target = nil
         @tag = nil
         @code = nil
+        @in_block = false
       end
 
       def start_element(name)
@@ -50,10 +59,10 @@ module Metacrunch
 
       def attr(name, value)
         case @target
-        when :record then @record.type = utf8(value) if name == :type
+        when :record then @record.type = attribute(name, value) if name == :type
         when :datafield then data_field_attr(name, value)
-        when :controlfield then @tag = utf8(value) if name == :tag
-        when :subfield then @code = utf8(value) if name == :code
+        when :controlfield then @tag = attribute(name, value) if name == :tag
+        when :subfield then @code = attribute(name, value) if name == :code
         end
       end
 
@@ -87,6 +96,10 @@ module Metacrunch
         raise ParseError, "the input ended inside a record" if @record
       end
 
+      # True while the block runs, so its errors are not taken for errors of
+      # the input.
+      def in_block? = @in_block
+
       private
 
       def local(name)
@@ -110,9 +123,9 @@ module Metacrunch
 
       def data_field_attr(name, value)
         case name
-        when :tag then @field.tag = utf8(value)
-        when :ind1 then @field.ind1 = indicator(value)
-        when :ind2 then @field.ind2 = indicator(value)
+        when :tag then @field.tag = attribute(name, value)
+        when :ind1 then @field.ind1 = indicator(name, value)
+        when :ind2 then @field.ind2 = indicator(name, value)
         end
       end
 
@@ -144,17 +157,32 @@ module Metacrunch
         record = @record
         @record = nil
         @field = nil
+        @in_block = true
         @block.call(record)
+        @in_block = false
       end
 
       # An empty indicator attribute is blank.
-      def indicator(value) = value.empty? ? DataField::BLANK : utf8(value)
+      def indicator(name, value) = value.empty? ? DataField::BLANK : attribute(name, value)
+
+      def attribute(name, value)
+        value = utf8(value)
+        raise ParseError, "invalid UTF-8 in attribute #{name}" unless value.valid_encoding?
+
+        forbidden = Serializer.unrepresentable(value)
+        raise ParseError, "attribute #{name}: #{forbidden.inspect} #{UNREPRESENTABLE}" if forbidden
+
+        value
+      end
 
       # Ox returns binary strings for input without an XML declaration.
       def utf8(value) = value.force_encoding(Encoding::UTF_8)
 
       def checked(value)
         raise ParseError, "#{value_name}: invalid UTF-8" unless value.valid_encoding?
+
+        forbidden = Serializer.unrepresentable(value)
+        raise ParseError, "#{value_name}: #{forbidden.inspect} #{UNREPRESENTABLE}" if forbidden
         return value if @normalize.nil? || value.ascii_only?
 
         value.unicode_normalize(:nfc)

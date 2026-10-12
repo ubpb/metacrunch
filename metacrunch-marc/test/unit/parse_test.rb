@@ -189,6 +189,39 @@ class ParseTest < Minitest::Test
     assert_raises(Marcxml::ParseError) { parser.finish }
   end
 
+  def test_raw_control_characters_in_values
+    xml = "<record><datafield tag=\"500\"><subfield code=\"a\">a\x1Fb</subfield></datafield></record>"
+    error = assert_raises(Marcxml::ParseError) { Marcxml.parse(xml) }
+
+    assert_equal %(field 500 $a: "\\u001F" cannot be represented in XML 1.0), error.message
+  end
+
+  def test_character_references_xml_cannot_represent
+    xml = %(<record><controlfield tag="001">a&#31;b</controlfield></record>)
+
+    assert_raises(Marcxml::ParseError) { Marcxml.parse(xml) }
+  end
+
+  def test_invalid_bytes_in_names
+    xml = "<record><datafield tag=\"500\"><subfield c\xF6de=\"a\">x</subfield></datafield></record>".b
+    error = assert_raises(Marcxml::ParseError) { Marcxml.parse(xml) }
+
+    assert_match(/\Ainvalid UTF-8 in markup/, error.message)
+  end
+
+  def test_invalid_utf8_in_attribute_values
+    xml = "<record><datafield tag=\"24\xFF\"><subfield code=\"a\">x</subfield></datafield></record>".b
+    error = assert_raises(Marcxml::ParseError) { Marcxml.parse(xml) }
+
+    assert_equal "invalid UTF-8 in attribute tag", error.message
+  end
+
+  def test_encoding_errors_of_the_block_are_not_parse_errors
+    assert_raises(Encoding::CompatibilityError) do
+      Marcxml.each("<record/>") { raise Encoding::CompatibilityError, "from the block" }
+    end
+  end
+
   def test_bare_records_need_a_collection
     assert_raises(Marcxml::ParseError) { Marcxml.each("<record/><record/>").to_a }
   end

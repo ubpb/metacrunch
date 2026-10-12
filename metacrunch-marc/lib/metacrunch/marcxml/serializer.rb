@@ -7,8 +7,10 @@ module Metacrunch
     # never into a value. Internal.
     module Serializer
 
-      # Characters XML 1.0 cannot represent, also not as references.
-      FORBIDDEN = /[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/
+      # Characters XML 1.0 cannot represent, also not as references: control
+      # characters but tab and line breaks, and two noncharacters.
+      CONTROL = /[\x00-\x08\x0B\x0C\x0E-\x1F]/
+      NONCHARACTERS = ["\uFFFE", "\uFFFF"].freeze
 
       TEXT = {"&" => "&amp;", "<" => "&lt;", ">" => "&gt;", "\r" => "&#13;"}.freeze
       ATTRIBUTE = TEXT.merge("\"" => "&quot;", "\t" => "&#9;", "\n" => "&#10;").freeze
@@ -57,10 +59,19 @@ module Metacrunch
         string = string.dup.force_encoding(Encoding::UTF_8) unless string.encoding == Encoding::UTF_8
         raise SerializeError, "#{where}: invalid UTF-8 #{string.inspect}" unless string.valid_encoding?
 
-        forbidden = string[FORBIDDEN]
+        forbidden = unrepresentable(string)
         raise SerializeError, "#{where}: #{forbidden.inspect} cannot be represented in XML 1.0" if forbidden
 
         string.gsub(pattern, table)
+      end
+
+      # The first character of string that XML 1.0 cannot represent, or nil.
+      # Checks ASCII and non-ASCII apart; one regex with both is much slower.
+      def unrepresentable(string)
+        return string[CONTROL] if string.match?(CONTROL)
+        return if string.ascii_only?
+
+        NONCHARACTERS.find { string.include?(it) }
       end
 
     end
