@@ -13,3 +13,8 @@ Security/MarshalLoad:
   Exclude:
     - "test/**/*"
     - "bench/**/*"
+
+# Tests leave loops on purpose (`each { break }`).
+Lint/UnreachableLoop:
+  Exclude:
+    - "test/**/*"

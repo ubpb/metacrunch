@@ -11,6 +11,7 @@ require_relative "marcxml/serializer"
 require_relative "marcxml/string_source"
 require_relative "marcxml/parser"
 require_relative "marcxml/splitter"
+require_relative "marcxml/reader"
 
 module Metacrunch
   # MARCXML for metacrunch: an ordered record model (Record, ControlField,
