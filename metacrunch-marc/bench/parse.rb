@@ -51,4 +51,13 @@ Dir.mktmpdir do |dir|
   measure("to_xml") { records.each(&:to_xml) }
   measure("Marshal round trip of a record") { records.each { Marshal.load(Marshal.dump(it)) } }
   measure("Marshal round trip of its XML") { xmls.each { Marshal.load(Marshal.dump(it)) } }
+
+  big = Marcxml::Record.new(fields: Array.new(50_000) { Marcxml::DataField.new("500", " ", " ", [["a", "x" * 150]]) })
+  big_path = File.join(dir, "big.xml")
+  File.write(big_path, big.to_xml)
+  started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  File.open(big_path) { |io| Marcxml.each_xml(io) { nil } }
+  millis = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000
+  label = "each_xml (one record of #{File.size(big_path) / 1_000_000} MB)"
+  puts "#{label.ljust(36)} #{format("%.1f", millis).rjust(8)} ms"
 end

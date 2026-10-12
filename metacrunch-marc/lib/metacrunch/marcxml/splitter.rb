@@ -3,10 +3,12 @@
 module Metacrunch
   module Marcxml
     # Cuts MARCXML into record strings without parsing it (Marcxml.each_xml).
-    # The record element name, with its prefix, is taken from the first
-    # record start tag; a record runs from a start tag to the next matching
-    # end tag. An end tag inside CDATA or a comment cuts a record there; a
-    # record cut off by the end of the input is yielded as it is. Internal.
+    # A record runs from a record start tag, with any prefix, to the next end
+    # tag with the same prefix, so concatenated documents with different
+    # prefixes work. An end tag inside CDATA or a comment cuts a record
+    # there; a record cut off by the end of the input is yielded as it is.
+    # Searches go on where they stopped, so a large record costs time in
+    # proportion to its size. Internal.
     class Splitter
 
       CHUNK_SIZE = 65_536
@@ -15,16 +17,23 @@ module Metacrunch
       # boundary.
       KEEP = 256
 
-      FIRST_START = %r{<(?:([A-Za-z_][\w.-]*):)?record[\s>/]}n
+      START = %r{<(?:([A-Za-z_][\w.-]*):)?record[\s>/]}n
 
       SLASH = "/".ord
 
       def initialize(input)
         @input = input.is_a?(String) ? StringSource.new(input) : input
         @buffer = String.new(encoding: Encoding::BINARY)
+        # Where the unused input starts; once a record start tag is found,
+        # where the record starts.
         @position = 0
-        @start = nil
+        # The end tag of the record at @position, nil until its start tag
+        # is found.
         @end_tag = nil
+        # The end of its start tag, nil until found.
+        @open_end = nil
+        # Where the next search for > or the end tag goes on.
+        @scan = 0
       end
 
       def each
@@ -43,51 +52,56 @@ module Metacrunch
 
       # The next whole record in the buffer, or nil.
       def take
-        return unless detected?
+        return unless started?
 
-        first = @buffer.index(@start, @position)
-        return skip unless first
+        @open_end ||= find_open_end
+        return unless @open_end
+        return finish(@open_end + 1) if @buffer.getbyte(@open_end - 1) == SLASH
 
-        @position = first
-        open_end = @buffer.index(">", first)
-        return unless open_end
-        return slice(first, open_end + 1) if @buffer.getbyte(open_end - 1) == SLASH
-
-        close = @buffer.index(@end_tag, open_end)
-        close && slice(first, close + @end_tag.bytesize)
+        close = @buffer.index(@end_tag, [@scan, @open_end].max)
+        if close
+          finish(close + @end_tag.bytesize)
+        else
+          @scan = [@buffer.bytesize - @end_tag.bytesize + 1, @open_end].max
+          nil
+        end
       end
 
-      # Finds the record element name in the first start tag; false until
-      # it is in the buffer.
-      def detected?
-        return true if @start
+      # Finds the next record start tag and takes its end tag from its
+      # prefix; false until one is in the buffer.
+      def started?
+        return true if @end_tag
 
-        match = FIRST_START.match(@buffer, @position)
+        match = START.match(@buffer, @position)
         unless match
-          skip
+          @position = [@position, @buffer.bytesize - KEEP].max
           return false
         end
 
-        prefix = match[1] ? "#{match[1]}:" : ""
-        @start = %r{<#{Regexp.escape(prefix)}record[\s>/]}n
-        @end_tag = "</#{prefix}record>".b
+        @position = match.begin(0)
+        @end_tag = "</#{"#{match[1]}:" if match[1]}record>".b
+        @scan = match.end(0) - 1
         true
+      end
+
+      def find_open_end
+        found = @buffer.index(">", @scan)
+        @scan = @buffer.bytesize unless found
+        found
+      end
+
+      def finish(to)
+        xml = slice(@position, to)
+        @end_tag = nil
+        @open_end = nil
+        xml
       end
 
       # The rest of the input from a record start tag on, at its end: a
       # record the input cut off, which fails when it is parsed. nil if
       # there is none.
       def remainder
-        return unless @start
-
-        first = @buffer.index(@start, @position)
-        first && slice(first, @buffer.bytesize)
-      end
-
-      # Drops the buffer but its last bytes. Returns nil.
-      def skip
-        @position = [@position, @buffer.bytesize - KEEP].max
-        nil
+        @end_tag && slice(@position, @buffer.bytesize)
       end
 
       def slice(from, to)
@@ -95,15 +109,23 @@ module Metacrunch
         @buffer.byteslice(from, to - from).force_encoding(Encoding::UTF_8)
       end
 
-      # Appends the next chunk, dropping what was taken; false at the end of
-      # the input.
+      # Appends the next chunk; false at the end of the input. What was
+      # taken is dropped only once it is more than a chunk, so a large
+      # record is not copied again with every chunk.
       def read_more?
         chunk = read
         return false unless chunk
 
-        @buffer = @buffer.byteslice(@position..) << chunk.b
-        @position = 0
+        compact if @position > CHUNK_SIZE
+        @buffer << chunk.b
         true
+      end
+
+      def compact
+        @buffer = @buffer.byteslice(@position..)
+        @scan = [@scan - @position, 0].max
+        @open_end -= @position if @open_end
+        @position = 0
       end
 
       def read
