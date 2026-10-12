@@ -87,11 +87,23 @@ class DataFieldTest < Minitest::Test
     assert_equal ["b", "c"], field.subfields.map(&:code)
   end
 
-  def test_remove_without_codes_removes_all
+  def test_remove_needs_codes
     field = title
-    field.remove
+    error = assert_raises(ArgumentError) { field.remove(*[]) }
 
-    assert_empty field.subfields
+    assert_match(/subfields\.clear/, error.message)
+    assert_equal 4, field.subfields.size
+  end
+
+  def test_codes_in_an_array
+    assert_equal ["Title", "Subtitle", "Second"], title.values(["a", "b"])
+    assert_equal "Subtitle", title.value(["b"])
+    assert_equal ["Title", "Second"], title.remove(["a"]).map(&:value)
+  end
+
+  def test_rejects_codes_that_are_not_strings
+    assert_raises(ArgumentError) { title.values(/a/) }
+    assert_raises(ArgumentError) { title.subfields(:a) }
   end
 
   def test_equality_compares_tag_indicators_and_subfield_order

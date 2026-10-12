@@ -84,7 +84,9 @@ copy = record.dup                                 # a deep copy
 ```
 
 `add` inserts a field before the first field whose tag sorts after its tag; `append` adds it at the end. `remove`
-without arguments removes all fields (all subfields).
+needs at least one tag or indicator filter (one code), so an empty list cannot clear a record by accident;
+`record.fields.clear` and `field.subfields.clear` remove everything. Codes, like tags, may also come in an Array:
+`field.values(["a", "b"])`.
 
 ### Output
 
