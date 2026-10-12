@@ -25,6 +25,21 @@ class JobsTest < Minitest::Test
     assert_equal(["processed"] * 3, Marcxml.each(outputs.first).map { it.value("999", "a") })
   end
 
+  def test_records_parsed_and_serialized_in_the_workers
+    input = fixture_path("collection.xml")
+    output = File.join(@dir, "serialized.xml")
+    job = Metacrunch.job do
+      source Marcxml::Reader.new(input, parse: false)
+      map(name: "parse") { Marcxml.parse(it) }
+      map(name: "mark") { it.add(Marcxml::DataField.new("999", " ", " ", [["a", "processed"]])) }
+      map(name: "serialize") { it.to_xml(namespace: false) }
+      sink Marcxml::Writer.new(output)
+    end
+
+    assert_equal :ok, job.run([], workers: 2, logger: Logger.new(nil)).status
+    assert_equal Marcxml.each(run_marking_job(workers: nil, parse: true)).to_a, Marcxml.each(File.read(output)).to_a
+  end
+
   def test_a_broken_record_fails_alone
     path = File.join(@dir, "broken.xml")
     File.write(path, %(<collection><record><controlfield tag="001">1</controlfield></record>) +

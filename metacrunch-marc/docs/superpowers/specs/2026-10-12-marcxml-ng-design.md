@@ -371,9 +371,11 @@ sink Metacrunch::Marcxml::Writer.new(params.output)
 - `close` writes `</collection>`, also after an aborted run, and closes its
   own file (an IO from outside is only flushed). A run without records
   gives an empty collection.
-- A record that is not a `Metacrunch::Marcxml::Record`, or one that raises
-  `SerializeError`, raises `Metacrunch::Error` with its position, as the
-  JSON Lines writer does.
+- A String that starts with a record element (e.g. from
+  `to_xml(namespace: false)` in a worker, so only a String crosses the
+  process boundary) is written as it is.
+- Any other record, or one that raises `SerializeError`, raises
+  `Metacrunch::Error` with its position, as the JSON Lines writer does.
 - `Errno::EPIPE` raises `SignalException("PIPE")` once; afterwards the
   writer writes nothing, not even the closing tag.
 

@@ -121,6 +121,25 @@ class WriterTest < Minitest::Test
     $stdout = stdout
   end
 
+  def test_writes_record_xml_strings_as_they_are
+    record = Marcxml.each(fixture("edge.xml")).first
+    io = StringIO.new
+    writer = open_writer(io)
+    writer.write(record.to_xml(namespace: false), @ctx)
+    writer.write_batch([%(<record><controlfield tag="001">2</controlfield></record>)], [@ctx])
+    writer.close
+
+    assert_equal [record, Marcxml.parse(%(<record><controlfield tag="001">2</controlfield></record>))],
+                 Marcxml.each(io.string).to_a
+  end
+
+  def test_rejects_strings_that_are_not_records
+    writer = open_writer(StringIO.new)
+    error = assert_raises(Metacrunch::Error) { writer.write("hello", @ctx) }
+
+    assert_equal "record at position 3 is a String but not a <record> element", error.message
+  end
+
   def test_rejects_records_of_other_classes
     writer = open_writer(StringIO.new)
     error = assert_raises(Metacrunch::Error) { writer.write({"001" => "1"}, @ctx) }
