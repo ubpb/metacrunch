@@ -42,6 +42,7 @@ module Metacrunch
       # those of these codes (all without codes), of control fields their
       # value when no codes are given.
       def values(tags, *codes, ind1: nil, ind2: nil)
+        codes = codes.flatten
         fields(tags, ind1:, ind2:).flat_map do |field|
           if field.is_a?(DataField)
             field.values(*codes)
@@ -69,9 +70,14 @@ module Metacrunch
         self
       end
 
-      # Removes the matching fields (all fields without arguments). Returns
-      # them.
+      # Removes the matching fields. Returns them. Without any tag or
+      # indicator filter it raises, so an empty list cannot clear a record by
+      # accident.
       def remove(*tags, ind1: nil, ind2: nil)
+        if tags.empty? && ind1.nil? && ind2.nil?
+          raise ArgumentError, "remove needs tags or indicator filters; fields.clear removes all fields"
+        end
+
         filter = Filter.new(tags, ind1, ind2)
         removed = []
         @fields.reject! do |field|

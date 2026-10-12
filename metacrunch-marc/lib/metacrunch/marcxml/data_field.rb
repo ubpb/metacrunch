@@ -31,7 +31,9 @@ module Metacrunch
 
       # Without codes the field's own Array (changes affect the field), with
       # codes a new Array of the subfields with these codes, in field order.
+      # Codes are Strings, also in Arrays.
       def subfields(*codes)
+        codes = check_codes(codes)
         codes.empty? ? @subfields : @subfields.select { codes.include?(it.code) }
       end
 
@@ -41,6 +43,7 @@ module Metacrunch
 
       # The first value of these codes (of any code without codes), or nil.
       def value(*codes)
+        codes = check_codes(codes)
         found = codes.empty? ? @subfields.first : @subfields.find { codes.include?(it.code) }
         found&.value
       end
@@ -59,12 +62,15 @@ module Metacrunch
         self
       end
 
-      # Removes the subfields with these codes (all without codes). Returns
-      # them.
+      # Removes the subfields with these codes. Returns them. Without codes
+      # it raises, so an empty list cannot clear a field by accident.
       def remove(*codes)
+        codes = check_codes(codes)
+        raise ArgumentError, "remove needs codes; subfields.clear removes all subfields" if codes.empty?
+
         removed = []
         @subfields.reject! do |subfield|
-          match = codes.empty? || codes.include?(subfield.code)
+          match = codes.include?(subfield.code)
           removed << subfield if match
           match
         end
@@ -106,6 +112,13 @@ module Metacrunch
         return Subfield.new(*value) if value.is_a?(Array) && value.size == 2
 
         raise ArgumentError, "a subfield must be a Subfield or a [code, value] pair, got #{value.inspect}"
+      end
+
+      def check_codes(codes)
+        codes = codes.flatten
+        return codes if codes.all?(String)
+
+        raise ArgumentError, "a code must be a String, got #{codes.find { !it.is_a?(String) }.inspect}"
       end
 
       def mnemonic(indicator) = indicator == BLANK ? "\\" : indicator

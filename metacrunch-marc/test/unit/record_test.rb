@@ -148,11 +148,23 @@ class RecordTest < Minitest::Test
     assert_equal ["https://example.org/1"], record.values("856", "u")
   end
 
-  def test_remove_without_arguments_removes_all_fields
+  def test_remove_needs_a_filter
     record = sample
-    record.remove
+    error = assert_raises(ArgumentError) { record.remove(*[]) }
 
-    assert_empty record.fields
+    assert_match(/fields\.clear/, error.message)
+    assert_equal 10, record.fields.size
+  end
+
+  def test_remove_by_indicators_only
+    record = sample
+
+    assert_equal ["650"], tags(record.remove(ind2: "7"))
+  end
+
+  def test_values_with_codes_in_an_array
+    assert_equal ["Title", "Subtitle"], sample.values("245", ["a", "b"])
+    assert_empty sample.values("001", ["a"])
   end
 
   def test_equality

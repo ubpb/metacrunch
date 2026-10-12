@@ -147,6 +147,9 @@ frozen state of strings).
 
 ### 3.3 DataField
 
+Codes are Strings and may also be given in Arrays (`values(["a", "b"])`);
+other codes raise `ArgumentError`.
+
 `DataField.new(tag, ind1 = " ", ind2 = " ", subfields = [])`. Subfields may
 be given as `Subfield`s or as `[code, value]` pairs, which become
 `Subfield`s. `tag`, `ind1`, `ind2` have accessors; a blank indicator is
@@ -161,7 +164,7 @@ be given as `Subfield`s or as `[code, value]` pairs, which become
 | `field[code]` | `value(code)` |
 | `join(*codes, separator: " ")` | the values joined, or nil if there is none |
 | `add(code, value)` | appends a subfield; returns self |
-| `remove(*codes)` | removes the subfields with these codes; returns them |
+| `remove(*codes)` | removes the subfields with these codes; returns them; without codes `ArgumentError` (`subfields.clear` removes all) |
 
 ### 3.4 Record
 
@@ -185,7 +188,7 @@ fields never match.
 | `value(tags, *codes, ind1:, ind2:)` | the first of those values, or nil |
 | `add(field)` | inserts the field before the first field whose tag sorts after it (`String#<=>`), else at the end; returns self |
 | `append(field)` | appends the field; returns self |
-| `remove(*tags, ind1:, ind2:)` | removes the matching fields; returns them |
+| `remove(*tags, ind1:, ind2:)` | removes the matching fields; returns them; without any filter `ArgumentError` (`fields.clear` removes all) |
 
 `add` and `append` raise `ArgumentError` for objects other than
 `ControlField` and `DataField`.
