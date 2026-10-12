@@ -7,6 +7,8 @@ require_relative "marcxml/control_field"
 require_relative "marcxml/data_field"
 require_relative "marcxml/filter"
 require_relative "marcxml/record"
+require_relative "marcxml/string_source"
+require_relative "marcxml/parser"
 
 module Metacrunch
   # MARCXML for metacrunch: an ordered record model (Record, ControlField,
@@ -16,6 +18,52 @@ module Metacrunch
 
     # The namespace of the MARC 21 XML schema.
     NAMESPACE = "http://www.loc.gov/MARC21/slim"
+
+    # The values of normalize:.
+    NORMALIZATIONS = [nil, :nfc].freeze
+
+    class << self
+
+      # The one record in xml, a String with one <record>, bare or in a
+      # <collection>. Raises ParseError for none or more than one.
+      def parse(xml, normalize: nil)
+        raise ArgumentError, "xml must be a String, got #{xml.class}" unless xml.is_a?(String)
+
+        records = each(xml, normalize:).to_a
+        raise ParseError, "no record found" if records.empty?
+        raise ParseError, "#{records.size} records found where one was expected (use Marcxml.each)" if records.size > 1
+
+        records.first
+      end
+
+      # Yields every record of input: a String, or an object with
+      # readpartial or read (a File, a Zlib::GzipReader, a pipe). Without a
+      # block an Enumerator.
+      def each(input, normalize: nil, &block)
+        check_input(input)
+        check_normalize(normalize)
+        return enum_for(:each, input, normalize:) unless block
+
+        Parser.run(input.is_a?(String) ? StringSource.new(input) : input, normalize:, &block)
+        nil
+      end
+
+      # Raises ArgumentError unless normalize is nil or :nfc.
+      def check_normalize(normalize)
+        return if NORMALIZATIONS.include?(normalize)
+
+        raise ArgumentError, "normalize must be nil or :nfc, got #{normalize.inspect}"
+      end
+
+      private
+
+      def check_input(input)
+        return if input.is_a?(String) || input.respond_to?(:readpartial) || input.respond_to?(:read)
+
+        raise ArgumentError, "input must be a String or respond to #readpartial or #read, got #{input.class}"
+      end
+
+    end
 
   end
 end

@@ -250,8 +250,9 @@ Metacrunch::Marcxml.each_xml(input) { |xml| }             # record strings
   and character references are converted.
 - The leader is taken wherever it stands in the record. Fields keep their
   document order; empty elements give `""`.
-- A missing `ind1` or `ind2` attribute becomes `" "`; a missing `tag` or
-  `code` becomes `""`. The `type` attribute of `<record>` is kept.
+- A missing or empty `ind1` or `ind2` attribute becomes `" "`; a missing
+  `tag` or `code` becomes `""`. The `type` attribute of `<record>` is kept.
+- Values are UTF-8 (MARCXML is UTF-8); other encodings are not converted.
 - With `normalize: :nfc`, every value that is not ASCII-only is normalized
   with `String#unicode_normalize(:nfc)`.
 
@@ -262,6 +263,10 @@ Metacrunch::Marcxml.each_xml(input) { |xml| }             # record strings
 
 - A syntax error Ox reports through the handler's `error` callback.
 - Input that ends inside a record.
+- A value that is not valid UTF-8, named by its field (`field 245 $a:
+  invalid UTF-8`).
+- Several records without a `<collection>` around them (not well-formed
+  XML); `each_xml` and the `Reader` still read them.
 - `parse` with no record or more than one.
 
 Ox is not a validating parser and accepts some malformed input; the

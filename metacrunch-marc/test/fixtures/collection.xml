@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<collection xmlns="http://www.loc.gov/MARC21/slim">
+  <record type="Bibliographic">
+    <leader>00000nam a2200000 c 4500</leader>
+    <controlfield tag="001">book-1</controlfield>
+    <controlfield tag="008">200101s2020    gw            000 0 eng d</controlfield>
+    <datafield tag="020" ind1=" " ind2=" ">
+      <subfield code="a">9783000000001</subfield>
+    </datafield>
+    <datafield tag="100" ind1="1" ind2=" ">
+      <subfield code="a">Doe, Jane</subfield>
+      <subfield code="4">aut</subfield>
+    </datafield>
+    <datafield tag="245" ind1="1" ind2="0">
+      <subfield code="a">Metadata in practice</subfield>
+      <subfield code="b">a handbook</subfield>
+      <subfield code="c">Jane Doe</subfield>
+    </datafield>
+    <datafield tag="264" ind1=" " ind2="1">
+      <subfield code="a">Berlin</subfield>
+      <subfield code="b">Example Press</subfield>
+      <subfield code="c">2020</subfield>
+    </datafield>
+    <datafield tag="650" ind1=" " ind2="7">
+      <subfield code="a">Metadata</subfield>
+      <subfield code="2">gnd</subfield>
+    </datafield>
+  </record>
+  <record type="Bibliographic">
+    <leader>00000naa a2200000 c 4500</leader>
+    <controlfield tag="001">article-1</controlfield>
+    <datafield tag="245" ind1="0" ind2="0">
+      <subfield code="a">Linked data for libraries</subfield>
+    </datafield>
+    <datafield tag="773" ind1="0" ind2="8">
+      <subfield code="t">Journal of Examples</subfield>
+      <subfield code="g">12 (2021), 3, p. 45-67</subfield>
+    </datafield>
+    <datafield tag="856" ind1="4" ind2="0">
+      <subfield code="u">https://example.org/article-1</subfield>
+    </datafield>
+    <datafield tag="856" ind1="4" ind2="2">
+      <subfield code="u">https://example.org/article-1/cover.jpg</subfield>
+      <subfield code="3">Cover</subfield>
+    </datafield>
+  </record>
+  <record type="Holdings">
+    <leader>00000nx  a2200000un 4500</leader>
+    <controlfield tag="001">holding-1</controlfield>
+    <datafield tag="852" ind1="8" ind2=" ">
+      <subfield code="b">MAIN</subfield>
+      <subfield code="h">QA 76.9 .D3</subfield>
+    </datafield>
+  </record>
+</collection>
