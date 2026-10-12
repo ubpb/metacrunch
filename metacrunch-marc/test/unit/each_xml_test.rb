@@ -25,6 +25,24 @@ class EachXmlTest < Minitest::Test
 
   end
 
+  # Gives the input in chunks of a fixed size, whatever is asked for.
+  class Chunked
+
+    def initialize(string, size)
+      @bytes = string.b
+      @size = size
+      @position = 0
+    end
+
+    def readpartial(_length)
+      raise EOFError if @position >= @bytes.bytesize
+
+      @position += @size
+      @bytes.byteslice(@position - @size, @size)
+    end
+
+  end
+
   # Has only read, as some IO-like objects do.
   class ReadOnly
 
@@ -105,6 +123,30 @@ class EachXmlTest < Minitest::Test
   def test_concatenated_documents_and_bare_records
     assert_equal 6, Marcxml.each_xml(fixture("collection.xml") * 2).count
     assert_equal 2, Marcxml.each_xml("<record/><record/>").count
+  end
+
+  def test_concatenated_documents_with_different_prefixes
+    xml = fixture("collection.xml") + fixture("prefixed.xml") + fixture("local.xml")
+
+    ids = Marcxml.each_xml(xml).map { Marcxml.parse(it)["001"].value }
+
+    assert_equal ["book-1", "article-1", "holding-1", "prefixed-1", "prefixed-2", "local-1"], ids
+  end
+
+  def test_long_input_in_chunks_of_any_size
+    records = Array.new(4_000) { %(<record type="Bibliographic"><controlfield tag="001">#{it}</controlfield></record>) }
+    xml = "<collection>#{records.join("\n")}</collection>"
+
+    [70_001, 70_013, 70_019, 99_991, 131_071].each do |size|
+      assert_equal records, Marcxml.each_xml(Chunked.new(xml, size)).to_a, "chunks of #{size}"
+    end
+  end
+
+  def test_a_large_record_across_many_chunks
+    values = Array.new(2_000) { |i| %(<subfield code="a">#{"x" * 100}#{i}</subfield>) }
+    xml = %(<record><datafield tag="500">#{values.join}</datafield></record>)
+
+    assert_equal [xml], Marcxml.each_xml(xml).to_a
   end
 
   def test_needs_a_string_or_an_io

@@ -284,9 +284,12 @@ its end tag, without parsing:
 
 - The input is read in chunks (`readpartial` or `read`), so Strings, files,
   gzip readers, tar entries and pipes are handled the same way.
-- The record element name is detected from the first `<record` or
-  `<prefix:record` start tag (followed by whitespace, `>` or `/`), and the
-  input is cut after each matching end tag.
+- Each record starts at a `<record` or `<prefix:record` start tag
+  (followed by whitespace, `>` or `/`) and ends at the next end tag with
+  the same prefix, so concatenated documents with different prefixes work.
+- Searches go on where they stopped and consumed input is dropped in large
+  steps, so time grows in proportion to the size of a record, also for
+  records of many megabytes.
 - Text before the first record (XML declaration, `<collection>`) and after
   the last one is skipped. A record keeps its bytes; namespace declarations
   of the collection are not copied into it, which the parser does not need.
