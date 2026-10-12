@@ -164,7 +164,7 @@ than tab and line breaks) stops the run with the record's position; records read
 ### Workers
 
 `--workers` sends records between processes with `Marshal`. A parsed record costs much more to send than its XML: in
-`bench/parse.rb`, 40 µs per record for a parsed record and 1 µs for its XML string. With workers, let the reader
+`bench/parse.rb`, 42 µs per record for a parsed record and 1 µs for its XML string. With workers, let the reader
 yield the XML and parse it in the first step:
 
 ```ruby
@@ -176,7 +176,9 @@ sink Metacrunch::Marcxml::Writer.new(params.output)
 ```
 
 `id:` then gets the XML string. The writer writes a String that starts with a `<record>` element as it is, so a MARC
-to MARC job can serialize in the workers as well; a job that ends in Hashes needs no last step.
+to MARC job can serialize in the workers as well; a job that ends in Hashes needs no last step. In a MARC to MARC job
+with cheap steps and records of 3 KB, 4 workers handled about 21,000 records/s when they sent records back (as many as
+without workers) and about 64,000 records/s when they sent XML back.
 
 ### Testing jobs
 
