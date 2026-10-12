@@ -130,9 +130,12 @@ examples/  bench/parse.rb
 
 ## 3. Record model
 
-All classes are mutable. `==`, `eql?` and `hash` compare class and
-attributes. `dup` and `clone` copy deeply (fields and subfields, not the
-frozen state of strings).
+All classes are mutable except for two points that keep the tag index of
+a record (3.4) right: the tag of a field is fixed (frozen and deduplicated,
+no `tag=`), and the fields of a record are a frozen Array that only
+`add`, `append`, `remove` and `clear` replace. `==`, `eql?` and `hash`
+compare class and attributes. `dup` and `clone` copy deeply (fields and
+subfields, not the frozen state of strings).
 
 ### 3.1 Subfield
 
@@ -141,7 +144,7 @@ frozen state of strings).
 
 ### 3.2 ControlField
 
-`ControlField.new(tag, value)`; `tag` and `value` with accessors.
+`ControlField.new(tag, value)`; `tag` (fixed) and `value` (accessor).
 `field[index_or_range]` returns `value[index_or_range]` (e.g.
 `field[35..37]`), nil for a nil value.
 
@@ -152,8 +155,9 @@ other codes raise `ArgumentError`.
 
 `DataField.new(tag, ind1 = " ", ind2 = " ", subfields = [])`. Subfields may
 be given as `Subfield`s or as `[code, value]` pairs, which become
-`Subfield`s. `tag`, `ind1`, `ind2` have accessors; a blank indicator is
-`" "`, and nil given to the constructor or a setter becomes `" "`.
+`Subfield`s. `tag` is fixed; `ind1` and `ind2` have accessors; a blank
+indicator is `" "`, and nil given to the constructor or a setter becomes
+`" "`.
 
 | Method | Result |
 |---|---|
@@ -180,7 +184,7 @@ fields never match.
 
 | Method | Result |
 |---|---|
-| `fields` | the record's Array of fields itself (mutable) |
+| `fields` | the record's frozen Array of fields |
 | `fields(*tags, ind1: nil, ind2: nil)` | a new Array of matching fields, in record order; with only indicator filters, all tags |
 | `field(*tags, ind1:, ind2:)` | the first matching field, or nil |
 | `record[tag]` | `field(tag)` |
@@ -188,10 +192,15 @@ fields never match.
 | `value(tags, *codes, ind1:, ind2:)` | the first of those values, or nil |
 | `add(field)` | inserts the field before the first field whose tag sorts after it (`String#<=>`), else at the end; returns self |
 | `append(field)` | appends the field; returns self |
-| `remove(*tags, ind1:, ind2:)` | removes the matching fields; returns them; without any filter `ArgumentError` (`fields.clear` removes all) |
+| `remove(*tags, ind1:, ind2:) { \|field\| }` | removes the fields that match the filters and, with a block, for which it is true; returns them; without filter and block `ArgumentError` |
+| `clear` | removes all fields; returns them |
 
 `add` and `append` raise `ArgumentError` for objects other than
 `ControlField` and `DataField`.
+
+Queries with one String tag use an index (tag => fields in record order),
+built on the first query after a change; other tag matchers scan the
+fields. Marshal leaves the index out.
 
 ### 3.5 MARC-in-JSON
 

@@ -91,20 +91,18 @@ class ToXmlTest < Minitest::Test
     assert_equal "Müller", Marcxml.parse(record.to_xml)["001"].value
   end
 
+  def test_rejects_strings_that_cannot_be_transcoded
+    record = Record.new(fields: [ControlField.new("001", "\x82".dup.force_encoding("Shift_JIS"))])
+
+    assert_raises(Marcxml::SerializeError) { record.to_xml }
+  end
+
   def test_messages_show_invalid_bytes_as_escapes
     record = Record.new(fields: [DataField.new("245", " ", " ", [["\xE4".b, "\u0001"]])])
     error = assert_raises(Marcxml::SerializeError) { record.to_xml }
 
     assert_predicate error.message, :valid_encoding?
     assert_match(/\Afield 245 \$\\xE4: /, error.message)
-  end
-
-  def test_rejects_objects_in_fields_that_are_not_fields
-    record = Record.new(fields: [ControlField.new("001", "1")])
-    record.fields << {"500" => "note"}
-    error = assert_raises(Marcxml::SerializeError) { record.to_xml }
-
-    assert_equal "field 2 is not a ControlField or a DataField (Hash)", error.message
   end
 
   def test_round_trip_of_every_fixture

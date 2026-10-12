@@ -25,18 +25,15 @@ module Metacrunch
         xml << " type=\"#{attribute(record.type) { "type" }}\"" if record.type
         xml << ">\n"
         xml << "#{indent}  <leader>#{text(record.leader) { "leader" }}</leader>\n" if record.leader
-        record.fields.each_with_index { |field, index| field(xml, field, index, indent) }
+        record.fields.each { field(xml, it, indent) }
         xml << "#{indent}</record>\n"
       end
 
-      def field(xml, field, index, indent)
-        case field
-        when ControlField
-          tag = attribute(field.tag) { location(field.tag) }
-          xml << "#{indent}  <controlfield tag=\"#{tag}\">#{text(field.value) { location(field.tag) }}</controlfield>\n"
-        when DataField then data_field(xml, field, indent)
-        else raise SerializeError, "field #{index + 1} is not a ControlField or a DataField (#{field.class})"
-        end
+      def field(xml, field, indent)
+        return data_field(xml, field, indent) if field.is_a?(DataField)
+
+        tag = attribute(field.tag) { location(field.tag) }
+        xml << "#{indent}  <controlfield tag=\"#{tag}\">#{text(field.value) { location(field.tag) }}</controlfield>\n"
       end
 
       def data_field(xml, field, indent)

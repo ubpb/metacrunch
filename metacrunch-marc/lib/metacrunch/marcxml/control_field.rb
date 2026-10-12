@@ -2,13 +2,15 @@
 
 module Metacrunch
   module Marcxml
-    # A control field (001-009 in MARC 21): a tag and a value.
+    # A control field (001-009 in MARC 21): a tag and a value. The tag is
+    # fixed (see Record); the value can be changed.
     class ControlField
 
-      attr_accessor :tag, :value
+      attr_reader :tag
+      attr_accessor :value
 
       def initialize(tag, value)
-        @tag = tag
+        @tag = Tags.fix(tag)
         @value = value
       end
 
@@ -36,7 +38,6 @@ module Metacrunch
 
       def initialize_copy(source)
         super
-        @tag = source.tag&.dup
         @value = source.value&.dup
       end
 

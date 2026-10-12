@@ -24,7 +24,8 @@ A rewrite for metacrunch 5. Code written for 4.x must be adapted; see the Readme
 ### New
 
 - `Record#to_xml`, `#to_h` (MARC-in-JSON) and `#to_s` (MarcEdit's mnemonic form, also used by `inspect`).
-- Changing records: `Record#add`, `#append`, `#remove`, `DataField#add`, `#remove`, deep `dup`.
+- Changing records: `Record#add`, `#append`, `#remove` (also with a block), `#clear`, `DataField#add`, `#remove`, deep
+  `dup`. The fields of a record are a frozen Array and the tag of a field is fixed, so queries by tag use an index.
 - `Metacrunch::Marcxml::Reader`, a source for files, gzip files (also with several members, and recognized by their
   content), tar archives, stdin and IOs; a record that cannot be read becomes a `Metacrunch::InvalidRecord`.
 - `Metacrunch::Marcxml::Writer`, a sink that writes `Record`s and record XML serialized in a worker.

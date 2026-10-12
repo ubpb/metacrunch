@@ -84,6 +84,17 @@ class ReaderTest < Minitest::Test
     assert_equal ["local-1"], ids(read(Reader.new(path)))
   end
 
+  def test_a_broken_tar_gz_raises
+    assert_raises(Zlib::GzipFile::Error) { read(Reader.new(write("broken.tar.gz", "not gzip"))) }
+  end
+
+  def test_stopping_inside_a_gzip_file
+    path = write("records.xml.gz", Zlib.gzip(fixture("collection.xml")))
+    first = Reader.new(path).each { break it }
+
+    assert_equal "book-1", first["001"].value
+  end
+
   def test_reads_tar_archives
     archive = tar("a.xml" => fixture("collection.xml"), "b.xml" => fixture("local.xml"))
     paths = [write("records.tar", archive), write("records.tar.gz", Zlib.gzip(archive)),

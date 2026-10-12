@@ -3,17 +3,17 @@
 module Metacrunch
   module Marcxml
     # A data field: a tag, two indicators and an ordered Array of Subfields.
-    # A blank indicator is " ".
+    # A blank indicator is " ". The tag is fixed (see Record); indicators and
+    # subfields can be changed.
     class DataField
 
       BLANK = " "
 
-      attr_accessor :tag
-      attr_reader :ind1, :ind2
+      attr_reader :tag, :ind1, :ind2
 
       # subfields: Subfields or [code, value] pairs.
       def initialize(tag, ind1 = BLANK, ind2 = BLANK, subfields = [])
-        @tag = tag
+        @tag = Tags.fix(tag)
         self.ind1 = ind1
         self.ind2 = ind2
         @subfields = subfields.map { subfield(it) }
@@ -101,7 +101,6 @@ module Metacrunch
 
       def initialize_copy(source)
         super
-        @tag = source.tag&.dup
         @ind1 = source.ind1.dup
         @ind2 = source.ind2.dup
         @subfields = source.subfields.map(&:dup)

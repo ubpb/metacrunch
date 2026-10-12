@@ -3,8 +3,12 @@
 module Metacrunch
   module Marcxml
     # A MARC record: a leader (a String or nil), the type attribute of
-    # <record> (e.g. "Bibliographic") or nil, and an ordered Array of
+    # <record> (e.g. "Bibliographic") or nil, and an ordered, frozen Array of
     # ControlFields and DataFields.
+    #
+    # The fields change only through add, append, remove and clear, which
+    # put a new Array in place, and the tags of fields are fixed. So queries
+    # by tag use an index, built on the first query after a change.
     #
     # Tag matchers select fields by tag: a String (equal), an Array of
     # matchers (any), a Range of Strings (its members) or a Regexp.
@@ -19,12 +23,12 @@ module Metacrunch
       def initialize(leader: nil, fields: [], type: nil)
         @leader = leader
         @type = type
-        @fields = fields.map { check_field(it) }
+        @fields = fields.map { check_field(it) }.freeze
+        @index = nil
       end
 
-      # Without arguments the record's own Array (changes affect the
-      # record), otherwise a new Array of the matching fields, in record
-      # order.
+      # Without arguments the record's frozen Array of fields, otherwise a
+      # new Array of the matching fields, in record order.
       def fields(*tags, ind1: nil, ind2: nil)
         return @fields if tags.empty? && ind1.nil? && ind2.nil?
 
@@ -75,31 +79,36 @@ module Metacrunch
       def add(field)
         check_field(field)
         index = @fields.index { (it.tag <=> field.tag) == 1 }
-        index ? @fields.insert(index, field) : @fields.push(field)
+        update(index ? @fields.dup.insert(index, field) : [*@fields, field])
         self
       end
 
       # Appends the field. Returns self.
       def append(field)
-        @fields << check_field(field)
+        update([*@fields, check_field(field)])
         self
       end
 
-      # Removes the matching fields. Returns them. Without any tag or
-      # indicator filter it raises, so an empty list cannot clear a record by
-      # accident.
+      # Removes the fields that match the tags and indicator filters and,
+      # with a block, for which the block is true. Returns them. Without any
+      # tag, indicator filter or block it raises, so an empty list cannot
+      # clear a record by accident.
       def remove(*tags, ind1: nil, ind2: nil)
-        if tags.empty? && ind1.nil? && ind2.nil?
-          raise ArgumentError, "remove needs tags or indicator filters; fields.clear removes all fields"
+        filtered = !(tags.empty? && ind1.nil? && ind2.nil?)
+        unless filtered || block_given?
+          raise ArgumentError, "remove needs tags, indicator filters or a block; clear removes all fields"
         end
 
-        filter = Filter.new(tags, ind1, ind2)
-        removed = []
-        @fields.reject! do |field|
-          match = filter.matches?(field)
-          removed << field if match
-          match
-        end
+        filter = filtered ? Filter.new(tags, ind1, ind2) : nil
+        removed, kept = @fields.partition { (filter.nil? || filter.matches?(it)) && (!block_given? || yield(it)) }
+        update(kept) unless removed.empty?
+        removed
+      end
+
+      # Removes all fields. Returns them.
+      def clear
+        removed = @fields
+        update([])
         removed
       end
 
@@ -133,28 +142,45 @@ module Metacrunch
 
       def inspect = "#<#{self.class.name}\n#{self}>"
 
+      # Marshal leaves the index out; it is built again when needed.
+      def marshal_dump = [@leader, @type, @fields]
+
+      def marshal_load(data)
+        @leader, @type, @fields = data
+        @index = nil
+      end
+
       private
 
       def initialize_copy(source)
         super
         @leader = source.leader&.dup
         @type = source.type&.dup
-        @fields = source.fields.map(&:dup)
+        @fields = source.fields.map(&:dup).freeze
+        @index = nil
       end
 
-      # Yields the matching fields in record order. With one String tag, the
-      # most common query, tags are compared directly and indicators are
-      # checked only for fields with that tag.
-      def each_match(tags, ind1, ind2)
+      def update(fields)
+        @fields = fields.freeze
+        @index = nil
+      end
+
+      # Tag => fields with that tag, in record order.
+      def index = @index ||= @fields.group_by(&:tag)
+
+      # Yields the matching fields in record order. One String tag, the most
+      # common query, goes through the index, and indicators are checked only
+      # for its fields; other tag matchers scan the fields.
+      def each_match(tags, ind1, ind2, &)
         tag = tags.first
         if tags.size != 1 || !tag.is_a?(String)
           filter = Filter.new(tags, ind1, ind2)
           @fields.each { yield it if filter.matches?(it) }
         elsif ind1.nil? && ind2.nil?
-          @fields.each { yield it if it.tag == tag }
+          index[tag]&.each(&)
         else
           filter = Filter.new(ANY_TAG, ind1, ind2)
-          @fields.each { yield it if it.tag == tag && filter.matches?(it) }
+          index[tag]&.each { yield it if filter.matches?(it) }
         end
       end
 

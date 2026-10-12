@@ -40,10 +40,10 @@ Requires Ruby 4.0 and metacrunch 5. The only other dependency is [Ox](https://gi
 ## Records
 
 A `Metacrunch::Marcxml::Record` has a `leader` (a String or nil), a `type` (the `type` attribute of `<record>`, e.g.
-`"Bibliographic"`, or nil) and `fields`, an Array of `ControlField`s and `DataField`s in document order. A
+`"Bibliographic"`, or nil) and `fields`, a frozen Array of `ControlField`s and `DataField`s in document order. A
 `DataField` has a `tag`, two indicators (`ind1`, `ind2`; blank is `" "`) and `subfields`, an Array of `Subfield`s
 with a `code` and a `value`. Tags and codes are Strings and are not checked, so local tags such as `852H` and codes
-such as `as` work.
+such as `as` work. The tag of a field is fixed.
 
 ### Querying
 
@@ -67,9 +67,12 @@ field.join("a", "b", separator: " : ")            # nil if there is no value
 field.subfields("a")                              # an Array of Subfields
 ```
 
-`fields` and `subfields` without arguments return the record's and the field's own Arrays; a query with arguments
-returns a new Array. Results are plain Arrays, so they chain with `flat_map`, `filter_map` and friends:
-`record.fields("856", ind1: "4").flat_map { it.values("u") }`.
+`fields` without arguments returns the record's frozen Array, `subfields` without arguments the field's own Array; a
+query with arguments returns a new Array. Results are plain Arrays, so they chain with `flat_map`, `filter_map` and
+friends: `record.fields("856", ind1: "4").flat_map { it.values("u") }`.
+
+A query by one tag uses an index of the record's fields, built on the first query after a change, so it costs about
+the same however many fields a record has: eight typical queries take about 2 µs per record in `bench/parse.rb`.
 
 ### Changing
 
@@ -77,16 +80,26 @@ returns a new Array. Results are plain Arrays, so they chain with `flat_map`, `f
 record.add(Metacrunch::Marcxml::DataField.new("650", " ", "7", [["a", "Linked data"], ["2", "gnd"]]))
 record.append(Metacrunch::Marcxml::ControlField.new("009", "x"))
 record.remove("856", ind1: "4", ind2: "2")        # returns the removed fields
+record.remove { it.tag.start_with?("9") }         # with a block, also with tags and indicators
+record.clear                                      # removes all fields and returns them
 field.add("a", "Value")                           # appends a subfield
 field.remove("x")                                 # returns the removed subfields
 field.ind1 = "1"
 copy = record.dup                                 # a deep copy
 ```
 
-`add` inserts a field before the first field whose tag sorts after its tag; `append` adds it at the end. `remove`
-needs at least one tag or indicator filter (one code), so an empty list cannot clear a record by accident;
-`record.fields.clear` and `field.subfields.clear` remove everything. Codes, like tags, may also come in an Array:
-`field.values(["a", "b"])`.
+The fields of a record change only through `add`, `append`, `remove` and `clear`, which keep the index right;
+`record.fields << field` raises `FrozenError`. `add` inserts a field before the first field whose tag sorts after its
+tag; `append` adds it at the end. `remove` needs a tag, an indicator filter or a block (a code for `field.remove`), so
+an empty list cannot clear a record by accident; `record.clear` and `field.subfields.clear` remove everything. Codes,
+like tags, may also come in an Array: `field.values(["a", "b"])`.
+
+The tag of a field cannot change. To move a field to another tag, add a new field and remove the old one:
+
+```ruby
+record.add(Metacrunch::Marcxml::DataField.new("690", field.ind1, field.ind2, field.subfields))
+record.remove { it.equal?(field) }
+```
 
 ### Output
 

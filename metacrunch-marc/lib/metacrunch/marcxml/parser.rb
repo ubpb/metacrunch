@@ -34,8 +34,15 @@ module Metacrunch
         @normalize = normalize
         @block = block
         @names = {}
-        @record = nil
-        @field = nil
+        # The fields of the record being read; nil outside a record.
+        @fields = nil
+        @leader = nil
+        @type = nil
+        # The subfields of the data field being read; nil outside one.
+        @subfields = nil
+        @field_tag = nil
+        @ind1 = nil
+        @ind2 = nil
         @text = nil
         @kind = nil
         @skip = 0
@@ -51,15 +58,15 @@ module Metacrunch
 
         case local(name)
         when :record then start_record
-        when :datafield then start_data_field if @record
-        when :leader, :controlfield then start_value(local(name)) if @record
-        when :subfield then start_value(:subfield) if @field
+        when :datafield then start_data_field if @fields
+        when :leader, :controlfield then start_value(local(name)) if @fields
+        when :subfield then start_value(:subfield) if @subfields
         end
       end
 
       def attr(name, value)
         case @target
-        when :record then @record.type = attribute(name, value) if name == :type
+        when :record then @type = attribute(name, value) if name == :type
         when :datafield then data_field_attr(name, value)
         when :controlfield then @tag = attribute(name, value) if name == :tag
         when :subfield then @code = attribute(name, value) if name == :code
@@ -81,8 +88,8 @@ module Metacrunch
         end
 
         case local(name)
-        when :datafield then finish_data_field if @field
-        when :record then finish_record if @record
+        when :datafield then finish_data_field if @subfields
+        when :record then finish_record if @fields
         end
       end
 
@@ -93,7 +100,7 @@ module Metacrunch
 
       # Raises if the input ended inside a record.
       def finish
-        raise ParseError, "the input ended inside a record" if @record
+        raise ParseError, "the input ended inside a record" if @fields
       end
 
       # True while the block runs, so its errors are not taken for errors of
@@ -111,21 +118,26 @@ module Metacrunch
       end
 
       def start_record
-        @record = Record.new
-        @field = nil
+        @fields = []
+        @leader = nil
+        @type = nil
+        @subfields = nil
         @target = :record
       end
 
       def start_data_field
-        @field = DataField.new("")
+        @subfields = []
+        @field_tag = ""
+        @ind1 = DataField::BLANK
+        @ind2 = DataField::BLANK
         @target = :datafield
       end
 
       def data_field_attr(name, value)
         case name
-        when :tag then @field.tag = attribute(name, value)
-        when :ind1 then @field.ind1 = indicator(name, value)
-        when :ind2 then @field.ind2 = indicator(name, value)
+        when :tag then @field_tag = attribute(name, value)
+        when :ind1 then @ind1 = indicator(name, value)
+        when :ind2 then @ind2 = indicator(name, value)
         end
       end
 
@@ -140,23 +152,23 @@ module Metacrunch
       def finish_value
         value = checked(@text)
         case @kind
-        when :leader then @record.leader = value
-        when :controlfield then @record.fields << ControlField.new(@tag, value)
-        else @field.subfields << Subfield.new(@code, value)
+        when :leader then @leader = value
+        when :controlfield then @fields << ControlField.new(@tag, value)
+        else @subfields << Subfield.new(@code, value)
         end
         @text = nil
         @kind = nil
       end
 
       def finish_data_field
-        @record.fields << @field
-        @field = nil
+        @fields << DataField.new(@field_tag, @ind1, @ind2, @subfields)
+        @subfields = nil
       end
 
       def finish_record
-        record = @record
-        @record = nil
-        @field = nil
+        record = Record.new(leader: @leader, type: @type, fields: @fields)
+        @fields = nil
+        @subfields = nil
         @in_block = true
         @block.call(record)
         @in_block = false
@@ -192,7 +204,7 @@ module Metacrunch
         case @kind
         when :leader then "leader"
         when :controlfield then "field #{@tag}"
-        else "field #{@field.tag} $#{@code}"
+        else "field #{@field_tag} $#{@code}"
         end
       end
 
