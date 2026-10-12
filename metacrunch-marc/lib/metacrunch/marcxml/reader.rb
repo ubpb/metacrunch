@@ -18,6 +18,9 @@ module Metacrunch
       # #progress.
       PROGRESS_EVERY = 256
 
+      GZIP_MAGIC = "\x1F\x8B".b
+      BOM = "\xEF\xBB\xBF".b
+
       # targets: a path (String or Pathname), "-" for stdin, an IO, or an
       # Array of those. IOs are never closed.
       def initialize(targets, parse: true, normalize: nil)
@@ -46,7 +49,7 @@ module Metacrunch
         @targets.each do |target|
           with_input(target) do |input, file|
             count = 0
-            each_document(input, target) do |document|
+            each_document(input, target, file) do |document|
               Marcxml.each_xml(document) do |xml|
                 count += 1
                 @done = finished + file.pos if file && (count % PROGRESS_EVERY).zero?
@@ -101,18 +104,37 @@ module Metacrunch
       end
 
       # Yields each MARCXML document of input: input itself, its gzip
-      # content, or each regular file of a tar archive.
-      def each_document(input, target, &)
+      # content, or each regular file of a tar archive. A regular file that
+      # starts like gzip is read as gzip whatever its name; one that does
+      # not start like XML raises.
+      def each_document(input, target, file, &)
         name = path?(target) ? target.to_s : ""
         if name.end_with?(".tar.gz", ".tgz")
           gunzip(input) { each_entry(it, &) }
         elsif name.end_with?(".tar")
           each_entry(input, &)
-        elsif name.end_with?(".gz")
+        elsif name.end_with?(".gz") || head(file, 2) == GZIP_MAGIC
           members(input, &)
         else
+          check_xml(file, name) if file
           yield input
         end
+      end
+
+      # The first bytes of a regular file, which stays at its start.
+      def head(file, length)
+        return unless file
+
+        bytes = file.read(length).to_s
+        file.rewind
+        bytes
+      end
+
+      def check_xml(file, name)
+        text = head(file, 64).delete_prefix(BOM).lstrip
+        return if text.empty? || text.start_with?("<")
+
+        raise Metacrunch::Error, "#{name} is not XML: it starts with #{text[0, 16].inspect}"
       end
 
       def gunzip(io)

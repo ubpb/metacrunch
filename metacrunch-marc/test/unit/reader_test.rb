@@ -65,6 +65,25 @@ class ReaderTest < Minitest::Test
     assert_raises(Zlib::GzipFile::Error) { read(Reader.new(path)) }
   end
 
+  def test_reads_gzip_whatever_the_name
+    path = write("records.xml", Zlib.gzip(fixture("collection.xml")))
+
+    assert_equal IDS, ids(read(Reader.new(path)))
+  end
+
+  def test_a_file_that_is_not_xml_raises
+    path = write("data.json", %({"id": 1}\n))
+    error = assert_raises(Metacrunch::Error) { read(Reader.new(path)) }
+
+    assert_equal %(#{path} is not XML: it starts with "{\\"id\\": 1}\\n"), error.message
+  end
+
+  def test_xml_after_a_byte_order_mark_and_whitespace
+    path = write("bom.xml", "\xEF\xBB\xBF\n  #{fixture("local.xml")}".b)
+
+    assert_equal ["local-1"], ids(read(Reader.new(path)))
+  end
+
   def test_reads_tar_archives
     archive = tar("a.xml" => fixture("collection.xml"), "b.xml" => fixture("local.xml"))
     paths = [write("records.tar", archive), write("records.tar.gz", Zlib.gzip(archive)),
