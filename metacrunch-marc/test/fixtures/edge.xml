@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<collection xmlns="http://www.loc.gov/MARC21/slim">
+  <record type="Bibliographic">
+    <controlfield tag="007">cr</controlfield>
+    <controlfield tag="007">tu</controlfield>
+    <datafield tag="245" ind1="1" ind2="0">
+      <subfield code="a">  Two  spaces  </subfield>
+      <subfield code="b">Line one
+line two</subfield>
+      <subfield code="a">Second a</subfield>
+    </datafield>
+    <datafield tag="500">
+      <subfield code="a"><![CDATA[Tom & Jerry <3]]></subfield>
+      <subfield code="b">split<!-- a comment -->value</subfield>
+      <subfield code="c">&amp; &lt; &gt; &quot; &#xE9;</subfield>
+      <subfield code="d"></subfield>
+    </datafield>
+  </record>
+</collection>

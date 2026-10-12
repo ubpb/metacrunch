@@ -173,6 +173,13 @@ class RecordTest < Minitest::Test
     assert_equal "00000nam a2200000 c 4500", original.leader
   end
 
+  def test_dup_and_text_form_without_a_leader
+    record = Record.new(fields: [ControlField.new("001", "1")])
+
+    assert_equal record, record.dup
+    assert_equal "=001  1", record.to_s
+  end
+
   def test_to_h_is_marc_in_json
     fields = [ControlField.new("001", "1"), DataField.new("245", "1", "0", [["a", "T"]])]
     record = Record.new(leader: "L", fields:)
