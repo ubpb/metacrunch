@@ -9,6 +9,7 @@ require_relative "marcxml/filter"
 require_relative "marcxml/record"
 require_relative "marcxml/string_source"
 require_relative "marcxml/parser"
+require_relative "marcxml/splitter"
 
 module Metacrunch
   # MARCXML for metacrunch: an ordered record model (Record, ControlField,
@@ -45,6 +46,16 @@ module Metacrunch
         return enum_for(:each, input, normalize:) unless block
 
         Parser.run(input.is_a?(String) ? StringSource.new(input) : input, normalize:, &block)
+        nil
+      end
+
+      # Yields every record of input as a String from its start tag to its
+      # end tag, without parsing it. Without a block an Enumerator.
+      def each_xml(input, &block)
+        check_input(input)
+        return enum_for(:each_xml, input) unless block
+
+        Splitter.new(input).each(&block)
         nil
       end
 
