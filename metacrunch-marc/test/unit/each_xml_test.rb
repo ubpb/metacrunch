@@ -79,6 +79,12 @@ class EachXmlTest < Minitest::Test
     assert_equal ["<record/>", "<record></record>", "<record>x</record>"], Marcxml.each_xml(xml).to_a
   end
 
+  def test_a_record_cut_off_by_the_end_of_the_input
+    xml = %(<collection><record>1</record><record type="x">2</rec)
+
+    assert_equal ["<record>1</record>", %(<record type="x">2</rec)], Marcxml.each_xml(xml).to_a
+  end
+
   def test_records_cut_by_chunk_boundaries
     xml = fixture("collection.xml")
 

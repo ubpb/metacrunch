@@ -79,6 +79,13 @@ class ReaderTest < Minitest::Test
     assert_instance_of Marcxml::ParseError, items[1].error
   end
 
+  def test_a_truncated_file_ends_with_an_invalid_record
+    xml = fixture("collection.xml")
+    items = read(Reader.new(write("cut.xml", xml[0, xml.index("holding-1")])))
+
+    assert_equal [Marcxml::Record, Marcxml::Record, Metacrunch::InvalidRecord], items.map(&:class)
+  end
+
   def test_values_that_are_not_utf8_make_an_invalid_record
     xml = "<collection><record><controlfield tag=\"001\">M\xFCller</controlfield></record></collection>".b
 
