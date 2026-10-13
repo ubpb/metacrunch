@@ -36,6 +36,11 @@ module Metacrunch
         unless Names.valid?(name)
           raise UsageError, "#{File.basename(path)}: #{name.inspect} is not a valid job name; use a-z, 0-9, _ and -"
         end
+        # In a project, a file that declares a reserved name does not load.
+        if Names.reserved?(name)
+          raise UsageError, "#{File.basename(path)}: #{name.inspect} is the name of a built-in command; " \
+                            "choose another file name"
+        end
 
         write(files(path, name))
         File.chmod(0o755, path)

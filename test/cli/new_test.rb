@@ -59,6 +59,16 @@ class NewTest < Minitest::Test
     end
   end
 
+  def test_refuses_reserved_names
+    in_tmpdir do
+      code, _stdout, stderr = cli("new", "jobs/run.rb")
+
+      assert_equal 2, code
+      assert_match(/run\.rb: "run" is the name of a built-in command; choose another file name/, stderr)
+      refute_path_exists "jobs/run.rb"
+    end
+  end
+
   def test_refuses_file_names_that_are_no_job_names
     in_tmpdir do
       code, _stdout, stderr = cli("new", "jobs/MyJob.rb")
