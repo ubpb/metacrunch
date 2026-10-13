@@ -15,6 +15,8 @@ for example to turn MARCXML records into JSON for a search index, but nothing in
 - Jobs read and write JSON Lines on stdin and stdout, so they chain with each other and with `jq`, `grep` or `sort`.
 - `-w N` runs the steps in N processes, with the results in source order.
 - `metacrunch trace` shows what each step does to a record; `Metacrunch::Testing` runs a job in a test.
+- A project's `Metacrunchfile` names its jobs and commands; `metacrunch NAME` runs them from any directory of the
+  project, and commands chain jobs and other commands.
 - One runtime dependency (`logger`).
 
 > metacrunch 5 is a redesign. Jobs written for 4.x must be rewritten, see the [changelog](CHANGELOG.md).
@@ -68,8 +70,10 @@ $ metacrunch run jobs/numbers.rb --factor 3 -- 1 2 -5
 
 A job without a sink writes its records to stdout as JSON Lines. Logs and the run summary go to stderr.
 
-A file can define several jobs, each with its own name (`Metacrunch.job "marc2es" do ... end`); `-j NAME` selects
-one.
+A job can have a name and a one-line description: `Metacrunch.job "marc2es", desc: "MARCXML into the search index"
+do ... end`. A name consists of parts of `a-z`, `0-9`, `_` and `-`, separated by `:` (`catalog:reindex`). A file can
+define several jobs; `-j NAME` selects one. In a project, jobs run by name (see
+[Projects and commands](#projects-and-commands)).
 
 More jobs with sample data, from the smallest one to a cleaning job with workers, are in [`examples/`](examples).
 
@@ -245,10 +249,10 @@ to edit again.
 laptops and CI need not hold the production key. A run with an
 environment never falls back to the file without one.
 
-- **Where:** `--credentials DIR` or `METACRUNCH_CREDENTIALS`, else the nearest `.metacrunch/` above the job file,
-  else `~/.metacrunch/` for personal credentials. The directory found decides alone; `-v` logs the file that was
-  decrypted. `metacrunch credentials` looks above the working directory and uses `~/.metacrunch/` only with
-  `--credentials ~/.metacrunch`.
+- **Where:** `--credentials DIR` or `METACRUNCH_CREDENTIALS`, else the nearest `.metacrunch/` above the job file
+  (for a job or command run by name: above the project's `Metacrunchfile`), else `~/.metacrunch/` for personal
+  credentials. The directory found decides alone; `-v` logs the file that was decrypted. `metacrunch credentials`
+  looks above the working directory and uses `~/.metacrunch/` only with `--credentials ~/.metacrunch`.
 - **Key:** `METACRUNCH_MASTER_KEY`, else the key file. In containers and CI, set `METACRUNCH_MASTER_KEY`; with Kamal,
   list it under `env: secret:` and provide it in `.kamal/secrets`.
 - **Order:** a parameter's value comes from the command line, its `env:` variable, the credentials, then the default,
@@ -280,20 +284,21 @@ Keep in mind:
 ## Running jobs
 
 ```
-$ metacrunch run [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]
-$ metacrunch JOB_FILE [JOB_PARAMS...] [ARGS...]      # short for run
-$ metacrunch run jobs/marc2es.rb --help                # the job's parameters
+$ metacrunch run [OPTIONS] NAME|JOB_FILE [JOB_PARAMS...] [ARGS...]
+$ metacrunch NAME|JOB_FILE [JOB_PARAMS...] [ARGS...]        # short for run
+$ metacrunch run jobs/marc2es.rb --help                     # the job's parameters
+$ metacrunch marc2es --help                                 # the same, by name in a project
 ```
 
-Options of `metacrunch` go before the job file; everything after it belongs to the job. Use `--` before job
-arguments that start with `-`. The CLI does not change the working directory: relative paths are relative to where
-you start it.
+Options of `metacrunch` go before the job; everything after it belongs to the job. Use `--` before job arguments that
+start with `-`. A job is given by its file or, in a project, by its name; an argument with `/` or `.` is always a
+file. The CLI does not change the working directory: relative paths are relative to where you start it.
 
 | Option | |
 |---|---|
-| `-j`, `--job NAME` | Select a job in a file that defines several |
+| `-j`, `--job NAME` | Select a job or command in a file that declares several |
 | `-e`, `--environment NAME` | Credentials environment (default: `METACRUNCH_ENV`) |
-| `--credentials DIR` | Credentials directory (default: `METACRUNCH_CREDENTIALS`, then `.metacrunch/` above the job file, then `~/.metacrunch/`) |
+| `--credentials DIR` | Credentials directory (default: `METACRUNCH_CREDENTIALS`, then `.metacrunch/` above the job file or, for a name, above the `Metacrunchfile`, then `~/.metacrunch/`) |
 | `-i`, `--input PATH` | Read JSON Lines from PATH (`-` for stdin) instead of the job's source |
 | `-o`, `--output PATH` | Write JSON Lines to PATH (`-` for stdout) instead of the job's sink |
 | `--rejects PATH`, `--errors PATH` | Write rejected or failed records with their context; both may name the same file |
@@ -303,6 +308,9 @@ you start it.
 | `--stats PATH` | Write status and stats as JSON at the end (`-` for stdout) |
 | `--[no-]progress` | Progress on stderr; shown by default if stderr is a terminal and records do not go to the same terminal |
 | `-q`, `-v` | Log warnings only, or debug messages too |
+
+The options from `-i` to `--stats` apply to jobs only; for a command (see
+[Projects and commands](#projects-and-commands)) they are a usage error.
 
 A job file that starts with `#!/usr/bin/env metacrunch` and is executable runs as `./jobs/marc2es.rb ...`.
 
@@ -348,8 +356,9 @@ than it saves: 8 workers handled 0.5 M records/s, inline 2.8 M records/s.
   and not while the source reads. A record of a class that only one of the processes knows stops the run with an
   error that says so.
 - Each worker opens and closes the step components itself (`open`/`close`), so every worker has its own
-  connections. Data that the workers only read, such as lookup tables, belongs at job level or in a `before` hook:
-  the workers inherit it from the main process. Steps are opened after the `before` hooks, also without workers.
+  connections. Data that the workers only read, such as lookup tables, belongs in a `before` hook: the workers
+  inherit it from the main process, and `--help` does not build it (see [What runs when](#what-runs-when)). Steps
+  are opened after the `before` hooks, also without workers.
 - Records are sent in batches of 100, so a slow source (records trickling in through a pipe) delays a record until
   its batch is full. Each process holds a few batches: with records of 1 MB, the main process needs several hundred
   MB more than without workers.
@@ -389,7 +398,7 @@ creates a filter job that runs right away, and with `--test` a Minitest test for
 |---|---|
 | 0 | ok |
 | 1 | aborted |
-| 2 | usage error (command, options, job file, parameters; `check` found the job invalid) |
+| 2 | usage error (command, options, job file or name, parameters, `Metacrunchfile`; `check` found the job invalid) |
 | 3 | finished, but records failed (`on_error :skip`) |
 | 130 | interrupted by Ctrl-C (SIGINT) |
 | 141 | stdout was closed by the reader (SIGPIPE) |
@@ -415,6 +424,182 @@ result.summary   # "ok: read 1000, written 998, rejected 2 (Patent: 2) in 0.41s 
 raise `Metacrunch::ParamError`; errors while the job runs end up in the result. A job
 defined with `Metacrunch.job` in a Rake task or an application runs the same way. Logs go to `Metacrunch.logger`
 (stderr); assign another `Logger` or pass `logger:` to `run`.
+
+```ruby
+project = Metacrunch.load_project                          # the nearest Metacrunchfile above Dir.pwd
+project.names                                              # ["catalog:reindex", "marc2es", ...]
+project.invoke("catalog:reindex", "dumps/a.xml")           # like invoke in a command
+```
+
+`project.invoke` returns a job's `Result` or a command's value and raises `Metacrunch::InvokeError` as `invoke` does
+(see [Projects and commands](#projects-and-commands)). It takes `logger:`, `env:`, `stdin:` and `stdout:`.
+
+## Projects and commands
+
+A project names its jobs and commands in a `Metacrunchfile` at its root:
+
+```ruby
+# Metacrunchfile
+Metacrunch.load_files "jobs/**/*.rb", "commands/**/*.rb"
+```
+
+```
+project/
+├── Metacrunchfile
+├── .metacrunch/          credentials
+├── jobs/marc2es.rb       Metacrunch.job "marc2es", desc: "..."
+├── commands/catalog.rb   Metacrunch.command "catalog:reindex", desc: "..."
+└── lib/
+```
+
+```
+$ metacrunch marc2es --index test dumps/a.xml        # from any directory of the project
+$ metacrunch catalog:reindex dumps/*.xml
+$ metacrunch catalog:reindex --help
+$ metacrunch --help                                  # lists the jobs and commands
+```
+
+`metacrunch` finds the nearest `Metacrunchfile` above the working directory and loads it only when a name is needed;
+runs by path and the built-in commands never load it, so job files `require` what they use themselves. The
+`Metacrunchfile` is plain Ruby. `Metacrunch.load_files` takes globs relative to the project root, or absolute ones,
+and loads each matching file once, in sorted order.
+
+- A file that fails to load costs only its own names: `metacrunch` warns about it (`-v` shows the whole error), and
+  `--help` lists it under "Not loaded".
+- A name declared twice cannot be used until one is renamed; the error names both files.
+- The names of the built-in commands (`run`, `check`, `trace`, `new`, `credentials`, `help`) are reserved.
+- Jobs without a name are not part of the project; they run by path.
+- The `Metacrunchfile` and the files it loads are loaded again by every `Metacrunch.load_project`, so like job files
+  they define no constants: helpers go into `lib/` and are required.
+
+### Commands
+
+A command is a named recipe like a job, with parameters and a body instead of a pipeline:
+
+```ruby
+# commands/catalog.rb
+Metacrunch.command "catalog:reindex", desc: "Load an export into a new index and switch the alias" do
+  params do
+    param :url, String, default: "http://localhost:9200", env: "ES_URL"
+    param :alias, String, default: "catalog"
+    args :files, min: 1
+  end
+
+  run do
+    index = "#{params.alias}-#{Time.now.strftime("%Y%m%d%H%M")}"
+    es = ["--url", params.url]
+
+    invoke "es:create-index", *es, "--mappings", root.join("etc/catalog_mappings.json"), index
+    result = invoke "marc2es", *es, "--index", index, *params.files, workers: 8
+    next logger.warn("alias not switched: #{result.status}") unless result.ok?
+
+    invoke "es:switch-alias", *es, "--to", index, params.alias
+  end
+end
+```
+
+Parameters, `env:`, credentials, `-e`, `--help` and logging work as for jobs. `params` comes first; `run { ... }`
+holds the body, which `--help` never runs. In the body, `params`, `logger`, `invoke` and `root` (the project root, a
+`Pathname`) are available, and `next` ends it early (`return` does not work in a block). Helpers shared by several
+commands are plain Ruby: a module that the body `extend`s, or a proc for common parameters
+(`params { instance_exec(&ES_PARAMS) }`) in a required file.
+
+`invoke NAME, *ARGS, workers:, limit:` runs a job or command with arguments as on the command line; each is converted
+with `to_s`, and `nil` raises `ArgumentError`. An invoked job runs like `metacrunch run NAME`: it logs its summary as
+`marc2es: ok: read ...`, reads stdin if it has no source and writes stdout if it has no sink. All jobs and commands of
+a chain share `-e`, `--credentials`, the environment, the log level and the progress setting.
+
+| Case | `invoke` |
+|---|---|
+| Job ends `:ok` or `:ok_with_failures` | returns its `Result`; the command decides |
+| Job ends `:aborted` | raises `Metacrunch::InvokeError` (with `result`); the chain ends unless the command rescues it |
+| Unknown name, invalid arguments | raises `Metacrunch::InvokeError`: the command has a bug |
+| Command | returns the value of its body; its exceptions pass unchanged |
+| Ctrl-C, SIGTERM | the running job flushes and closes its sinks, then the chain ends by the signal |
+
+| Exit status of a command | When |
+|---|---|
+| 0 | every invoked job ended `:ok` |
+| 1 | an exception left the body; an `InvokeError` is logged as its message |
+| 2 | invalid parameters of the command itself |
+| 3 | an invoked job ended `:ok_with_failures`, or `:aborted` and the command went on |
+| 130, 143 | Ctrl-C, SIGTERM |
+
+`run` takes commands too; the job options (`-i`, `-o`, `-w`, ...) are a usage error for them, and `check` and
+`trace` take jobs only. A command file can also run by path, or as an executable with `#!/usr/bin/env metacrunch`;
+when it invokes a name, it finds the project from the working directory.
+
+Names search credentials from the project root (`.metacrunch/` next to the `Metacrunchfile`), also for commands from
+gems; a path searches from its file. A job below `jobs/x/` with a `.metacrunch/` of its own therefore uses the
+project's credentials by name and its own by path. Nothing changes the working directory: relative paths stay
+relative to where `metacrunch` was started, and `root.join(...)` reaches the project's files from anywhere.
+
+### Commands from gems
+
+A gem ships command files and a constant with their glob; a project opts in:
+
+```ruby
+# in the gem
+module Metacrunch
+  module Elasticsearch
+    COMMANDS = File.expand_path("elasticsearch/commands/*.rb", __dir__)
+  end
+end
+
+# Metacrunchfile
+require "metacrunch/elasticsearch"
+Metacrunch.load_files Metacrunch::Elasticsearch::COMMANDS, "jobs/**/*.rb", "commands/**/*.rb"
+```
+
+There is no global registry and no `~/.metacrunch` for commands: under Bundler a global file could not load gems that
+the project's Gemfile lacks. Personal tools are executable command files on the `PATH`. For task automation without
+records, Rake, Thor or just fit better.
+
+### Testing commands
+
+```ruby
+require "metacrunch/testing"
+
+class CatalogTest < Minitest::Test
+
+  PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))
+
+  def test_all_files_load
+    assert_empty PROJECT.load_errors
+  end
+
+  def test_keeps_the_alias_when_records_failed
+    run = Metacrunch::Testing.invoke(PROJECT, "catalog:reindex", params: {files: ["dumps/a.xml"]},
+                                     stubs: {"marc2es" => :ok_with_failures})
+
+    assert_equal ["es:create-index", "marc2es"], run.invoked.map(&:name)
+    assert_equal :ok_with_failures, run.status
+  end
+
+end
+```
+
+`Testing.invoke` runs the body with `params` bound from a Hash and records every `invoke` (`name`, `argv`,
+`options`) instead of running it. A stub answers with a status, a `Result`, a value for a command, or a callable that
+gets the arguments; without a stub a job ends `:ok` and a command returns `nil`. A stubbed `:aborted` raises like a
+real abort, an unknown name fails as in a real run, a stub for an unknown name raises at once, and credentials are
+never read. `run.status` is `:ok`, `:ok_with_failures`, or `:aborted` with the exception in `run.error`.
+
+[`examples/project`](examples/project) is a runnable project with a test.
+
+## What runs when
+
+| When | What runs |
+|---|---|
+| A file is loaded: every call that uses it; in a project, every call that needs a name, `--help` included | the file's top-level code: `require`, constants |
+| The recipe is evaluated: `run`, `check`, `trace`, `Testing.run`, `Testing.invoke`; for `--help` only up to its first statement | the recipe's code and the arguments of its statements, such as `MySource.new(...)` |
+| The job or command runs | `before`, `open`, `each` and `write` of the components, the steps, `after`; a command's `run` block |
+
+A recipe only declares. Code before `params` and the arguments of the first statement run for every `--help`: a
+lookup table built there makes `--help` slow, and a relative path read there breaks `--help` when it is started from
+another directory. Preparation such as lookup tables and connections belongs into a `before` hook or a component's
+`open`, effects into components or a command's `run` block. Code that must stay in the recipe goes after `params`,
+where `--help` does not reach it.
 
 ## Testing jobs
 
