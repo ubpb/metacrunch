@@ -63,6 +63,7 @@ executable files on the `PATH`, which metacrunch already supports with
   `metacrunch-elasticsearch`.
 - Running invoked jobs or commands in parallel.
 - A Hash form of `invoke` (`invoke "a2c", index: ...`).
+- `run { }` in jobs (3.2).
 - Shell completion, `metacrunch list`, `metacrunch new --command`,
   `check` for commands, `root` in jobs.
 - Loading only the file that defines a name (lazy lookup by file name);
@@ -102,7 +103,7 @@ executable files on the `PATH`, which metacrunch already supports with
 | Names for jobs too | Yes. One namespace for jobs and commands in a project; paths stay a second address. |
 | Where names come from | From the code (`Metacrunch.job "a2c"`, `Metacrunch.command "es:create-index"`). Every call that needs names loads all files of the project. |
 | Project file | `Metacrunchfile` (Ruby) in the project root, found upward from the working directory |
-| Command form | A block like a job recipe: `params` first, the rest is the body |
+| Command form | A recipe like a job's: `params` first, then `run { ... }` with the body. `--help` never runs the body. Jobs get no `run`. |
 | Calling | `invoke NAME, *argv, workers:, limit:` with arguments as on the command line |
 | Gem commands | Command files in the gem plus a path constant; the project loads them with `load_files` |
 | Credentials | Names in a project search `.metacrunch/` from the project root; paths from the file, as today |
@@ -160,47 +161,72 @@ Metacrunch.command "es:create-index", desc: "Create an Elasticsearch index" do
     args :index, min: 1, max: 1
   end
 
-  client = Elasticsearch::Client.new(url: params.url)
-  index = params.index.first
-  next logger.warn("#{index} exists, skipped") if client.indices.exists?(index:)
+  run do
+    client = Elasticsearch::Client.new(url: params.url)
+    index = params.index.first
+    next logger.warn("#{index} exists, skipped") if client.indices.exists?(index:)
 
-  client.indices.create(index:, body: {mappings: JSON.load_file(params.mappings)})
+    client.indices.create(index:, body: {mappings: JSON.load_file(params.mappings)})
+  end
 end
 ```
 
-`Metacrunch.command(name, desc: nil, &body)` returns a `Metacrunch::Command`
+`Metacrunch.command(name, desc: nil, &recipe)` returns a `Metacrunch::Command`
 and registers it with the file that is being loaded (4.3), as
 `Metacrunch.job` does today.
 
-### 3.2 The body
+### 3.2 Recipe and body
 
-The block runs with `instance_exec` on a `Metacrunch::CommandScope`, after
-the parameters are bound. The scope offers:
+The block is a **recipe**, like a job's: it only declares. It runs with
+`instance_exec` on a `Metacrunch::CommandBuilder`:
+
+| Statement | |
+|---|---|
+| `params { ... }` / `params` | Declares the parameters (first statement, as in jobs) / the bound values |
+| `run { ... }` | The body; exactly one |
+
+Evaluating the recipe binds the parameters; a `ParamError` there always
+means invalid arguments. A recipe without `run`, or with two, raises
+`ArgumentError`, which in a project is a load error of its file (4.4).
+
+The `run` block, the **body**, runs afterwards with `instance_exec` on a
+`Metacrunch::CommandScope`:
 
 | Method | |
 |---|---|
-| `params { ... }` / `params` | Declares the parameters (first statement, as in jobs) / the bound values |
+| `params` | The bound values |
 | `logger` | The logger of the run |
 | `invoke(target, *argv, **options)` | Runs a job or command (section 5) |
 | `root` | The root of the current project as a `Pathname`; `ProjectError` without project |
 
-The value of the block (or of `next value`) is the command's value. `return`
+The value of the body (or of `next value`) is the command's value. `return`
 cannot leave the block, as in job recipes; `next` does. Helpers shared by
-several commands are plain Ruby: a module (`extend EsHelpers`) or a proc for
-common parameters (`params { instance_exec(&ES_PARAMS); args ... }`).
+several commands are plain Ruby: a module (`extend EsHelpers` in the body)
+or a proc for common parameters (`params { instance_exec(&ES_PARAMS); args ... }`).
+
+Code in the recipe outside `run` runs whenever the recipe is evaluated, as
+component constructors in job recipes do; effects belong into `run`.
+
+Jobs get no `run`: a job's pipeline is what runs, and `before` and `after`
+are its hooks. A `run` in a job would either replace the pipeline (then it
+is a command, and `-w`, `-o`, `check` and `trace` would not apply) or be a
+third hook.
 
 ### 3.3 Help
 
-`--help` evaluates the block only up to `params`, as `Job#describe` does
-(the `throw` of `Builder::DESCRIBED`), and prints:
+`--help` evaluates the recipe only up to its first statement (`params` or
+`run`), as `Job#describe` does with the `throw` of `Builder::DESCRIBED`. The
+body never runs for help, also for a command without parameters. The help
+has the form of a job's, with the description after the usage line:
 
 ```
 Usage: metacrunch es:create-index [PARAMS...] INDEX...
 
 Create an Elasticsearch index
 
-Parameters:
-  ...
+        --url VALUE                  (default: http://localhost:9200, env: ES_URL)
+        --mappings VALUE             JSON file with the mappings
+    INDEX  (1 to 1 arguments)
 ```
 
 ### 3.4 Commands by path
@@ -223,7 +249,7 @@ Metacrunch.load_files Metacrunch::Elasticsearch::COMMANDS,  # absolute glob into
                       "jobs/**/*.rb", "commands/**/*.rb"     # relative to the project root
 
 Metacrunch.command "catalog:reindex", desc: "..." do       # inline declarations are fine
-  ...
+  run { ... }
 end
 ```
 
@@ -335,13 +361,15 @@ Metacrunch.command "catalog:reindex", desc: "Load an export into a new index and
     args :files, min: 1
   end
 
-  index = "#{params.alias}-#{Time.now.strftime("%Y%m%d%H%M")}"
-  es = ["--url", params.url]
+  run do
+    index = "#{params.alias}-#{Time.now.strftime("%Y%m%d%H%M")}"
+    es = ["--url", params.url]
 
-  invoke "es:create-index", *es, "--mappings", root.join("etc/catalog_mappings.json"), index
-  result = invoke "a2c", *es, "--index", index, *params.files, workers: params.workers
-  next logger.warn("alias not switched") unless result.status == :ok
-  invoke "es:switch-alias", *es, "--to", index, params.alias
+    invoke "es:create-index", *es, "--mappings", root.join("etc/catalog_mappings.json"), index
+    result = invoke "a2c", *es, "--index", index, *params.files, workers: params.workers
+    next logger.warn("alias not switched") unless result.status == :ok
+    invoke "es:switch-alias", *es, "--to", index, params.alias
+  end
 end
 ```
 
@@ -373,7 +401,7 @@ follows the rule of `run`: a status line if stderr is a terminal, off with
 | Job ends `:aborted` | `invoke` raises `InvokeError` ("a2c aborted: StepError: ..."), with the `Result` |
 | Invoked command | `invoke` returns the command's value |
 | Invoked command raises | The exception propagates unchanged |
-| Invalid argv for the target (`ParamError`, also `CredentialsError`), unknown name | `InvokeError`; the command has a bug, the user's input is fine |
+| Invalid argv for the target (`ParamError`, also `CredentialsError`, raised while its recipe is evaluated), unknown name | `InvokeError`; the command has a bug, the user's input is fine |
 | Ctrl-C, SIGTERM | The running job flushes and closes its sinks; the `SignalException` propagates and ends the chain |
 
 `InvokeError` has `name`, `result` (for an aborted job, else nil) and the
@@ -513,8 +541,9 @@ Jobs are still tested with `Testing.run`.
 | Unit | Responsibility |
 |---|---|
 | `Metacrunch::Names` (new) | Name syntax, reserved names, name-or-path rule (2.1–2.3) |
-| `Metacrunch::Command` (new) | The recipe: `name`, `desc`, `file`, `describe`; runs its block on a `CommandScope` |
-| `Metacrunch::CommandScope` (new) | The body's receiver: `params` (declare and bind, first statement), `logger`, `invoke`, `root` |
+| `Metacrunch::Command` (new) | The recipe: `name`, `desc`, `file`, `describe`, `prepare` (evaluate the recipe with a binder, return values and body) |
+| `Metacrunch::CommandBuilder` (new) | The recipe's receiver: `params` (declare and bind, first statement), `run` |
+| `Metacrunch::CommandScope` (new) | The body's receiver: `params`, `logger`, `invoke`, `root` |
 | `Metacrunch::Invoker` (new) | The shared context of a chain (5.5); resolves targets, runs jobs (5.2) and commands, wraps errors (5.3), tracks the worst status (5.4) |
 | `Metacrunch::Project` (new) | Finds and loads the `Metacrunchfile`; `root`, declarations, `load_errors`, duplicates, `fetch`, `names`, `invoke` |
 | `Loader` | Registers jobs and commands; `load_files` for the project being loaded; selection by `-j` across both |
@@ -545,8 +574,10 @@ format do not change. No new dependency.
 
 - `Names`: valid and invalid names, reserved names, the name-or-path rule
   with and without an existing file.
-- `Command`/`CommandScope`: `params` first, `describe` stops after `params`,
-  the body's value, `next`, `root` with and without project.
+- `Command`/`CommandBuilder`/`CommandScope`: `params` first, `describe`
+  stops at the first statement and never runs the body (also without
+  `params`), no `run` or two, the body's value, `next`, `root` with and
+  without project.
 - `Loader`: jobs and commands from one file; `-j` across both; registration
   with the file being loaded.
 - `Project`: upward search, nearest wins; `load_files` with relative,
