@@ -121,22 +121,11 @@ class ExeProjectTest < Minitest::Test
   end
 
   def test_sigterm_during_an_invoked_job_closes_its_sink_and_ends_the_chain
-    in_project do |root|
-      output = File.join(root, "forever.txt")
-      pid = Process.spawn(env(root), *command("watch", output), chdir: root, out: File::NULL, err: File::NULL)
-      status = nil
-      begin
-        wait_for { File.size?(output) }
-        Process.kill("TERM", pid)
-        _pid, status = Process.wait2(pid)
-      ensure
-        stop(pid) unless status
-      end
+    assert_equal [Signal.list.fetch("TERM"), "closed", false], interrupt_watch("TERM")
+  end
 
-      assert_equal Signal.list.fetch("TERM"), status.termsig
-      assert_equal "closed", File.readlines(output, chomp: true).last
-      refute_path_exists File.join(root, "note.txt")
-    end
+  def test_ctrl_c_during_an_invoked_job_closes_its_sink_and_ends_the_chain
+    assert_equal [Signal.list.fetch("INT"), "closed", false], interrupt_watch("INT")
   end
 
   def test_production_credentials_reach_a_gem_command_and_the_job_it_invokes
@@ -156,6 +145,25 @@ class ExeProjectTest < Minitest::Test
   end
 
   private
+
+  # Sends signal to the command watch while its invoked job runs. Returns
+  # the signal that ended the process, the last line the job's sink wrote
+  # and whether the command went on after the job.
+  def interrupt_watch(signal)
+    in_project do |root|
+      output = File.join(root, "forever.txt")
+      pid = Process.spawn(env(root), *command("watch", output), chdir: root, out: File::NULL, err: File::NULL)
+      status = nil
+      begin
+        wait_for { File.size?(output) }
+        Process.kill(signal, pid)
+        _pid, status = Process.wait2(pid)
+      ensure
+        stop(pid) unless status
+      end
+      [status.termsig, File.readlines(output, chomp: true).last, File.exist?(File.join(root, "note.txt"))]
+    end
+  end
 
   # Yields the root of a temporary project with FILES.
   def in_project
