@@ -154,12 +154,19 @@ module Metacrunch
       (@declarations[declaration.name] ||= []) << declaration
     end
 
-    # Relative globs are expanded below the root, so that characters such
-    # as [ in the root's path do not count as a pattern.
+    # Relative globs are expanded below the root, absolute ones below their
+    # longest leading directory that exists, so that characters such as [
+    # in the path of that directory do not count as a pattern.
     def matches(glob)
-      return Dir.glob(glob) if File.absolute_path?(glob)
+      base, pattern = File.absolute_path?(glob) ? split_absolute(glob) : [@root.to_s, glob]
+      Dir.glob(pattern, base:).map { File.join(base, it) }
+    end
 
-      Dir.glob(glob, base: @root.to_s).map { File.join(@root.to_s, it) }
+    # [directory, pattern] for an absolute glob.
+    def split_absolute(glob)
+      parts = glob.split("/")
+      count = (parts.size - 1).downto(2).find { File.directory?(parts.first(it).join("/")) } || 1
+      [count == 1 ? "/" : parts.first(count).join("/"), parts.drop(count).join("/")]
     end
 
   end
