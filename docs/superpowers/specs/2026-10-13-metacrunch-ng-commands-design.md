@@ -2,7 +2,7 @@
 
 - Date: 2026-10-13
 - Branch: `metacrunch-ng-commands` (from `metacrunch-ng` at e8fea68)
-- Status: design approved; plan written
+- Status: implemented
 - Builds on: [sub-project 1 spec](2026-10-10-metacrunch-ng-core-design.md)
   (jobs, parameters), [sub-project 2 spec](2026-10-10-metacrunch-ng-cli-pipes-design.md)
   (CLI commands), [sub-project 6 spec](2026-10-11-metacrunch-ng-credentials-design.md)
