@@ -2,7 +2,7 @@
 
 - Date: 2026-10-13
 - Branch: `metacrunch-ng-commands` (from `metacrunch-ng` at e8fea68)
-- Status: design approved; spec under review
+- Status: design approved; plan written
 - Builds on: [sub-project 1 spec](2026-10-10-metacrunch-ng-core-design.md)
   (jobs, parameters), [sub-project 2 spec](2026-10-10-metacrunch-ng-cli-pipes-design.md)
   (CLI commands), [sub-project 6 spec](2026-10-11-metacrunch-ng-credentials-design.md)
@@ -123,7 +123,9 @@ a2c   catalog:reindex   es:create-index   marc_to_json
 `Metacrunch.job(name)` and `Metacrunch.command(name)` raise `ArgumentError`
 for any other name. This applies to every job, also outside a project
 (backward compatibility is not required; all names in the repository
-match). Jobs may still be unnamed; commands may not.
+match). Jobs may still be unnamed; commands may not. `metacrunch new` derives
+the job's name from the file name and refuses a file name that is not a
+valid name (`jobs/MyJob.rb`).
 
 ### 2.2 Name or path
 
@@ -187,7 +189,8 @@ The block is a **recipe**, like a job's: it only declares. It runs with
 
 Evaluating the recipe binds the parameters; a `ParamError` there always
 means invalid arguments. A recipe without `run`, or with two, raises
-`ArgumentError`, which in a project is a load error of its file (4.4).
+`ArgumentError` when it is evaluated, as a DSL mistake in a job recipe
+does; loading the file does not evaluate the recipe.
 
 The `run` block, the **body**, runs afterwards with `instance_exec` on a
 `Metacrunch::CommandScope`:
@@ -220,7 +223,7 @@ body never runs for help, also for a command without parameters. The help
 has the form of a job's, with the description after the usage line:
 
 ```
-Usage: metacrunch es:create-index [PARAMS...] INDEX...
+Usage: metacrunch run es:create-index [PARAMS...] INDEX...
 
 Create an Elasticsearch index
 
@@ -265,6 +268,8 @@ project/
 
 It is plain Ruby, loaded with `Kernel.load` (no `instance_eval`, so
 constants behave as in any Ruby file). The project root is its directory.
+Every `load_project` loads it again, so like job files it defines no
+constants; helpers live in `lib/` and are required.
 
 ### 4.2 Finding the project
 
@@ -276,8 +281,8 @@ directory below the home directory that has no project of its own, as a
 The `Metacrunchfile` is loaded only when a name is needed: a name as the
 first argument, `run|check|trace NAME`, `--help`, `help`, and the first
 `invoke` of a name by a command run by path. Built-in commands
-with paths (`metacrunch run jobs/a2c.rb`) and `metacrunch FILE` never load
-it. Job files therefore require what they use themselves.
+with paths (`metacrunch run jobs/a2c.rb`) and `metacrunch FILE` with a path
+(2.2) never load it. Job files therefore require what they use themselves.
 
 ### 4.3 `Metacrunch.load_files`
 
@@ -307,8 +312,9 @@ files. Job files already follow this rule.
 | The `Metacrunchfile` itself raises | `ProjectError`; the CLI ends with exit status 2. |
 
 When a call loads the project, every file in `load_errors` gives one warning
-line on stderr (`jobs/broken.rb: SyntaxError (-v for details)`); `-v` logs
-the whole message.
+line on stderr (`jobs/broken.rb: SyntaxError: ... (-v for details)`, with
+the first line of the message); `-v` logs the whole message. The help lists
+these files instead (6.3).
 
 ### 4.5 Gems
 
@@ -380,7 +386,9 @@ end
   one in the Ruby API.
 - `argv` are the arguments as on the command line; each is converted with
   `to_s` (Pathname, Integer). The parameters of the target are bound from
-  them like on the command line: argv, `env:`, credentials, default.
+  them like on the command line: argv, `env:`, credentials, default. A
+  `nil` raises `ArgumentError`: an optional parameter left unset would
+  otherwise pass an empty string.
 - `workers:` and `limit:` apply to jobs, as in `Job#run`; for a command they
   raise `ArgumentError`.
 
@@ -461,7 +469,8 @@ whose `load_errors` are not empty, the hint that some files did not load.
   `catalog:reindex is a command; -w applies to jobs`.
 
 `check` and `trace` with a command: usage error
-`catalog:reindex is a command; check takes jobs`.
+`catalog:reindex is a command; check takes jobs`. `-j` selects within a
+file; with a name it is a usage error.
 
 ### 6.3 Help
 
@@ -485,12 +494,13 @@ Project commands (/srv/data):
   es:create-index   Create an Elasticsearch index
 
 Not loaded:
-  jobs/broken.rb    SyntaxError (-v for details)
+  jobs/broken.rb: SyntaxError: jobs/broken.rb:3: syntax error found
 ```
 
-A duplicate name is listed once, with `(declared twice, unusable)`. If the
+A duplicate name is listed once, with `(declared more than once, unusable)`.
+A file that did not load is listed with the first line of its error. If the
 `Metacrunchfile` itself fails, the help shows the built-in commands and the
-error in place of the lists, with exit status 0.
+first line of the error in place of the lists, with exit status 0.
 
 ## 7. Testing commands
 
@@ -620,10 +630,25 @@ used by an invoked job.
   `Testing.invoke`. `examples/Readme.md` lists it.
 - Readme, new section "Projects and commands": the `Metacrunchfile`, names,
   commands, `invoke` and exit statuses, gem commands, credentials from the
-  project root, testing with `Testing.invoke`.
+  project root, testing with `Testing.invoke`, and that task automation
+  without records fits Rake, Thor or just.
 - Readme, "Running jobs": names next to paths, `run` for commands.
-- Readme, "When another tool fits better": task automation without records
-  fits Rake, Thor or just.
+- Readme, new paragraph "What runs when", for jobs and commands alike:
+  - top-level code of a file runs whenever the file is loaded (in a project
+    also for the `--help` list);
+  - the recipe runs for `run`, `check`, `trace` and `Testing.run`, and for
+    `--help` up to its first statement, including the arguments of that
+    statement;
+  - `before`, the components' `open`, the steps, `after` and a command's
+    `run` block run only in a run.
+
+  The rule: a recipe only declares. Preparation (lookup tables,
+  connections) belongs into `before`, effects into components or a
+  command's `run`; code that must stay in the recipe goes after `params`,
+  where `--help` does not reach it.
+- Readme, workers: the advice to build a lookup table "at job level or in a
+  `before` hook" becomes "in a `before` hook", since code at job level runs
+  for every `--help` too.
 - CHANGELOG: projects, commands, names for jobs, `desc:`, the stricter name
   syntax.
 
