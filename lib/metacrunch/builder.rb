@@ -5,8 +5,8 @@ module Metacrunch
   # declares. #build returns the Pipeline.
   class Builder
 
-    # Thrown in describe mode with the Params schema as soon as it is known.
-    DESCRIBED = :metacrunch_described
+    include RecipeParams
+
     ON_ERROR_POLICIES = [:abort, :skip].freeze
 
     attr_reader :logger
@@ -14,12 +14,8 @@ module Metacrunch
     # binder: callable that takes the Params schema and returns the bound
     # values. describe: stop as soon as the schema is known (for --help).
     def initialize(binder:, logger:, describe: false)
-      @binder = binder
+      init_params(binder, describe)
       @logger = logger
-      @describe = describe
-      @schema = nil
-      @values = nil
-      @used = false
       @source = nil
       @source_declared = false
       @id_extractor = nil
@@ -30,17 +26,6 @@ module Metacrunch
       @profile = false
       @before_hooks = []
       @after_hooks = []
-    end
-
-    # With a block: declares the parameters (must be the first statement).
-    # Without a block: returns the bound values.
-    def params(&declaration)
-      return bound_params unless declaration
-      raise ArgumentError, "params { ... } must be the first statement of a job" if @used || @schema
-
-      @schema = Params.new
-      @schema.instance_exec(&declaration)
-      bind_schema
     end
 
     # With an object: the source. With only id: the job reads the default
@@ -133,31 +118,7 @@ module Metacrunch
 
     private
 
-    def bound_params
-      use!
-      @values
-    end
-
-    # Every DSL statement calls this. In describe mode the first statement
-    # ends the evaluation; otherwise jobs without params get an empty schema.
-    def use!
-      ensure_params_bound
-      @used = true
-      nil
-    end
-
-    def ensure_params_bound
-      return if @schema
-
-      @schema = Params.new
-      bind_schema
-    end
-
-    def bind_schema
-      throw DESCRIBED, @schema if @describe
-
-      @values = @binder.call(@schema)
-    end
+    def recipe_kind = "job"
 
     def split_reason(first, second)
       if first.is_a?(String) || first.is_a?(Symbol)
