@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "fileutils"
 require "json"
 require "open3"
 require "openssl"
@@ -108,6 +109,37 @@ class ExamplesTest < Minitest::Test
     assert_match(/ 0 failures, 0 errors/, stdout)
   end
 
+  def test_project_release_switches_current_only_after_a_clean_run
+    Dir.mktmpdir do |dir|
+      project = File.join(dir, "project")
+      FileUtils.cp_r(example("project"), project)
+      _stdout, stderr, status = metacrunch("catalog:release", chdir: File.join(project, "jobs"))
+      current = File.join(project, "out", "current", "titles.jsonl")
+      released = File.readlines(current).size
+      failed = metacrunch("catalog:release", "--input", File.join(project, "data", "broken.jsonl"), chdir: project)
+
+      assert_equal [0, 4], [status.exitstatus, released], stderr
+      assert_equal 3, failed.last.exitstatus
+      assert_equal 4, File.readlines(current).size
+    end
+  end
+
+  def test_project_help_lists_the_job_and_the_command
+    stdout, stderr, status = metacrunch("--help", chdir: example("project"))
+
+    assert_predicate status, :success?, stderr
+    assert_match(/^  catalog +Write the public titles into a directory$/, stdout)
+    assert_match(%r{^  catalog:release +Write a new release and switch out/current to it$}, stdout)
+  end
+
+  def test_the_project_example_tests_pass
+    arguments = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), example("project/test/release_test.rb")]
+    stdout, stderr, status = Open3.capture3(*arguments)
+
+    assert_predicate status, :success?, stdout + stderr
+    assert_match(/ 0 failures, 0 errors/, stdout)
+  end
+
   private
 
   # Runs sanitize.rb and returns its output, rejects, errors and issues files.
@@ -125,8 +157,8 @@ class ExamplesTest < Minitest::Test
     metacrunch("run", "-i", example("data/publications.jsonl"), example("credentials/pseudonymize.rb"), env:)
   end
 
-  def metacrunch(*, stdin_data: "", env: {})
-    Open3.capture3(CLEAN_ENV.merge(env), *command(*), stdin_data:)
+  def metacrunch(*, stdin_data: "", env: {}, chdir: Dir.pwd)
+    Open3.capture3(CLEAN_ENV.merge(env), *command(*), stdin_data:, chdir:)
   end
 
   def command(*)
