@@ -50,4 +50,4 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
   `Metacrunch::Testing.invoke` tests a command without running what it invokes.
 - Names and descriptions for jobs: `Metacrunch.job "a2c", desc: "..."`. Names are parts of `a-z`, `0-9`, `_` and
   `-`, separated by `:`; `Metacrunch.job` raises for other names, and `metacrunch new` for file names that would
-  give one.
+  give one or the name of a built-in command.

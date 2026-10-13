@@ -125,7 +125,7 @@ for any other name. This applies to every job, also outside a project
 (backward compatibility is not required; all names in the repository
 match). Jobs may still be unnamed; commands may not. `metacrunch new` derives
 the job's name from the file name and refuses a file name that is not a
-valid name (`jobs/MyJob.rb`).
+valid name (`jobs/MyJob.rb`) or is reserved (`jobs/run.rb`, 2.3).
 
 ### 2.2 Name or path
 
