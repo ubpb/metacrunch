@@ -36,6 +36,68 @@ module Metacrunch
     # errors: [record, Failure] pairs.
     Result = Data.define(:records, :rejects, :errors, :stats, :status, :error)
 
+    # One invoke recorded by Testing.invoke. options: workers: and limit:
+    # as given.
+    Invocation = Data.define(:name, :argv, :options)
+
+    # value: what the body returned. status: :ok, :ok_with_failures (an
+    # invoked job ended with failed records, or aborted and the body went
+    # on) or :aborted (an exception left the body; error holds it).
+    CommandRun = Data.define(:value, :status, :error, :invoked)
+
+    EMPTY_STATS = Stats.new(read: 0, written: 0, filtered: 0, rejected: {}, marked: {}, failed: {}, steps: {},
+                            duration: 0.0)
+
+    # Records invokes instead of running them and answers from stubs: a
+    # status Symbol or a Result for a job, any value for a command, or a
+    # callable that gets argv and returns one of these. Without a stub a
+    # job ends :ok and a command returns nil. Names resolve as in a real
+    # run, so unknown names raise InvokeError.
+    class RecordingInvoker < Invoker
+
+      attr_reader :invoked
+
+      def initialize(project:, stubs:, logger:)
+        super(project:, logger:, env: {}, stdin: nil, stdout: nil)
+        @stubs = stubs.transform_keys(&:to_s)
+        @invoked = []
+      end
+
+      private
+
+      # ** takes the anchor:, which a recording needs no more than the
+      # declaration itself.
+      def invoke_job(_job, argv, target:, workers:, limit:, **)
+        @invoked << Invocation.new(name: target, argv:, options: {workers:, limit:}.compact)
+        result = job_result(target, answer(target, argv, :ok))
+        track(result.status)
+        aborted!(result, target)
+        result
+      end
+
+      def invoke_command(_command, argv, target:, **)
+        @invoked << Invocation.new(name: target, argv:, options: {})
+        answer(target, argv, nil)
+      end
+
+      def answer(target, argv, default)
+        stub = @stubs.fetch(target, default)
+        stub.respond_to?(:call) ? stub.call(argv) : stub
+      end
+
+      def job_result(target, stub)
+        case stub
+        when Metacrunch::Result then stub
+        when *STATUSES
+          error = stub == :aborted ? RuntimeError.new("stubbed abort") : nil
+          Metacrunch::Result.new(status: stub, error:, stats: EMPTY_STATS)
+        else
+          raise ArgumentError, "the stub for #{target} must give a status Symbol or a Result, got #{stub.inspect}"
+        end
+      end
+
+    end
+
     module_function
 
     # params are bound like CLI values (strings are converted), without
@@ -66,6 +128,31 @@ module Metacrunch
         error: result.error
       )
     end
+
+    # Runs the body of the command name of project with params bound as a
+    # Hash, like run does (no environment, no credentials). Every invoke in
+    # the body is recorded and answered from stubs (name => status Symbol,
+    # Result, value, or callable that gets argv) instead of run; see
+    # RecordingInvoker. A stub for a name the project does not know raises
+    # ArgumentError, as does a job name for name.
+    def invoke(project, name, params: {}, stubs: {}, logger: Logger.new(nil))
+      command = project.fetch(name)
+      raise ArgumentError, "#{name} is a job; test it with Testing.run" unless command.is_a?(Command)
+
+      unknown = stubs.keys.map(&:to_s).reject { project.include?(it) || File.file?(it) }
+      raise ArgumentError, "stub for unknown job or command: #{unknown.first}" if unknown.any?
+
+      invoker = RecordingInvoker.new(project:, stubs:, logger:)
+      command_run(invoker, command.prepare(binder: ->(schema) { schema.bind_hash(params) }))
+    end
+
+    def command_run(invoker, prepared)
+      value = invoker.call(prepared)
+      CommandRun.new(value:, status: invoker.finished_status, error: nil, invoked: invoker.invoked)
+    rescue *Engine::RECOVERABLE => e
+      CommandRun.new(value: nil, status: :aborted, error: e, invoked: invoker.invoked)
+    end
+    private_class_method :command_run
 
   end
 end
