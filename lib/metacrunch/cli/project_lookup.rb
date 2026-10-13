@@ -29,7 +29,7 @@ module Metacrunch
 
       def log_load_errors(logger)
         @project.load_errors.each do |file, error|
-          logger.warn("#{@project.load_error_summary(file, error)} (-v for details)")
+          logger.warn("#{@project.load_error_summary(file, error)} (-v after run, check or trace shows details)")
           logger.debug(error.full_message(highlight: false))
         end
       end

@@ -464,8 +464,8 @@ runs by path and the built-in commands never load it, so job files `require` wha
 `Metacrunchfile` is plain Ruby. `Metacrunch.load_files` takes globs relative to the project root, or absolute ones,
 and loads each matching file once, in sorted order.
 
-- A file that fails to load costs only its own names: `metacrunch` warns about it (`-v` shows the whole error), and
-  `--help` lists it under "Not loaded".
+- A file that fails to load costs only its own names: `metacrunch` warns about it (`-v` after `run`, `check` or
+  `trace` shows the whole error), and `--help` lists it under "Not loaded".
 - A name declared twice cannot be used until one is renamed; the error names both files.
 - The names of the built-in commands (`run`, `check`, `trace`, `new`, `credentials`, `help`) are reserved.
 - Jobs without a name are not part of the project; they run by path.
