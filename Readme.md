@@ -537,26 +537,67 @@ gems; a path searches from its file. A job below `jobs/x/` with a `.metacrunch/`
 project's credentials by name and its own by path. Nothing changes the working directory: relative paths stay
 relative to where `metacrunch` was started, and `root.join(...)` reaches the project's files from anywhere.
 
-### Commands from gems
+### Jobs and commands from gems
 
-A gem ships command files and a constant with their glob; a project opts in:
+A gem ships job and command files like a project's, and a constant with their glob for each kind:
+
+```
+metacrunch-elasticsearch/
+└── lib/metacrunch/
+    ├── elasticsearch.rb                  # the constants; requires the helpers
+    └── elasticsearch/
+        ├── client.rb                     # helpers: classes and constants go here
+        ├── commands/create_index.rb      # Metacrunch.command "es:create-index" do ... end
+        └── jobs/reindex.rb               # Metacrunch.job "es:reindex" do ... end
+```
 
 ```ruby
-# in the gem
+# lib/metacrunch/elasticsearch.rb
+require_relative "elasticsearch/client"
+
 module Metacrunch
   module Elasticsearch
     COMMANDS = File.expand_path("elasticsearch/commands/*.rb", __dir__)
+    JOBS = File.expand_path("elasticsearch/jobs/*.rb", __dir__)
   end
 end
-
-# Metacrunchfile
-require "metacrunch/elasticsearch"
-Metacrunch.load_files Metacrunch::Elasticsearch::COMMANDS, "jobs/**/*.rb", "commands/**/*.rb"
 ```
 
-There is no global registry and no `~/.metacrunch` for commands: under Bundler a global file could not load gems that
-the project's Gemfile lacks. Personal tools are executable command files on the `PATH`. For task automation without
-records, Rake, Thor or just fit better.
+A project adds the gem to its `Gemfile` and opts in, next to its own files:
+
+```ruby
+# Metacrunchfile
+require "metacrunch/elasticsearch"
+
+Metacrunch.load_files Metacrunch::Elasticsearch::COMMANDS, Metacrunch::Elasticsearch::JOBS,
+                      "jobs/**/*.rb", "commands/**/*.rb"
+```
+
+`bundle exec metacrunch es:create-index ...` then runs a command of the gem, and `bundle exec metacrunch --help` lists
+the gem's jobs and commands with the project's.
+
+- The job and command files define no constants, since every `Metacrunch.load_project` loads them again; classes
+  and helpers belong in files that the gem's main file requires.
+- The gem does not `require` its job and command files: only `load_files` registers them with the project, while a
+  `require` would load them once per process, and a second project in the same process would lack them.
+- Names with a prefix (`es:create-index`) keep clear of the project's: a name that the gem and the project both
+  declare cannot be used. A reserved name makes the gem's file a load error.
+- Credentials are searched from the project root, also for jobs and commands of a gem, so `-e production` works as
+  for the project's files. In a command, `root.join(...)` reaches the project's files and `__dir__` the gem's.
+- A file of the gem that fails to load costs only its own names, as a file of the project does.
+
+For a gem without such a constant, the glob can start at the gem's directory:
+
+```ruby
+gem_dir = Gem::Specification.find_by_name("metacrunch-elasticsearch").gem_dir
+Metacrunch.load_files File.join(gem_dir, "lib/metacrunch/elasticsearch/commands/*.rb")
+```
+
+The constant is still the better way: the gem can then move its files without breaking projects.
+
+There is no global registry and no `~/.metacrunch` for jobs or commands: under Bundler a global file could not load
+gems that the project's Gemfile lacks. Personal tools are executable command files on the `PATH`. For task automation
+without records, Rake, Thor or just fit better.
 
 ### Testing commands
 
