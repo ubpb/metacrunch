@@ -35,7 +35,7 @@ module Metacrunch
     def apply_input(pipeline, stdin:)
       return pipeline.with(source: JsonLines::Reader.new(input == JsonLines::STDIO ? stdin : input)) if input
       return pipeline if pipeline.source
-      raise UsageError, "job has no source and stdin is a terminal; pipe JSON Lines in or use -i PATH" if stdin.tty?
+      raise NoInputError if stdin.tty?
 
       pipeline.with(source: JsonLines::Reader.new(stdin))
     end
