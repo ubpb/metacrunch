@@ -7,10 +7,10 @@ class CliTest < Minitest::Test
   include CliHelper
 
   USAGE_ERRORS = {
-    [] => "no command or job file given",
-    ["frobnicate"] => "unknown command or job file: frobnicate",
+    [] => "no command, job or file given",
+    ["frobnicate"] => "unknown command, job or file: frobnicate (no Metacrunchfile found)",
     ["-v"] => "unknown option -v",
-    ["help", "frobnicate"] => "unknown command frobnicate"
+    ["help", "frobnicate"] => "unknown command, job or file: frobnicate (no Metacrunchfile found)"
   }.freeze
 
   def test_prints_the_version
@@ -21,8 +21,8 @@ class CliTest < Minitest::Test
     code, stdout, = cli("--help")
 
     assert_equal 0, code
-    assert_match(/Usage: metacrunch COMMAND \[OPTIONS\] JOB_FILE/, stdout)
-    assert_match(/^  run +Run a job$/, stdout)
+    assert_match(/Usage: metacrunch COMMAND \[OPTIONS\] NAME\|FILE/, stdout)
+    assert_match(/^  run +Run a job or command$/, stdout)
   end
 
   def test_help_without_a_command_prints_the_usage
@@ -37,7 +37,7 @@ class CliTest < Minitest::Test
     code, stdout, = cli("help", "run")
 
     assert_equal [0, cli("run", "--help")[1]], [code, stdout]
-    assert_match(/Usage: metacrunch run \[OPTIONS\] JOB_FILE/, stdout)
+    assert_match(/Usage: metacrunch run \[OPTIONS\] NAME\|FILE/, stdout)
     assert_match(/-j, --job NAME/, stdout)
   end
 

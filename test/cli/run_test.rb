@@ -71,7 +71,7 @@ class RunTest < Minitest::Test
 
     assert_empty stdout
     assert_match(/Error: expected at least 1 argument\(s\) for numbers, got 0/, stderr)
-    assert_match(/Usage: metacrunch run \[OPTIONS\] JOB_FILE/, stderr)
+    assert_match(/Usage: metacrunch run \[OPTIONS\] NAME\|FILE/, stderr)
   end
 
   def test_prints_job_help_without_running_the_job
