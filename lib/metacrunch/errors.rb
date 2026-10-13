@@ -25,6 +25,21 @@ module Metacrunch
   # declared more than once. The CLI exits with 2.
   class ProjectError < Error; end
 
+  # invoke failed: the target is unknown, the arguments are invalid for
+  # it, or the job aborted. name: the target as given; result: the Result
+  # of an aborted job, else nil. The original error is the cause.
+  class InvokeError < Error
+
+    attr_reader :name, :result
+
+    def initialize(message, name:, result: nil)
+      @name = name
+      @result = result
+      super(message)
+    end
+
+  end
+
   # A step raised an error for a record. The original error is the cause.
   class StepError < Error
 

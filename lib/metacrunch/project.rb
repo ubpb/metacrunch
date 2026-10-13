@@ -71,6 +71,13 @@ module Metacrunch
       raise ProjectError, "#{name} is declared more than once (#{files}); rename one"
     end
 
+    # Runs a job or command of the project like invoke in a command body
+    # (see Invoker#invoke), with its own streams, environment and logger.
+    def invoke(target, *argv, logger: Metacrunch.logger, env: ENV, stdin: $stdin, stdout: $stdout, workers: nil,
+               limit: nil)
+      Invoker.new(project: self, logger:, env:, stdin:, stdout:).invoke(target, *argv, workers:, limit:)
+    end
+
     # Loads the files that match globs (relative to the root, or absolute),
     # in sorted order and each once. A file that fails or declares a
     # reserved name contributes nothing and ends up in load_errors.

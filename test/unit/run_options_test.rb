@@ -2,13 +2,12 @@
 
 require "test_helper"
 require "tmpdir"
-require "metacrunch/cli/run_options"
 
 class RunOptionsTest < Minitest::Test
 
   include PipelineHelper
 
-  RunOptions = Metacrunch::Cli::RunOptions
+  RunOptions = Metacrunch::RunOptions
 
   # Stdin that claims to be a terminal.
   class TerminalInput < StringIO
