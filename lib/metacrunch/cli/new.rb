@@ -32,7 +32,12 @@ module Metacrunch
         raise UsageError, "#{path} is a directory; give a file name" if path.end_with?("/")
 
         path = "#{path}.rb" unless path.end_with?(".rb")
-        write(files(path, File.basename(path, ".rb")))
+        name = File.basename(path, ".rb")
+        unless Names.valid?(name)
+          raise UsageError, "#{File.basename(path)}: #{name.inspect} is not a valid job name; use a-z, 0-9, _ and -"
+        end
+
+        write(files(path, name))
         File.chmod(0o755, path)
         EXIT_CODES[:ok]
       end

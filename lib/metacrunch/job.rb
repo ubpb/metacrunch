@@ -5,16 +5,19 @@ module Metacrunch
   # every run, so loading a job has no side effects.
   class Job
 
-    attr_reader :name
+    attr_reader :name, :desc
 
     # The file the job was loaded from (Metacrunch.load_job), else nil.
     # Credentials are searched from there.
     attr_accessor :file
 
-    def initialize(name = nil, &recipe)
+    # name: see Names; nil for a job that runs by path only. desc: one line
+    # for the list in `metacrunch --help`.
+    def initialize(name = nil, desc: nil, &recipe)
       raise ArgumentError, "a job needs a block" unless recipe
 
-      @name = name&.to_s
+      @name = name.nil? ? nil : Names.check!(name, "job")
+      @desc = Names.check_desc!(desc)
       @recipe = recipe
     end
 

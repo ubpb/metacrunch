@@ -59,6 +59,16 @@ class NewTest < Minitest::Test
     end
   end
 
+  def test_refuses_file_names_that_are_no_job_names
+    in_tmpdir do
+      code, _stdout, stderr = cli("new", "jobs/MyJob.rb")
+
+      assert_equal 2, code
+      assert_match(/MyJob\.rb: "MyJob" is not a valid job name; use a-z, 0-9, _ and -/, stderr)
+      refute_path_exists "jobs/MyJob.rb"
+    end
+  end
+
   def test_a_path_is_required
     assert_match(/Error: no path given/, cli("new")[2])
   end
