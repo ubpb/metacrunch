@@ -184,6 +184,19 @@ class InvokerTest < Minitest::Test
     end
   end
 
+  def test_arrays_and_hashes_are_refused
+    with_project do |invoker|
+      messages = [["a", "b"], {text: "a"}].map do |argument|
+        invoker.invoke("note", argument)
+      rescue ArgumentError => e
+        e.message
+      end
+
+      assert_equal ["invoke note: argument 1 is an Array; splat it with *",
+                    "invoke note: argument 1 is a Hash; give the arguments as on the command line"], messages
+    end
+  end
+
   def test_workers_and_limit_apply_to_jobs_only
     with_project do |invoker|
       error = assert_raises(ArgumentError) { invoker.invoke("note", "x", workers: 2) }

@@ -505,9 +505,10 @@ commands are plain Ruby: a module that the body `extend`s, or a proc for common 
 (`params { instance_exec(&ES_PARAMS) }`) in a required file.
 
 `invoke NAME, *ARGS, workers:, limit:` runs a job or command with arguments as on the command line; each is converted
-with `to_s`, and `nil` raises `ArgumentError`. An invoked job runs like `metacrunch run NAME`: it logs its summary as
-`marc2es: ok: read ...`, reads stdin if it has no source and writes stdout if it has no sink. All jobs and commands of
-a chain share `-e`, `--credentials`, the environment, the log level and the progress setting.
+with `to_s`, and `nil`, an Array (a forgotten `*`) or a Hash raise `ArgumentError`. An invoked job runs like
+`metacrunch run NAME`: it logs its summary as `marc2es: ok: read ...`, reads stdin if it has no source and writes
+stdout if it has no sink. All jobs and commands of a chain share `-e`, `--credentials`, the environment, the log
+level and the progress setting.
 
 | Case | `invoke` |
 |---|---|
@@ -582,8 +583,9 @@ end
 `Testing.invoke` runs the body with `params` bound from a Hash and records every `invoke` (`name`, `argv`,
 `options`) instead of running it. A stub answers with a status, a `Result`, a value for a command, or a callable that
 gets the arguments; without a stub a job ends `:ok` and a command returns `nil`. A stubbed `:aborted` raises like a
-real abort, an unknown name fails as in a real run, a stub for an unknown name raises at once, and credentials are
-never read. `run.status` is `:ok`, `:ok_with_failures`, or `:aborted` with the exception in `run.error`.
+real abort, an unknown name fails as in a real run, and credentials are never read. A stub for an unknown name, or a
+job's stub that gives no status or `Result`, raises `ArgumentError`, so a mistake in the stubs never passes for a
+failing command. `run.status` is `:ok`, `:ok_with_failures`, or `:aborted` with the exception in `run.error`.
 
 [`examples/project`](examples/project) is a runnable project with a test.
 

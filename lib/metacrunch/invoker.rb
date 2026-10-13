@@ -109,11 +109,22 @@ module Metacrunch
 
     private
 
+    # Arguments as on the command line. nil would bind an empty string, an
+    # Array (a forgotten *) or a Hash its inspect; they raise instead.
     def arguments(target, argv)
-      index = argv.index(nil)
-      raise ArgumentError, "invoke #{target}: argument #{index + 1} is nil" if index
-
+      argv.each_with_index do |argument, index|
+        problem = argument_problem(argument)
+        raise ArgumentError, "invoke #{target}: argument #{index + 1} #{problem}" if problem
+      end
       argv.map(&:to_s)
+    end
+
+    def argument_problem(argument)
+      case argument
+      when nil then "is nil"
+      when Array then "is an Array; splat it with *"
+      when Hash then "is a Hash; give the arguments as on the command line"
+      end
     end
 
     # Project#fetch raises for a name declared more than once.
