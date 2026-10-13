@@ -156,6 +156,18 @@ class ProjectTest < Minitest::Test
     end
   end
 
+  # A gem vendored inside such a directory has absolute globs below it.
+  def test_absolute_globs_work_below_a_path_with_glob_characters
+    in_tmpdir do |dir|
+      base = File.join(dir, "My Data [2026] {a,b}")
+      write_file(base, "gem/commands/es.rb", ruby(command("es:create-index")))
+      glob = File.join(base, "gem", "**", "*.rb")
+      project = load_project(File.join(base, "project"), "Metacrunchfile" => "Metacrunch.load_files #{glob.inspect}\n")
+
+      assert_equal ["es:create-index"], project.names
+    end
+  end
+
   def test_unnamed_jobs_have_no_name_in_the_project
     in_tmpdir do |root|
       project = load_project(root, "Metacrunchfile" => LOAD_ALL, "jobs/anon.rb" => "Metacrunch.job { source [] }\n")
