@@ -45,6 +45,11 @@ module Metacrunch
     # on) or :aborted (an exception left the body; error holds it).
     CommandRun = Data.define(:value, :status, :error, :invoked)
 
+    # A stub that gives no valid answer. Testing.invoke raises it instead
+    # of ending the run :aborted, so a mistake in a test's stubs is never
+    # taken for a failing command.
+    class StubError < ArgumentError; end
+
     EMPTY_STATS = Stats.new(read: 0, written: 0, filtered: 0, rejected: {}, marked: {}, failed: {}, steps: {},
                             duration: 0.0)
 
@@ -92,7 +97,7 @@ module Metacrunch
           error = stub == :aborted ? RuntimeError.new("stubbed abort") : nil
           Metacrunch::Result.new(status: stub, error:, stats: EMPTY_STATS)
         else
-          raise ArgumentError, "the stub for #{target} must give a status Symbol or a Result, got #{stub.inspect}"
+          raise StubError, "the stub for #{target} must give a status Symbol or a Result, got #{stub.inspect}"
         end
       end
 
@@ -134,7 +139,8 @@ module Metacrunch
     # the body is recorded and answered from stubs (name => status Symbol,
     # Result, value, or callable that gets argv) instead of run; see
     # RecordingInvoker. A stub for a name the project does not know raises
-    # ArgumentError, as does a job name for name.
+    # ArgumentError, as does a job name for name; a job's stub without a
+    # status raises StubError (an ArgumentError).
     def invoke(project, name, params: {}, stubs: {}, logger: Logger.new(nil))
       command = project.fetch(name)
       raise ArgumentError, "#{name} is a job; test it with Testing.run" unless command.is_a?(Command)
@@ -149,6 +155,8 @@ module Metacrunch
     def command_run(invoker, prepared)
       value = invoker.call(prepared)
       CommandRun.new(value:, status: invoker.finished_status, error: nil, invoked: invoker.invoked)
+    rescue StubError
+      raise
     rescue *Engine::RECOVERABLE => e
       CommandRun.new(value: nil, status: :aborted, error: e, invoked: invoker.invoked)
     end

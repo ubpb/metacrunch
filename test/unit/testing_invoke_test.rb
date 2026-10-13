@@ -120,10 +120,15 @@ class TestingInvokeTest < Minitest::Test
     assert_equal "stub for unknown job or command: a2x", error.message
   end
 
+  # A mistake in the stubs raises instead of ending the run :aborted, so a
+  # test that expects an abort cannot pass by it.
   def test_stubs_for_jobs_must_give_a_status_or_a_result
-    run = invoke("catalog:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => "ok"})
+    errors = [:abort, ->(_argv) { "ok" }].map do |stub|
+      assert_raises(ArgumentError) { invoke("catalog:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => stub}) }
+    end
 
-    assert_equal "the stub for a2c must give a status Symbol or a Result, got \"ok\"", run.error.message
+    assert_equal ["the stub for a2c must give a status Symbol or a Result, got :abort",
+                  "the stub for a2c must give a status Symbol or a Result, got \"ok\""], errors.map(&:message)
   end
 
   def test_params_are_bound_from_a_hash

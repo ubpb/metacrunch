@@ -387,8 +387,9 @@ end
 - `argv` are the arguments as on the command line; each is converted with
   `to_s` (Pathname, Integer). The parameters of the target are bound from
   them like on the command line: argv, `env:`, credentials, default. A
-  `nil` raises `ArgumentError`: an optional parameter left unset would
-  otherwise pass an empty string.
+  `nil`, an Array or a Hash raises `ArgumentError`: an optional parameter
+  left unset would otherwise pass an empty string, a forgotten `*` the
+  Array's `inspect`.
 - `workers:` and `limit:` apply to jobs, as in `Job#run`; for a command they
   raise `ArgumentError`.
 
@@ -539,7 +540,9 @@ end
   - a `Result`, or a callable that gets argv and returns the value.
   A stubbed `:aborted` raises `InvokeError` as a real abort does.
 - An invoked name the project does not know raises as in a real run; a stub
-  for an unknown name raises `ArgumentError`. Both catch typos.
+  for an unknown name raises `ArgumentError`. Both catch typos. A job's stub
+  that gives neither a status nor a `Result` raises `ArgumentError` from
+  `Testing.invoke` too, never ending the run `:aborted`.
 - Returns `Testing::CommandRun(value, status, error, invoked)`; `status` is
   `:ok`, `:ok_with_failures` or `:aborted` (an exception left the body;
   `error` holds it).
