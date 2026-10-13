@@ -432,7 +432,8 @@ project.invoke("catalog:reindex", "dumps/a.xml")           # like invoke in a co
 ```
 
 `project.invoke` returns a job's `Result` or a command's value and raises `Metacrunch::InvokeError` as `invoke` does
-(see [Projects and commands](#projects-and-commands)). It takes `logger:`, `env:`, `stdin:` and `stdout:`.
+(see [Projects and commands](#projects-and-commands)). It takes `logger:`, `env:`, `stdin:` and `stdout:`, and for a
+job `workers:` and `limit:` as `Job#run` does.
 
 ## Projects and commands
 
@@ -459,10 +460,11 @@ $ metacrunch catalog:reindex --help
 $ metacrunch --help                                  # lists the jobs and commands
 ```
 
-`metacrunch` finds the nearest `Metacrunchfile` above the working directory and loads it only when a name is needed;
-runs by path and the built-in commands never load it, so job files `require` what they use themselves. The
-`Metacrunchfile` is plain Ruby. `Metacrunch.load_files` takes globs relative to the project root, or absolute ones,
-and loads each matching file once, in sorted order.
+`metacrunch` finds the nearest `Metacrunchfile` above the working directory and loads it only when a name is needed:
+for `metacrunch NAME`, for `run`, `check` and `trace` with a name, for `help NAME` and for `--help`. Runs by path and
+the other built-in commands never load it, so job files `require` what they use themselves. The `Metacrunchfile` is
+plain Ruby. `Metacrunch.load_files` takes globs relative to the project root, or absolute ones, and loads each
+matching file once, in sorted order.
 
 - A file that fails to load costs only its own names: `metacrunch` warns about it (`-v` after `run`, `check` or
   `trace` shows the whole error), and `--help` lists it under "Not loaded".
@@ -522,7 +524,7 @@ level and the progress setting.
 |---|---|
 | 0 | every invoked job ended `:ok` |
 | 1 | an exception left the body; an `InvokeError` is logged as its message |
-| 2 | invalid parameters of the command itself |
+| 2 | invalid parameters of the command itself; on the command line also an unknown or duplicate name, or an error in the `Metacrunchfile` |
 | 3 | an invoked job ended `:ok_with_failures`, or `:aborted` and the command went on |
 | 130, 143 | Ctrl-C, SIGTERM |
 
