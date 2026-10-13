@@ -199,7 +199,8 @@ class ProjectCliTest < Minitest::Test
       verbose = cli_in(root, "run", "-v", "note", "x")
 
       assert_equal [0, 1], [quiet.first, quiet.last.scan("WARN  jobs/broken.rb: SyntaxError").size]
-      assert_match(%r{WARN  jobs/broken\.rb: SyntaxError: .* \(-v for details\)}, quiet.last)
+      assert_match(%r{WARN  jobs/broken\.rb: SyntaxError: .* \(-v after run, check or trace shows details\)},
+                   quiet.last)
       assert_match(/DEBUG .*broken\.rb:\d+: syntax error/m, verbose.last)
     end
   end

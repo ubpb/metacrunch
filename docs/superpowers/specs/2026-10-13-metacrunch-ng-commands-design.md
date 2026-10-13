@@ -312,9 +312,10 @@ files. Job files already follow this rule.
 | The `Metacrunchfile` itself raises | `ProjectError`; the CLI ends with exit status 2. |
 
 When a call loads the project, every file in `load_errors` gives one warning
-line on stderr (`jobs/broken.rb: SyntaxError: ... (-v for details)`, with
-the first line of the message); `-v` logs the whole message. The help lists
-these files instead (6.3).
+line on stderr (`jobs/broken.rb: SyntaxError: ... (-v after run, check or
+trace shows details)`, with the first line of the message); `-v` logs the
+whole message. The short form `metacrunch NAME` takes no options, so the
+hint names the commands that do. The help lists these files instead (6.3).
 
 ### 4.5 Gems
 
