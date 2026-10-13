@@ -21,6 +21,16 @@ module Metacrunch
   # Invalid use of the command line, e.g. options that conflict.
   class UsageError < Error; end
 
+  # A job without source would read stdin, which is a terminal. hint says
+  # where the records can come from instead.
+  class NoInputError < UsageError
+
+    def initialize(hint = "pipe JSON Lines in or use -i PATH")
+      super("job has no source and stdin is a terminal; #{hint}")
+    end
+
+  end
+
   # A project could not be found or loaded, or a name is unknown or
   # declared more than once. The CLI exits with 2.
   class ProjectError < Error; end

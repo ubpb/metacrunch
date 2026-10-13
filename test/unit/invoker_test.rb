@@ -210,7 +210,9 @@ class InvokerTest < Minitest::Test
     invoker = invoker_for(nil, stdin: TerminalInput.new)
     error = assert_raises(Metacrunch::InvokeError) { invoker.invoke(job("double.rb")) }
 
-    assert_match(/job has no source and stdin is a terminal/, error.message)
+    # invoke has no -i, so the hint differs from the one of metacrunch run.
+    assert_match(/: job has no source and stdin is a terminal; pipe JSON Lines into the command that invokes it\z/,
+                 error.message)
   end
 
   def test_the_worst_status_comes_through_a_nested_command
