@@ -4,15 +4,19 @@ require "etc"
 
 module Metacrunch
   class Cli
-    # metacrunch run: runs a job. A job without source reads JSON Lines from
-    # stdin, a job without sink writes them to stdout.
+    # metacrunch run: runs a job or a command. A job without source reads
+    # JSON Lines from stdin, a job without sink writes them to stdout.
     class RunCommand < JobCommand
 
       NAME = "run"
-      SUMMARY = "Run a job"
-      USAGE = "run [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]"
+      SUMMARY = "Run a job or command"
+      USAGE = "run [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]"
+      # The options that apply to jobs only, as the usage error names them;
+      # -w is kept apart in @workers.
+      JOB_OPTIONS = {input: "-i", output: "-o", rejects: "--rejects", errors: "--errors", limit: "-n",
+                     on_error: "--on-error", max_errors: "--max-errors", stats: "--stats"}.freeze
 
-      def initialize(streams)
+      def initialize(streams, lookup)
         super
         @options = {}
       end
@@ -21,7 +25,9 @@ module Metacrunch
 
       def define_options(parser)
         super
+        parser.on("--[no-]progress", "Show progress on stderr (default: if stderr is a terminal)") { @progress = it }
         parser.separator("")
+        parser.separator("For jobs only:")
         parser.on("-i", "--input PATH", "Read JSON Lines from PATH (- for stdin) instead of the job's source") do |path|
           @options[:input] = path
         end
@@ -49,19 +55,45 @@ module Metacrunch
           @workers = worker_count(value)
         end
         parser.on("--stats PATH", "Write status and stats as JSON to PATH (- for stdout)") { @options[:stats] = it }
-        parser.on("--[no-]progress", "Show progress on stderr (default: if stderr is a terminal)") { @progress = it }
+      end
+
+      def check_target!(declaration)
+        return unless declaration.is_a?(Metacrunch::Command)
+
+        given = @options.keys.map { JOB_OPTIONS.fetch(it) }
+        given << "-w" if @workers
+        raise UsageError, "#{@target} is a command; #{given.first} applies to jobs" if given.any?
       end
 
       def execute_job(job, argv)
         options = RunOptions.new(**@options)
-        built = build_pipeline(job, argv)
-        pipeline = options.apply(built, stdin: @stdin, stdout: @stdout)
-        monitor = progress(options.records_to_stdout?(built))
-        result = Engine.new(pipeline, executor: Executor.for(@workers), monitor:).run
-        code = report(result)
+        result = invoker.run_job(job, argv, anchor: @anchor, options:, workers: @workers)
         write_stats(options.stats, result) if options.stats
-        code
+        EXIT_CODES.fetch(result.status)
       end
+
+      # Invalid parameters of the command itself raise ParamError here, which
+      # Command#run turns into exit status 2. Then the body runs.
+      def execute_command(command, argv)
+        finish(invoker.prepare(command, argv, anchor: @anchor))
+      end
+
+      # 0, or 3 if an invoked job ended with failed records, or aborted and
+      # the body went on; 1 if an exception left the body. An InvokeError is
+      # logged as its message, since the job logged its error already.
+      # Signals pass on to Command#run.
+      def finish(prepared)
+        invoker.call(prepared)
+        EXIT_CODES.fetch(invoker.finished_status)
+      rescue InvokeError => e
+        logger.error(e.message)
+        EXIT_CODES[:aborted]
+      rescue *Engine::RECOVERABLE => e
+        logger.error(e.full_message(highlight: false))
+        EXIT_CODES[:aborted]
+      end
+
+      def progress_factory = method(:progress)
 
       # The value of --workers as a number of processes.
       def worker_count(value)
@@ -97,19 +129,6 @@ module Metacrunch
         error = result.error && {"class" => result.error.class.name, "message" => result.error.message}
         json = JSON.pretty_generate({"status" => result.status, "error" => error, "stats" => result.stats.to_h})
         path == JsonLines::STDIO ? @stdout.puts(json) : File.write(path, "#{json}\n")
-      end
-
-      # Logs the error and its cause once each (a StepError message already
-      # names its cause), then the status and stats.
-      def report(result)
-        error = result.error
-        if error
-          logger.error("#{error.class}: #{error.message}")
-          cause = error.cause
-          logger.error("caused by #{cause.class}: #{cause.message}") if cause && !error.is_a?(StepError)
-        end
-        logger.info("#{result.status}: #{result.stats.summary}")
-        EXIT_CODES.fetch(result.status)
       end
 
     end

@@ -9,11 +9,11 @@ module Metacrunch
 
       NAME = "trace"
       SUMMARY = "Show what each step does to the first records"
-      USAGE = "trace [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]"
+      USAGE = "trace [OPTIONS] NAME|FILE [JOB_PARAMS...] [ARGS...]"
       DEFAULT_LIMIT = 10
       DEFAULT_WIDTH = 160
 
-      def initialize(streams)
+      def initialize(streams, lookup)
         super
         @full = false
       end

@@ -2,9 +2,10 @@
 
 module Metacrunch
   class Cli
-    # A command that takes a job file (run, check, trace). Options before
-    # JOB_FILE belong to the command, everything after it to the job.
-    # Subclasses implement #execute_job(job, argv).
+    # A command that takes a job or command by name or file (run, check,
+    # trace). Options before it belong to the command, everything after it
+    # to the job or command. Subclasses implement #execute_job(job, argv);
+    # run also #execute_command(command, argv).
     class JobCommand < Command
 
       HELP_OPTIONS = ["-h", "--help"].freeze
@@ -12,50 +13,71 @@ module Metacrunch
       private
 
       def define_options(parser)
-        parser.separator("Options go before JOB_FILE; everything after it belongs to the job.")
-        parser.separator("\"metacrunch #{self.class::NAME} JOB_FILE --help\" shows the job's parameters.")
+        parser.separator("Options go before NAME|FILE; everything after it is passed on.")
+        parser.separator("\"metacrunch #{self.class::NAME} NAME|FILE --help\" shows its parameters.")
         parser.separator("")
-        parser.on("-j", "--job NAME", "Select a job in a file that defines several") { @job_name = it }
+        parser.on("-j", "--job NAME", "Select a job or command in a file that declares several") { @job_name = it }
         parser.on("-q", "--quiet", "Log warnings and errors only") { @log_level = Logger::WARN }
         parser.on("-v", "--verbose", "Log debug messages too") { @log_level = Logger::DEBUG }
         credentials_options(parser, "Credentials directory (default: METACRUNCH_CREDENTIALS,",
-                            "then .metacrunch/ above the job file, then ~/.metacrunch/)")
+                            "then .metacrunch/ above the Metacrunchfile for a name or above the file,",
+                            "then ~/.metacrunch/)")
       end
 
       def execute(argv)
-        @job_file = argv.shift
-        raise UsageError, "no job file given" unless @job_file
+        @target = argv.shift
+        raise UsageError, "no job, command or file given" unless @target
 
-        job = Metacrunch.load_job(@job_file, name: @job_name)
-        schema = requested_job_help(job, argv)
-        return show(job_help(schema)) if schema
+        declaration, @anchor = invoker.resolve(@target, select: @job_name)
+        check_target!(declaration)
+        schema = requested_help(declaration, argv)
+        return show(help_text(declaration, schema)) if schema
+        return execute_command(declaration, argv) if declaration.is_a?(Metacrunch::Command)
 
-        execute_job(job, argv)
+        execute_job(declaration, argv)
       end
 
-      # Describes the job (evaluates its recipe up to params) only if -h or
-      # --help appears before "--"; the job's own parser then decides, so -h
-      # as the value of another option does not count.
-      def requested_job_help(job, argv)
+      # check and trace take jobs only; run overrides this.
+      def check_target!(declaration)
+        return unless declaration.is_a?(Metacrunch::Command)
+
+        raise UsageError, "#{@target} is a command; #{self.class::NAME} takes jobs"
+      end
+
+      # Describes the job or command (evaluates its recipe up to the first
+      # statement) only if -h or --help appears before "--"; its own parser
+      # then decides, so -h as the value of another option does not count.
+      def requested_help(declaration, argv)
         return unless argv.take_while { it != "--" }.intersect?(HELP_OPTIONS)
 
-        schema = job.describe
+        schema = declaration.describe
         schema if schema.help_requested?(argv)
       end
 
-      def job_help(schema)
+      def help_text(declaration, schema)
+        params = declaration.is_a?(Metacrunch::Command) ? "[PARAMS...]" : "[JOB_PARAMS...]"
         args = schema.args_definition ? " #{schema.args_definition.name.to_s.upcase}..." : ""
-        "Usage: metacrunch #{self.class::NAME} #{@job_file} [JOB_PARAMS...]#{args}\n\n#{schema.help}"
+        desc = declaration.desc ? "#{declaration.desc}\n\n" : ""
+        "Usage: metacrunch #{self.class::NAME} #{@target} #{params}#{args}\n\n#{desc}#{schema.help}"
       end
+
+      # Runs jobs and commands with this call's environment, credentials
+      # options, logger and streams. Names resolve in the project of the
+      # working directory, which is loaded when a name first needs it.
+      def invoker
+        @invoker ||= Invoker.new(
+          project: -> { @lookup.project(logger) }, logger:, env: @env, stdin: @stdin, stdout: @stdout,
+          environment: @environment, credentials: @credentials, progress: progress_factory
+        )
+      end
+
+      # A callable that gets whether records go to stdout and returns a
+      # progress display or nil; only run shows progress.
+      def progress_factory = nil
 
       # Evaluates the recipe with the job's arguments. Credentials are read
       # only if a parameter needs them.
-      def build_pipeline(job, argv)
-        credentials = Credentials.store(job_file: job.file, env: @env, logger:, environment: @environment,
-                                        directory: @credentials)
-        warn = ->(message) { logger.warn(message) }
-        job.pipeline(binder: ->(schema) { schema.bind_argv(argv, env: @env, credentials:, warn:) }, logger:)
-      end
+      def build_pipeline(job, argv) = invoker.pipeline(job, argv, anchor: @anchor)
 
     end
   end

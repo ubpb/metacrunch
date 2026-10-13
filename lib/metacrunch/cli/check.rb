@@ -9,7 +9,7 @@ module Metacrunch
 
       NAME = "check"
       SUMMARY = "Validate a job without running it"
-      USAGE = "check [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]"
+      USAGE = "check [OPTIONS] NAME|FILE [JOB_PARAMS...] [ARGS...]"
 
       private
 
@@ -20,7 +20,7 @@ module Metacrunch
       rescue *Engine::RECOVERABLE => e
         raise if e.is_a?(ParamError)
 
-        @stderr.puts("Error: #{@job_file}: #{e.class}: #{e.message.lines.first&.chomp}")
+        @stderr.puts("Error: #{@target}: #{e.class}: #{e.message.lines.first&.chomp}")
         EXIT_CODES[:usage]
       end
 
@@ -31,7 +31,7 @@ module Metacrunch
         rows << ["errors", sink(pipeline.errors)] if pipeline.errors
         rows << ["on_error", policy(pipeline)]
         title = job.name ? "job #{job.name.inspect}" : "job"
-        ["#{@job_file}: #{title} OK", *rows.map { |label, text| "  #{label.ljust(9)} #{text}" }].join("\n")
+        ["#{@target}: #{title} OK", *rows.map { |label, text| "  #{label.ljust(9)} #{text}" }].join("\n")
       end
 
       def input(pipeline)

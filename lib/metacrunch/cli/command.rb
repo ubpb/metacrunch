@@ -5,14 +5,15 @@ module Metacrunch
     # Base class of the commands. #run parses the command's options up to
     # the first argument that is not an option, then #execute gets the rest;
     # it returns the exit code. Subclasses define NAME, SUMMARY, USAGE,
-    # #define_options and #execute.
+    # #define_options and #execute; lookup is the Cli's ProjectLookup.
     class Command
 
-      def initialize(streams)
+      def initialize(streams, lookup)
         @stdin = streams.stdin
         @stdout = streams.stdout
         @stderr = streams.stderr
         @env = streams.env
+        @lookup = lookup
         @log_level = Logger::INFO
         @help = false
       end
@@ -24,7 +25,7 @@ module Metacrunch
         return show(parser.help) if @help
 
         execute(argv)
-      rescue OptionParser::ParseError, JobLoadError, ParamError, UsageError => e
+      rescue OptionParser::ParseError, JobLoadError, ParamError, UsageError, ProjectError => e
         usage_error(e.message)
       rescue SignalException => e
         interrupted(e)

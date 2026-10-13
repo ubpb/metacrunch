@@ -5,6 +5,7 @@ require_relative "../metacrunch"
 require_relative "progress"
 require_relative "trace"
 require_relative "credentials/editor"
+require_relative "cli/project_lookup"
 require_relative "cli/command"
 require_relative "cli/job_command"
 require_relative "cli/run"
@@ -15,8 +16,8 @@ require_relative "cli/credentials"
 
 module Metacrunch
   # The command line interface. Dispatches to a command by the first
-  # argument; a job file there is short for `run`. #run returns the exit
-  # code, exe/metacrunch exits with it.
+  # argument; a job or command there, by name or file, is short for `run`.
+  # #run returns the exit code, exe/metacrunch exits with it.
   class Cli
 
     EXIT_CODES = {ok: 0, aborted: 1, usage: 2, ok_with_failures: 3}.freeze
@@ -30,12 +31,13 @@ module Metacrunch
 
     def initialize(stdin: $stdin, stdout: $stdout, stderr: $stderr, env: ENV)
       @streams = Streams.new(stdin:, stdout:, stderr:, env:)
+      @lookup = ProjectLookup.new
     end
 
     def run(argv)
       first, *rest = argv
       case first
-      when nil then usage_error("no command or job file given")
+      when nil then usage_error("no command, job or file given")
       when "-h", "--help" then show(usage)
       when "--version" then show(VERSION)
       when "help" then help(rest.first)
@@ -46,32 +48,56 @@ module Metacrunch
 
     private
 
-    # An option or a job file (short for run).
+    # An option, or a job or command by name or file: short for run.
     def other(first, argv)
       return usage_error("unknown option #{first}") if first.start_with?("-")
-      return command("run").run(argv) if File.file?(first)
+      return command("run").run(argv) if runnable?(first)
 
-      usage_error("unknown command or job file: #{first}")
+      usage_error(unknown(first))
+    rescue ProjectError => e
+      usage_error(e.message)
     end
 
     def help(name)
       return show(usage) if name.nil? || name == "help"
-      return usage_error("unknown command #{name}") unless COMMANDS.key?(name)
+      return command(name).run(["--help"]) if COMMANDS.key?(name)
+      return command("run").run([name, "--help"]) if runnable?(name)
 
-      command(name).run(["--help"])
+      usage_error(unknown(name))
+    rescue ProjectError => e
+      usage_error(e.message)
     end
 
+    # A file given by path; else a name of the project, which wins over a
+    # file of that name. Paths never load the project.
+    def runnable?(target)
+      return File.file?(target) if Names.path?(target)
+
+      project&.include?(target) || File.file?(target)
+    end
+
+    def unknown(target)
+      return "unknown command, job or file: #{target}" if Names.path?(target)
+
+      hint = project ? project.load_hint : " (no #{Project::FILE} found)"
+      "unknown command, job or file: #{target}#{hint}"
+    end
+
+    # The project of the working directory. Its files that did not load
+    # give warnings on stderr, once per call.
+    def project = @lookup.project(Metacrunch.build_logger(@streams.stderr))
+
     def command(name)
-      COMMANDS.fetch(name).new(@streams)
+      COMMANDS.fetch(name).new(@streams, @lookup)
     end
 
     def usage
       width = [*COMMANDS.keys, "help"].map(&:size).max
       commands = COMMANDS.map { |name, command| "  #{name.ljust(width)} #{command::SUMMARY}" }
-      commands << "  #{"help".ljust(width)} Show the help of a command"
-      <<~TEXT
-        Usage: metacrunch COMMAND [OPTIONS] JOB_FILE [JOB_PARAMS...] [ARGS...]
-               metacrunch JOB_FILE [JOB_PARAMS...] [ARGS...]    (same as run)
+      commands << "  #{"help".ljust(width)} Show the help of a command, job or file"
+      text = <<~TEXT
+        Usage: metacrunch COMMAND [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]
+               metacrunch NAME|FILE [PARAMS...] [ARGS...]    (same as run)
 
         Commands:
         #{commands.join("\n")}
@@ -80,6 +106,37 @@ module Metacrunch
           -h, --help     Show this help
               --version  Show the version
       TEXT
+      [text, *project_help].join("\n")
+    end
+
+    # The jobs and commands of the project and the files that did not load,
+    # or the error of the Metacrunchfile. No warnings: the list shows the
+    # files.
+    def project_help
+      project = @lookup.project(nil)
+      project ? project_sections(project) : []
+    rescue ProjectError => e
+      ["Project:\n  #{e.message.lines.first.chomp}\n"]
+    end
+
+    def project_sections(project)
+      names = project.names
+      width = names.map(&:size).max
+      jobs, commands = names.partition { project.declared(it).first.is_a?(Job) }
+      errors = project.load_errors.map { |file, error| "  #{project.load_error_summary(file, error)}" }
+      [
+        (section("Jobs (#{project.root})", jobs.map { entry(project, it, width) }) if jobs.any?),
+        (section("Project commands (#{project.root})", commands.map { entry(project, it, width) }) if commands.any?),
+        (section("Not loaded", errors) if errors.any?)
+      ].compact
+    end
+
+    def section(title, lines) = "#{title}:\n#{lines.join("\n")}\n"
+
+    def entry(project, name, width)
+      declarations = project.declared(name)
+      desc = declarations.one? ? declarations.first.desc : "(declared more than once, unusable)"
+      "  #{name.ljust(width)}  #{desc}".rstrip
     end
 
     def show(text)

@@ -12,7 +12,7 @@ module Metacrunch
       SUMMARY = "Create a job file"
       USAGE = "new [--test] [--force] PATH"
 
-      def initialize(streams)
+      def initialize(streams, lookup)
         super
         @test = false
         @force = false
