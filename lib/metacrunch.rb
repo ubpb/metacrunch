@@ -17,6 +17,7 @@ require_relative "metacrunch/sink_adapter"
 require_relative "metacrunch/components"
 require_relative "metacrunch/sink_outlet"
 require_relative "metacrunch/processor"
+require_relative "metacrunch/names"
 require_relative "metacrunch/params"
 require_relative "metacrunch/credentials"
 require_relative "metacrunch/credentials/key"
@@ -56,10 +57,10 @@ module Metacrunch
       Logger.new(io, level: Logger::INFO, formatter: LOG_FORMATTER)
     end
 
-    # Defines a job. Inside a job file loaded with load_job, the job is
-    # also registered with the loader.
-    def job(name = nil, &)
-      Job.new(name, &).tap { |job| Loader.register(job) }
+    # Defines a job. Inside a file that Loader loads, the job is also
+    # registered with the loader.
+    def job(name = nil, desc: nil, &)
+      Job.new(name, desc:, &).tap { |job| Loader.register(job) }
     end
 
     def load_job(path, name: nil)
