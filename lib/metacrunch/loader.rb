@@ -1,64 +1,78 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  # Loads job files. Metacrunch.job registers each job with the load that
-  # is in progress on the current thread. A file is loaded again only when
-  # it has changed, because loading it twice would redefine its constants.
+  # Loads files that declare jobs and commands. Metacrunch.job and
+  # Metacrunch.command register what they declare with the load that is in
+  # progress on the current thread. A file is loaded again only when it has
+  # changed, because loading it twice would redefine its constants.
   module Loader
 
-    KEY = :metacrunch_loading_jobs
+    KEY = :metacrunch_loading
+    KINDS = {Job => "job", Command => "command"}.freeze
 
     @cache = {}
 
     module_function
 
-    def load(path, name: nil)
-      raise JobLoadError, "job file not found: #{path}" unless File.file?(path)
+    # The job or command that path declares. name selects one of several;
+    # kind (Job or Command) considers only those.
+    def load(path, name: nil, kind: nil)
+      raise JobLoadError, "file not found: #{path}" unless File.file?(path)
 
-      select_job(cached_jobs(path), path, name&.to_s)
+      declarations = cached(path)
+      declarations = declarations.grep(kind) if kind
+      select_declaration(declarations, path, name&.to_s, kind ? KINDS.fetch(kind) : "job or command")
     end
 
-    def cached_jobs(path)
+    # What path declares, loaded again only when the file has changed.
+    def cached(path)
       key = File.expand_path(path)
       mtime = File.mtime(key)
-      cached_mtime, jobs = @cache[key]
-      return jobs if cached_mtime == mtime
+      cached_mtime, declarations = @cache[key]
+      return declarations if cached_mtime == mtime
 
-      jobs = collect(path)
-      @cache[key] = [mtime, jobs]
-      jobs
+      declarations = collect(path)
+      @cache[key] = [mtime, declarations]
+      declarations
     end
 
-    def register(job)
-      Thread.current[KEY]&.push(job)
+    def register(declaration)
+      Thread.current[KEY]&.push(declaration)
     end
 
+    # Loads path now and returns what it declares, each with its file.
     def collect(path)
       previous = Thread.current[KEY]
-      jobs = Thread.current[KEY] = []
+      declarations = Thread.current[KEY] = []
       Kernel.load(File.expand_path(path))
-      jobs.each { it.file = File.expand_path(path) }
+      declarations.each { it.file = File.expand_path(path) }
     rescue ScriptError, StandardError => e
       raise JobLoadError, "could not load #{path}: #{e.class}: #{e.message}"
     ensure
       Thread.current[KEY] = previous
     end
 
-    def select_job(jobs, path, name)
-      raise JobLoadError, "no job defined in #{path}" if jobs.empty?
-      return pick_named(jobs, path, name) if name
-      return jobs.first if jobs.one?
+    def select_declaration(declarations, path, name, noun)
+      raise JobLoadError, "no #{noun} defined in #{path}" if declarations.empty?
+      return pick_named(declarations, path, name, noun) if name
+      return declarations.first if declarations.one?
 
-      raise JobLoadError, "#{path} defines several jobs (#{names(jobs)}); select one with --job NAME"
+      raise JobLoadError,
+            "#{path} defines several #{plural(declarations)} (#{names(declarations)}); select one with --job NAME"
     end
 
-    def pick_named(jobs, path, name)
-      jobs.find { |job| job.name == name } ||
-        raise(JobLoadError, "no job named #{name} in #{path} (available: #{names(jobs)})")
+    def pick_named(declarations, path, name, noun)
+      declarations.find { it.name == name } ||
+        raise(JobLoadError, "no #{noun} named #{name} in #{path} (available: #{names(declarations)})")
     end
 
-    def names(jobs)
-      jobs.map { |job| job.name || "(unnamed)" }.join(", ")
+    # "jobs", "commands" or "jobs and commands".
+    def plural(declarations)
+      declarations.map { "#{KINDS.fetch(it.class)}s" }.uniq.join(" and ")
+    end
+
+    def names(declarations)
+      declarations.map { it.name || "(unnamed)" }.join(", ")
     end
 
   end

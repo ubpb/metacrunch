@@ -25,6 +25,7 @@ require_relative "metacrunch/credentials/box"
 require_relative "metacrunch/credentials/location"
 require_relative "metacrunch/credentials/store"
 require_relative "metacrunch/pipeline"
+require_relative "metacrunch/recipe_params"
 require_relative "metacrunch/builder"
 require_relative "metacrunch/executor"
 require_relative "metacrunch/executor/inline"
@@ -35,6 +36,9 @@ require_relative "metacrunch/executor/fork/worker"
 require_relative "metacrunch/executor/fork/run"
 require_relative "metacrunch/engine"
 require_relative "metacrunch/job"
+require_relative "metacrunch/command"
+require_relative "metacrunch/command_builder"
+require_relative "metacrunch/command_scope"
 require_relative "metacrunch/loader"
 require_relative "metacrunch/json_lines"
 
@@ -63,8 +67,14 @@ module Metacrunch
       Job.new(name, desc:, &).tap { |job| Loader.register(job) }
     end
 
+    # Defines a command. Like job, it is registered with the loader inside
+    # a file that Loader loads.
+    def command(name, desc: nil, &)
+      Command.new(name, desc:, &).tap { |command| Loader.register(command) }
+    end
+
     def load_job(path, name: nil)
-      Loader.load(path, name:)
+      Loader.load(path, name:, kind: Job)
     end
 
   end
