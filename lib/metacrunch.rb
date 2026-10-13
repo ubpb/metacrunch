@@ -40,6 +40,7 @@ require_relative "metacrunch/command"
 require_relative "metacrunch/command_builder"
 require_relative "metacrunch/command_scope"
 require_relative "metacrunch/loader"
+require_relative "metacrunch/project"
 require_relative "metacrunch/json_lines"
 
 module Metacrunch
@@ -76,6 +77,16 @@ module Metacrunch
     def load_job(path, name: nil)
       Loader.load(path, name:, kind: Job)
     end
+
+    # Loads the job and command files that match globs into the project
+    # whose Metacrunchfile is being loaded (see Project#load_files).
+    def load_files(*globs)
+      project = Project.loading || raise(ProjectError, "load_files works only in a Metacrunchfile")
+      project.load_files(globs)
+    end
+
+    # The project of the nearest Metacrunchfile at or above dir.
+    def load_project(dir = Dir.pwd) = Project.load(dir)
 
   end
 

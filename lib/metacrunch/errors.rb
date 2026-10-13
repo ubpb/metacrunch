@@ -21,6 +21,10 @@ module Metacrunch
   # Invalid use of the command line, e.g. options that conflict.
   class UsageError < Error; end
 
+  # A project could not be found or loaded, or a name is unknown or
+  # declared more than once. The CLI exits with 2.
+  class ProjectError < Error; end
+
   # A step raised an error for a record. The original error is the cause.
   class StepError < Error
 
