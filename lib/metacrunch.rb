@@ -42,6 +42,8 @@ require_relative "metacrunch/command_scope"
 require_relative "metacrunch/loader"
 require_relative "metacrunch/project"
 require_relative "metacrunch/json_lines"
+require_relative "metacrunch/run_options"
+require_relative "metacrunch/invoker"
 
 module Metacrunch
 

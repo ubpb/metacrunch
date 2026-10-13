@@ -1,0 +1,276 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class InvokerTest < Minitest::Test
+
+  include CliHelper
+  include CredentialsHelper
+
+  FILES = {
+    "Metacrunchfile" => "Metacrunch.load_files \"jobs/*.rb\", \"commands/*.rb\"\n",
+    "jobs/numbers.rb" => <<~RUBY,
+      Metacrunch.job "numbers" do
+        params do
+          param :skip, :bool, default: false
+          args :numbers
+        end
+
+        source params.numbers.map { Integer(it, 10) }
+        map { 100 / it }
+        on_error(params.skip ? :skip : :abort)
+      end
+    RUBY
+    "jobs/term.rb" => <<~RUBY,
+      Metacrunch.job "term" do
+        params { param :output, String, required: true }
+
+        source [1, 2]
+        map { it == 2 ? raise(SignalException, "TERM") : it }
+        sink Metacrunch::JsonLines::Writer.new(params.output), batch: 10
+      end
+    RUBY
+    "commands/note.rb" => <<~RUBY,
+      Metacrunch.command "note" do
+        params { args :text, min: 1, max: 1 }
+
+        run { params.text.first }
+      end
+    RUBY
+    "commands/chain.rb" => <<~RUBY,
+      Metacrunch.command "chain" do
+        params do
+          param :tolerant, :bool, default: false
+          args :numbers
+        end
+
+        run do
+          invoke "numbers", *params.numbers
+        rescue Metacrunch::InvokeError
+          raise unless params.tolerant
+
+          :rescued
+        end
+      end
+    RUBY
+    "commands/outer.rb" => <<~RUBY,
+      Metacrunch.command "outer" do
+        params { args :numbers }
+
+        run { [invoke("chain", "--tolerant", *params.numbers), invoke("note", "done")] }
+      end
+    RUBY
+    "commands/boom.rb" => "Metacrunch.command(\"boom\") { run { raise IOError, \"disk full\" } }\n"
+  }.freeze
+
+  # A command from a gem: its file lives outside the project.
+  GEM_COMMAND = <<~RUBY
+    Metacrunch.command "secret:show" do
+      params { param :api_key, String, credential: "catalog.api_key", required: true }
+
+      run do
+        invoke "secret"
+        params.api_key.reverse
+      end
+    end
+  RUBY
+
+  NAMED_SECRET_JOB = <<~RUBY
+    Metacrunch.job "secret" do
+      params { param :api_key, String, credential: "catalog.api_key", required: true }
+
+      source [params.api_key.reverse]
+    end
+  RUBY
+
+  def test_invoking_a_job_returns_its_result_and_writes_stdout
+    with_project do |invoker, out|
+      result = invoker.invoke("numbers", 4, Pathname("5"))
+
+      assert_equal [:ok, "25\n20\n"], [result.status, out.string]
+    end
+  end
+
+  def test_an_aborted_job_raises_an_invoke_error_with_its_result
+    with_project do |invoker|
+      error = assert_raises(Metacrunch::InvokeError) { invoker.invoke("numbers", "0") }
+
+      assert_equal ["numbers", :aborted, Metacrunch::StepError], [error.name, error.result.status, error.cause.class]
+      assert_match(/\Anumbers aborted: Metacrunch::StepError: step map#1 failed at position 1/, error.message)
+    end
+  end
+
+  def test_failed_records_return_the_result_and_worsen_the_status
+    with_project do |invoker|
+      result = invoker.invoke("numbers", "--skip", "0", "4")
+
+      assert_equal [:ok_with_failures, :ok_with_failures], [result.status, invoker.status]
+    end
+  end
+
+  def test_a_command_returns_the_value_of_its_body
+    with_project { |invoker| assert_equal "done", invoker.invoke("note", "done") }
+  end
+
+  def test_exceptions_from_a_body_propagate_unchanged
+    with_project do |invoker|
+      error = assert_raises(IOError) { invoker.invoke("boom") }
+
+      assert_equal "disk full", error.message
+    end
+  end
+
+  def test_invalid_arguments_for_the_target_raise_invoke_errors
+    with_project do |invoker|
+      error = assert_raises(Metacrunch::InvokeError) { invoker.invoke("note") }
+
+      assert_equal "invoke note: expected at least 1 argument(s) for text, got 0", error.message
+      assert_instance_of Metacrunch::ParamError, error.cause
+    end
+  end
+
+  def test_unknown_names_raise_invoke_errors
+    with_project do |invoker|
+      error = assert_raises(Metacrunch::InvokeError) { invoker.invoke("nope") }
+
+      assert_equal ["invoke nope: unknown command, job or file: nope", "nope"], [error.message, error.name]
+    end
+  end
+
+  def test_names_without_a_project_are_unknown
+    error = assert_raises(Metacrunch::InvokeError) { invoker_for(nil).invoke("numbers") }
+
+    assert_equal "invoke numbers: unknown command, job or file: numbers (no Metacrunchfile found)", error.message
+  end
+
+  def test_paths_run_without_a_project
+    out = StringIO.new
+    result = invoker_for(nil, stdin: StringIO.new("1\n2\n"), stdout: out).invoke(job("double.rb"))
+
+    assert_equal [:ok, "2\n4\n"], [result.status, out.string]
+  end
+
+  def test_the_project_is_looked_up_once_when_a_name_is_first_needed
+    with_project do |invoker|
+      project = invoker.project
+      calls = 0
+      lookup = lambda do
+        calls += 1
+        project
+      end
+      lazy = invoker_for(lookup)
+      2.times { lazy.invoke("note", "x") }
+
+      assert_equal 1, calls
+    end
+  end
+
+  def test_a_name_wins_over_a_file_of_that_name_and_files_fill_in
+    with_project do |invoker, out, root|
+      write_file(root, "note", "# frozen_string_literal: true\n\nMetacrunch.job { source [\"file\"] }\n")
+      write_file(root, "solo", "# frozen_string_literal: true\n\nMetacrunch.job { source [\"solo\"] }\n")
+      value = Dir.chdir(root) { [invoker.invoke("note", "name"), invoker.invoke("solo").status] }
+
+      assert_equal ["name", :ok], value
+      assert_equal "\"solo\"\n", out.string
+    end
+  end
+
+  def test_nil_arguments_are_refused
+    with_project do |invoker|
+      error = assert_raises(ArgumentError) { invoker.invoke("note", "--x", nil) }
+
+      assert_equal "invoke note: argument 2 is nil", error.message
+    end
+  end
+
+  def test_workers_and_limit_apply_to_jobs_only
+    with_project do |invoker|
+      error = assert_raises(ArgumentError) { invoker.invoke("note", "x", workers: 2) }
+
+      assert_equal "note is a command; workers: and limit: apply to jobs", error.message
+      assert_equal 2, invoker.invoke("numbers", "1", "2", "4", limit: 2).stats.read
+    end
+  end
+
+  def test_a_job_without_source_on_a_terminal_raises_an_invoke_error
+    invoker = invoker_for(nil, stdin: TerminalInput.new)
+    error = assert_raises(Metacrunch::InvokeError) { invoker.invoke(job("double.rb")) }
+
+    assert_match(/job has no source and stdin is a terminal/, error.message)
+  end
+
+  def test_the_worst_status_comes_through_a_nested_command
+    with_project do |invoker|
+      value = invoker.invoke("outer", "0")
+
+      assert_equal [:rescued, "done"], value
+      assert_equal [:aborted, :ok_with_failures], [invoker.status, invoker.finished_status]
+    end
+  end
+
+  def test_logs_the_error_and_the_summary_with_the_name
+    log = StringIO.new
+    with_project(logger: Logger.new(log)) do |invoker|
+      assert_raises(Metacrunch::InvokeError) { invoker.invoke("numbers", "0") }
+
+      assert_match(/numbers: Metacrunch::StepError: step map#1 failed/, log.string)
+      assert_match(/numbers: aborted: read 1, written 0/, log.string)
+    end
+  end
+
+  def test_a_signal_from_an_invoked_job_propagates_after_the_sink_was_flushed
+    with_project do |invoker, _out, root|
+      output = File.join(root, "term.jsonl")
+
+      assert_raises(SignalException) { invoker.invoke("term", "--output", output) }
+      assert_equal "1\n", File.read(output)
+    end
+  end
+
+  def test_the_environment_and_credentials_from_the_project_root_reach_a_gem_command
+    in_tmpdir do |dir|
+      root = File.join(dir, "project")
+      glob = File.join(dir, "gem", "commands", "*.rb")
+      write_ruby(dir, "gem/commands/secret.rb", GEM_COMMAND)
+      write_ruby(root, "Metacrunchfile", "Metacrunch.load_files #{glob.inspect}, \"jobs/*.rb\"\n")
+      write_ruby(root, "jobs/secret.rb", NAMED_SECRET_JOB)
+      write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
+      out = StringIO.new
+      invoker = invoker_for(Metacrunch.load_project(root), stdout: out, environment: "production")
+
+      assert_equal SECRET.reverse, invoker.invoke("secret:show")
+      assert_equal "\"#{SECRET.reverse}\"\n", out.string
+    end
+  end
+
+  def test_root_needs_a_project
+    error = assert_raises(Metacrunch::ProjectError) { invoker_for(nil).root }
+
+    assert_match(/\Ano Metacrunchfile found in .* or above\z/, error.message)
+  end
+
+  def test_project_invoke_runs_like_invoke_in_a_command
+    with_project do |invoker|
+      assert_equal "done", invoker.project.invoke("note", "done", logger: Logger.new(nil), env: {})
+    end
+  end
+
+  private
+
+  # Yields an Invoker for a project with FILES, its stdout and the root.
+  def with_project(logger: Logger.new(nil))
+    in_tmpdir do |root|
+      FILES.each { |path, code| write_ruby(root, path, code) }
+      out = StringIO.new
+      yield invoker_for(Metacrunch.load_project(root), stdout: out, logger:), out, root
+    end
+  end
+
+  def invoker_for(project, stdin: StringIO.new, stdout: StringIO.new, logger: Logger.new(nil), environment: nil)
+    Metacrunch::Invoker.new(project:, logger:, env: {}, stdin:, stdout:, environment:)
+  end
+
+  def write_ruby(root, path, code) = write_file(root, path, "# frozen_string_literal: true\n\n#{code}")
+
+end
