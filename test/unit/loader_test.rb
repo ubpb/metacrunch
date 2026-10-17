@@ -93,6 +93,14 @@ class LoaderTest < Minitest::Test
                                      Metacrunch.load_job(fixture("shared.rb")).name]
   end
 
+  # Transforms beside one job are its building blocks: the file runs by
+  # path without -j, also with an unnamed job and transform.
+  def test_a_job_with_its_own_transforms_needs_no_selection
+    declaration = Metacrunch::Loader.load(fixture("helper.rb"))
+
+    assert_instance_of Metacrunch::Job, declaration
+  end
+
   def test_a_file_without_transform_defines_none
     error = assert_raises(Metacrunch::JobLoadError) { Metacrunch.load_transform(fixture("double.rb")) }
 

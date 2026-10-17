@@ -251,6 +251,11 @@ unknown name raises `ProjectError` with the message and hints of `invoke`
 A target that is neither a String nor a `Transform` (`nil`, a Symbol)
 raises `ArgumentError`.
 
+Amended in the final review: such a file declares a job and a transform. A
+file whose declarations are one job or command plus transforms selects
+that job or command when it runs by path without `-j` (the transforms are
+its building blocks); `-j` still selects a transform by name.
+
 A path loads only the transforms of its file (as `load_transform` does): a
 file that declares no transform raises `JobLoadError` ("no transform
 defined in PATH"), and a file with several transforms cannot be used by
