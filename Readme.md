@@ -257,7 +257,12 @@ end
   `rejects`, `errors`, `on_error` and `profile` raise an `ArgumentError`: they belong to the job.
 - `use` takes a name (in a project, see [Projects and commands](#projects-and-commands)), a path or a transform
   object, and inserts the transform's steps and hooks where it stands. The hooks of a job and its transforms run in
-  the order of their statements. A path loads the transform of its file.
+  the order of their statements.
+- A path loads the transform of its file. Like every relative path, it is relative to the working directory, so a job
+  file that uses a transform next to it writes `use File.join(__dir__, "normalize.rb")`.
+- A job file can keep a transform of its own as an object: `trim = Metacrunch.transform { map { ... } }` before the
+  job, `use trim` inside it. The file still runs by path without `-j`, since transforms beside a single job or command
+  count as its building blocks; leave such a transform unnamed and it takes no name in the project either.
 - The keywords of `use` set the transform's parameters, as Ruby values or as strings like on the command line;
   `nil` counts as not given. A parameter without a value comes from its `env:` variable, then from the credentials
   of the job, then its default. The steps and hooks of a transform see its own `params`, never the job's.

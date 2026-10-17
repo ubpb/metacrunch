@@ -158,6 +158,16 @@ class RunTest < Minitest::Test
     assert_equal [0, "2\n4\n"], cli("run", job("double.rb"), stdin: "1\n2\n").take(2)
   end
 
+  # A job file with a transform of its own, as an object, runs and checks by
+  # path without -j.
+  def test_a_job_with_its_own_transform_runs_by_path
+    run = cli("run", job("helper.rb"), stdin: "\" a \"\n")
+    check = cli("check", job("helper.rb"))
+
+    assert_equal [0, "\"a\"\n"], run.take(2)
+    assert_equal [0, "  steps     helper/map#1"], [check.first, check[1].lines[2].chomp]
+  end
+
   def test_empty_stdin_gives_no_output
     assert_equal [0, ""], cli("run", job("double.rb"), stdin: "").take(2)
   end

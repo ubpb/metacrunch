@@ -53,10 +53,15 @@ module Metacrunch
       Thread.current[KEY] = previous
     end
 
+    # Without name, the only declaration; or the only job or command, whose
+    # building blocks the transforms beside it are.
     def select_declaration(declarations, path, name, noun)
       raise JobLoadError, "no #{noun} defined in #{path}" if declarations.empty?
       return pick_named(declarations, path, name, noun) if name
       return declarations.first if declarations.one?
+
+      runnable = declarations.grep_v(Transform)
+      return runnable.first if runnable.one?
 
       raise JobLoadError,
             "#{path} defines several #{plural(declarations)} (#{names(declarations)}); select one with --job NAME"

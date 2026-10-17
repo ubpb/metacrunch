@@ -53,6 +53,7 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
   give one or the name of a built-in command.
 - Transforms: `Metacrunch.transform "normalize" do params { ... }; map { ... } end` holds steps, hooks and parameters
   without source or sink, and a job inserts them with `use "normalize", lang: "en"`. Their steps are named with the
-  transform as prefix (`normalize/map#1`); explicit step names must not contain `/`. A transform runs, traces, checks
-  and tests alone like a job without source and sink. `Metacrunch.load_transform`, and `project:` for `Job#run` and
-  `Testing.run`.
+  transform as prefix (`normalize/map#1`); explicit step names must not contain `/`. Generated step numbers count the
+  step statements of a recipe, `use` as one, so a transform that gains a step renames no step of the job. A transform
+  runs, traces, checks and tests alone like a job without source and sink, and a file with one job or command besides
+  transforms runs by path without `-j`. `Metacrunch.load_transform`, and `project:` for `Job#run` and `Testing.run`.
