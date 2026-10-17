@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  # Evaluates a job recipe with instance_exec and collects what the DSL
-  # declares. #build returns the Pipeline.
+  # Evaluates a job or transform recipe with instance_exec and collects
+  # what the DSL declares. #build returns the Pipeline.
   class Builder
 
     include RecipeParams
@@ -13,9 +13,12 @@ module Metacrunch
 
     # binder: callable that takes the Params schema and returns the bound
     # values. describe: stop as soon as the schema is known (for --help).
-    def initialize(binder:, logger:, describe: false)
+    # transform: the Transform whose recipe this builder evaluates; it
+    # refuses source, sinks, error policy and profile. nil for a job.
+    def initialize(binder:, logger:, describe: false, transform: nil)
       init_params(binder, describe)
       @logger = logger
+      @transform = transform
       @source = nil
       @source_declared = false
       @id_extractor = nil
@@ -31,6 +34,7 @@ module Metacrunch
     # With an object: the source. With only id: the job reads the default
     # input of the CLI (JSON Lines from stdin) with this id extractor.
     def source(enumerable = nil, id: nil)
+      job_only!("source")
       use!
       raise ArgumentError, "source already defined" if @source_declared
       raise ArgumentError, "source needs an object with #each or id:" if enumerable.nil? && id.nil?
@@ -77,6 +81,7 @@ module Metacrunch
     end
 
     def on_error(policy, max_errors: nil)
+      job_only!("on_error")
       use!
       unless ON_ERROR_POLICIES.include?(policy)
         raise ArgumentError, "on_error must be one of #{ON_ERROR_POLICIES.inspect}, got #{policy.inspect}"
@@ -91,6 +96,7 @@ module Metacrunch
     end
 
     def profile(enabled)
+      job_only!("profile")
       use!
       @profile = enabled == true
       nil
@@ -118,7 +124,16 @@ module Metacrunch
 
     private
 
-    def recipe_kind = "job"
+    def recipe_kind = @transform ? "transform" : "job"
+
+    # Source, sinks, the error policy and profile belong to the job that
+    # uses a transform.
+    def job_only!(statement)
+      return unless @transform
+
+      raise ArgumentError,
+            "transform #{@transform.label}: a transform has no #{statement}; the job that uses it decides"
+    end
 
     def split_reason(first, second)
       if first.is_a?(String) || first.is_a?(Symbol)
@@ -147,6 +162,7 @@ module Metacrunch
     end
 
     def add_sink(role, object, batch)
+      job_only!(role.to_s)
       use!
       raise ArgumentError, "#{role} already defined" if @sinks.key?(role)
 

@@ -74,7 +74,7 @@ class LoaderTest < Minitest::Test
   def test_unknown_names_list_jobs_and_commands
     error = assert_raises(Metacrunch::JobLoadError) { Metacrunch::Loader.load(fixture("mixed.rb"), name: "x") }
 
-    assert_match(/no job or command named x in .*available: export, publish/, error.message)
+    assert_match(/no job, transform or command named x in .*available: export, publish/, error.message)
   end
 
   def test_kind_restricts_the_selection
@@ -83,6 +83,27 @@ class LoaderTest < Minitest::Test
     end
 
     assert_match(/no command named export in .*available: publish/, error.message)
+  end
+
+  def test_collects_transforms_and_loads_each_kind
+    declarations = Metacrunch::Loader.cached(fixture("shared.rb"))
+
+    assert_equal [Metacrunch::Transform, Metacrunch::Job, Metacrunch::Command], declarations.map(&:class)
+    assert_equal ["trim", "lines"], [Metacrunch.load_transform(fixture("shared.rb")).name,
+                                     Metacrunch.load_job(fixture("shared.rb")).name]
+  end
+
+  def test_a_file_without_transform_defines_none
+    error = assert_raises(Metacrunch::JobLoadError) { Metacrunch.load_transform(fixture("double.rb")) }
+
+    assert_match(/no transform defined in .*double\.rb/, error.message)
+  end
+
+  def test_three_kinds_are_listed_with_commas
+    error = assert_raises(Metacrunch::JobLoadError) { Metacrunch::Loader.load(fixture("shared.rb")) }
+
+    assert_match(/defines several transforms, jobs and commands \(trim, lines, tidy\); select one with --job NAME/,
+                 error.message)
   end
 
   ERRORS.each do |description, (file, name, message)|
