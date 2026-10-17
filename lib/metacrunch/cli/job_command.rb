@@ -2,10 +2,11 @@
 
 module Metacrunch
   class Cli
-    # A command that takes a job or command by name or file (run, check,
-    # trace). Options before it belong to the command, everything after it
-    # to the job or command. Subclasses implement #execute_job(job, argv);
-    # run also #execute_command(command, argv).
+    # A command that takes a job, transform or command by name or file
+    # (run, check, trace). Options before it belong to the command,
+    # everything after it to the target. Subclasses implement
+    # #execute_job(job, argv), which also gets transforms; run also
+    # #execute_command(command, argv).
     class JobCommand < Command
 
       HELP_OPTIONS = ["-h", "--help"].freeze
@@ -16,7 +17,9 @@ module Metacrunch
         parser.separator("Options go before NAME|FILE; everything after it is passed on.")
         parser.separator("\"metacrunch #{self.class::NAME} NAME|FILE --help\" shows its parameters.")
         parser.separator("")
-        parser.on("-j", "--job NAME", "Select a job or command in a file that declares several") { @job_name = it }
+        parser.on("-j", "--job NAME", "Select a job, transform or command in a file that declares several") do |name|
+          @job_name = name
+        end
         parser.on("-q", "--quiet", "Log warnings and errors only") { @log_level = Logger::WARN }
         parser.on("-v", "--verbose", "Log debug messages too") { @log_level = Logger::DEBUG }
         credentials_options(parser, "Credentials directory (default: METACRUNCH_CREDENTIALS,",
@@ -26,7 +29,7 @@ module Metacrunch
 
       def execute(argv)
         @target = argv.shift
-        raise UsageError, "no job, command or file given" unless @target
+        raise UsageError, "no job, transform, command or file given" unless @target
 
         declaration, @anchor = invoker.resolve(@target, select: @job_name)
         check_target!(declaration)

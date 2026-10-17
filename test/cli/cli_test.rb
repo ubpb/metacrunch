@@ -22,7 +22,7 @@ class CliTest < Minitest::Test
 
     assert_equal 0, code
     assert_match(/Usage: metacrunch COMMAND \[OPTIONS\] NAME\|FILE/, stdout)
-    assert_match(/^  run +Run a job or command$/, stdout)
+    assert_match(/^  run +Run a job, transform or command$/, stdout)
   end
 
   def test_help_without_a_command_prints_the_usage

@@ -9,7 +9,7 @@ module Metacrunch
     class RunCommand < JobCommand
 
       NAME = "run"
-      SUMMARY = "Run a job or command"
+      SUMMARY = "Run a job, transform or command"
       USAGE = "run [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]"
       # The options that apply to jobs only, as the usage error names them;
       # -w is kept apart in @workers.
