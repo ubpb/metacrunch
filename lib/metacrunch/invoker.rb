@@ -153,7 +153,7 @@ module Metacrunch
         run_job(job, argv, anchor:, options: RunOptions.new(limit:), workers:, label: target)
       rescue NoInputError
         # invoke has no -i: the job reads the stdin of the chain.
-        raise NoInputError, "pipe JSON Lines into the command that invokes it"
+        raise NoInputError.new(target, hint: "pipe them into the command that invokes it")
       end
       aborted!(result, target)
       result

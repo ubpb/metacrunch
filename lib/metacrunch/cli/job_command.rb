@@ -38,6 +38,9 @@ module Metacrunch
         return execute_command(declaration, argv) if declaration.is_a?(Metacrunch::Command)
 
         execute_job(declaration, argv)
+      rescue NoInputError => e
+        # Only the command line knows the target as the user named it.
+        raise e.for(@target)
       end
 
       # check and trace take jobs and transforms, no commands; run overrides
