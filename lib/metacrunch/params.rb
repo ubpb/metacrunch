@@ -4,8 +4,8 @@ require "optparse"
 
 module Metacrunch
   # The parameters a job declares in `params { ... }`, and their binding
-  # from CLI arguments (#bind_argv) or a Hash (#bind_hash). Bound values
-  # are frozen.
+  # from CLI arguments (#bind_argv), the keyword values of `use`
+  # (#bind_values) or a Hash in tests (#bind_hash). Bound values are frozen.
   class Params
 
     TYPES = [String, Integer, Float, :bool, Array].freeze
@@ -137,6 +137,29 @@ module Metacrunch
       build(values, args_name ? Array(hash[args_name]) : [])
     end
 
+    # Binds the keyword values of `use`. A value may have the declared type
+    # or be a String, which is converted; nil means "not given". A
+    # parameter without a value is read from its env: variable, then from
+    # the credentials, then the default. The values come from code, so
+    # messages name a parameter by its name, not as option, and a secret
+    # gives no warning. Raises ArgumentError for an unknown key.
+    def bind_values(values, env: ENV, credentials: nil)
+      values = values.transform_keys(&:to_sym)
+      args_name = @args_definition&.name
+      known = [*@definitions.keys, *args_name]
+      unknown = values.keys - known
+      if unknown.any?
+        raise ArgumentError,
+              "unknown parameter #{unknown.first.inspect} (known: #{known.empty? ? "none" : known.join(", ")})"
+      end
+
+      given = values.except(args_name).compact
+      bound = @definitions.to_h do |name, definition|
+        [name, bind(definition, given, env, credentials, nil, keyword: true)]
+      end
+      build(bound, values[args_name].nil? ? [] : Array(values[args_name]))
+    end
+
     # True if argv asks for help: -h or --help as an option, not as the
     # value of another option.
     def help_requested?(argv)
@@ -224,19 +247,19 @@ module Metacrunch
       value unless value.nil? || value.empty?
     end
 
-    def bind(definition, given, env, credentials, warn)
+    def bind(definition, given, env, credentials, warn, keyword: false)
       if given.key?(definition.name)
         warn&.call(secret_warning(definition)) if definition.secret?
-        return resolve(definition, given[definition.name])
+        return resolve(definition, given[definition.name], keyword:)
       end
 
       raw = env_value(definition, env)
-      return resolve(definition, raw, origin: "environment variable #{definition.env}") unless raw.nil?
+      return resolve(definition, raw, origin: "environment variable #{definition.env}", keyword:) unless raw.nil?
 
       raw = credentials&.lookup(definition.credential) if definition.credential
-      return resolve(definition, raw, origin: credentials.origin(definition.credential)) unless raw.nil?
+      return resolve(definition, raw, origin: credentials.origin(definition.credential), keyword:) unless raw.nil?
 
-      resolve(definition, nil, sources: -> { sources(definition, credentials) })
+      resolve(definition, nil, sources: -> { sources(definition, credentials) }, keyword:)
     end
 
     # What was tried for a missing value, e.g. "CATALOG_API_KEY unset;
@@ -256,30 +279,35 @@ module Metacrunch
       "#{definition.option} is a secret; pass it by #{by} instead"
     end
 
-    def resolve(definition, raw, origin: nil, sources: nil)
-      value = raw.nil? ? definition.default : frozen_copy(convert(definition, raw, origin:))
+    def resolve(definition, raw, origin: nil, sources: nil, keyword: false)
+      value = raw.nil? ? definition.default : frozen_copy(convert(definition, raw, origin:, keyword:))
       return value unless definition.required && value.nil?
 
       detail = sources&.call
-      raise ParamError, "missing required parameter #{definition.option}#{" (#{detail})" if detail}"
+      raise ParamError, "missing required parameter #{label(definition, keyword)}#{" (#{detail})" if detail}"
     end
 
-    def convert(definition, raw, origin: nil)
+    def convert(definition, raw, origin: nil, keyword: false)
       value = raw.is_a?(String) ? CONVERTERS.fetch(definition.type).call(raw) : raw
       value = value.to_f if definition.type == Float && value.is_a?(Integer)
-      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin)
+      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin, keyword:)
     rescue ArgumentError, TypeError
-      invalid!(definition, raw, origin)
+      invalid!(definition, raw, origin, keyword:)
     end
 
     # No cause: the converter's error (Integer(), Float(), "not a boolean")
     # would repeat a hidden value.
-    def invalid!(definition, raw, origin)
+    def invalid!(definition, raw, origin, keyword: false)
       expected = TYPE_NAMES.fetch(definition.type)
       from = origin ? " from #{origin}" : ""
       shown = definition.secret? ? HIDDEN : raw.inspect
-      raise ParamError, "invalid value for #{definition.option}#{from}: #{shown} is not #{expected}", cause: nil
+      raise ParamError, "invalid value for #{label(definition, keyword)}#{from}: #{shown} is not #{expected}",
+            cause: nil
     end
+
+    # How messages name a parameter: as option (--api-key) for the command
+    # line, by name (api_key) for the keyword values of use.
+    def label(definition, keyword) = keyword ? definition.name.to_s : definition.option
 
     # Bound values are frozen, so a default Array cannot leak changes from
     # one run into the next.
