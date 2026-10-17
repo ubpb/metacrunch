@@ -21,12 +21,12 @@ module Metacrunch
   # Invalid use of the command line, e.g. options that conflict.
   class UsageError < Error; end
 
-  # A job without source would read stdin, which is a terminal. hint says
-  # where the records can come from instead.
+  # A job or transform without source would read stdin, which is a
+  # terminal. hint says where the records can come from instead.
   class NoInputError < UsageError
 
     def initialize(hint = "pipe JSON Lines in or use -i PATH")
-      super("job has no source and stdin is a terminal; #{hint}")
+      super("no source and stdin is a terminal; #{hint}")
     end
 
   end

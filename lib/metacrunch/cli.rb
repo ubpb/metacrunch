@@ -40,7 +40,7 @@ module Metacrunch
     def run(argv)
       first, *rest = argv
       case first
-      when nil then usage_error("no command, job or file given")
+      when nil then usage_error("no command, job, transform or file given")
       when "-h", "--help" then show(usage)
       when "--version" then show(VERSION)
       when "help" then help(rest.first)
@@ -98,7 +98,7 @@ module Metacrunch
     def usage
       width = [*COMMANDS.keys, "help"].map(&:size).max
       commands = COMMANDS.map { |name, command| "  #{name.ljust(width)} #{command::SUMMARY}" }
-      commands << "  #{"help".ljust(width)} Show the help of a command, job or file"
+      commands << "  #{"help".ljust(width)} Show the help of a command, job, transform or file"
       text = <<~TEXT
         Usage: metacrunch COMMAND [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]
                metacrunch NAME|FILE [PARAMS...] [ARGS...]    (same as run)

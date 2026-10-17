@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  # A project: the directory of a Metacrunchfile, and the jobs and commands
-  # its files declare (see the Readme, "Projects and commands"). A name
-  # declared more than once stays in the project, but fetch refuses it; a
-  # file that fails to load is kept in load_errors.
+  # A project: the directory of a Metacrunchfile, and the jobs, transforms
+  # and commands its files declare (see the Readme, "Projects and
+  # commands"). A name declared more than once stays in the project, but
+  # fetch refuses it; a file that fails to load is kept in load_errors.
   class Project
 
     FILE = "Metacrunchfile"
@@ -63,12 +63,12 @@ module Metacrunch
 
     def include?(name) = @declarations.key?(name.to_s)
 
-    # The jobs and commands declared as name: one, several for a duplicate,
-    # or none.
+    # The jobs, transforms and commands declared as name: one, several for a
+    # duplicate, or none.
     def declared(name) = @declarations.fetch(name.to_s, [])
 
-    # The Job or Command named name. Raises ProjectError if the name is
-    # unknown or declared more than once.
+    # The Job, Transform or Command named name. Raises ProjectError if the
+    # name is unknown or declared more than once.
     def fetch(name)
       declarations = declared(name)
       raise ProjectError, "unknown job, transform or command: #{name}#{load_hint}" if declarations.empty?
@@ -78,8 +78,9 @@ module Metacrunch
       raise ProjectError, "#{name} is declared more than once (#{files}); rename one"
     end
 
-    # Runs a job or command of the project like invoke in a command body
-    # (see Invoker#invoke), with its own streams, environment and logger.
+    # Runs a job, transform or command of the project like invoke in a
+    # command body (see Invoker#invoke), with its own streams, environment
+    # and logger.
     def invoke(target, *argv, logger: Metacrunch.logger, env: ENV, stdin: $stdin, stdout: $stdout, workers: nil,
                limit: nil)
       Invoker.new(project: self, logger:, env:, stdin:, stdout:).invoke(target, *argv, workers:, limit:)

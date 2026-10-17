@@ -228,7 +228,7 @@ class InvokerTest < Minitest::Test
     with_project do |invoker|
       error = assert_raises(ArgumentError) { invoker.invoke("note", "x", workers: 2) }
 
-      assert_equal "note is a command; workers: and limit: apply to jobs", error.message
+      assert_equal "note is a command; workers: and limit: apply to jobs and transforms", error.message
       assert_equal 2, invoker.invoke("numbers", "1", "2", "4", limit: 2).stats.read
     end
   end
@@ -238,7 +238,7 @@ class InvokerTest < Minitest::Test
     error = assert_raises(Metacrunch::InvokeError) { invoker.invoke(job("double.rb")) }
 
     # invoke has no -i, so the hint differs from the one of metacrunch run.
-    assert_match(/: job has no source and stdin is a terminal; pipe JSON Lines into the command that invokes it\z/,
+    assert_match(/: no source and stdin is a terminal; pipe JSON Lines into the command that invokes it\z/,
                  error.message)
   end
 

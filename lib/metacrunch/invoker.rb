@@ -54,7 +54,9 @@ module Metacrunch
       argv = arguments(target, argv)
       declaration, anchor = wrap(target) { resolve(target) }
       return invoke_job(declaration, argv, target:, anchor:, workers:, limit:) unless declaration.is_a?(Command)
-      raise ArgumentError, "#{target} is a command; workers: and limit: apply to jobs" if workers || limit
+      if workers || limit
+        raise ArgumentError, "#{target} is a command; workers: and limit: apply to jobs and transforms"
+      end
 
       invoke_command(declaration, argv, target:, anchor:)
     end

@@ -273,7 +273,7 @@ class ProjectCliTest < Minitest::Test
       code, _stdout, stderr = cli_in(root, "run", "-w", "2", "note", "x")
 
       assert_equal 2, code
-      assert_match(/Error: note is a command; -w applies to jobs/, stderr)
+      assert_match(/Error: note is a command; -w applies to jobs and transforms/, stderr)
     end
   end
 
@@ -282,7 +282,7 @@ class ProjectCliTest < Minitest::Test
       results = ["check", "trace"].map { cli_in(root, it, "note", "x") }
 
       assert_equal [2, 2], results.map(&:first)
-      assert_match(/Error: note is a command; check takes jobs/, results.first.last)
+      assert_match(/Error: note is a command; check takes jobs and transforms/, results.first.last)
     end
   end
 
@@ -344,6 +344,16 @@ class ProjectCliTest < Minitest::Test
       assert_equal [0, 0, 0], results.map(&:first)
       assert_equal "3\n6\n", results[0][1]
       assert_equal "scale: transform \"scale\" OK", results[1][1].lines.first.chomp
+    end
+  end
+
+  def test_help_of_a_transform_shows_its_params
+    in_project do |root|
+      code, stdout, = cli_in(root, "scale", "--help")
+
+      assert_equal 0, code
+      assert_match(/\AUsage: metacrunch run scale \[PARAMS\.\.\.\]\n\nMultiply by a factor\n\n.*--factor VALUE/m,
+                   stdout)
     end
   end
 

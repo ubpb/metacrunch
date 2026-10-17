@@ -176,7 +176,7 @@ class RunTest < Minitest::Test
     code, _stdout, stderr = cli("run", job("double.rb"), stdin: TerminalInput.new)
 
     assert_equal 2, code
-    assert_match(/job has no source and stdin is a terminal/, stderr)
+    assert_match(/Error: no source and stdin is a terminal/, stderr)
   end
 
   def test_a_closed_stdout_ends_quietly_with_the_sigpipe_code

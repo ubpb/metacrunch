@@ -11,8 +11,8 @@ module Metacrunch
       NAME = "run"
       SUMMARY = "Run a job, transform or command"
       USAGE = "run [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]"
-      # The options that apply to jobs only, as the usage error names them;
-      # -w is kept apart in @workers.
+      # The options that apply to jobs and transforms only, as the usage
+      # error names them; -w is kept apart in @workers.
       JOB_OPTIONS = {input: "-i", output: "-o", rejects: "--rejects", errors: "--errors", limit: "-n",
                      on_error: "--on-error", max_errors: "--max-errors", stats: "--stats"}.freeze
 
@@ -27,7 +27,7 @@ module Metacrunch
         super
         parser.on("--[no-]progress", "Show progress on stderr (default: if stderr is a terminal)") { @progress = it }
         parser.separator("")
-        parser.separator("For jobs only:")
+        parser.separator("For jobs and transforms only:")
         parser.on("-i", "--input PATH", "Read JSON Lines from PATH (- for stdin) instead of the job's source") do |path|
           @options[:input] = path
         end
@@ -62,7 +62,7 @@ module Metacrunch
 
         given = @options.keys.map { JOB_OPTIONS.fetch(it) }
         given << "-w" if @workers
-        raise UsageError, "#{@target} is a command; #{given.first} applies to jobs" if given.any?
+        raise UsageError, "#{@target} is a command; #{given.first} applies to jobs and transforms" if given.any?
       end
 
       def execute_job(job, argv)

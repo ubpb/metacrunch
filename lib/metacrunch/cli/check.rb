@@ -2,13 +2,13 @@
 
 module Metacrunch
   class Cli
-    # metacrunch check: loads the job, binds its parameters and builds the
-    # pipeline. Opens nothing, reads no record, runs no hook. Parameter
-    # values are not printed; they may contain secrets.
+    # metacrunch check: loads the job or transform, binds its parameters and
+    # builds the pipeline. Opens nothing, reads no record, runs no hook.
+    # Parameter values are not printed; they may contain secrets.
     class CheckCommand < JobCommand
 
       NAME = "check"
-      SUMMARY = "Validate a job without running it"
+      SUMMARY = "Validate a job or transform without running it"
       USAGE = "check [OPTIONS] NAME|FILE [JOB_PARAMS...] [ARGS...]"
 
       private
