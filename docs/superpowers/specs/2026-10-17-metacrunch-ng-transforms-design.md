@@ -249,7 +249,7 @@ one, raises `ArgumentError`: "use takes transforms; marc2es is a job". An
 unknown name raises `ProjectError` with the message and hints of `invoke`
 ("unknown job, transform, command or file: x (no Metacrunchfile found)").
 A target that is neither a String nor a `Transform` (`nil`, a Symbol)
-raises `ArgumentError`.
+raises `ArgumentError`; a `Pathname` (anything with `to_path`) is a path.
 
 Amended in the final review: such a file declares a job and a transform. A
 file whose declarations are one job or command plus transforms selects
@@ -259,7 +259,8 @@ its building blocks); `-j` still selects a transform by name.
 A path loads only the transforms of its file (as `load_transform` does): a
 file that declares no transform raises `JobLoadError` ("no transform
 defined in PATH"), and a file with several transforms cannot be used by
-path. `use` needs the context of the call that builds the job (5); a job
+path (its message says to use one by name or as an object, since `use` has
+no `--job`). `use` needs the context of the call that builds the job (5); a job
 built without one (`Job#pipeline` called directly) raises `ArgumentError`
 at `use`.
 
@@ -270,7 +271,10 @@ at `use`.
   :lnag (known: lang)".
 - A value may have the declared type (`Integer`, `Float`, `true`/`false`,
   `Array`) or be a String, which is converted as on the command line. The
-  `args` take an Array.
+  `args` take an Array of Strings, or one String; anything else is an
+  invalid value. Messages name a wrong Ruby value by its Ruby type ("1 is
+  not true or false", "[1, 2] is not an Array of Strings") and a wrong
+  String as the command line does.
 - `nil` means "not given", so a job can pass an optional value of its own:
   `use "normalize", lang: params.lang`.
 - A parameter without a value is read from its `env:` variable, then from
@@ -280,7 +284,8 @@ at `use`.
   these messages name a parameter by its name, not as option: "use
   normalize: missing required parameter api_key (LOOKUP_API_KEY unset;
   lookup.api_key not in .metacrunch/credentials.yml.enc)", "use normalize:
-  invalid value for limit: \"many\" is not an Integer".
+  invalid value for limit: \"many\" is not an Integer". For a nested
+  transform the prefix names the chain: "use outer → inner: ...".
 - Bound values are frozen, and secret values are hidden in messages and
   `inspect`, as for jobs. A value given at `use` comes from code, not from
   the command line, so it gives no warning.
@@ -321,7 +326,9 @@ uses with different values are independent.
   today; with `use`, a transform that gains a step does not rename the
   job's steps.
 - A prefix that the recipe already used gets a number: the second
-  `use "normalize"` gives `normalize#2/map#1`.
+  `use "normalize"` gives `normalize#2/map#1`. No prefix is given twice,
+  also when a label looks numbered (an unnamed transform from `x#2.rb`
+  after two uses of `x` gets `x#2#2`).
 - Nested transforms give nested prefixes: `outer/inner/map#1`.
 - An explicit step name (`name:`) must not contain `/`; it raises
   `ArgumentError`.
