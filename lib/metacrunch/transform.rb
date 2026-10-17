@@ -31,8 +31,10 @@ module Metacrunch
 
     # Evaluates the recipe in transform mode. The pipeline has steps and
     # hooks, but no source and no sinks. binder: see Job#pipeline.
-    def pipeline(binder:, logger: Metacrunch.logger)
-      builder = Builder.new(binder:, logger:, transform: self)
+    # context: the UseContext for `use` in this recipe. stack: the
+    # transforms whose recipes are being evaluated around this one.
+    def pipeline(binder:, logger: Metacrunch.logger, context: nil, stack: [])
+      builder = Builder.new(binder:, logger:, context:, transform: self, stack: [*stack, self])
       builder.instance_exec(&@recipe)
       builder.build
     end
