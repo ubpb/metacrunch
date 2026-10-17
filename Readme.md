@@ -9,14 +9,15 @@ for example to turn MARCXML records into JSON for a search index, but nothing in
 
 - Jobs are plain Ruby files. Steps, sources and sinks are blocks or small Ruby classes; there is no second language.
 - Steps say what they do: `map`, `filter`, `reject`, `flat_map`.
+- Transforms are named groups of steps with parameters of their own; jobs share them with `use`.
 - Rejected records keep their reason. The engine counts records per step and reason, and sends rejected and failed
   records with their context to sinks of their own.
 - An error policy per job decides whether a failing record stops the run or is skipped.
 - Jobs read and write JSON Lines on stdin and stdout, so they chain with each other and with `jq`, `grep` or `sort`.
 - `-w N` runs the steps in N processes, with the results in source order.
 - `metacrunch trace` shows what each step does to a record; `Metacrunch::Testing` runs a job in a test.
-- A project's `Metacrunchfile` names its jobs and commands; `metacrunch NAME` runs them from any directory of the
-  project, and commands chain jobs and other commands.
+- A project's `Metacrunchfile` names its jobs, transforms and commands; `metacrunch NAME` runs them from any
+  directory of the project, and commands chain jobs and other commands.
 - One runtime dependency (`logger`).
 
 > metacrunch 5 is a redesign. Jobs written for 4.x must be rewritten, see the [changelog](CHANGELOG.md).
@@ -217,6 +218,63 @@ gives 1000). Use the values with `params.index`; they are frozen. Options must b
 `--index`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and `-h` is reserved
 for help.
 
+## Transforms
+
+A transform is a named group of steps with parameters of its own and without source or sink. Jobs insert it with
+`use`; the job decides where the records come from, where they go and how errors are handled.
+
+```ruby
+# transforms/normalize.rb
+Metacrunch.transform "normalize", desc: "Clean titles, drop records without one" do
+  params do
+    param :lang, String, default: "de", desc: "Language of the stopword list"
+  end
+
+  stopwords = nil
+  before { stopwords = Stopwords.load(params.lang) }
+  map { |record| record.merge("title" => Titles.clean(record["title"], stopwords)) }
+  reject("No title") { it["title"].nil? }
+end
+```
+
+```ruby
+# jobs/marc2es.rb
+Metacrunch.job "marc2es" do
+  params do
+    param :index, String, required: true
+    param :lang, String
+    args :files, min: 1
+  end
+
+  source MarcReader.new(params.files), id: ->(record) { record["001"] }
+  use "marc:to-json", holdings: true
+  use "normalize", lang: params.lang
+  sink EsSink.new(index: params.index), batch: 1000
+end
+```
+
+- A transform holds `params`, `map`, `filter`, `reject`, `flat_map`, `before`, `after` and `use`. `source`, `sink`,
+  `rejects`, `errors`, `on_error` and `profile` raise an `ArgumentError`: they belong to the job.
+- `use` takes a name (in a project, see [Projects and commands](#projects-and-commands)), a path or a transform
+  object, and inserts the transform's steps and hooks where it stands. The hooks of a job and its transforms run in
+  the order of their statements. A path loads the transform of its file.
+- The keywords of `use` set the transform's parameters, as Ruby values or as strings like on the command line;
+  `nil` counts as not given. A parameter without a value comes from its `env:` variable, then from the credentials
+  of the job, then its default. The steps and hooks of a transform see its own `params`, never the job's.
+- The steps get the transform's name as prefix, `normalize/map#1`, in stats, `trace`, `check`, errors and
+  `ctx.step`; a second `use` of the same transform gives `normalize#2/...`. Generated step numbers count the
+  statements of a recipe, `use` as one, so a transform that gains a step renames no step of the job. Explicit step
+  names must not contain `/`.
+- A transform may `use` other transforms; a cycle raises an `ArgumentError`.
+- Alone, a transform runs like a job without source and sink: `metacrunch run normalize --lang en < titles.jsonl`,
+  `trace` and `check` take it, and `Metacrunch::Testing.run(transform, source: [...])` tests it (see
+  [Testing jobs](#testing-jobs)).
+
+Compared with a [pipe](#pipes) between two jobs, the transforms of one job share the context of each record (id,
+marks, rejections), one `rejects` and `errors` sink, one error policy, one summary and one exit status, and the
+records between them need not be JSON. Compared with step classes in plain Ruby, a transform has parameters and a
+name in the project, and runs and tests on its own.
+
 ## Credentials
 
 Parameters can read secrets, such as API keys and passwords, from encrypted files in the project:
@@ -296,7 +354,7 @@ file. The CLI does not change the working directory: relative paths are relative
 
 | Option | |
 |---|---|
-| `-j`, `--job NAME` | Select a job or command in a file that declares several |
+| `-j`, `--job NAME` | Select a job, transform or command in a file that declares several |
 | `-e`, `--environment NAME` | Credentials environment (default: `METACRUNCH_ENV`) |
 | `--credentials DIR` | Credentials directory (default: `METACRUNCH_CREDENTIALS`, then `.metacrunch/` above the job file or, for a name, above the `Metacrunchfile`, then `~/.metacrunch/`) |
 | `-i`, `--input PATH` | Read JSON Lines from PATH (`-` for stdin) instead of the job's source |
@@ -425,6 +483,10 @@ raise `Metacrunch::ParamError`; errors while the job runs end up in the result. 
 defined with `Metacrunch.job` in a Rake task or an application runs the same way. Logs go to `Metacrunch.logger`
 (stderr); assign another `Logger` or pass `logger:` to `run`.
 
+Names in `use` resolve in `project:` (`job.run(argv, project: Metacrunch.load_project)`), else in the project of the
+nearest `Metacrunchfile` above the working directory, loaded when the first name needs it.
+`Metacrunch.load_transform(path)` loads a transform as `load_job` loads a job.
+
 ```ruby
 project = Metacrunch.load_project                          # the nearest Metacrunchfile above Dir.pwd
 project.names                                              # ["catalog:reindex", "marc2es", ...]
@@ -437,19 +499,20 @@ job `workers:` and `limit:` as `Job#run` does.
 
 ## Projects and commands
 
-A project names its jobs and commands in a `Metacrunchfile` at its root:
+A project names its jobs, transforms and commands in a `Metacrunchfile` at its root:
 
 ```ruby
 # Metacrunchfile
-Metacrunch.load_files "jobs/**/*.rb", "commands/**/*.rb"
+Metacrunch.load_files "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 ```
 
 ```
 project/
 ├── Metacrunchfile
-├── .metacrunch/          credentials
-├── jobs/marc2es.rb       Metacrunch.job "marc2es", desc: "..."
-├── commands/catalog.rb   Metacrunch.command "catalog:reindex", desc: "..."
+├── .metacrunch/              credentials
+├── jobs/marc2es.rb           Metacrunch.job "marc2es", desc: "..."
+├── transforms/normalize.rb   Metacrunch.transform "normalize", desc: "..."
+├── commands/catalog.rb       Metacrunch.command "catalog:reindex", desc: "..."
 └── lib/
 ```
 
@@ -457,14 +520,14 @@ project/
 $ metacrunch marc2es --index test dumps/a.xml        # from any directory of the project
 $ metacrunch catalog:reindex dumps/*.xml
 $ metacrunch catalog:reindex --help
-$ metacrunch --help                                  # lists the jobs and commands
+$ metacrunch --help                                  # lists the jobs, transforms and commands
 ```
 
 `metacrunch` finds the nearest `Metacrunchfile` above the working directory and loads it only when a name is needed:
-for `metacrunch NAME`, for `run`, `check` and `trace` with a name, for `help NAME` and for `--help`. Runs by path and
-the other built-in commands never load it, so job files `require` what they use themselves. The `Metacrunchfile` is
-plain Ruby. `Metacrunch.load_files` takes globs relative to the project root, or absolute ones, and loads each
-matching file once, in sorted order.
+for `metacrunch NAME`, for `run`, `check` and `trace` with a name, for `help NAME` and for `--help`, and when a job
+run by path uses a transform by name. The other built-in commands never load it, so job files `require` what they use
+themselves. The `Metacrunchfile` is plain Ruby. `Metacrunch.load_files` takes globs relative to the project root, or
+absolute ones, and loads each matching file once, in sorted order.
 
 - A file that fails to load costs only its own names: `metacrunch` warns about it (`-v` after `run`, `check` or
   `trace` shows the whole error), and `--help` lists it under "Not loaded".
@@ -539,7 +602,7 @@ relative to where `metacrunch` was started, and `root.join(...)` reaches the pro
 
 ### Jobs and commands from gems
 
-A gem ships job and command files like a project's, and a constant with their glob for each kind:
+A gem ships job, transform and command files like a project's, and a constant with their glob for each kind:
 
 ```
 metacrunch-elasticsearch/
@@ -548,6 +611,7 @@ metacrunch-elasticsearch/
     └── elasticsearch/
         ├── client.rb                     # helpers: classes and constants go here
         ├── commands/create_index.rb      # Metacrunch.command "es:create-index" do ... end
+        ├── transforms/to_bulk.rb         # Metacrunch.transform "es:to-bulk" do ... end
         └── jobs/reindex.rb               # Metacrunch.job "es:reindex" do ... end
 ```
 
@@ -558,6 +622,7 @@ require_relative "elasticsearch/client"
 module Metacrunch
   module Elasticsearch
     COMMANDS = File.expand_path("elasticsearch/commands/*.rb", __dir__)
+    TRANSFORMS = File.expand_path("elasticsearch/transforms/*.rb", __dir__)
     JOBS = File.expand_path("elasticsearch/jobs/*.rb", __dir__)
   end
 end
@@ -570,14 +635,14 @@ A project adds the gem to its `Gemfile` and opts in, next to its own files:
 require "metacrunch/elasticsearch"
 
 Metacrunch.load_files Metacrunch::Elasticsearch::COMMANDS, Metacrunch::Elasticsearch::JOBS,
-                      "jobs/**/*.rb", "commands/**/*.rb"
+                      Metacrunch::Elasticsearch::TRANSFORMS, "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 ```
 
 `bundle exec metacrunch es:create-index ...` then runs a command of the gem, and `bundle exec metacrunch --help` lists
-the gem's jobs and commands with the project's.
+the gem's jobs, transforms and commands with the project's.
 
-- The job and command files define no constants, since every `Metacrunch.load_project` loads them again; classes
-  and helpers belong in files that the gem's main file requires.
+- The job, transform and command files define no constants, since every `Metacrunch.load_project` loads them
+  again; classes and helpers belong in files that the gem's main file requires.
 - The gem does not `require` its job and command files: only `load_files` registers them with the project, while a
   `require` would load them once per process, and a second project in the same process would lack them.
 - Names with a prefix (`es:create-index`) keep clear of the project's: a name that the gem and the project both
@@ -640,6 +705,9 @@ failing command. `run.status` is `:ok`, `:ok_with_failures`, or `:aborted` with 
 | The recipe is evaluated: `run`, `check`, `trace`, `Testing.run`, `Testing.invoke`; for `--help` only up to its first statement | the recipe's code and the arguments of its statements, such as `MySource.new(...)` |
 | The job or command runs | `before`, `open`, `each` and `write` of the components, the steps, `after`; a command's `run` block |
 
+`use` evaluates the recipe of a transform while the recipe of the job is evaluated, once per `use`; `--help` of the
+job stops before any `use`.
+
 A recipe only declares. Code before `params` and the arguments of the first statement run for every `--help`: a
 lookup table built there makes `--help` slow, and a relative path read there breaks `--help` when it is started from
 another directory. Preparation such as lookup tables and connections belongs into a `before` hook or a component's
@@ -666,6 +734,21 @@ result.status
 
 All sinks are replaced by in-memory sinks; nothing is written. Component constructors should therefore be
 cheap and free of side effects; do I/O in `open`, `each` and `write`.
+
+A transform is tested the same way, with `source:`, since it has none. Names in `use` resolve in `project:`, else in
+the project of the nearest `Metacrunchfile` above the working directory:
+
+```ruby
+PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))
+
+result = Metacrunch::Testing.run(PROJECT.fetch("normalize"), params: {lang: "en"}, source: [{"title" => " A "}])
+result = Metacrunch::Testing.run(PROJECT.fetch("marc2es"), params: {index: "test", files: ["unused"]},
+                                 source: [File.read("test/fixtures/record.xml")], project: PROJECT)
+result.stats.steps.keys   # ["marc:to-json/map#1", ..., "normalize/map#1", ...]
+```
+
+The parameters of transforms get the values of `use` and their defaults; `Testing.run` reads neither the
+environment nor credentials.
 
 ## License
 

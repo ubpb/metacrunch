@@ -51,3 +51,8 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
 - Names and descriptions for jobs: `Metacrunch.job "a2c", desc: "..."`. Names are parts of `a-z`, `0-9`, `_` and
   `-`, separated by `:`; `Metacrunch.job` raises for other names, and `metacrunch new` for file names that would
   give one or the name of a built-in command.
+- Transforms: `Metacrunch.transform "normalize" do params { ... }; map { ... } end` holds steps, hooks and parameters
+  without source or sink, and a job inserts them with `use "normalize", lang: "en"`. Their steps are named with the
+  transform as prefix (`normalize/map#1`); explicit step names must not contain `/`. A transform runs, traces, checks
+  and tests alone like a job without source and sink. `Metacrunch.load_transform`, and `project:` for `Job#run` and
+  `Testing.run`.
