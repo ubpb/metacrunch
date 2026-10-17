@@ -46,7 +46,8 @@ class RunOptionsTest < Minitest::Test
       apply(RunOptions.new, build_pipeline { map { it } }, stdin: TerminalInput.new)
     end
 
-    assert_equal "no source and stdin is a terminal; pipe JSON Lines in or use -i PATH", error.message
+    assert_equal "the job reads JSON Lines from stdin, which is a terminal; pipe them in (< FILE) or use -i PATH",
+                 error.message
   end
 
   def test_input_and_output_replace_the_source_and_sink

@@ -22,12 +22,23 @@ module Metacrunch
   class UsageError < Error; end
 
   # A job or transform without source would read stdin, which is a
-  # terminal. hint says where the records can come from instead.
+  # terminal. target: what was run, as the user named it (a name or path);
+  # nil where it is not known. hint says where the records can come from
+  # instead.
   class NoInputError < UsageError
 
-    def initialize(hint = "pipe JSON Lines in or use -i PATH")
-      super("no source and stdin is a terminal; #{hint}")
+    HINT = "pipe them in (< FILE) or use -i PATH"
+
+    attr_reader :target, :hint
+
+    def initialize(target = nil, hint: HINT)
+      @target = target
+      @hint = hint
+      super("#{target || "the job"} reads JSON Lines from stdin, which is a terminal; #{hint}")
     end
+
+    # The same error, naming target.
+    def for(target) = self.class.new(target, hint:)
 
   end
 

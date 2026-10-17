@@ -342,6 +342,20 @@ class ProjectCliTest < Minitest::Test
     end
   end
 
+  # A transform run alone from a terminal: the message names it and says
+  # where its records come from.
+  def test_a_transform_on_a_terminal_names_itself_and_its_input
+    in_project do |root|
+      results = ["run", "trace"].map { cli_in(root, it, "scale", stdin: TerminalInput.new) }
+
+      assert_equal [2, 2], results.map(&:first)
+      assert(results.all? do |_code, _stdout, stderr|
+        stderr.include?("Error: scale reads JSON Lines from stdin, which is a terminal; " \
+                        "pipe them in (< FILE) or use -i PATH\n")
+      end)
+    end
+  end
+
   def test_runs_checks_and_traces_a_transform
     in_project do |root|
       results = [cli_in(root, "scale", "--factor", "3", stdin: "1\n2\n"), cli_in(root, "check", "scale"),
