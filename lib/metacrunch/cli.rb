@@ -16,8 +16,8 @@ require_relative "cli/credentials"
 
 module Metacrunch
   # The command line interface. Dispatches to a command by the first
-  # argument; a job or command there, by name or file, is short for `run`.
-  # #run returns the exit code, exe/metacrunch exits with it.
+  # argument; a job, transform or command there, by name or file, is short
+  # for `run`. #run returns the exit code, exe/metacrunch exits with it.
   class Cli
 
     EXIT_CODES = {ok: 0, aborted: 1, usage: 2, ok_with_failures: 3}.freeze
@@ -25,6 +25,9 @@ module Metacrunch
       "run" => RunCommand, "check" => CheckCommand, "trace" => TraceCommand, "new" => NewCommand,
       "credentials" => CredentialsCommand
     }.freeze
+    # The sections of a project in --help, by the kind they list.
+    LISTS = {"Jobs" => Metacrunch::Job, "Transforms" => Metacrunch::Transform,
+             "Project commands" => Metacrunch::Command}.freeze
 
     # The streams and environment the commands use instead of globals.
     Streams = Data.define(:stdin, :stdout, :stderr, :env)
@@ -48,7 +51,8 @@ module Metacrunch
 
     private
 
-    # An option, or a job or command by name or file: short for run.
+    # An option, or a job, transform or command by name or file: short for
+    # run.
     def other(first, argv)
       return usage_error("unknown option #{first}") if first.start_with?("-")
       return command("run").run(argv) if runnable?(first)
@@ -109,9 +113,9 @@ module Metacrunch
       [text, *project_help].join("\n")
     end
 
-    # The jobs and commands of the project and the files that did not load,
-    # or the error of the Metacrunchfile. No warnings: the list shows the
-    # files.
+    # The jobs, transforms and commands of the project and the files that
+    # did not load, or the error of the Metacrunchfile. No warnings: the
+    # list shows the files.
     def project_help
       project = @lookup.project(nil)
       project ? project_sections(project) : []
@@ -122,13 +126,13 @@ module Metacrunch
     def project_sections(project)
       names = project.names
       width = names.map(&:size).max
-      jobs, commands = names.partition { project.declared(it).first.is_a?(Job) }
+      kinds = names.group_by { project.declared(it).first.class }
+      lists = LISTS.filter_map do |title, kind|
+        entries = kinds.fetch(kind, []).map { entry(project, it, width) }
+        section("#{title} (#{project.root})", entries) if entries.any?
+      end
       errors = project.load_errors.map { |file, error| "  #{project.load_error_summary(file, error)}" }
-      [
-        (section("Jobs (#{project.root})", jobs.map { entry(project, it, width) }) if jobs.any?),
-        (section("Project commands (#{project.root})", commands.map { entry(project, it, width) }) if commands.any?),
-        (section("Not loaded", errors) if errors.any?)
-      ].compact
+      [*lists, (section("Not loaded", errors) if errors.any?)].compact
     end
 
     def section(title, lines) = "#{title}:\n#{lines.join("\n")}\n"

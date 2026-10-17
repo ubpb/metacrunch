@@ -30,7 +30,8 @@ module Metacrunch
         rows << ["rejects", sink(pipeline.rejects)] if pipeline.rejects
         rows << ["errors", sink(pipeline.errors)] if pipeline.errors
         rows << ["on_error", policy(pipeline)]
-        title = job.name ? "job #{job.name.inspect}" : "job"
+        kind = job.is_a?(Transform) ? "transform" : "job"
+        title = job.name ? "#{kind} #{job.name.inspect}" : kind
         ["#{@target}: #{title} OK", *rows.map { |label, text| "  #{label.ljust(9)} #{text}" }].join("\n")
       end
 

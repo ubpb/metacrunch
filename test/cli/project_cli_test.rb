@@ -8,7 +8,7 @@ class ProjectCliTest < Minitest::Test
   include CredentialsHelper
 
   FILES = {
-    "Metacrunchfile" => "Metacrunch.load_files \"jobs/*.rb\", \"commands/*.rb\"\n",
+    "Metacrunchfile" => "Metacrunch.load_files \"jobs/*.rb\", \"transforms/*.rb\", \"commands/*.rb\"\n",
     "jobs/numbers.rb" => <<~RUBY,
       Metacrunch.job "numbers", desc: "Divide 100 by each number" do
         params do
@@ -25,6 +25,21 @@ class ProjectCliTest < Minitest::Test
       Metacrunch.job "interrupted" do
         source [1]
         map { raise Interrupt }
+      end
+    RUBY
+    "transforms/scale.rb" => <<~RUBY,
+      Metacrunch.transform "scale", desc: "Multiply by a factor" do
+        params { param :factor, Integer, default: 2 }
+
+        map { it * params.factor }
+      end
+    RUBY
+    "jobs/scaled.rb" => <<~RUBY,
+      Metacrunch.job "scaled" do
+        params { args :numbers }
+
+        source params.numbers.map { Integer(it, 10) }
+        use "scale", factor: 10
       end
     RUBY
     "commands/chain.rb" => <<~RUBY,
@@ -69,6 +84,26 @@ class ProjectCliTest < Minitest::Test
   DANGER = "Metacrunch.command(\"danger\") { run { File.write(\"ran\", \"\") } }\n"
   DUPLICATE = "Metacrunch.job(\"note\") { source [] }\n"
   BROKEN = "Metacrunch.job(\n"
+  # A job file outside jobs/ that uses a transform by name.
+  TOOL_JOB = <<~RUBY
+    Metacrunch.job do
+      params { param :factor, Integer, default: 2 }
+
+      source [1]
+      use "scale"
+    end
+  RUBY
+  # Jobs whose use fails: an unknown name, a missing value, a job as target.
+  USE_ERRORS = <<~RUBY
+    Metacrunch.transform("needy") do
+      params { param :level, Integer, required: true }
+
+      map { it * params.level }
+    end
+    Metacrunch.job("unknown-use") { source [1]; use "nope" }
+    Metacrunch.job("missing-value") { source [1]; use "needy" }
+    Metacrunch.job("job-use") { source [1]; use "numbers" }
+  RUBY
 
   def test_runs_a_job_by_name_from_a_subdirectory
     in_project do |root|
@@ -298,6 +333,58 @@ class ProjectCliTest < Minitest::Test
 
       assert_equal [0, ""], [code, stdout]
       assert_match(/INFO  note: x/, stderr)
+    end
+  end
+
+  def test_runs_checks_and_traces_a_transform
+    in_project do |root|
+      results = [cli_in(root, "scale", "--factor", "3", stdin: "1\n2\n"), cli_in(root, "check", "scale"),
+                 cli_in(root, "trace", "scale", stdin: "1\n")]
+
+      assert_equal [0, 0, 0], results.map(&:first)
+      assert_equal "3\n6\n", results[0][1]
+      assert_equal "scale: transform \"scale\" OK", results[1][1].lines.first.chomp
+    end
+  end
+
+  def test_check_shows_the_prefixed_steps_of_a_job
+    in_project do |root|
+      code, stdout, = cli_in(root, "check", "scaled", "1")
+
+      assert_equal 0, code
+      assert_match(%r{^  steps     scale/map#1$}, stdout)
+    end
+  end
+
+  def test_the_usage_lists_transforms_between_jobs_and_commands
+    in_project do |root|
+      _code, stdout, = cli_in(root, "--help")
+
+      assert_match(/^Transforms \(#{Regexp.escape(root)}\):\n  scale +Multiply by a factor\n\nProject commands/, stdout)
+      assert_operator stdout.index("Jobs ("), :<, stdout.index("Transforms (")
+    end
+  end
+
+  def test_a_job_file_loads_the_metacrunchfile_only_when_it_runs_a_name
+    in_tmpdir do |root|
+      write_file(root, "Metacrunchfile", "# frozen_string_literal: true\n\nraise \"loaded\"\n")
+      path = write_file(root, "tool.rb", "# frozen_string_literal: true\n\n#{TOOL_JOB}")
+      help = cli_in(root, "run", path, "--help")
+      run = cli_in(root, "run", path)
+
+      assert_equal [0, 2], [help.first, run.first]
+      refute_includes help.last, "loaded"
+      assert_match(/Error: could not load .*Metacrunchfile: RuntimeError: loaded/, run.last)
+    end
+  end
+
+  def test_use_errors_exit_with_their_status
+    in_project("jobs/use_errors.rb" => USE_ERRORS) do |root|
+      results = [["unknown-use"], ["missing-value"], ["job-use"], ["check", "job-use"]].map { cli_in(root, *it) }
+
+      assert_equal [2, 2, 1, 2], results.map(&:first)
+      assert_match(/Error: unknown job, transform, command or file: nope/, results[0].last)
+      assert_match(/Error: use needy: missing required parameter level/, results[1].last)
     end
   end
 
