@@ -85,11 +85,11 @@ module Metacrunch
     end
 
     def load_job(path, name: nil)
-      Loader.load(path, name:, kind: Job)
+      Loader.load(path, name:, kind: Job, hint: "select one with name:")
     end
 
     def load_transform(path, name: nil)
-      Loader.load(path, name:, kind: Transform)
+      Loader.load(path, name:, kind: Transform, hint: "select one with name:")
     end
 
     # Loads the job and command files that match globs into the project

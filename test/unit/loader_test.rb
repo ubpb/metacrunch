@@ -101,6 +101,12 @@ class LoaderTest < Minitest::Test
     assert_instance_of Metacrunch::Job, declaration
   end
 
+  def test_the_ruby_api_selects_by_name
+    error = assert_raises(Metacrunch::JobLoadError) { Metacrunch.load_job(fixture("several.rb")) }
+
+    assert_match(/defines several jobs \(first, second\); select one with name:\z/, error.message)
+  end
+
   def test_a_file_without_transform_defines_none
     error = assert_raises(Metacrunch::JobLoadError) { Metacrunch.load_transform(fixture("double.rb")) }
 

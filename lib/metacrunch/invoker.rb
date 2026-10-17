@@ -63,13 +63,14 @@ module Metacrunch
     # other is a name of the project, else an existing file of that name.
     # anchor is the file credentials are searched from: the Metacrunchfile
     # for a name, the file itself for a path. select: -j, for paths only.
-    # kind: what a path may give (Transform for use), as for Loader.load.
-    def resolve(target, select: nil, kind: nil)
-      return by_path(target, select, kind) if Names.path?(target)
+    # kind: what a path may give (Transform for use) and hint: how to pick
+    # one of several, as for Loader.load.
+    def resolve(target, select: nil, kind: nil, hint: Loader::SELECT_HINT)
+      return by_path(target, select, kind, hint) if Names.path?(target)
 
       current = project
       return by_name(current, target, select) if current&.include?(target)
-      return by_path(target, select, kind) if File.file?(target)
+      return by_path(target, select, kind, hint) if File.file?(target)
 
       hint = current ? current.load_hint : " (no #{Project::FILE} found)"
       raise ProjectError, "unknown job, transform, command or file: #{target}#{hint}"
@@ -140,8 +141,8 @@ module Metacrunch
       [project.fetch(name), project.file]
     end
 
-    def by_path(path, select, kind)
-      declaration = Loader.load(path, name: select, kind:)
+    def by_path(path, select, kind, hint)
+      declaration = Loader.load(path, name: select, kind:, hint:)
       [declaration, declaration.file]
     end
 

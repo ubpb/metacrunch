@@ -7,7 +7,10 @@ module Metacrunch
   # run reads one credentials file.
   class UseContext
 
-    # resolver: responds to resolve(target, kind:) and returns
+    # How to pick one of several transforms in a file given by path.
+    PATH_HINT = "use one by its name in a project, or as an object"
+
+    # resolver: responds to resolve(target, kind:, hint:) and returns
     # [declaration, anchor], as Invoker#resolve does. credentials: a
     # Credentials::Store, or nil for none (tests).
     def initialize(resolver:, env:, credentials:, logger:)
@@ -19,8 +22,14 @@ module Metacrunch
 
     # A context whose names resolve in project, or, without one, in the
     # project of the nearest Metacrunchfile above the working directory,
-    # loaded when the first name needs it (Job#run, Testing.run).
+    # loaded when the first name needs it (Job#run, Testing.run). That
+    # lookup loads the Metacrunchfile again for every call; callers that
+    # run many jobs pass project: to load it once.
     def self.for(project:, env:, credentials:, logger:)
+      unless project.nil? || project.is_a?(Project)
+        raise ArgumentError, "project: must be a Metacrunch::Project, got #{project.inspect}"
+      end
+
       resolver = Invoker.new(project: project || -> { Project.nearest }, logger:, env:)
       new(resolver:, env:, credentials:, logger:)
     end
@@ -54,7 +63,7 @@ module Metacrunch
 
     def declaration_for(target)
       return target if [Transform, Job, Command].any? { target.is_a?(it) }
-      return @resolver.resolve(target, kind: Transform).first if target.is_a?(String)
+      return @resolver.resolve(target, kind: Transform, hint: PATH_HINT).first if target.is_a?(String)
 
       raise ArgumentError, "use takes a transform, its name or its path, got #{target.inspect}"
     end
