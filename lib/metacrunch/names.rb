@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  # Names of jobs and commands, and their descriptions. A name is one or
-  # more parts of a-z, 0-9, _ and -, separated by ":" ("a2c",
-  # "es:create-index"). In a project, jobs, commands and the built-in
-  # commands share one namespace.
+  # Names of jobs, transforms and commands, and their descriptions. A name
+  # is one or more parts of a-z, 0-9, _ and -, separated by ":" ("a2c",
+  # "es:create-index"). In a project, jobs, transforms, commands and the
+  # built-in commands share one namespace.
   module Names
 
     PATTERN = /\A[a-z0-9][a-z0-9_-]*(?::[a-z0-9][a-z0-9_-]*)*\z/
@@ -15,8 +15,9 @@ module Metacrunch
 
     def valid?(name) = name.is_a?(String) && PATTERN.match?(name)
 
-    # The name as a String; kind ("job", "command") is for the message.
-    # Raises ArgumentError for anything but a valid String or Symbol.
+    # The name as a String; kind ("job", "transform", "command") is for the
+    # message. Raises ArgumentError for anything but a valid String or
+    # Symbol.
     def check!(name, kind)
       text = name.to_s if name.is_a?(String) || name.is_a?(Symbol)
       return text if valid?(text)

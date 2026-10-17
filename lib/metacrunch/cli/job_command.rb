@@ -40,14 +40,15 @@ module Metacrunch
         execute_job(declaration, argv)
       end
 
-      # check and trace take jobs only; run overrides this.
+      # check and trace take jobs and transforms, no commands; run overrides
+      # this.
       def check_target!(declaration)
         return unless declaration.is_a?(Metacrunch::Command)
 
-        raise UsageError, "#{@target} is a command; #{self.class::NAME} takes jobs"
+        raise UsageError, "#{@target} is a command; #{self.class::NAME} takes jobs and transforms"
       end
 
-      # Describes the job or command (evaluates its recipe up to the first
+      # Describes the target (evaluates its recipe up to the first
       # statement) only if -h or --help appears before "--"; its own parser
       # then decides, so -h as the value of another option does not count.
       def requested_help(declaration, argv)
@@ -58,15 +59,15 @@ module Metacrunch
       end
 
       def help_text(declaration, schema)
-        params = declaration.is_a?(Metacrunch::Command) ? "[PARAMS...]" : "[JOB_PARAMS...]"
+        params = declaration.is_a?(Metacrunch::Job) ? "[JOB_PARAMS...]" : "[PARAMS...]"
         args = schema.args_definition ? " #{schema.args_definition.name.to_s.upcase}..." : ""
         desc = declaration.desc ? "#{declaration.desc}\n\n" : ""
         "Usage: metacrunch #{self.class::NAME} #{@target} #{params}#{args}\n\n#{desc}#{schema.help}"
       end
 
-      # Runs jobs and commands with this call's environment, credentials
-      # options, logger and streams. Names resolve in the project of the
-      # working directory, which is loaded when a name first needs it.
+      # Runs jobs, transforms and commands with this call's environment,
+      # credentials options, logger and streams. Names resolve in the project
+      # of the working directory, which is loaded when a name first needs it.
       def invoker
         @invoker ||= Invoker.new(
           project: -> { @lookup.project(logger) }, logger:, env: @env, stdin: @stdin, stdout: @stdout,

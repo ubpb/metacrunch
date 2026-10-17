@@ -372,7 +372,7 @@ file. The CLI does not change the working directory: relative paths are relative
 | `--[no-]progress` | Progress on stderr; shown by default if stderr is a terminal and records do not go to the same terminal |
 | `-q`, `-v` | Log warnings only, or debug messages too |
 
-The options from `-i` to `--stats` apply to jobs only; for a command (see
+The options from `-i` to `--stats` apply to jobs and transforms only; for a command (see
 [Projects and commands](#projects-and-commands)) they are a usage error.
 
 A job file that starts with `#!/usr/bin/env metacrunch` and is executable runs as `./jobs/marc2es.rb ...`.
@@ -575,8 +575,8 @@ holds the body, which `--help` never runs. In the body, `params`, `logger`, `inv
 commands are plain Ruby: a module that the body `extend`s, or a proc for common parameters
 (`params { instance_exec(&ES_PARAMS) }`) in a required file.
 
-`invoke NAME, *ARGS, workers:, limit:` runs a job or command with arguments as on the command line; each is converted
-with `to_s`, and `nil`, an Array (a forgotten `*`) or a Hash raise `ArgumentError`. An invoked job runs like
+`invoke NAME, *ARGS, workers:, limit:` runs a job, transform or command with arguments as on the command line; each is
+converted with `to_s`, and `nil`, an Array (a forgotten `*`) or a Hash raise `ArgumentError`. An invoked job runs like
 `metacrunch run NAME`: it logs its summary as `marc2es: ok: read ...`, reads stdin if it has no source and writes
 stdout if it has no sink. All jobs and commands of a chain share `-e`, `--credentials`, the environment, the log
 level and the progress setting.
@@ -598,7 +598,7 @@ level and the progress setting.
 | 130, 143 | Ctrl-C, SIGTERM |
 
 `run` takes commands too; the job options (`-i`, `-o`, `-w`, ...) are a usage error for them, and `check` and
-`trace` take jobs only. A command file can also run by path, or as an executable with `#!/usr/bin/env metacrunch`;
+`trace` take jobs and transforms only. A command file can also run by path, or as an executable with `#!/usr/bin/env metacrunch`;
 when it invokes a name, it finds the project from the working directory.
 
 Names search credentials from the project root (`.metacrunch/` next to the `Metacrunchfile`), also for commands from
@@ -649,8 +649,8 @@ the gem's jobs, transforms and commands with the project's.
 
 - The job, transform and command files define no constants, since every `Metacrunch.load_project` loads them
   again; classes and helpers belong in files that the gem's main file requires.
-- The gem does not `require` its job and command files: only `load_files` registers them with the project, while a
-  `require` would load them once per process, and a second project in the same process would lack them.
+- The gem does not `require` its job, transform and command files: only `load_files` registers them with the project,
+  while a `require` would load them once per process, and a second project in the same process would lack them.
 - Names with a prefix (`es:create-index`) keep clear of the project's: a name that the gem and the project both
   declare cannot be used. A reserved name makes the gem's file a load error.
 - Credentials are searched from the project root, also for jobs and commands of a gem, so `-e production` works as

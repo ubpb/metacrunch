@@ -92,8 +92,8 @@ module Metacrunch
       Loader.load(path, name:, kind: Transform, hint: "select one with name:")
     end
 
-    # Loads the job and command files that match globs into the project
-    # whose Metacrunchfile is being loaded (see Project#load_files).
+    # Loads the job, transform and command files that match globs into the
+    # project whose Metacrunchfile is being loaded (see Project#load_files).
     def load_files(*globs)
       project = Project.loading || raise(ProjectError, "load_files works only in a Metacrunchfile")
       project.load_files(globs)

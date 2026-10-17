@@ -7,7 +7,7 @@ class CliTest < Minitest::Test
   include CliHelper
 
   USAGE_ERRORS = {
-    [] => "no command, job or file given",
+    [] => "no command, job, transform or file given",
     ["frobnicate"] => "unknown job, transform, command or file: frobnicate (no Metacrunchfile found)",
     ["-v"] => "unknown option -v",
     ["help", "frobnicate"] => "unknown job, transform, command or file: frobnicate (no Metacrunchfile found)"
@@ -22,7 +22,14 @@ class CliTest < Minitest::Test
 
     assert_equal 0, code
     assert_match(/Usage: metacrunch COMMAND \[OPTIONS\] NAME\|FILE/, stdout)
-    assert_match(/^  run +Run a job, transform or command$/, stdout)
+    assert_match(/^  run +Run a job, transform or command\n  check +Validate a job or transform without running it$/,
+                 stdout)
+  end
+
+  def test_help_names_every_kind
+    _code, stdout, = cli("--help")
+
+    assert_match(/^  help +Show the help of a command, job, transform or file$/, stdout)
   end
 
   def test_help_without_a_command_prints_the_usage
