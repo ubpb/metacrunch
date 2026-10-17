@@ -251,6 +251,13 @@ unknown name raises `ProjectError` with the message and hints of `invoke`
 A target that is neither a String nor a `Transform` (`nil`, a Symbol)
 raises `ArgumentError`.
 
+A path loads only the transforms of its file (as `load_transform` does): a
+file that declares no transform raises `JobLoadError` ("no transform
+defined in PATH"), and a file with several transforms cannot be used by
+path. `use` needs the context of the call that builds the job (5); a job
+built without one (`Job#pipeline` called directly) raises `ArgumentError`
+at `use`.
+
 ### 3.2 Values
 
 - Keys are Symbols that name a `param` or the `args` of the transform. An
@@ -265,9 +272,10 @@ raises `ArgumentError`.
   the credentials (3.3), then its default. A required parameter without a
   value, `args` outside `min`/`max` and an invalid value raise `ParamError`
   with the prefix of the transform. Since the values come from keywords,
-  these messages name a parameter as keyword, not as option: "use
-  normalize: missing required parameter api_key: (LOOKUP_API_KEY unset;
-  lookup.api_key not in .metacrunch/credentials.yml.enc)".
+  these messages name a parameter by its name, not as option: "use
+  normalize: missing required parameter api_key (LOOKUP_API_KEY unset;
+  lookup.api_key not in .metacrunch/credentials.yml.enc)", "use normalize:
+  invalid value for limit: \"many\" is not an Integer".
 - Bound values are frozen, and secret values are hidden in messages and
   `inspect`, as for jobs. A value given at `use` comes from code, not from
   the command line, so it gives no warning.
@@ -330,6 +338,7 @@ titles → normalize".
 | Forbidden statement in a transform (2.2) | `ArgumentError` | 1 | 2 |
 | `use` of a job or command, a wrong target, an unknown key, a cycle | `ArgumentError` | 1 | 2 |
 | Unknown name, no project for a name | `ProjectError` | 2 | 2 |
+| A path without a transform, a file that does not load | `JobLoadError` | 2 | 2 |
 | Missing or invalid value | `ParamError` ("use normalize: …") | 2 | 2 |
 | Any other exception in a transform's recipe | unchanged | 1 | 2 |
 
@@ -483,7 +492,8 @@ a transform run alone through stdin.
 
 ## 11. Documentation and example
 
-- Readme, new section "Transforms" after "Steps": declaration, contents,
+- Readme, new section "Transforms" after "Parameters" (it builds on steps,
+  hooks and parameters): declaration, contents,
   `use` with values, step names, running and testing a transform alone, and
   when to prefer a transform over a Unix pipe (context, one rejects sink, no
   JSON in between) and over plain Ruby step classes (parameters, names,
