@@ -210,7 +210,8 @@ class ProjectCliTest < Minitest::Test
       code, _stdout, stderr = cli_in(root, "nope")
 
       assert_equal 2, code
-      assert_match(/Error: unknown command, job or file: nope \(1 file of the project did not load\)/, stderr)
+      assert_match(/Error: unknown job, transform, command or file: nope \(1 file of the project did not load\)/,
+                   stderr)
     end
   end
 
@@ -219,7 +220,7 @@ class ProjectCliTest < Minitest::Test
       code, _stdout, stderr = cli_in(dir, "nope")
 
       assert_equal 2, code
-      assert_match(/Error: unknown command, job or file: nope \(no Metacrunchfile found\)/, stderr)
+      assert_match(/Error: unknown job, transform, command or file: nope \(no Metacrunchfile found\)/, stderr)
     end
   end
 

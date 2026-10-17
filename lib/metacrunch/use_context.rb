@@ -17,6 +17,14 @@ module Metacrunch
       @logger = logger
     end
 
+    # A context whose names resolve in project, or, without one, in the
+    # project of the nearest Metacrunchfile above the working directory,
+    # loaded when the first name needs it (Job#run, Testing.run).
+    def self.for(project:, env:, credentials:, logger:)
+      resolver = Invoker.new(project: project || -> { Project.nearest }, logger:, env:)
+      new(resolver:, env:, credentials:, logger:)
+    end
+
     # The Transform that target stands for: a Transform, or its name or
     # path. Raises ArgumentError for a job, a command or any other object,
     # ProjectError for an unknown name and JobLoadError for a path without

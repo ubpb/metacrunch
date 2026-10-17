@@ -37,10 +37,13 @@ module Metacrunch
     # the Result. limit stops after that many records; workers runs the
     # steps in that many processes. Credentials follow env:
     # METACRUNCH_ENV, METACRUNCH_CREDENTIALS, METACRUNCH_MASTER_KEY, HOME.
-    def run(argv = [], env: ENV, logger: Metacrunch.logger, observer: nil, limit: nil, workers: nil)
+    # project: where the names of `use` resolve; without it, the project of
+    # the nearest Metacrunchfile above Dir.pwd, loaded when a name needs it.
+    def run(argv = [], env: ENV, logger: Metacrunch.logger, observer: nil, limit: nil, workers: nil, project: nil)
       credentials = Credentials.store(job_file: file, env:, logger:)
       warn = ->(message) { logger.warn(message) }
-      built = pipeline(binder: ->(schema) { schema.bind_argv(argv, env:, credentials:, warn:) }, logger:)
+      context = UseContext.for(project:, env:, credentials:, logger:)
+      built = pipeline(binder: ->(schema) { schema.bind_argv(argv, env:, credentials:, warn:) }, logger:, context:)
       Engine.new(built.with(limit:), observer:, executor: Executor.for(workers)).run
     end
 

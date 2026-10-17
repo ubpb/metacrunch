@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  # Runs jobs and commands with the context of one call: the environment,
-  # the credentials options (-e, --credentials), the logger, stdin and
-  # stdout, and the progress display. The CLI runs its target through it,
-  # and a command's body invokes through it, so a whole chain shares that
-  # context. Tracks the worst status of the jobs it ran.
+  # Runs jobs, transforms and commands with the context of one call: the
+  # environment, the credentials options (-e, --credentials), the logger,
+  # stdin and stdout, and the progress display. The CLI runs its target
+  # through it, and a command's body invokes through it, so a whole chain
+  # shares that context. It also resolves the names of `use` (see
+  # UseContext). Tracks the worst status of the jobs it ran.
   class Invoker
 
     STATUSES = [:ok, :ok_with_failures, :aborted].freeze
@@ -44,14 +45,15 @@ module Metacrunch
     end
 
     # Runs target, a name or a path, with argv as on the command line, each
-    # converted with to_s. Returns a job's Result or a command's value.
-    # Raises InvokeError if the target is unknown, argv is invalid for it or
-    # the job aborted; exceptions from a command's body pass unchanged.
+    # converted with to_s. Returns the Result of a job or transform, or a
+    # command's value. Raises InvokeError if the target is unknown, argv is
+    # invalid for it or the job aborted; exceptions from a command's body
+    # pass unchanged.
     def invoke(target, *argv, workers: nil, limit: nil)
       target = target.to_s
       argv = arguments(target, argv)
       declaration, anchor = wrap(target) { resolve(target) }
-      return invoke_job(declaration, argv, target:, anchor:, workers:, limit:) if declaration.is_a?(Job)
+      return invoke_job(declaration, argv, target:, anchor:, workers:, limit:) unless declaration.is_a?(Command)
       raise ArgumentError, "#{target} is a command; workers: and limit: apply to jobs" if workers || limit
 
       invoke_command(declaration, argv, target:, anchor:)
@@ -61,26 +63,30 @@ module Metacrunch
     # other is a name of the project, else an existing file of that name.
     # anchor is the file credentials are searched from: the Metacrunchfile
     # for a name, the file itself for a path. select: -j, for paths only.
-    def resolve(target, select: nil)
-      return by_path(target, select) if Names.path?(target)
+    # kind: what a path may give (Transform for use), as for Loader.load.
+    def resolve(target, select: nil, kind: nil)
+      return by_path(target, select, kind) if Names.path?(target)
 
       current = project
       return by_name(current, target, select) if current&.include?(target)
-      return by_path(target, select) if File.file?(target)
+      return by_path(target, select, kind) if File.file?(target)
 
       hint = current ? current.load_hint : " (no #{Project::FILE} found)"
-      raise ProjectError, "unknown command, job or file: #{target}#{hint}"
+      raise ProjectError, "unknown job, transform, command or file: #{target}#{hint}"
     end
 
-    # The job's pipeline with argv bound: the command line, env:, the
-    # credentials searched from anchor, then the default.
+    # The pipeline of a job or transform with argv bound: the command line,
+    # env:, the credentials searched from anchor, then the default. The
+    # transforms it uses resolve here and read the same credentials.
     def pipeline(job, argv, anchor:)
-      job.pipeline(binder: binder(argv, anchor), logger: @logger)
+      credentials = credentials_for(anchor)
+      context = UseContext.new(resolver: self, env: @env, credentials:, logger: @logger)
+      job.pipeline(binder: binder(argv, credentials), logger: @logger, context:)
     end
 
     # Evaluates the command's recipe with argv bound as pipeline does.
     def prepare(command, argv, anchor:)
-      command.prepare(binder: binder(argv, anchor))
+      command.prepare(binder: binder(argv, credentials_for(anchor)))
     end
 
     # Runs the body of a prepared command and returns its value.
@@ -134,8 +140,8 @@ module Metacrunch
       [project.fetch(name), project.file]
     end
 
-    def by_path(path, select)
-      declaration = Loader.load(path, name: select)
+    def by_path(path, select, kind)
+      declaration = Loader.load(path, name: select, kind:)
       [declaration, declaration.file]
     end
 
@@ -169,9 +175,13 @@ module Metacrunch
       raise InvokeError.new("invoke #{target}: #{e.message}", name: target)
     end
 
-    def binder(argv, anchor)
-      credentials = Credentials.store(job_file: anchor, env: @env, logger: @logger, environment: @environment,
-                                      directory: @credentials)
+    # Read only if a parameter needs a value from them.
+    def credentials_for(anchor)
+      Credentials.store(job_file: anchor, env: @env, logger: @logger, environment: @environment,
+                        directory: @credentials)
+    end
+
+    def binder(argv, credentials)
       warn = ->(message) { @logger.warn(message) }
       ->(schema) { schema.bind_argv(argv, env: @env, credentials:, warn:) }
     end

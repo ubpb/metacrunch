@@ -8,7 +8,7 @@ class InvokerTest < Minitest::Test
   include CredentialsHelper
 
   FILES = {
-    "Metacrunchfile" => "Metacrunch.load_files \"jobs/*.rb\", \"commands/*.rb\"\n",
+    "Metacrunchfile" => "Metacrunch.load_files \"jobs/*.rb\", \"transforms/*.rb\", \"commands/*.rb\"\n",
     "jobs/numbers.rb" => <<~RUBY,
       Metacrunch.job "numbers" do
         params do
@@ -28,6 +28,24 @@ class InvokerTest < Minitest::Test
         source [1, 2]
         map { it == 2 ? raise(SignalException, "TERM") : it }
         sink Metacrunch::JsonLines::Writer.new(params.output), batch: 10
+      end
+    RUBY
+    "transforms/scale.rb" => <<~RUBY,
+      Metacrunch.transform "scale" do
+        params { param :factor, Integer, env: "SCALE_FACTOR", default: 2 }
+
+        map { it * params.factor }
+      end
+    RUBY
+    "jobs/scaled.rb" => <<~RUBY,
+      Metacrunch.job "scaled" do
+        params do
+          param :factor, Integer
+          args :numbers
+        end
+
+        source params.numbers.map { Integer(it, 10) }
+        use "scale", factor: params.factor
       end
     RUBY
     "commands/note.rb" => <<~RUBY,
@@ -83,6 +101,14 @@ class InvokerTest < Minitest::Test
     end
   RUBY
 
+  REVEAL = <<~RUBY
+    Metacrunch.transform "reveal" do
+      params { param :api_key, String, credential: "catalog.api_key", required: true }
+
+      map { params.api_key.reverse }
+    end
+  RUBY
+
   def test_invoking_a_job_returns_its_result_and_writes_stdout
     with_project do |invoker, out|
       result = invoker.invoke("numbers", 4, Pathname("5"))
@@ -133,14 +159,15 @@ class InvokerTest < Minitest::Test
     with_project do |invoker|
       error = assert_raises(Metacrunch::InvokeError) { invoker.invoke("nope") }
 
-      assert_equal ["invoke nope: unknown command, job or file: nope", "nope"], [error.message, error.name]
+      assert_equal ["invoke nope: unknown job, transform, command or file: nope", "nope"], [error.message, error.name]
     end
   end
 
   def test_names_without_a_project_are_unknown
     error = assert_raises(Metacrunch::InvokeError) { invoker_for(nil).invoke("numbers") }
 
-    assert_equal "invoke numbers: unknown command, job or file: numbers (no Metacrunchfile found)", error.message
+    assert_equal "invoke numbers: unknown job, transform, command or file: numbers (no Metacrunchfile found)",
+                 error.message
   end
 
   def test_paths_run_without_a_project
@@ -271,19 +298,70 @@ class InvokerTest < Minitest::Test
     end
   end
 
-  private
+  def test_jobs_use_transforms_by_name
+    with_project do |invoker, out|
+      invoker.invoke("scaled", "1", "2")
 
-  # Yields an Invoker for a project with FILES, its stdout and the root.
-  def with_project(logger: Logger.new(nil))
-    in_tmpdir do |root|
-      FILES.each { |path, code| write_ruby(root, path, code) }
-      out = StringIO.new
-      yield invoker_for(Metacrunch.load_project(root), stdout: out, logger:), out, root
+      assert_equal "2\n4\n", out.string
     end
   end
 
-  def invoker_for(project, stdin: StringIO.new, stdout: StringIO.new, logger: Logger.new(nil), environment: nil)
-    Metacrunch::Invoker.new(project:, logger:, env: {}, stdin:, stdout:, environment:)
+  # A value given at use wins over the transform's env: variable; nil (the
+  # job's factor left unset) falls through to it.
+  def test_values_at_use_win_over_the_environment_and_nil_falls_through
+    with_project(env: {"SCALE_FACTOR" => "3"}) do |invoker, out|
+      invoker.invoke("scaled", "1")
+      invoker.invoke("scaled", "--factor", "5", "1")
+
+      assert_equal "3\n5\n", out.string
+    end
+  end
+
+  def test_transforms_run_alone_like_jobs
+    with_project(stdin: "1\n2\n") do |invoker, out|
+      result = invoker.invoke("scale", "--factor", "3")
+
+      assert_equal [:ok, "3\n6\n"], [result.status, out.string]
+    end
+  end
+
+  def test_the_credentials_of_the_job_reach_its_transforms
+    in_tmpdir do |root|
+      write_ruby(root, "Metacrunchfile", "Metacrunch.load_files \"jobs/*.rb\", \"transforms/*.rb\"\n")
+      write_ruby(root, "transforms/reveal.rb", REVEAL)
+      write_ruby(root, "jobs/revealed.rb", "Metacrunch.job(\"revealed\") do\n  source [1]\n  use \"reveal\"\nend\n")
+      write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
+      out = StringIO.new
+      invoker_for(Metacrunch.load_project(root), stdout: out, environment: "production").invoke("revealed")
+
+      assert_equal "\"#{SECRET.reverse}\"\n", out.string
+    end
+  end
+
+  def test_a_path_for_use_loads_only_transforms
+    with_project do |invoker|
+      path = job("double.rb")
+      error = assert_raises(Metacrunch::JobLoadError) { invoker.resolve(path, kind: Metacrunch::Transform) }
+
+      assert_match(/no transform defined in .*double\.rb/, error.message)
+    end
+  end
+
+  private
+
+  # Yields an Invoker for a project with FILES, its stdout and the root.
+  def with_project(logger: Logger.new(nil), env: {}, stdin: "")
+    in_tmpdir do |root|
+      FILES.each { |path, code| write_ruby(root, path, code) }
+      out = StringIO.new
+      invoker = invoker_for(Metacrunch.load_project(root), stdin: StringIO.new(stdin), stdout: out, logger:, env:)
+      yield invoker, out, root
+    end
+  end
+
+  def invoker_for(project, stdin: StringIO.new, stdout: StringIO.new, logger: Logger.new(nil), environment: nil,
+                  env: {})
+    Metacrunch::Invoker.new(project:, logger:, env:, stdin:, stdout:, environment:)
   end
 
   def write_ruby(root, path, code) = write_file(root, path, "# frozen_string_literal: true\n\n#{code}")

@@ -77,10 +77,10 @@ module Metacrunch
     end
 
     def unknown(target)
-      return "unknown command, job or file: #{target}" if Names.path?(target)
+      return "unknown job, transform, command or file: #{target}" if Names.path?(target)
 
       hint = project ? project.load_hint : " (no #{Project::FILE} found)"
-      "unknown command, job or file: #{target}#{hint}"
+      "unknown job, transform, command or file: #{target}#{hint}"
     end
 
     # The project of the working directory. Its files that did not load

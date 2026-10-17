@@ -8,9 +8,9 @@ class CliTest < Minitest::Test
 
   USAGE_ERRORS = {
     [] => "no command, job or file given",
-    ["frobnicate"] => "unknown command, job or file: frobnicate (no Metacrunchfile found)",
+    ["frobnicate"] => "unknown job, transform, command or file: frobnicate (no Metacrunchfile found)",
     ["-v"] => "unknown option -v",
-    ["help", "frobnicate"] => "unknown command, job or file: frobnicate (no Metacrunchfile found)"
+    ["help", "frobnicate"] => "unknown job, transform, command or file: frobnicate (no Metacrunchfile found)"
   }.freeze
 
   def test_prints_the_version
