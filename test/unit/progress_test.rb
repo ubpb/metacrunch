@@ -35,7 +35,12 @@ class ProgressTest < Minitest::Test
   # A source whose progress breaks.
   class BrokenProgress
 
-    def progress = raise("progress broke")
+    attr_reader :calls
+
+    def progress
+      @calls = (@calls || 0) + 1
+      raise("progress broke")
+    end
 
   end
 
@@ -142,10 +147,11 @@ class ProgressTest < Minitest::Test
     progress = Metacrunch::Progress.new(Output.new(StringIO.new), mode: :line, interval: 0.01)
     _stdout, stderr = capture_io do
       progress.start(@live)
-      sleep(0.05)
+      wait_until { @live.source.calls }
       progress.stop
     end
 
+    assert_operator @live.source.calls.to_i, :positive?
     assert_empty stderr
   end
 
@@ -218,7 +224,7 @@ class ProgressTest < Minitest::Test
     io = StringIO.new
     progress = Metacrunch::Progress.new(Output.new(io), mode: :line, interval: 0.01)
     progress.start(@live)
-    sleep(0.05)
+    wait_until { io.string.include?("read 0") }
     progress.stop
 
     assert_includes io.string, "read 0"
@@ -226,6 +232,17 @@ class ProgressTest < Minitest::Test
   end
 
   private
+
+  # Waits until the block returns a true value, instead of sleeping a fixed
+  # time: on a slow machine (a loaded CI runner) the progress thread may
+  # need longer than its interval to draw. Fails after timeout seconds.
+  def wait_until(timeout: 5)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    until yield
+      flunk "condition not met within #{timeout}s" if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+      sleep(0.005)
+    end
+  end
 
   def start(mode)
     progress = Metacrunch::Progress.new(Output.new(StringIO.new), mode:, clock: @clock, thread: false)
