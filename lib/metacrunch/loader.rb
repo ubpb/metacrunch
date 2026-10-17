@@ -1,27 +1,28 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  # Loads files that declare jobs and commands. Metacrunch.job and
-  # Metacrunch.command register what they declare with the load that is in
-  # progress on the current thread. A file is loaded again only when it has
-  # changed, because loading it twice would redefine its constants.
+  # Loads files that declare jobs, transforms and commands. Metacrunch.job,
+  # Metacrunch.transform and Metacrunch.command register what they declare
+  # with the load that is in progress on the current thread. A file is
+  # loaded again only when it has changed, because loading it twice would
+  # redefine its constants.
   module Loader
 
     KEY = :metacrunch_loading
-    KINDS = {Job => "job", Command => "command"}.freeze
+    KINDS = {Job => "job", Transform => "transform", Command => "command"}.freeze
 
     @cache = {}
 
     module_function
 
-    # The job or command that path declares. name selects one of several;
-    # kind (Job or Command) considers only those.
+    # The job, transform or command that path declares. name selects one of
+    # several; kind (Job, Transform or Command) considers only those.
     def load(path, name: nil, kind: nil)
       raise JobLoadError, "file not found: #{path}" unless File.file?(path)
 
       declarations = cached(path)
       declarations = declarations.grep(kind) if kind
-      select_declaration(declarations, path, name&.to_s, kind ? KINDS.fetch(kind) : "job or command")
+      select_declaration(declarations, path, name&.to_s, kind ? KINDS.fetch(kind) : "job, transform or command")
     end
 
     # What path declares, loaded again only when the file has changed.
@@ -66,9 +67,11 @@ module Metacrunch
         raise(JobLoadError, "no #{noun} named #{name} in #{path} (available: #{names(declarations)})")
     end
 
-    # "jobs", "commands" or "jobs and commands".
+    # "jobs", "jobs and commands" or "transforms, jobs and commands", in the
+    # order of the file.
     def plural(declarations)
-      declarations.map { "#{KINDS.fetch(it.class)}s" }.uniq.join(" and ")
+      words = declarations.map { "#{KINDS.fetch(it.class)}s" }.uniq
+      [words[0...-1].join(", "), words.last].reject(&:empty?).join(" and ")
     end
 
     def names(declarations)
