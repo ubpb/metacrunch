@@ -26,10 +26,11 @@ module Metacrunch
     end
 
     # The Transform that target stands for: a Transform, or its name or
-    # path. Raises ArgumentError for a job, a command or any other object,
-    # ProjectError for an unknown name and JobLoadError for a path without
-    # a transform.
+    # path (a String or Pathname). Raises ArgumentError for a job, a command
+    # or any other object, ProjectError for an unknown name and
+    # JobLoadError for a path without a transform.
     def transform(target)
+      target = target.to_path if target.respond_to?(:to_path)
       declaration = declaration_for(target)
       return declaration if declaration.is_a?(Transform)
 
@@ -40,11 +41,13 @@ module Metacrunch
     # Evaluates the recipe of transform with values bound (see
     # Params#bind_values) and returns its pipeline: steps and hooks, no
     # source and no sinks. stack: the transforms whose recipes are being
-    # evaluated around this use. Errors of the values name the transform.
+    # evaluated around this use. Errors of the values name the transform,
+    # after the transforms around it: "use outer → inner: ...".
     def evaluate(transform, values, stack:)
-      raise ArgumentError, "use cycle: #{[*stack, transform].map(&:label).join(" → ")}" if stack.include?(transform)
+      chain = [*stack, transform].map(&:label).join(" → ")
+      raise ArgumentError, "use cycle: #{chain}" if stack.include?(transform)
 
-      transform.pipeline(binder: binder(transform, values), logger: @logger, context: self, stack:)
+      transform.pipeline(binder: binder(chain, values), logger: @logger, context: self, stack:)
     end
 
     private
@@ -57,11 +60,11 @@ module Metacrunch
     end
 
     # No cause: the original message is part of the new one.
-    def binder(transform, values)
+    def binder(chain, values)
       lambda do |schema|
         schema.bind_values(values, env: @env, credentials: @credentials)
       rescue ParamError, ArgumentError => e
-        raise e.class, "use #{transform.label}: #{e.message}", cause: nil
+        raise e.class, "use #{chain}: #{e.message}", cause: nil
       end
     end
 

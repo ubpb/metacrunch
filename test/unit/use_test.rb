@@ -214,6 +214,42 @@ class UseTest < Minitest::Test
     assert_equal [4], records(pipeline)
   end
 
+  # A label that looks numbered (a file x#2.rb) never takes a prefix that
+  # is in use already.
+  def test_prefixes_stay_unique_when_a_label_looks_numbered
+    x = Metacrunch.transform("x") { map(&:to_s) }
+    numbered = Metacrunch.transform { map(&:to_s) }.tap { it.file = "/project/transforms/x#2.rb" }
+    pipeline = build_job do
+      source [1]
+      use x
+      use x
+      use numbered
+    end
+
+    assert_equal ["x/map#1", "x#2/map#1", "x#2#2/map#1"], pipeline.steps.map(&:name)
+  end
+
+  def test_pathnames_are_paths
+    pipeline = build_job({"transforms/scale.rb" => SCALE}) do
+      source [1]
+      use Pathname("transforms/scale.rb")
+    end
+
+    assert_equal [2], records(pipeline)
+  end
+
+  def test_errors_of_nested_values_name_the_chain
+    inner = Metacrunch.transform("inner") do
+      params { param :n, Integer, required: true }
+
+      map { it * params.n }
+    end
+    outer = Metacrunch.transform("outer") { use inner }
+    error = assert_raises(Metacrunch::ParamError) { build_job { source []; use outer } }
+
+    assert_equal "use outer → inner: missing required parameter n", error.message
+  end
+
   def test_a_transform_alone_cannot_use_itself
     looping = Metacrunch.transform("loop") { use "loop" }
     binder = ->(schema) { schema.bind_hash({}) }

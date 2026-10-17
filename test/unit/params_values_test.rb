@@ -59,6 +59,24 @@ class ParamsValuesTest < Minitest::Test
     assert_equal "missing required parameter code (CODE unset; api.code: no credentials)", error.message
   end
 
+  # Values from code are named as Ruby types; strings keep the command
+  # line's wording, since they are converted like it.
+  def test_type_messages_fit_the_value
+    messages = [{strict: 1}, {tags: [1, 2]}, {strict: "maybe"}].map { message_for(schema, it) }
+
+    assert_equal ["invalid value for strict: 1 is not true or false",
+                  "invalid value for tags: [1, 2] is not an Array of Strings",
+                  "invalid value for strict: \"maybe\" is not a boolean (true/false, yes/no, on/off, 1/0)"], messages
+  end
+
+  def test_args_take_strings_only
+    messages = [{files: {a: 1}}, {files: 5}, {files: [:a]}].map { message_for(schema, it) }
+
+    assert_equal ["invalid value for files: {a: 1} is not an Array of Strings",
+                  "invalid value for files: 5 is not an Array of Strings",
+                  "invalid value for files: [:a] is not an Array of Strings"], messages
+  end
+
   def test_args_keep_their_limits
     at_least_one = Metacrunch::Params.new.tap { it.args :files, min: 1 }
     error = assert_raises(Metacrunch::ParamError) { at_least_one.bind_values({}) }
@@ -73,6 +91,14 @@ class ParamsValuesTest < Minitest::Test
   end
 
   private
+
+  # The ParamError message for values bound to params, or nil without one.
+  def message_for(params, values)
+    params.bind_values(values)
+    nil
+  rescue Metacrunch::ParamError => e
+    e.message
+  end
 
   def schema
     Metacrunch::Params.new.tap do |params|
