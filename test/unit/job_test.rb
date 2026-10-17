@@ -9,6 +9,7 @@ class JobTest < Minitest::Test
 
   SILENT = Logger.new(nil)
   SCALE = "Metacrunch.transform(\"scale\") { map { it * 2 } }\n"
+  HALF = "Metacrunch.transform(\"half\") { map { it / 2 } }\n"
 
   def test_run_binds_cli_arguments_and_returns_the_result
     target = CollectingSink.new
@@ -144,6 +145,24 @@ class JobTest < Minitest::Test
       job.run([], logger: SILENT)
 
       assert_equal [2], target.records
+    end
+  end
+
+  def test_run_refuses_a_project_that_is_no_project
+    job = Metacrunch.job { source [1]; use "scale" }
+    error = assert_raises(ArgumentError) { job.run([], logger: SILENT, project: "/path") }
+
+    assert_equal "project: must be a Metacrunch::Project, got \"/path\"", error.message
+  end
+
+  def test_use_by_path_of_a_file_with_several_transforms_asks_for_a_name
+    in_tmpdir do |dir|
+      path = write_file(dir, "two.rb", "# frozen_string_literal: true\n\n#{SCALE}#{HALF}")
+      job = Metacrunch.job { source [1]; use path }
+      error = assert_raises(Metacrunch::JobLoadError) { job.run([], logger: SILENT) }
+
+      assert_match(/two\.rb defines several transforms \(scale, half\); #{Metacrunch::UseContext::PATH_HINT}\z/,
+                   error.message)
     end
   end
 

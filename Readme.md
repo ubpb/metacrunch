@@ -489,7 +489,8 @@ defined with `Metacrunch.job` in a Rake task or an application runs the same way
 (stderr); assign another `Logger` or pass `logger:` to `run`.
 
 Names in `use` resolve in `project:` (`job.run(argv, project: Metacrunch.load_project)`), else in the project of the
-nearest `Metacrunchfile` above the working directory, loaded when the first name needs it.
+nearest `Metacrunchfile` above the working directory, loaded when the first name needs it. That lookup loads the
+`Metacrunchfile` again for every run; code that runs jobs again and again loads the project once and passes it.
 `Metacrunch.load_transform(path)` loads a transform as `load_job` loads a job.
 
 ```ruby
@@ -741,7 +742,8 @@ All sinks are replaced by in-memory sinks; nothing is written. Component constru
 cheap and free of side effects; do I/O in `open`, `each` and `write`.
 
 A transform is tested the same way, with `source:`, since it has none. Names in `use` resolve in `project:`, else in
-the project of the nearest `Metacrunchfile` above the working directory:
+the project of the nearest `Metacrunchfile` above the working directory, which is then loaded for every run; a test
+class loads its project once:
 
 ```ruby
 PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))

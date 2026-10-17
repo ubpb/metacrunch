@@ -15,14 +15,19 @@ module Metacrunch
 
     module_function
 
+    # How the command line selects one of several declarations of a file.
+    SELECT_HINT = "select one with --job NAME"
+
     # The job, transform or command that path declares. name selects one of
-    # several; kind (Job, Transform or Command) considers only those.
-    def load(path, name: nil, kind: nil)
+    # several; kind (Job, Transform or Command) considers only those. hint
+    # ends the message for a file that needs a selection.
+    def load(path, name: nil, kind: nil, hint: SELECT_HINT)
       raise JobLoadError, "file not found: #{path}" unless File.file?(path)
 
       declarations = cached(path)
       declarations = declarations.grep(kind) if kind
-      select_declaration(declarations, path, name&.to_s, kind ? KINDS.fetch(kind) : "job, transform or command")
+      noun = kind ? KINDS.fetch(kind) : "job, transform or command"
+      select_declaration(declarations, path, name&.to_s, noun, hint)
     end
 
     # What path declares, loaded again only when the file has changed.
@@ -55,7 +60,7 @@ module Metacrunch
 
     # Without name, the only declaration; or the only job or command, whose
     # building blocks the transforms beside it are.
-    def select_declaration(declarations, path, name, noun)
+    def select_declaration(declarations, path, name, noun, hint)
       raise JobLoadError, "no #{noun} defined in #{path}" if declarations.empty?
       return pick_named(declarations, path, name, noun) if name
       return declarations.first if declarations.one?
@@ -63,8 +68,7 @@ module Metacrunch
       runnable = declarations.grep_v(Transform)
       return runnable.first if runnable.one?
 
-      raise JobLoadError,
-            "#{path} defines several #{plural(declarations)} (#{names(declarations)}); select one with --job NAME"
+      raise JobLoadError, "#{path} defines several #{plural(declarations)} (#{names(declarations)}); #{hint}"
     end
 
     def pick_named(declarations, path, name, noun)
