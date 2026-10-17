@@ -103,6 +103,12 @@ class ProjectCliTest < Minitest::Test
     Metacrunch.job("unknown-use") { source [1]; use "nope" }
     Metacrunch.job("missing-value") { source [1]; use "needy" }
     Metacrunch.job("job-use") { source [1]; use "numbers" }
+    Metacrunch.transform("sourced") { source [1] }
+    Metacrunch.job("forbidden-use") { source [1]; use "sourced" }
+    Metacrunch.job("path-use") { source [1]; use File.join(__dir__, "numbers.rb") }
+    Metacrunch.transform("ping") { use "pong" }
+    Metacrunch.transform("pong") { use "ping" }
+    Metacrunch.job("cycle-use") { source [1]; use "ping" }
   RUBY
 
   def test_runs_a_job_by_name_from_a_subdirectory
@@ -344,6 +350,27 @@ class ProjectCliTest < Minitest::Test
       assert_equal [0, 0, 0], results.map(&:first)
       assert_equal "3\n6\n", results[0][1]
       assert_equal "scale: transform \"scale\" OK", results[1][1].lines.first.chomp
+    end
+  end
+
+  # The rows of spec 3.7 that the test above leaves out: a forbidden
+  # statement in a used transform, and a path without a transform.
+  def test_forbidden_statements_and_paths_without_transform_exit_with_their_status
+    in_project("jobs/use_errors.rb" => USE_ERRORS) do |root|
+      results = [["forbidden-use"], ["check", "forbidden-use"], ["path-use"]].map { cli_in(root, *it) }
+
+      assert_equal [1, 2, 2], results.map(&:first)
+      assert_match(/transform sourced: a transform has no source; the job that uses it decides/, results[1].last)
+      assert_match(%r{Error: no transform defined in .*jobs/numbers\.rb}, results[2].last)
+    end
+  end
+
+  def test_a_cycle_of_transforms_aborts_the_run
+    in_project("jobs/use_errors.rb" => USE_ERRORS) do |root|
+      code, _stdout, stderr = cli_in(root, "cycle-use")
+
+      assert_equal 1, code
+      assert_match(/use cycle: ping → pong → ping/, stderr)
     end
   end
 
