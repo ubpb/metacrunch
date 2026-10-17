@@ -46,6 +46,9 @@ module Metacrunch
       :bool => "a boolean (true/false, yes/no, on/off, 1/0)"
     }.freeze
 
+    # The types as Ruby values, for values from code that are no Strings.
+    VALUE_TYPE_NAMES = TYPE_NAMES.merge(Array => "an Array of Strings", :bool => "true or false").freeze
+
     CREDENTIAL_PATH = /\A[^.]+(\.[^.]+)*\z/
     HIDDEN = "(hidden)"
 
@@ -157,7 +160,7 @@ module Metacrunch
       bound = @definitions.to_h do |name, definition|
         [name, bind(definition, given, env, credentials, nil, keyword: true)]
       end
-      build(bound, values[args_name].nil? ? [] : Array(values[args_name]))
+      build(bound, args_values(values[args_name]))
     end
 
     # True if argv asks for help: -h or --help as an option, not as the
@@ -298,11 +301,21 @@ module Metacrunch
     # No cause: the converter's error (Integer(), Float(), "not a boolean")
     # would repeat a hidden value.
     def invalid!(definition, raw, origin, keyword: false)
-      expected = TYPE_NAMES.fetch(definition.type)
+      expected = (keyword && !raw.is_a?(String) ? VALUE_TYPE_NAMES : TYPE_NAMES).fetch(definition.type)
       from = origin ? " from #{origin}" : ""
       shown = definition.secret? ? HIDDEN : raw.inspect
       raise ParamError, "invalid value for #{label(definition, keyword)}#{from}: #{shown} is not #{expected}",
             cause: nil
+    end
+
+    # The args of bind_values: nil for none, a String for one, or an Array
+    # of Strings, as the command line gives them.
+    def args_values(value)
+      return [] if value.nil?
+      return [value] if value.is_a?(String)
+      return value if value.is_a?(Array) && value.all?(String)
+
+      raise ParamError, "invalid value for #{@args_definition.name}: #{value.inspect} is not an Array of Strings"
     end
 
     # How messages name a parameter: as option (--api-key) for the command

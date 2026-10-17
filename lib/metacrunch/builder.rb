@@ -28,7 +28,7 @@ module Metacrunch
       @id_extractor = nil
       @steps = []
       @statements = 0
-      @prefixes = Hash.new(0)
+      @prefixes = []
       @sinks = {}
       @on_error = :abort
       @max_errors = nil
@@ -192,11 +192,15 @@ module Metacrunch
     end
 
     # The label of transform, numbered from its second use in this recipe:
-    # normalize, normalize#2, ...
+    # normalize, normalize#2, ... A prefix is never given twice, also when
+    # a label looks numbered (a file x#2.rb).
     def prefix_for(transform)
       label = transform.label
-      @prefixes[label] += 1
-      @prefixes[label] == 1 ? label : "#{label}##{@prefixes[label]}"
+      prefix = label
+      count = 1
+      prefix = "#{label}##{count += 1}" while @prefixes.include?(prefix)
+      @prefixes << prefix
+      prefix
     end
 
     def add_sink(role, object, batch)
