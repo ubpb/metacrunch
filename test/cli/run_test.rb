@@ -168,6 +168,10 @@ class RunTest < Minitest::Test
     assert_equal [0, "  steps     helper/map#1"], [check.first, check[1].lines[2].chomp]
   end
 
+  def test_job_selects_a_transform_in_a_file
+    assert_equal [0, "\"a\"\n"], cli("run", "-j", "trim", job("shared.rb"), stdin: "\" a \"\n").take(2)
+  end
+
   def test_empty_stdin_gives_no_output
     assert_equal [0, ""], cli("run", job("double.rb"), stdin: "").take(2)
   end

@@ -95,6 +95,17 @@ class TestingTest < Minitest::Test
     end
   end
 
+  def test_resolves_names_in_the_project_of_the_working_directory
+    in_tmpdir do |root|
+      write_file(root, "Metacrunchfile", "# frozen_string_literal: true\n\nMetacrunch.load_files \"transforms/*.rb\"\n")
+      write_file(root, "transforms/scale.rb", SCALE)
+      job = Metacrunch.job { source [1]; use "scale" }
+      result = Dir.chdir(root) { Metacrunch::Testing.run(job) }
+
+      assert_equal [2], result.records
+    end
+  end
+
   def test_transforms_get_no_environment
     transform = Metacrunch.transform("env") do
       params { param :factor, Integer, env: "METACRUNCH_TEST_FACTOR", default: 2 }
