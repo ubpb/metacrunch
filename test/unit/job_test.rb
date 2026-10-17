@@ -5,8 +5,10 @@ require "test_helper"
 class JobTest < Minitest::Test
 
   include ForkVariant::NoWorkerLeft
+  include CredentialsHelper
 
   SILENT = Logger.new(nil)
+  SCALE = "Metacrunch.transform(\"scale\") { map { it * 2 } }\n"
 
   def test_run_binds_cli_arguments_and_returns_the_result
     target = CollectingSink.new
@@ -93,6 +95,63 @@ class JobTest < Minitest::Test
 
     assert_nil job.name
     assert_nil job.desc
+  end
+
+  def test_run_resolves_names_in_the_given_project
+    in_tmpdir do |root|
+      write_project(root)
+      target = CollectingSink.new
+      job = Metacrunch.job do
+        source [1]
+        use "scale"
+        sink target
+      end
+      job.run([], logger: SILENT, project: Metacrunch.load_project(root))
+
+      assert_equal [2], target.records
+    end
+  end
+
+  def test_run_finds_the_project_of_the_working_directory_when_a_name_needs_it
+    in_tmpdir do |root|
+      write_project(root)
+      FileUtils.mkdir_p(File.join(root, "sub"))
+      job = Metacrunch.job { source [1]; use "scale" }
+      result = Dir.chdir(File.join(root, "sub")) { job.run([], logger: SILENT) }
+
+      assert_equal [:ok, ["scale/map#1"]], [result.status, result.stats.steps.keys]
+    end
+  end
+
+  def test_run_without_a_project_names_the_missing_metacrunchfile
+    in_tmpdir do |dir|
+      job = Metacrunch.job { source [1]; use "scale" }
+      error = Dir.chdir(dir) { assert_raises(Metacrunch::ProjectError) { job.run([], logger: SILENT) } }
+
+      assert_equal "unknown job, transform, command or file: scale (no Metacrunchfile found)", error.message
+    end
+  end
+
+  def test_run_uses_transforms_by_path_without_a_project
+    in_tmpdir do |dir|
+      path = write_file(dir, "scale.rb", "# frozen_string_literal: true\n\n#{SCALE}")
+      target = CollectingSink.new
+      job = Metacrunch.job do
+        source [1]
+        use path
+        sink target
+      end
+      job.run([], logger: SILENT)
+
+      assert_equal [2], target.records
+    end
+  end
+
+  private
+
+  def write_project(root)
+    write_file(root, "Metacrunchfile", "# frozen_string_literal: true\n\nMetacrunch.load_files \"transforms/*.rb\"\n")
+    write_file(root, "transforms/scale.rb", "# frozen_string_literal: true\n\n#{SCALE}")
   end
 
 end

@@ -110,17 +110,23 @@ module Metacrunch
     # Records are collected even if the job has no sink; stats.written is
     # 0 then, as in a real run. workers: run the steps in that many
     # processes, to check that the job's records cross process boundaries.
-    def run(job, params: {}, source: nil, logger: Logger.new(nil), workers: nil)
+    # job may be a Transform, which needs source:. project: where the
+    # names of `use` resolve (see UseContext.for); the transforms of the
+    # job get neither environment nor credentials either.
+    def run(job, params: {}, source: nil, logger: Logger.new(nil), workers: nil, project: nil)
       unless source.nil? || source.respond_to?(:each)
         raise ArgumentError, "source must respond to #each, got #{source.inspect}"
       end
 
-      pipeline = job.pipeline(binder: ->(schema) { schema.bind_hash(params) }, logger:)
+      context = UseContext.for(project:, env: {}, credentials: nil, logger:)
+      pipeline = job.pipeline(binder: ->(schema) { schema.bind_hash(params) }, logger:, context:)
       memory = {sink: MemorySink.new, rejects: MemorySink.new, errors: MemorySink.new}
       adapters = memory.transform_values { |sink| SinkAdapter.new(sink) }
       adapters[:sink] = UncountedSinkAdapter.new(memory[:sink]) unless pipeline.sink
       source ||= pipeline.source
-      raise ArgumentError, "the job has no source; pass source:" unless source
+      unless source
+        raise ArgumentError, "#{job.is_a?(Transform) ? "a transform" : "the job"} has no source; pass source:"
+      end
 
       pipeline = pipeline.with(source:, **adapters)
       result = Engine.new(pipeline, executor: Executor.for(workers)).run
@@ -143,10 +149,12 @@ module Metacrunch
     # status raises StubError (an ArgumentError).
     def invoke(project, name, params: {}, stubs: {}, logger: Logger.new(nil))
       command = project.fetch(name)
-      raise ArgumentError, "#{name} is a job; test it with Testing.run" unless command.is_a?(Command)
+      unless command.is_a?(Command)
+        raise ArgumentError, "#{name} is a #{Loader::KINDS.fetch(command.class)}; test it with Testing.run"
+      end
 
       unknown = stubs.keys.map(&:to_s).reject { project.include?(it) || File.file?(it) }
-      raise ArgumentError, "stub for unknown job or command: #{unknown.first}" if unknown.any?
+      raise ArgumentError, "stub for unknown job, transform or command: #{unknown.first}" if unknown.any?
 
       invoker = RecordingInvoker.new(project:, stubs:, logger:)
       command_run(invoker, command.prepare(binder: ->(schema) { schema.bind_hash(params) }))

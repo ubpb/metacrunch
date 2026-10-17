@@ -111,13 +111,13 @@ class TestingInvokeTest < Minitest::Test
     run = invoke("typo")
 
     assert_equal :aborted, run.status
-    assert_equal "invoke a2x: unknown command, job or file: a2x", run.error.message
+    assert_equal "invoke a2x: unknown job, transform, command or file: a2x", run.error.message
   end
 
   def test_stubs_for_unknown_names_raise
     error = assert_raises(ArgumentError) { invoke("typo", stubs: {"a2x" => :ok}) }
 
-    assert_equal "stub for unknown job or command: a2x", error.message
+    assert_equal "stub for unknown job, transform or command: a2x", error.message
   end
 
   # A mistake in the stubs raises instead of ending the run :aborted, so a

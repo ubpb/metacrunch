@@ -33,6 +33,13 @@ module Metacrunch
       load_file(file)
     end
 
+    # The project of the nearest Metacrunchfile at or above dir, or nil if
+    # there is none. Raises ProjectError if it fails to load.
+    def self.nearest(dir = Dir.pwd)
+      file = find(dir)
+      file && load_file(file)
+    end
+
     # Loads file, a Metacrunchfile, with the files it loads. Raises
     # ProjectError if the Metacrunchfile itself fails.
     def self.load_file(file) = new(file)
@@ -64,7 +71,7 @@ module Metacrunch
     # unknown or declared more than once.
     def fetch(name)
       declarations = declared(name)
-      raise ProjectError, "unknown job or command: #{name}#{load_hint}" if declarations.empty?
+      raise ProjectError, "unknown job, transform or command: #{name}#{load_hint}" if declarations.empty?
       return declarations.first if declarations.one?
 
       files = declarations.map { relative(it.file) }.join(", ")

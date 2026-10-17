@@ -31,6 +31,26 @@ class ProjectTest < Minitest::Test
     end
   end
 
+  def test_nearest_loads_the_project_above_a_directory_or_gives_nil
+    in_tmpdir do |root|
+      write_file(root, "Metacrunchfile", "")
+      FileUtils.mkdir_p(File.join(root, "sub"))
+
+      assert_equal File.join(root, "Metacrunchfile"), Metacrunch::Project.nearest(File.join(root, "sub")).file
+    end
+    in_tmpdir { |dir| assert_nil Metacrunch::Project.nearest(dir) }
+  end
+
+  def test_a_transform_and_a_job_of_one_name_are_a_duplicate
+    in_tmpdir do |root|
+      project = load_project(root, "Metacrunchfile" => LOAD_ALL, "jobs/a.rb" => job("dup"),
+                                   "jobs/b.rb" => "Metacrunch.transform(\"dup\") { map { it } }\n")
+      error = assert_raises(Metacrunch::ProjectError) { project.fetch("dup") }
+
+      assert_match(%r{\Adup is declared more than once \(jobs/a\.rb, jobs/b\.rb\); rename one\z}, error.message)
+    end
+  end
+
   def test_loads_jobs_and_commands_from_relative_globs
     in_tmpdir do |root|
       project = load_project(root, "Metacrunchfile" => LOAD_ALL, "jobs/a2c.rb" => job("a2c"),
@@ -182,7 +202,7 @@ class ProjectTest < Minitest::Test
       project = load_project(root, "Metacrunchfile" => LOAD_ALL, "jobs/broken.rb" => "Metacrunch.job(\n")
       error = assert_raises(Metacrunch::ProjectError) { project.fetch("nope") }
 
-      assert_equal "unknown job or command: nope (1 file of the project did not load)", error.message
+      assert_equal "unknown job, transform or command: nope (1 file of the project did not load)", error.message
     end
   end
 
