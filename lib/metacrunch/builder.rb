@@ -13,16 +13,22 @@ module Metacrunch
 
     # binder: callable that takes the Params schema and returns the bound
     # values. describe: stop as soon as the schema is known (for --help).
+    # context: the UseContext that `use` resolves and binds transforms in.
     # transform: the Transform whose recipe this builder evaluates; it
     # refuses source, sinks, error policy and profile. nil for a job.
-    def initialize(binder:, logger:, describe: false, transform: nil)
+    # stack: the transforms being evaluated, this one last (for cycles).
+    def initialize(binder:, logger:, describe: false, context: nil, transform: nil, stack: [])
       init_params(binder, describe)
       @logger = logger
+      @context = context
       @transform = transform
+      @stack = stack
       @source = nil
       @source_declared = false
       @id_extractor = nil
       @steps = []
+      @statements = 0
+      @prefixes = Hash.new(0)
       @sinks = {}
       @on_error = :abort
       @max_errors = nil
@@ -66,6 +72,23 @@ module Metacrunch
     def reject(reason_or_callable = nil, callable = nil, name: nil, &block)
       reason, callable = split_reason(reason_or_callable, callable)
       add_step(:reject, reason, callable, block, name)
+    end
+
+    # Inserts the steps and hooks of a transform here. target: a Transform,
+    # or its name or path; values bind its parameters (see UseContext).
+    # Its steps are named with its label as prefix: normalize/map#1.
+    def use(target, **values)
+      use!
+      raise ArgumentError, "use needs a context: build the job with Job#pipeline(context:)" unless @context
+
+      transform = @context.transform(target)
+      built = @context.evaluate(transform, values, stack: @stack)
+      prefix = prefix_for(transform)
+      @steps.concat(built.steps.map { it.with(name: "#{prefix}/#{it.name}") })
+      @before_hooks.concat(built.before_hooks)
+      @after_hooks.concat(built.after_hooks)
+      @statements += 1
+      nil
     end
 
     def sink(object, batch: nil)
@@ -146,6 +169,9 @@ module Metacrunch
       [nil, first]
     end
 
+    # Generated names count the step statements of the recipe, use
+    # included, so a transform that gains a step renames no step of the
+    # job. / is reserved for the prefixes of transforms.
     def add_step(kind, reason, callable, block, name)
       use!
       raise ArgumentError, "#{kind}: pass a callable or a block, not both" if callable && block
@@ -153,12 +179,24 @@ module Metacrunch
       implementation = callable || block
       raise ArgumentError, "#{kind}: a callable or a block is required" unless implementation
 
-      name = (name || "#{kind}##{@steps.size + 1}").to_s
+      @statements += 1
+      name = (name || "#{kind}##{@statements}").to_s
       raise ArgumentError, "the step name #{SOURCE_STEP} is reserved" if name == SOURCE_STEP
+      if name.include?("/")
+        raise ArgumentError, "the step name #{name} contains /, which is reserved for the prefixes of transforms"
+      end
       raise ArgumentError, "duplicate step name #{name}" if @steps.any? { |step| step.name == name }
 
       @steps << Step.build(kind, implementation, name:, reason:)
       nil
+    end
+
+    # The label of transform, numbered from its second use in this recipe:
+    # normalize, normalize#2, ...
+    def prefix_for(transform)
+      label = transform.label
+      @prefixes[label] += 1
+      @prefixes[label] == 1 ? label : "#{label}##{@prefixes[label]}"
     end
 
     def add_sink(role, object, batch)

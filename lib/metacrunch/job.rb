@@ -22,9 +22,10 @@ module Metacrunch
     end
 
     # Evaluates the recipe. binder takes the Params schema and returns the
-    # bound values.
-    def pipeline(binder:, logger: Metacrunch.logger)
-      builder = Builder.new(binder:, logger:)
+    # bound values. context: the UseContext that `use` resolves transforms
+    # in; a recipe with `use` needs one.
+    def pipeline(binder:, logger: Metacrunch.logger, context: nil)
+      builder = Builder.new(binder:, logger:, context:)
       builder.instance_exec(&@recipe)
       builder.build
     end

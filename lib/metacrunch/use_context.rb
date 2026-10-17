@@ -1,0 +1,61 @@
+# frozen_string_literal: true
+
+module Metacrunch
+  # What `use` needs from the call that builds a job: a resolver for names
+  # and paths (an Invoker), the environment and the credentials store the
+  # job is bound with, and the logger. Nested transforms share it, so one
+  # run reads one credentials file.
+  class UseContext
+
+    # resolver: responds to resolve(target, kind:) and returns
+    # [declaration, anchor], as Invoker#resolve does. credentials: a
+    # Credentials::Store, or nil for none (tests).
+    def initialize(resolver:, env:, credentials:, logger:)
+      @resolver = resolver
+      @env = env
+      @credentials = credentials
+      @logger = logger
+    end
+
+    # The Transform that target stands for: a Transform, or its name or
+    # path. Raises ArgumentError for a job, a command or any other object,
+    # ProjectError for an unknown name and JobLoadError for a path without
+    # a transform.
+    def transform(target)
+      declaration = declaration_for(target)
+      return declaration if declaration.is_a?(Transform)
+
+      name = declaration.name || (target if target.is_a?(String)) || "the target"
+      raise ArgumentError, "use takes transforms; #{name} is a #{Loader::KINDS.fetch(declaration.class)}"
+    end
+
+    # Evaluates the recipe of transform with values bound (see
+    # Params#bind_values) and returns its pipeline: steps and hooks, no
+    # source and no sinks. stack: the transforms whose recipes are being
+    # evaluated around this use. Errors of the values name the transform.
+    def evaluate(transform, values, stack:)
+      raise ArgumentError, "use cycle: #{[*stack, transform].map(&:label).join(" → ")}" if stack.include?(transform)
+
+      transform.pipeline(binder: binder(transform, values), logger: @logger, context: self, stack:)
+    end
+
+    private
+
+    def declaration_for(target)
+      return target if [Transform, Job, Command].any? { target.is_a?(it) }
+      return @resolver.resolve(target, kind: Transform).first if target.is_a?(String)
+
+      raise ArgumentError, "use takes a transform, its name or its path, got #{target.inspect}"
+    end
+
+    # No cause: the original message is part of the new one.
+    def binder(transform, values)
+      lambda do |schema|
+        schema.bind_values(values, env: @env, credentials: @credentials)
+      rescue ParamError, ArgumentError => e
+        raise e.class, "use #{transform.label}: #{e.message}", cause: nil
+      end
+    end
+
+  end
+end
