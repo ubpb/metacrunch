@@ -132,10 +132,26 @@ class ExamplesTest < Minitest::Test
     assert_match(%r{^  catalog:release +Write a new release and switch out/current to it$}, stdout)
   end
 
+  def test_project_help_lists_the_transform
+    stdout, stderr, status = metacrunch("--help", chdir: example("project"))
+
+    assert_predicate status, :success?, stderr
+    assert_match(/^Transforms \(.*\):\n  catalog:public +Keep the public titles, reduced to some fields$/, stdout)
+  end
+
+  def test_project_jobs_share_the_transform_with_other_values
+    stdout, stderr, status = metacrunch("catalog:ids", chdir: example("project"))
+
+    assert_predicate status, :success?, stderr
+    assert_equal([{"id" => "t1"}, {"id" => "t2"}, {"id" => "t4"}, {"id" => "t5"}], stdout.lines.map { JSON.parse(it) })
+  end
+
   def test_the_project_example_tests_pass
-    arguments = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), example("project/test/release_test.rb")]
+    tests = Dir[example("project/test/*_test.rb")]
+    arguments = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", "ARGV.each { require it }", *tests]
     stdout, stderr, status = Open3.capture3(*arguments)
 
+    assert_equal 2, tests.size
     assert_predicate status, :success?, stdout + stderr
     assert_match(/ 0 failures, 0 errors/, stdout)
   end
