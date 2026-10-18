@@ -13,6 +13,7 @@ require_relative "cli/run"
 require_relative "cli/check"
 require_relative "cli/trace"
 require_relative "cli/new"
+require_relative "cli/generate"
 require_relative "cli/credentials"
 
 module Metacrunch
@@ -24,7 +25,7 @@ module Metacrunch
     EXIT_CODES = {ok: 0, aborted: 1, usage: 2, ok_with_failures: 3}.freeze
     COMMANDS = {
       "run" => RunCommand, "check" => CheckCommand, "trace" => TraceCommand, "new" => NewCommand,
-      "credentials" => CredentialsCommand
+      "generate" => GenerateCommand, "credentials" => CredentialsCommand
     }.freeze
     # The sections of a project in --help, by the kind they list.
     LISTS = {"Jobs" => Metacrunch::Job, "Transforms" => Metacrunch::Transform,

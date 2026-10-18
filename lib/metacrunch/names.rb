@@ -9,7 +9,7 @@ module Metacrunch
 
     PATTERN = /\A[a-z0-9][a-z0-9_-]*(?::[a-z0-9][a-z0-9_-]*)*\z/
     # The built-in commands of the CLI.
-    RESERVED = ["run", "check", "trace", "new", "credentials", "help"].freeze
+    RESERVED = ["run", "check", "trace", "new", "generate", "credentials", "help"].freeze
 
     module_function
 
