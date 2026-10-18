@@ -124,6 +124,31 @@ class GenerateTest < Minitest::Test
     end
   end
 
+  # Two test classes of one name would merge, and one test would replace
+  # the other without a failure.
+  def test_refuses_a_test_class_that_another_test_defines
+    in_project("test/jobs/catalog_ids_test.rb" => "class CatalogIdsJobTest < Minitest::Test; end\n") do |root|
+      code, _stdout, stderr = cli("generate", "job", "catalog:ids")
+
+      assert_equal [2, "Error: test/jobs/catalog_ids_test.rb defines CatalogIdsJobTest already; choose another name"],
+                   [code, stderr.lines.first.chomp]
+      refute_path_exists File.join(root, "jobs/catalog/ids.rb")
+    end
+  end
+
+  def test_a_path_with_test_checks_the_test_classes_too
+    in_project("test/jobs/fix_test.rb" => "class FixJobTest < Minitest::Test; end\n") do
+      assert_equal "Error: test/jobs/fix_test.rb defines FixJobTest already; choose another file name",
+                   cli("generate", "job", "--test", "tools/fix.rb")[2].lines.first.chomp
+    end
+  end
+
+  def test_without_test_the_test_classes_do_not_matter
+    in_project("test/jobs/catalog_ids_test.rb" => "class CatalogIdsJobTest < Minitest::Test; end\n") do
+      assert_equal 0, cli("generate", "job", "catalog:ids", "--no-test").first
+    end
+  end
+
   def test_refuses_to_overwrite_without_force
     in_project do |root|
       FileUtils.mkdir_p(File.join(root, "test/jobs/catalog"))
