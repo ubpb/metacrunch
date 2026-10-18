@@ -15,7 +15,7 @@ class <%= target.class_name %>
   # def open(context) = nil
 
   def each
-    File.foreach(@path, chomp: true) { |line| yield({"line" => line}) }
+    ::File.foreach(@path, chomp: true) { |line| yield({"line" => line}) }
   end
 
   # Optional: called at the end, also after an error.
