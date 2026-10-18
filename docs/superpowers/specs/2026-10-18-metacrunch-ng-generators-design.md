@@ -2,7 +2,7 @@
 
 - Date: 2026-10-18
 - Branch: `metacrunch-ng-generators` (from `metacrunch-ng` at 1566c63)
-- Status: approved design, not implemented
+- Status: approved design, amended from planning (see 1.4), not implemented
 - Builds on: [sub-project 2 spec](2026-10-10-metacrunch-ng-cli-pipes-design.md)
   (CLI, `new`), [sub-project 7 spec](2026-10-13-metacrunch-ng-commands-design.md)
   (names, projects, commands, `Testing.invoke`),
@@ -110,6 +110,13 @@ Approved by the user on 2026-10-18:
 - The Readme's Gemfile line gets `branch: "metacrunch-ng"`, since `master`
   holds 4.x until 5.0 is released.
 
+Amended from planning (2026-10-18): `-` becomes `_` in file names (3.1);
+sources and sinks never reopen a class of Ruby or metacrunch (3.1, 4.1);
+`new` without DIR and the `.rb` message (5.2), the `cd` line (5.3); the
+`use` line of a transform by path (6.2); `Generators::Files` and
+`Generators::Skeleton` (8); Prism instead of `ruby -wc`, and what the
+end-to-end test generates in-process and checks with RuboCop (10).
+
 ## 2. Command line
 
 ```
@@ -176,11 +183,18 @@ directories:
 the same name do not share a test file.
 
 - Jobs, transforms and commands take names as `Names.valid?` defines them.
+  In file names, `-` becomes `_` (`es:create-index` →
+  `commands/es/create_index.rb`), since Ruby file names are snake case
+  (RuboCop `Naming/FileName`).
 - Sources and sinks are classes, not declarations: their names are not part
   of the project's namespace. Each part must match `[a-z][a-z0-9_]*` (a
   letter first, no `-`), so that it maps to a Ruby constant: the parts are
   camel-cased at `_` (`json_array` → `JsonArray`, `marc2json` → `Marc2json`)
   and joined with `::`.
+- A source or sink must not reopen a class that Ruby or metacrunch defines:
+  the first constant must be undefined, or a module when more parts follow
+  (`metacrunch:lines` → `Metacrunch::Lines`). `file` would reopen `File`
+  and is refused.
 
 ### 3.2 Paths
 
@@ -220,6 +234,7 @@ Each is a usage error (exit 2), and nothing is written:
 | Invalid name | `"Catalog" is not a valid job name; use a-z, 0-9, _ and -, in parts separated by :` |
 | Invalid file name (path) | `MyJob.rb: "MyJob" is not a valid job name; use a-z, 0-9, _ and -` (as today) |
 | Invalid source or sink name | `"marc-dump" is not a valid source name; use a-z, 0-9 and _, starting with a letter, in parts separated by :` (path: `marc-dump.rb: …`, without the parts) |
+| Source or sink that would reopen a class | `"file" would reopen File; choose another name` |
 | Reserved name | `"run" is the name of a built-in command; choose another name` (path: `run.rb: … choose another file name`, as today) |
 | Name without project | `no Metacrunchfile found in DIR or above; give a path (./ids.rb) or create a project with metacrunch new` |
 | Name declared in another file | `catalog:ids is already declared in commands/catalog.rb` |
@@ -365,8 +380,9 @@ single test file also runs with plain `ruby test/jobs/catalog/ids_test.rb`.
 | `DIR` holds some of the files of 5.1 | usage error listing them, unless `--force` |
 | `DIR` holds other files only | used; other files are never changed or deleted |
 | `DIR` is a file | usage error `catalog is a file` |
-| `DIR` ends with `.rb` | usage error `new creates a project; for a job file use metacrunch generate job jobs/x.rb` |
-| No `DIR`, more arguments | usage errors as for `generate` |
+| `DIR` ends with `.rb` | usage error `new creates a project; for a job file use metacrunch generate job DIR` (DIR as given) |
+| No `DIR` | usage error `no directory given` |
+| More arguments | usage error `unexpected arguments: a b` |
 | `DIR` lies inside another project | created, with `note: inside the project /path; below catalog/ names resolve in the new project` |
 
 `new` runs no `git init` and no `bundle install`, and creates neither
@@ -386,7 +402,7 @@ Next steps:
   bundle exec rake
 ```
 
-For `new .` the `cd` line is left out.
+The `cd` line names DIR as given, shell-escaped; for `new .` it is left out.
 
 ## 6. Templates
 
@@ -454,8 +470,9 @@ today.
 #!/usr/bin/env metacrunch
 # frozen_string_literal: true
 
-# Steps for the jobs that use it: use "catalog:clean". Alone it reads JSON
-# Lines from stdin and writes them to stdout:
+# Steps for the jobs that use them:
+#   use "catalog:clean"
+# Alone it reads JSON Lines from stdin and writes them to stdout:
 #   metacrunch catalog:clean < in.jsonl > out.jsonl
 Metacrunch.transform "catalog:clean" do
   params do
@@ -470,7 +487,8 @@ Metacrunch.transform "catalog:clean" do
 end
 ```
 
-The test is the job's test with `CatalogCleanTransformTest` and
+For a path, the `use` line shows the path as given. The test is the job's
+test with `CatalogCleanTransformTest` and
 `PROJECT.fetch("catalog:clean")`.
 
 ### 6.3 Command
@@ -626,9 +644,8 @@ print.
 | `Generators::Target` | kind + name or path + working directory + project root → file, test file, name, class name, modules; validation of names (Data) |
 | `Generators::Template` | renders an ERB file of `lib/metacrunch/templates/` with locals (`ERB.new(text, trim_mode: "-")`, `result_with_hash`) |
 | `Generators::Plan` | files to write (`path => content`) and which are executable; conflicts, writing, `created` lines |
-| `Generators::Declaration` | jobs, transforms and commands; the kind is a parameter |
-| `Generators::Component` | sources and sinks |
-| `Generators::Project` | the project skeleton; the Gemfile line from `VERSION` |
+| `Generators::Files` | the file and the test of a job, transform, command, source or sink; wraps sources and sinks in their modules |
+| `Generators::Skeleton` | the project skeleton; the Gemfile line from `VERSION` (not `Generators::Project`, which would hide `Metacrunch::Project` inside the module) |
 | `Cli::NewCommand` (rewritten) | `new`: options, rules of 5.2, notes, next steps |
 | `Cli::GenerateCommand` | `generate`: options, checks of 4.1, check of 4.2, output |
 
@@ -658,9 +675,10 @@ print.
   one to three parts, the class name and modules, test files, and each
   invalid case of 4.1.
 - `Template`: every template renders for a name with parts and for a path,
-  and the result passes `ruby -wc` without warnings.
+  and the result has neither parse errors nor warnings (`Prism.parse`,
+  in-process instead of `ruby -wc` per file).
 - `Plan`: conflicts, `--force`, modes `0755` and default, parents created.
-- `Generators::Project`: the Gemfile line for a release and a prerelease.
+- `Generators::Skeleton`: the Gemfile line for a release and a prerelease.
 - `load_command`, and `Testing.invoke` with a command: with and without
   `project:`, stubs for files and names, the argument errors of section 7.
 
@@ -673,7 +691,10 @@ directory from a subdirectory of the project, and `help generate`.
 
 ### 10.3 End to end
 
-In a temporary directory, with `exe/metacrunch` and without `bundle install`:
+In a temporary directory and without `bundle install`. Files are generated
+in-process through `Metacrunch::Cli` (the command tests cover the CLI);
+jobs, generated tests and RuboCop run in subprocesses, jobs through
+`exe/metacrunch`:
 
 - `new catalog`, then in `catalog/jobs/` (a subdirectory) `generate` of all
   five kinds by name. `metacrunch --help` lists the job, transform and
@@ -682,8 +703,10 @@ In a temporary directory, with `exe/metacrunch` and without `bundle install`:
   `ruby -I LIB -e 'ARGV.each { require File.expand_path(it) }' test/**/*_test.rb`.
 - The five kinds by path with `--test`, outside any project: each file runs
   by path, the tests pass.
-- RuboCop with the repository's `.rubocop.yml` reports no offense for the
-  generated files, the `Metacrunchfile`, `Gemfile` and `Rakefile` included.
+- RuboCop with the repository's `.rubocop.yml`, in one run over both trees,
+  reports no offense for the files it selects by default: every `.rb`, the
+  `Gemfile` and the `Rakefile`. The `Metacrunchfile` is not among them, as
+  in a project's own RuboCop run; `Prism.parse` checks it (10.1).
 
 ## 11. Documentation and example
 
