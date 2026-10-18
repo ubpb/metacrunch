@@ -110,6 +110,11 @@ Approved by the user on 2026-10-18:
 - The Readme's Gemfile line gets `branch: "metacrunch-ng"`, since `master`
   holds 4.x until 5.0 is released.
 
+Amended after the final review's minors (2026-10-18): a test class that
+another test defines is refused (4.1); generated tests pass `project:
+PROJECT` (6.1); `--desc` keeps its characters under `LANG=C` (6.1); the
+end-to-end test runs the generated tests with `-w` (10.3).
+
 Amended from planning (2026-10-18): `-` becomes `_` in file names (3.1);
 sources and sinks never reopen a class of Ruby or metacrunch (3.1, 4.1);
 `new` without DIR and the `.rb` message (5.2), the `cd` line (5.3); the
@@ -252,6 +257,7 @@ Each is a usage error (exit 2), and nothing is written:
 | Name declared in another file | `catalog:ids is already declared in commands/catalog.rb` |
 | `--desc` for a source or sink | `--desc is for jobs, transforms and commands` |
 | `--desc` with a line break | `desc must be one line of text` |
+| Its test class is defined by another test (`catalog_ids` beside `catalog:ids`; for a path, in `test/` below the working directory) | `test/jobs/catalog_ids_test.rb defines CatalogIdsJobTest already; choose another name` (path: `… choose another file name`) |
 | A file exists, no `--force` | `jobs/catalog/ids.rb, test/jobs/catalog/ids_test.rb already exist; use --force to overwrite` (`exists` for one file) |
 | `Metacrunchfile` fails (name form) | its message, as for `run NAME` |
 
@@ -450,7 +456,9 @@ end
 ```
 
 With `--desc "Extract the ids"` the declaration reads
-`Metacrunch.job "catalog:ids", desc: "Extract the ids" do`.
+`Metacrunch.job "catalog:ids", desc: "Extract the ids" do`. Valid UTF-8
+bytes of the argument are read as UTF-8, and the literal keeps non-ASCII
+characters even under `LANG=C`, where `String#inspect` would escape them.
 
 ```ruby
 # test/jobs/catalog/ids_test.rb
@@ -461,7 +469,8 @@ require_relative "../../test_helper"
 class CatalogIdsJobTest < Minitest::Test
 
   def test_keeps_records_with_an_id
-    result = Metacrunch::Testing.run(PROJECT.fetch("catalog:ids"), source: [{"id" => 1}, {"title" => "x"}])
+    job = PROJECT.fetch("catalog:ids")
+    result = Metacrunch::Testing.run(job, source: [{"id" => 1}, {"title" => "x"}], project: PROJECT)
 
     assert_equal [{"id" => 1}], result.records
   end
@@ -713,10 +722,11 @@ jobs, generated tests and RuboCop run in subprocesses, jobs through
 - `new catalog`, then in `catalog/jobs/` (a subdirectory) `generate` of all
   five kinds by name. `metacrunch --help` lists the job, transform and
   command; each of them runs on JSON Lines from stdin (the command without
-  input); the generated tests pass with
-  `ruby -I LIB -e 'ARGV.each { require File.expand_path(it) }' test/**/*_test.rb`.
+  input); with the job's `use` line uncommented, the generated tests pass
+  in one process started outside the project, with `-w` and nothing on
+  stderr (`project: PROJECT` resolves `use`).
 - The five kinds by path with `--test`, outside any project: each file runs
-  by path, the tests pass.
+  by path, the tests pass with `-w` and nothing on stderr.
 - RuboCop with the repository's `.rubocop.yml`, in one run over both trees,
   reports no offense for the files it selects by default: every `.rb`, the
   `Gemfile` and the `Rakefile`. The `Metacrunchfile` is not among them, as
