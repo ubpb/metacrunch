@@ -140,25 +140,55 @@ module Metacrunch
       )
     end
 
-    # Runs the body of the command name of project with params bound as a
-    # Hash, like run does (no environment, no credentials). Every invoke in
-    # the body is recorded and answered from stubs (name => status Symbol,
-    # Result, value, or callable that gets argv) instead of run; see
-    # RecordingInvoker. A stub for a name the project does not know raises
-    # ArgumentError, as does a job name for name; a job's stub without a
-    # status raises StubError (an ArgumentError).
-    def invoke(project, name, params: {}, stubs: {}, logger: Logger.new(nil))
+    # Runs the body of a command with params bound as a Hash, like run
+    # does (no environment, no credentials): the command name of project,
+    # or a Command (from Metacrunch.load_command, say), whose names resolve
+    # in project:, else in the project of the working directory, loaded
+    # when a name is first needed. Every invoke in the body is recorded and
+    # answered from stubs (name => status Symbol, Result, value, or
+    # callable that gets argv) instead of run; see RecordingInvoker. A stub
+    # for a name that does not resolve raises ArgumentError, as does a job
+    # name for name; a job's stub without a status raises StubError (an
+    # ArgumentError).
+    def invoke(target, name = nil, params: {}, stubs: {}, logger: Logger.new(nil), project: nil)
+      command, project = invoke_target(target, name, project)
+      invoker = RecordingInvoker.new(project:, stubs:, logger:)
+      unknown = stubs.keys.map(&:to_s).reject { File.file?(it) || invoker.project&.include?(it) }
+      raise ArgumentError, "stub for unknown job, transform or command: #{unknown.first}" if unknown.any?
+
+      command_run(invoker, command.prepare(binder: ->(schema) { schema.bind_hash(params) }))
+    end
+
+    # [command, project] for invoke; project may be a Proc.
+    def invoke_target(target, name, project)
+      case target
+      when Project then [project_command(target, name, project), target]
+      when Command
+        raise ArgumentError, "a command needs no name, got #{name.inspect}" if name
+        unless project.nil? || project.is_a?(Project)
+          raise ArgumentError, "project: must be a Metacrunch::Project, got #{project.inspect}"
+        end
+
+        [target, project || -> { Project.nearest }]
+      else
+        raise ArgumentError, "Testing.invoke takes a project and the name of a command, or a command; " \
+                             "got #{target.inspect}"
+      end
+    end
+    private_class_method :invoke_target
+
+    def project_command(project, name, other)
+      raise ArgumentError, "project: is for a command; the first argument is a project already" if other
+      raise ArgumentError, "the name of a command is missing" unless name
+
       command = project.fetch(name)
       unless command.is_a?(Command)
         raise ArgumentError, "#{name} is a #{Loader::KINDS.fetch(command.class)}; test it with Testing.run"
       end
 
-      unknown = stubs.keys.map(&:to_s).reject { project.include?(it) || File.file?(it) }
-      raise ArgumentError, "stub for unknown job, transform or command: #{unknown.first}" if unknown.any?
-
-      invoker = RecordingInvoker.new(project:, stubs:, logger:)
-      command_run(invoker, command.prepare(binder: ->(schema) { schema.bind_hash(params) }))
+      command
     end
+    private_class_method :project_command
 
     def command_run(invoker, prepared)
       value = invoker.call(prepared)
