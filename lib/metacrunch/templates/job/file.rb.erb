@@ -1,0 +1,22 @@
+#!/usr/bin/env metacrunch
+# frozen_string_literal: true
+
+# Reads JSON Lines from stdin and writes them to stdout:
+#   metacrunch <%= run %> < in.jsonl > out.jsonl
+# Declare a source or a sink to read or write elsewhere.
+Metacrunch.job <%= target.name.inspect %><%= ", desc: #{desc.inspect}" if desc %> do
+  params do
+    # param :input, String, required: true, desc: "JSON Lines file"
+  end
+
+  # source MySource.new(params.input), id: ->(record) { record["id"] }
+
+  reject("No id") { it["id"].nil? }
+  # use "catalog:clean", lang: "en"
+  map do |record, ctx|
+    ctx.mark("No title") unless record.key?("title")
+    record
+  end
+
+  # sink MySink.new, batch: 1000
+end

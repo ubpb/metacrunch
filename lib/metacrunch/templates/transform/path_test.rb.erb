@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require "metacrunch"
+require "metacrunch/testing"
+
+class <%= target.test_class %> < Minitest::Test
+
+  FILE = File.expand_path(<%= file.inspect %>, __dir__)
+
+  def test_keeps_records_with_an_id
+    result = Metacrunch::Testing.run(Metacrunch.load_transform(FILE), source: [{"id" => 1}, {"title" => "x"}])
+
+    assert_equal [{"id" => 1}], result.records
+  end
+
+end
