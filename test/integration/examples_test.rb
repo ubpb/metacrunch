@@ -147,11 +147,11 @@ class ExamplesTest < Minitest::Test
   end
 
   def test_the_project_example_tests_pass
-    tests = Dir[example("project/test/*_test.rb")]
+    tests = Dir[example("project/test/**/*_test.rb")]
     arguments = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", "ARGV.each { require it }", *tests]
     stdout, stderr, status = Open3.capture3(*arguments)
 
-    assert_equal 2, tests.size
+    assert_equal 5, tests.size
     assert_predicate status, :success?, stdout + stderr
     assert_match(/ 0 failures, 0 errors/, stdout)
   end

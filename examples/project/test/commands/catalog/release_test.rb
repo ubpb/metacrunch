@@ -4,21 +4,12 @@
 # Metacrunch::Testing.invoke records what the command invokes and answers
 # with stubbed results.
 #
-#   bundle exec ruby -Ilib examples/project/test/release_test.rb
+#   cd examples/project && bundle exec rake
 
-require "minitest/autorun"
+require_relative "../../test_helper"
 require "tmpdir"
-require "metacrunch"
-require "metacrunch/testing"
 
-class ReleaseTest < Minitest::Test
-
-  PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))
-
-  def test_all_files_load_and_every_name_is_unique
-    assert_empty PROJECT.load_errors
-    assert_empty PROJECT.duplicates
-  end
+class CatalogReleaseCommandTest < Minitest::Test
 
   def test_switches_current_after_a_clean_run
     Dir.mktmpdir do |out|

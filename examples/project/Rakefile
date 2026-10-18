@@ -1,0 +1,9 @@
+# frozen_string_literal: true
+
+require "minitest/test_task"
+
+# rake test, the default, runs test/**/*_test.rb with lib and test on the
+# load path.
+Minitest::TestTask.create
+
+task default: :test
