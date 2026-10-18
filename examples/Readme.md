@@ -11,7 +11,7 @@ starts with a comment that says what it shows and how to call it.
 | [`normalize.rb`](normalize.rb) | A filter job for Unix pipes: no source, no sink, JSON Lines from stdin to stdout. |
 | [`sanitize.rb`](sanitize.rb) | Cleaning exported publication records: marks for every change, an issue report written by a sink that reads the marks ([`lib/issue_report.rb`](lib/issue_report.rb)), and workers (`-w`). |
 | [`credentials/pseudonymize.rb`](credentials/pseudonymize.rb) | Encrypted credentials: a secret parameter (`credential:`) read from [`credentials/.metacrunch/`](credentials/.metacrunch), whose key is public on purpose, so the example runs. Replaces author names with keyed pseudonyms. |
-| [`project/`](project) | A project: its [`Metacrunchfile`](project/Metacrunchfile) names its jobs, a transform and a command, so `metacrunch NAME` runs them from any directory of the project. The transform [`catalog:public`](project/transforms/public.rb) holds the steps that the jobs `catalog` and `catalog:ids` share with different values. The command `catalog:release` invokes the job `catalog` and switches `out/current` to the new release only after a clean run. [`project/test/`](project/test) tests the command with `Metacrunch::Testing.invoke` and the transform with `Metacrunch::Testing.run`. |
+| [`project/`](project) | A project: its [`Metacrunchfile`](project/Metacrunchfile) names its jobs, a transform and a command, so `metacrunch NAME` runs them from any directory of the project. The transform [`catalog:public`](project/transforms/catalog/public.rb) holds the steps that the jobs `catalog` and `catalog:ids` share with different values. The command `catalog:release` invokes the job `catalog` and switches `out/current` to the new release only after a clean run. [`project/test/`](project/test) mirrors the files, as `metacrunch generate` creates them: it tests the command with `Metacrunch::Testing.invoke`, the transform and the jobs with `Metacrunch::Testing.run`, and that every file loads. |
 | [`test/catalog_test.rb`](test/catalog_test.rb) | Testing a job with `Metacrunch::Testing.run`, also with workers. |
 
 ```
@@ -28,8 +28,7 @@ $ (cd examples/project && bundle exec metacrunch --help)
 $ (cd examples/project && bundle exec metacrunch catalog:release)
 $ (cd examples/project && bundle exec metacrunch catalog:ids)
 $ (cd examples/project && bundle exec metacrunch catalog:public --fields id < data/titles.jsonl)
-$ bundle exec ruby -Ilib examples/project/test/release_test.rb
-$ bundle exec ruby -Ilib examples/project/test/public_test.rb
+$ (cd examples/project && bundle exec rake)
 $ bundle exec ruby -Ilib examples/test/catalog_test.rb
 ```
 
