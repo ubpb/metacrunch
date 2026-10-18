@@ -29,7 +29,7 @@ with Bundler:
 
 ```ruby
 # Gemfile
-gem "metacrunch", github: "ubpb/metacrunch"
+gem "metacrunch", github: "ubpb/metacrunch", branch: "metacrunch-ng"
 ```
 
 ```
@@ -77,6 +77,9 @@ define several jobs; `-j NAME` selects one, and a name declared twice in the fil
 renamed. In a project, jobs run by name (see [Projects and commands](#projects-and-commands)).
 
 More jobs with sample data, from the smallest one to a cleaning job with workers, are in [`examples/`](examples).
+
+`metacrunch new` creates a project, and `metacrunch generate` jobs, transforms, commands, sources and sinks in it
+(see [Generating projects and files](#generating-projects-and-files)).
 
 ## Records
 
@@ -450,15 +453,13 @@ $ export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 $ metacrunch trace -n 5 jobs/marc2es.rb --index test dumps/a.xml
 $ metacrunch trace --position 4711 jobs/marc2es.rb --index test dumps/a.xml
 $ metacrunch check jobs/marc2es.rb --index test dumps/a.xml
-$ metacrunch new --test jobs/marc2json.rb
 ```
 
 `trace` shows what every step does to the first records (or to the records at `--position`, or with `--id`): the
 changed keys of Hash records, marks, rejections and failures, and the records a `flat_map` emits. It changes
 nothing: all sinks are replaced, and `before` and `after` hooks do not run. `--full` shows whole records.
 
-`check` loads the job, binds its parameters and builds it, without opening, reading or running anything. `new`
-creates a filter job that runs right away, and with `--test` a Minitest test for it.
+`check` loads the job, binds its parameters and builds it, without opening, reading or running anything.
 
 | Exit code | Meaning |
 |---|---|
@@ -518,11 +519,12 @@ Metacrunch.load_files "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 ```
 project/
 ├── Metacrunchfile
-├── .metacrunch/              credentials
-├── jobs/marc2es.rb           Metacrunch.job "marc2es", desc: "..."
-├── transforms/normalize.rb   Metacrunch.transform "normalize", desc: "..."
-├── commands/catalog.rb       Metacrunch.command "catalog:reindex", desc: "..."
-└── lib/
+├── .metacrunch/                credentials
+├── jobs/marc2es.rb             Metacrunch.job "marc2es", desc: "..."
+├── transforms/normalize.rb     Metacrunch.transform "normalize", desc: "..."
+├── commands/catalog/reindex.rb Metacrunch.command "catalog:reindex", desc: "..."
+├── lib/
+└── test/
 ```
 
 ```
@@ -533,27 +535,65 @@ $ metacrunch --help                                  # lists the jobs, transform
 ```
 
 `metacrunch` finds the nearest `Metacrunchfile` above the working directory and loads it only when a name is needed:
-for `metacrunch NAME`, for `run`, `check` and `trace` with a name, for `help NAME` and for `--help`, and when a job
-run by path uses a transform by name. The other built-in commands never load it, so job files `require` what they use
-themselves. The `Metacrunchfile` is plain Ruby. `Metacrunch.load_files` takes globs relative to the project root, or
-absolute ones, and loads each matching file once, in sorted order.
+for `metacrunch NAME`, for `run`, `check` and `trace` with a name, for `help NAME` and for `--help`, when a job run
+by path uses a transform by name, and for `generate` with a name and after it writes a job, transform or command.
+The other built-in commands never load it, so job files `require` what they use themselves. The `Metacrunchfile` is
+plain Ruby. `Metacrunch.load_files` takes globs relative to the project root, or absolute ones, and loads each
+matching file once, in sorted order.
 
 - A file that fails to load costs only its own names: `metacrunch` warns about it (`-v` after `run`, `check` or
   `trace` shows the whole error), and `--help` lists it under "Not loaded".
 - Jobs, transforms and commands share one namespace. A name declared twice cannot be used until one is renamed; the
   error names both files, every call that loads the project warns about it, and `Project#duplicates` lists such
   names, so a test of the project can check that there is none (see [Testing commands](#testing-commands)).
-- The names of the built-in commands (`run`, `check`, `trace`, `new`, `credentials`, `help`) are reserved.
+- The names of the built-in commands (`run`, `check`, `trace`, `new`, `generate`, `credentials`, `help`) are reserved.
 - Jobs without a name are not part of the project; they run by path.
 - The `Metacrunchfile` and the files it loads are loaded again by every `Metacrunch.load_project`, so like job files
   they define no constants: helpers go into `lib/` and are required.
+
+### Generating projects and files
+
+```
+$ metacrunch new catalog
+$ cd catalog
+$ metacrunch generate job catalog:ids
+$ metacrunch generate transform normalize --desc "Tidy the titles"
+$ metacrunch generate source marc:dump
+$ metacrunch generate command --test ~/bin/release.rb      # a single file, no project needed
+```
+
+`new DIR` creates a project: a `Metacrunchfile` that loads `jobs/`, `transforms/` and `commands/`, a `Gemfile`, a
+`Rakefile` whose `rake test` runs `test/**/*_test.rb`, a `lib/` for helpers, and `test/project_test.rb`, which fails
+when a file of the project does not load or a name is declared twice. It writes into a new or empty directory, or next
+to other files, which it leaves alone; existing files of the skeleton need `--force`.
+
+`generate KIND NAME|PATH` creates a file that runs right away and a test that passes:
+
+| Command | Creates | What it is |
+|---|---|---|
+| `generate job catalog:ids` | `jobs/catalog/ids.rb`, `test/jobs/catalog/ids_test.rb` | a job that filters JSON Lines from stdin to stdout |
+| `generate transform normalize` | `transforms/normalize.rb`, `test/transforms/normalize_test.rb` | steps for `use`; alone a filter like the job |
+| `generate command es:create-index` | `commands/es/create_index.rb`, `test/commands/es/create_index_test.rb` | a body that logs a line, with `invoke` as a comment |
+| `generate source marc:dump` | `lib/marc/dump.rb` (`Marc::Dump`), `test/lib/marc/dump_test.rb` | a class that yields a record for each line of a file |
+| `generate sink json_array` | `lib/json_array.rb` (`JsonArray`), `test/lib/json_array_test.rb` | a class that writes each record as a line of JSON |
+
+- A name places the file below the project root, from any directory of the project: `:` separates directories, and
+  `-` becomes `_` in file names. The test goes to the same place below `test/`. A name needs a `Metacrunchfile`.
+- A path (it contains `/` or `.`) places the file there, also without a project, and the file name gives the name. It
+  gets a test only with `--test`, in `test/` below the working directory, which loads the file by its path.
+- `--no-test` leaves the test out, `--desc TEXT` sets the description of a job, transform or command, and `--force`
+  overwrites existing files. A name declared in another file of the project is refused.
+- Sources and sinks are classes, not names of the project: the parts of their names are `a-z`, `0-9` and `_`,
+  starting with a letter, and they must not reopen a class such as `File`.
+- After writing a job, transform or command, `generate` loads the project again and notes when the
+  `Metacrunchfile` does not load the new file, for example because its globs are not recursive (`jobs/*.rb`).
 
 ### Commands
 
 A command is a named recipe like a job, with parameters and a body instead of a pipeline:
 
 ```ruby
-# commands/catalog.rb
+# commands/catalog/reindex.rb
 Metacrunch.command "catalog:reindex", desc: "Load an export into a new index and switch the alias" do
   params do
     param :url, String, default: "http://localhost:9200", env: "ES_URL"
@@ -706,6 +746,10 @@ gets the arguments; without a stub a job ends `:ok` and a command returns `nil`.
 real abort, an unknown name fails as in a real run, and credentials are never read. A stub for an unknown name, or a
 job's stub that gives no status or `Result`, raises `ArgumentError`, so a mistake in the stubs never passes for a
 failing command. `run.status` is `:ok`, `:ok_with_failures`, or `:aborted` with the exception in `run.error`.
+
+A command file outside a project is tested the same way: `Metacrunch.load_command("tools/release.rb")` loads it, and
+`Metacrunch::Testing.invoke(command, params: {...}, stubs: {...})` runs it. Its names resolve in `project:`, else in
+the project of the nearest `Metacrunchfile` above the working directory.
 
 [`examples/project`](examples/project) is a runnable project with a test.
 
