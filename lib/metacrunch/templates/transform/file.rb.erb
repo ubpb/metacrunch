@@ -5,7 +5,7 @@
 #   use <%= (target.form == :name ? target.name : target.argument).inspect %>
 # Alone it reads JSON Lines from stdin and writes them to stdout:
 #   metacrunch <%= run %> < in.jsonl > out.jsonl
-Metacrunch.transform <%= target.name.inspect %><%= ", desc: #{desc.inspect}" if desc %> do
+Metacrunch.transform <%= target.name.inspect %><%= ", desc: #{desc}" if desc %> do
   params do
     # param :lang, String, default: "en", desc: "Language of the titles"
   end

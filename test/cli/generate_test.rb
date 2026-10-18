@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "fileutils"
+require "open3"
 require "tmpdir"
 
 class GenerateTest < Minitest::Test
@@ -68,6 +69,26 @@ class GenerateTest < Minitest::Test
       cli("generate", "transform", "clean", "--no-test")
 
       refute_path_exists File.join(root, "test/transforms/clean_test.rb")
+    end
+  end
+
+  # Under LANG=C the shell's arguments arrive as binary strings.
+  def test_desc_in_utf_8_bytes_stays_readable
+    in_project do |root|
+      cli("generate", "job", "--desc", "Größe".b, "catalog:ids")
+
+      assert_includes File.read(File.join(root, "jobs/catalog/ids.rb")), %(desc: "Größe" do\n)
+    end
+  end
+
+  # String#inspect would escape every non-ASCII character there.
+  def test_desc_stays_readable_under_the_c_locale
+    in_project do |root|
+      exe = File.expand_path("../../exe/metacrunch", __dir__)
+      Open3.capture3({"LC_ALL" => "C", "LANG" => "C"}, RbConfig.ruby, "-I", File.expand_path("../../lib", __dir__),
+                     exe, "generate", "job", "--desc", "Größe", "catalog:ids")
+
+      assert_includes File.read(File.join(root, "jobs/catalog/ids.rb")), %(desc: "Größe" do\n)
     end
   end
 
