@@ -63,6 +63,21 @@ class GeneratorsComponentsTest < Minitest::Test
     end
   end
 
+  # Inside module Out, File would be the class Out::File itself.
+  def test_classes_named_file_still_reach_ruby_s_file
+    in_project do |root|
+      write(plan("sink", "out:file", root:), root)
+      write(plan("source", "marc:file", root:), root)
+      sink = load_class(root.join("lib/out/file.rb"), "Out::File").new(root.join("out.jsonl").to_s)
+      sink.open(nil)
+      sink.write({"id" => 1})
+      sink.close
+      source = load_class(root.join("lib/marc/file.rb"), "Marc::File").new(root.join("out.jsonl").to_s)
+
+      assert_equal [{"line" => %({"id":1})}], source.enum_for(:each).to_a
+    end
+  end
+
   private
 
   def plan(kind, argument, root: ROOT)
