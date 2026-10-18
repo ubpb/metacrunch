@@ -1,123 +1,59 @@
 # frozen_string_literal: true
 
-require "fileutils"
+require "shellwords"
 
 module Metacrunch
   class Cli
-    # metacrunch new: creates a filter job (JSON Lines from stdin to stdout)
-    # that runs right away, and with --test a Minitest test for it.
+    # metacrunch new: creates a project (see Generators::Skeleton) in a
+    # directory that is new, empty, or lacks the files of the skeleton.
+    # Other files of the directory stay as they are.
     class NewCommand < Command
 
       NAME = "new"
-      SUMMARY = "Create a job file"
-      USAGE = "new [--test] [--force] PATH"
+      SUMMARY = "Create a project"
+      USAGE = "new [--force] DIR"
 
       def initialize(streams, lookup)
         super
-        @test = false
         @force = false
       end
 
       private
 
       def define_options(parser)
-        parser.on("--test", "Also create test/NAME_test.rb") { @test = true }
-        parser.on("--force", "Overwrite existing files") { @force = true }
+        parser.on("--force", "Overwrite existing files of the skeleton") { @force = true }
       end
 
+      # Options may stand before or after DIR.
+      def parse(parser, argv) = parser.permute!(argv)
+
       def execute(argv)
-        path = argv.shift
-        raise UsageError, "no path given" unless path
-        raise UsageError, "unexpected arguments: #{argv.join(" ")}" if argv.any?
-        raise UsageError, "#{path} is a directory; give a file name" if path.end_with?("/")
-
-        path = "#{path}.rb" unless path.end_with?(".rb")
-        name = File.basename(path, ".rb")
-        unless Names.valid?(name)
-          raise UsageError, "#{File.basename(path)}: #{name.inspect} is not a valid job name; use a-z, 0-9, _ and -"
+        dir = argv.shift
+        check_dir(dir, argv)
+        root = File.expand_path(dir)
+        outer = Project.find(File.dirname(root))
+        Generators::Skeleton.plan(root).write(force: @force, out: @stdout, cwd: Dir.pwd)
+        if outer
+          @stderr.puts("note: inside the project #{File.dirname(outer)}; below #{dir.chomp("/")}/ names resolve " \
+                       "in the new project")
         end
-        # In a project, a file that declares a reserved name does not load.
-        if Names.reserved?(name)
-          raise UsageError, "#{File.basename(path)}: #{name.inspect} is the name of a built-in command; " \
-                            "choose another file name"
-        end
-
-        write(files(path, name))
-        File.chmod(0o755, path)
+        @stdout.puts(next_steps(dir, root))
         EXIT_CODES[:ok]
       end
 
-      # {path => content} of the files to create. Raises UsageError if one
-      # exists and --force is not given.
-      def files(path, name)
-        templates = {path => job_template(name, path)}
-        templates[File.join("test", "#{name}_test.rb")] = test_template(name, path) if @test
-        existing = templates.keys.select { File.exist?(it) }
-        raise UsageError, "#{existing.join(", ")} already exists; use --force to overwrite" if existing.any? && !@force
-
-        templates
-      end
-
-      def write(files)
-        files.each do |file, content|
-          FileUtils.mkdir_p(File.dirname(file))
-          File.write(file, content)
-          @stdout.puts("created #{file}")
+      def check_dir(dir, rest)
+        raise UsageError, "no directory given" unless dir
+        raise UsageError, "unexpected arguments: #{rest.join(" ")}" if rest.any?
+        if dir.end_with?(".rb")
+          raise UsageError, "new creates a project; for a job file use metacrunch generate job #{dir}"
         end
+        raise UsageError, "#{dir} is a file" if File.file?(dir)
       end
 
-      def job_template(name, path)
-        <<~RUBY
-          #!/usr/bin/env metacrunch
-          # frozen_string_literal: true
-
-          # Reads JSON Lines from stdin, writes JSON Lines to stdout:
-          #   metacrunch run #{path} < in.jsonl > out.jsonl
-          # Declare a source or sink to read or write elsewhere.
-          Metacrunch.job #{name.inspect} do
-            params do
-              # param :index, String, required: true, desc: "Elasticsearch index"
-            end
-
-            # source MySource.new(params.files), id: ->(record) { record["id"] }
-
-            reject("No id") { it["id"].nil? }
-            map do |record, ctx|
-              ctx.mark("No title") unless record.key?("title")
-              record
-            end
-
-            # sink MySink.new, batch: 1000
-          end
-        RUBY
-      end
-
-      def test_template(name, path)
-        job = Pathname(path).expand_path.relative_path_from(Pathname("test").expand_path)
-        <<~RUBY
-          # frozen_string_literal: true
-
-          require "minitest/autorun"
-          require "metacrunch"
-          require "metacrunch/testing"
-
-          class #{class_name(name)}Test < Minitest::Test
-
-            JOB = File.expand_path(#{job.to_s.inspect}, __dir__)
-
-            def test_keeps_records_with_an_id
-              result = Metacrunch::Testing.run(Metacrunch.load_job(JOB), source: [{"id" => 1}, {"title" => "x"}])
-
-              assert_equal [{"id" => 1}], result.records
-            end
-
-          end
-        RUBY
-      end
-
-      def class_name(name)
-        camel = name.split(/[^a-zA-Z0-9]+/).map(&:capitalize).join
-        camel.match?(/\A[A-Z]/) ? camel : "Job#{camel}"
+      def next_steps(dir, root)
+        cd = root == Dir.pwd ? [] : ["cd #{Shellwords.escape(dir)}"]
+        steps = [*cd, "bundle install", "bundle exec metacrunch generate job NAME", "bundle exec rake"]
+        ["Next steps:", *steps.map { "  #{it}" }]
       end
 
     end
