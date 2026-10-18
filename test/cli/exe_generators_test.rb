@@ -39,9 +39,14 @@ class ExeGeneratorsTest < Minitest::Test
     end
   end
 
+  # The job uses the transform, and the tests start outside the project,
+  # so the names of use must resolve in PROJECT.
   def test_the_generated_tests_of_a_project_pass_in_one_run
     in_tmpdir do |dir|
-      stdout, stderr, status = run_tests(generate_project(dir))
+      root = generate_project(dir)
+      job = File.join(root, "jobs/catalog/ids.rb")
+      File.write(job, File.read(job).sub(%(  # use "catalog:clean", lang: "en"\n), %(  use "catalog:clean"\n)))
+      stdout, stderr, status = run_tests(root, from: dir)
 
       assert_predicate status, :success?, stdout + stderr
       assert_match(/^6 runs, \d+ assertions, 0 failures, 0 errors/, stdout)
@@ -94,10 +99,10 @@ class ExeGeneratorsTest < Minitest::Test
     raise "metacrunch #{args.join(" ")} failed (#{code}): #{stderr}" unless code.zero?
   end
 
-  def run_tests(dir)
-    tests = Dir.glob("test/**/*_test.rb", base: dir)
-    Open3.capture3(CLEAN_ENV, RbConfig.ruby, "-I", LIB, "-e", "ARGV.each { require File.expand_path(it) }", *tests,
-                   chdir: dir)
+  # Runs the tests below dir/test in one process, started in from.
+  def run_tests(dir, from: dir)
+    tests = Dir.glob(File.join(dir, "test/**/*_test.rb"))
+    Open3.capture3(CLEAN_ENV, RbConfig.ruby, "-I", LIB, "-e", "ARGV.each { require it }", *tests, chdir: from)
   end
 
   def metacrunch(*, chdir:, stdin: "")
