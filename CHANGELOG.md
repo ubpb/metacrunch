@@ -13,8 +13,9 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
 - `buffer:` is replaced by `batch:` on the sink (`write_batch`).
 - `pre_process`/`post_process` are replaced by `before`/`after` hooks and `open`/`close` on components.
 - `options` is replaced by `params { param ...; args ... }`. `ARGV` is no longer used.
-- The CLI has commands (`run`, `check`, `trace`, `new`); `metacrunch JOB_FILE` still runs a job. Options of
-  `metacrunch` go before the job file. It no longer changes into the job's directory and returns defined exit codes.
+- The CLI has commands (`run`, `check`, `trace`, `new`, `generate`, `credentials`); `metacrunch JOB_FILE` still runs
+  a job. Options of `metacrunch` go before the job file. It no longer changes into the job's directory and returns
+  defined exit codes.
 - `-v` now means `--verbose`; the version is shown with `metacrunch --version` only.
 - `Metacrunch::TestUtils` is replaced by `Metacrunch::Testing`.
 - Requires Ruby 4.0. ActiveSupport and colorize are no longer dependencies.
@@ -34,7 +35,8 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
 - `run` options to replace the source and sinks (`-i`, `-o`, `--rejects`, `--errors`), `--limit`, `--on-error`,
   `--max-errors`, `--stats` and a progress display.
 - `metacrunch trace` shows what each step does to a record; `metacrunch check` validates a job; `metacrunch new`
-  creates one.
+  creates a project, and `metacrunch generate` a job, transform, command, source or sink in it or by path, each with a
+  test.
 - A closed stdout (`| head`) ends a job quietly by SIGPIPE (exit status 141).
 - `metacrunch run -w N` (`--workers N|auto`) runs the steps in N worker processes, with the results in source
   order; `Job#run`, `Testing.run` and `Engine` take workers as well. Step components are opened after the `before`
@@ -49,10 +51,11 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
   Ruby.
 - Commands: `Metacrunch.command "name" do params { ... }; run { ... } end`, with the parameters, credentials, `-e`,
   `--help` and logging of jobs. `invoke` chains jobs and commands; the exit status reports the worst result.
-  `Metacrunch::Testing.invoke` tests a command without running what it invokes.
+  `Metacrunch::Testing.invoke` tests a command without running what it invokes. `Metacrunch.load_command` loads a
+  command file, and `Testing.invoke` takes such a command, too.
 - Names and descriptions for jobs: `Metacrunch.job "a2c", desc: "..."`. Names are parts of `a-z`, `0-9`, `_` and
-  `-`, separated by `:`; `Metacrunch.job` raises for other names, and `metacrunch new` for file names that would
-  give one or the name of a built-in command.
+  `-`, separated by `:`; `Metacrunch.job` raises for other names, and `metacrunch generate` for names and file
+  names that would give one or the name of a built-in command.
 - Transforms: `Metacrunch.transform "normalize" do params { ... }; map { ... } end` holds steps, hooks and parameters
   without source or sink, and a job inserts them with `use "normalize", lang: "en"`. Their steps are named with the
   transform as prefix (`normalize/map#1`); explicit step names must not contain `/`. Generated step numbers count the
