@@ -48,7 +48,7 @@ class ExeGeneratorsTest < Minitest::Test
       File.write(job, File.read(job).sub(%(  # use "catalog:clean", lang: "en"\n), %(  use "catalog:clean"\n)))
       stdout, stderr, status = run_tests(root, from: dir)
 
-      assert_predicate status, :success?, stdout + stderr
+      assert_equal [true, ""], [status.success?, stderr], stdout
       assert_match(/^6 runs, \d+ assertions, 0 failures, 0 errors/, stdout)
     end
   end
@@ -60,7 +60,7 @@ class ExeGeneratorsTest < Minitest::Test
       stdout, stderr, status = run_tests(dir)
 
       assert_equal(KEPT, fixed.lines.map { JSON.parse(it) })
-      assert_predicate status, :success?, stdout + stderr
+      assert_equal [true, ""], [status.success?, stderr], stdout
       assert_match(/^5 runs, \d+ assertions, 0 failures, 0 errors/, stdout)
     end
   end
@@ -99,10 +99,11 @@ class ExeGeneratorsTest < Minitest::Test
     raise "metacrunch #{args.join(" ")} failed (#{code}): #{stderr}" unless code.zero?
   end
 
-  # Runs the tests below dir/test in one process, started in from.
+  # Runs the tests below dir/test in one process, started in from, with
+  # warnings on as rake test has them.
   def run_tests(dir, from: dir)
     tests = Dir.glob(File.join(dir, "test/**/*_test.rb"))
-    Open3.capture3(CLEAN_ENV, RbConfig.ruby, "-I", LIB, "-e", "ARGV.each { require it }", *tests, chdir: from)
+    Open3.capture3(CLEAN_ENV, RbConfig.ruby, "-w", "-I", LIB, "-e", "ARGV.each { require it }", *tests, chdir: from)
   end
 
   def metacrunch(*, chdir:, stdin: "")
