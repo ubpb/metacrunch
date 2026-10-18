@@ -4,7 +4,8 @@ module Metacrunch
   # A project: the directory of a Metacrunchfile, and the jobs, transforms
   # and commands its files declare (see the Readme, "Projects and
   # commands"). A name declared more than once stays in the project, but
-  # fetch refuses it; a file that fails to load is kept in load_errors.
+  # fetch refuses it and duplicates lists it; a file that fails to load is
+  # kept in load_errors.
   class Project
 
     FILE = "Metacrunchfile"
@@ -74,8 +75,21 @@ module Metacrunch
       raise ProjectError, "unknown job, transform or command: #{name}#{load_hint}" if declarations.empty?
       return declarations.first if declarations.one?
 
-      files = declarations.map { relative(it.file) }.join(", ")
-      raise ProjectError, "#{name} is declared more than once (#{files}); rename one"
+      raise ProjectError, duplicate_message(name)
+    end
+
+    # The names declared more than once, sorted, each with the files that
+    # declare it (relative to the root). Such a name cannot be used until
+    # one is renamed; a test of the project can check that there is none.
+    def duplicates
+      @declarations.select { |_name, declarations| declarations.size > 1 }.sort.to_h do |name, declarations|
+        [name, declarations.map { relative(it.file) }]
+      end
+    end
+
+    # "x is declared more than once (jobs/x.rb, transforms/x.rb); rename one"
+    def duplicate_message(name)
+      "#{name} is declared more than once (#{declared(name).map { relative(it.file) }.join(", ")}); rename one"
     end
 
     # Runs a job, transform or command of the project like invoke in a

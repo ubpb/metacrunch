@@ -15,8 +15,9 @@ class ReleaseTest < Minitest::Test
 
   PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))
 
-  def test_all_files_load
+  def test_all_files_load_and_every_name_is_unique
     assert_empty PROJECT.load_errors
+    assert_empty PROJECT.duplicates
   end
 
   def test_switches_current_after_a_clean_run

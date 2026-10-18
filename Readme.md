@@ -271,6 +271,9 @@ end
   statements of a recipe, `use` as one, so a transform that gains a step renames no step of the job. Explicit step
   names must not contain `/`.
 - A transform may `use` other transforms; a cycle raises an `ArgumentError`.
+- Transforms share their names with jobs and commands, so a transform and a job that runs it with a source of its own
+  need two names. Name the transform after what it does and the job after what it produces, for example the transform
+  `catalog:public` and the job `catalog`, as in [`examples/project`](examples/project).
 - Alone, a transform runs like a job without source and sink: `metacrunch run normalize --lang en < titles.jsonl`,
   `trace` and `check` take it, and `Metacrunch::Testing.run(transform, source: [...])` tests it (see
   [Testing jobs](#testing-jobs)).
@@ -537,7 +540,9 @@ absolute ones, and loads each matching file once, in sorted order.
 
 - A file that fails to load costs only its own names: `metacrunch` warns about it (`-v` after `run`, `check` or
   `trace` shows the whole error), and `--help` lists it under "Not loaded".
-- A name declared twice cannot be used until one is renamed; the error names both files.
+- Jobs, transforms and commands share one namespace. A name declared twice cannot be used until one is renamed; the
+  error names both files, every call that loads the project warns about it, and `Project#duplicates` lists such
+  names, so a test of the project can check that there is none (see [Testing commands](#testing-commands)).
 - The names of the built-in commands (`run`, `check`, `trace`, `new`, `credentials`, `help`) are reserved.
 - Jobs without a name are not part of the project; they run by path.
 - The `Metacrunchfile` and the files it loads are loaded again by every `Metacrunch.load_project`, so like job files
@@ -679,8 +684,9 @@ class CatalogTest < Minitest::Test
 
   PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))
 
-  def test_all_files_load
+  def test_all_files_load_and_every_name_is_unique
     assert_empty PROJECT.load_errors
+    assert_empty PROJECT.duplicates
   end
 
   def test_keeps_the_alias_when_records_failed
