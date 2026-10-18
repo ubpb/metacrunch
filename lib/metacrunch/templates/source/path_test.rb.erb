@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require "tmpdir"
+require_relative <%= file.delete_suffix(".rb").inspect %>
+
+class <%= target.test_class %> < Minitest::Test
+
+  def test_yields_a_record_for_each_line
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "lines.txt")
+      File.write(path, "a\nb\n")
+      records = <%= target.constant %>.new(path).enum_for(:each).to_a
+
+      assert_equal [{"line" => "a"}, {"line" => "b"}], records
+    end
+  end
+
+end

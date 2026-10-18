@@ -1,0 +1,24 @@
+# frozen_string_literal: true
+
+# A source: yields a record for each line of a file. The file is read in
+# each, not in new, so that --help, check and tests with another source
+# read nothing. In a job:
+#   source <%= target.constant %>.new(params.input)
+class <%= target.class_name %>
+
+  def initialize(path)
+    @path = path
+  end
+
+  # Optional: called once before the first record, with context.params
+  # and context.logger.
+  # def open(context) = nil
+
+  def each
+    File.foreach(@path, chomp: true) { |line| yield({"line" => line}) }
+  end
+
+  # Optional: called at the end, also after an error.
+  # def close = nil
+
+end
