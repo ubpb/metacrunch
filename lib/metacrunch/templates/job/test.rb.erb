@@ -1,0 +1,14 @@
+# frozen_string_literal: true
+
+require_relative <%= helper.inspect %>
+
+class <%= target.test_class %> < Minitest::Test
+
+  def test_keeps_records_with_an_id
+    job = PROJECT.fetch(<%= target.name.inspect %>)
+    result = Metacrunch::Testing.run(job, source: [{"id" => 1}, {"title" => "x"}])
+
+    assert_equal [{"id" => 1}], result.records
+  end
+
+end

@@ -1,0 +1,16 @@
+#!/usr/bin/env metacrunch
+# frozen_string_literal: true
+
+# Runs its body; invoke runs jobs, transforms and other commands:
+#   metacrunch <%= run %>
+Metacrunch.command <%= target.name.inspect %><%= ", desc: #{desc.inspect}" if desc %> do
+  params do
+    # param :input, String, required: true, desc: "JSON Lines file"
+  end
+
+  run do
+    logger.info(<%= "#{target.name}: nothing to do yet".inspect %>)
+    # result = invoke "catalog:ids", "--input", params.input
+    # next logger.warn("<%= target.name %>: #{result.status}") unless result.ok?
+  end
+end

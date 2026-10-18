@@ -1,0 +1,18 @@
+#!/usr/bin/env metacrunch
+# frozen_string_literal: true
+
+# Steps for the jobs that use them:
+#   use <%= (target.form == :name ? target.name : target.argument).inspect %>
+# Alone it reads JSON Lines from stdin and writes them to stdout:
+#   metacrunch <%= run %> < in.jsonl > out.jsonl
+Metacrunch.transform <%= target.name.inspect %><%= ", desc: #{desc.inspect}" if desc %> do
+  params do
+    # param :lang, String, default: "en", desc: "Language of the titles"
+  end
+
+  reject("No id") { it["id"].nil? }
+  map do |record, ctx|
+    ctx.mark("No title") unless record.key?("title")
+    record
+  end
+end

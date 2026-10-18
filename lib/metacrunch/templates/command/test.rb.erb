@@ -1,0 +1,13 @@
+# frozen_string_literal: true
+
+require_relative <%= helper.inspect %>
+
+class <%= target.test_class %> < Minitest::Test
+
+  def test_runs_without_invoking
+    run = Metacrunch::Testing.invoke(PROJECT, <%= target.name.inspect %>)
+
+    assert_equal [:ok, []], [run.status, run.invoked.map(&:name)]
+  end
+
+end

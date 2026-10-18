@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require "metacrunch"
+require "metacrunch/testing"
+
+class <%= target.test_class %> < Minitest::Test
+
+  FILE = File.expand_path(<%= file.inspect %>, __dir__)
+
+  def test_runs_without_invoking
+    run = Metacrunch::Testing.invoke(Metacrunch.load_command(FILE))
+
+    assert_equal [:ok, []], [run.status, run.invoked.map(&:name)]
+  end
+
+end
