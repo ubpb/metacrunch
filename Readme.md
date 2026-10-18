@@ -584,7 +584,8 @@ to other files, which it leaves alone; existing files of the skeleton need `--fo
 - `--no-test` leaves the test out, `--desc TEXT` sets the description of a job, transform or command, and `--force`
   overwrites existing files. A name declared in another file of the project is refused.
 - Sources and sinks are classes, not names of the project: the parts of their names are `a-z`, `0-9` and `_`,
-  starting with a letter, and they must not reopen a class such as `File`.
+  starting with a letter. A name that would reopen a class or module (`file`, or `marc` next to `marc:dump`) or put a
+  library such as `json` or `yaml` into `lib/` is refused, since `lib/` comes first on the load path of the tests.
 - After writing a job, transform or command, `generate` loads the project again and notes when the
   `Metacrunchfile` does not load the new file, for example because its globs are not recursive (`jobs/*.rb`).
 
