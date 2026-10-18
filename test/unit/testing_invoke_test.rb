@@ -47,6 +47,8 @@ class TestingInvokeTest < Minitest::Test
     RUBY
     "commands/typo.rb" => "Metacrunch.command(\"typo\") { run { invoke \"a2x\" } }\n"
   }.freeze
+  # A command outside the project's globs that invokes a name.
+  CHAIN = "# frozen_string_literal: true\n\nMetacrunch.command(\"chain\") { run { invoke(\"a2c\").status } }\n"
 
   def setup
     @root = File.realpath(Dir.mktmpdir("metacrunch-test"))
@@ -141,6 +143,48 @@ class TestingInvokeTest < Minitest::Test
     assert_equal "a2c is a job; test it with Testing.run", error.message
   end
 
+  def test_invokes_a_command_object_in_the_given_project
+    run = Metacrunch::Testing.invoke(@project.fetch("tolerant"), project: @project, stubs: {"a2c" => :aborted})
+
+    assert_equal [:rescued, :ok_with_failures], [run.value, run.status]
+  end
+
+  def test_a_command_object_resolves_names_from_the_working_directory
+    command = Metacrunch.load_command(write("tools/chain.rb", CHAIN))
+    run = Dir.chdir(@root) { Metacrunch::Testing.invoke(command, stubs: {"a2c" => :ok_with_failures}) }
+
+    assert_equal [:ok_with_failures, ["a2c"]], [run.value, run.invoked.map(&:name)]
+  end
+
+  def test_a_command_object_without_project_invokes_no_names
+    command = Metacrunch.load_command(write("tools/chain.rb", CHAIN))
+    Dir.mktmpdir do |dir|
+      run = Dir.chdir(dir) { Metacrunch::Testing.invoke(command) }
+      error = assert_raises(ArgumentError) do
+        Dir.chdir(dir) { Metacrunch::Testing.invoke(command, stubs: {"a2c" => :ok}) }
+      end
+
+      assert_equal [:aborted, Metacrunch::InvokeError], [run.status, run.error.class]
+      assert_equal "stub for unknown job, transform or command: a2c", error.message
+    end
+  end
+
+  def test_wrong_arguments_raise
+    command = @project.fetch("tolerant")
+    calls = [-> { Metacrunch::Testing.invoke(command, "tolerant") },
+             -> { Metacrunch::Testing.invoke(@project, "tolerant", project: @project) },
+             -> { Metacrunch::Testing.invoke(@project) },
+             -> { Metacrunch::Testing.invoke(command, project: "x") },
+             -> { Metacrunch::Testing.invoke("tolerant") }]
+
+    assert_equal(['a command needs no name, got "tolerant"',
+                  "project: is for a command; the first argument is a project already",
+                  "the name of a command is missing",
+                  'project: must be a Metacrunch::Project, got "x"',
+                  'Testing.invoke takes a project and the name of a command, or a command; got "tolerant"'],
+                 calls.map { assert_raises(ArgumentError, &it).message })
+  end
+
   private
 
   def invoke(name, **) = Metacrunch::Testing.invoke(@project, name, **)
@@ -149,6 +193,7 @@ class TestingInvokeTest < Minitest::Test
     file = File.join(@root, path)
     FileUtils.mkdir_p(File.dirname(file))
     File.write(file, content)
+    file
   end
 
 end

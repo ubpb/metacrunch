@@ -120,6 +120,16 @@ class LoaderTest < Minitest::Test
     assert_match(/defines several jobs \(first, second\); select one with name:\z/, error.message)
   end
 
+  def test_load_command_considers_commands_only
+    assert_equal "tidy", Metacrunch.load_command(fixture("shared.rb")).name
+  end
+
+  def test_load_command_selects_by_name
+    error = assert_raises(Metacrunch::JobLoadError) { Metacrunch.load_command(fixture("mixed.rb"), name: "export") }
+
+    assert_match(/no command named export in .*available: publish/, error.message)
+  end
+
   def test_a_file_without_transform_defines_none
     error = assert_raises(Metacrunch::JobLoadError) { Metacrunch.load_transform(fixture("double.rb")) }
 

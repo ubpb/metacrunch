@@ -92,6 +92,10 @@ module Metacrunch
       Loader.load(path, name:, kind: Transform, hint: "select one with name:")
     end
 
+    def load_command(path, name: nil)
+      Loader.load(path, name:, kind: Command, hint: "select one with name:")
+    end
+
     # Loads the job, transform and command files that match globs into the
     # project whose Metacrunchfile is being loaded (see Project#load_files).
     def load_files(*globs)
