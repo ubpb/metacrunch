@@ -35,8 +35,8 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
 - `run` options to replace the source and sinks (`-i`, `-o`, `--rejects`, `--errors`), `--limit`, `--on-error`,
   `--max-errors`, `--stats` and a progress display.
 - `metacrunch trace` shows what each step does to a record; `metacrunch check` validates a job; `metacrunch new`
-  creates a project, and `metacrunch generate` a job, transform, command, source or sink in it or by path, each with a
-  test.
+  creates a project, and `metacrunch generate` a job, transform, command, source or sink in it with a test, or by path
+  (a test with `--test`).
 - A closed stdout (`| head`) ends a job quietly by SIGPIPE (exit status 141).
 - `metacrunch run -w N` (`--workers N|auto`) runs the steps in N worker processes, with the results in source
   order; `Job#run`, `Testing.run` and `Engine` take workers as well. Step components are opened after the `before`

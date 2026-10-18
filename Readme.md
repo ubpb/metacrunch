@@ -554,12 +554,12 @@ matching file once, in sorted order.
 ### Generating projects and files
 
 ```
+$ metacrunch generate command --test tools/release.rb      # a single file, no project needed
 $ metacrunch new catalog
 $ cd catalog
 $ metacrunch generate job catalog:ids
 $ metacrunch generate transform normalize --desc "Tidy the titles"
 $ metacrunch generate source marc:dump
-$ metacrunch generate command --test ~/bin/release.rb      # a single file, no project needed
 ```
 
 `new DIR` creates a project: a `Metacrunchfile` that loads `jobs/`, `transforms/` and `commands/`, a `Gemfile`, a
@@ -580,9 +580,11 @@ to other files, which it leaves alone; existing files of the skeleton need `--fo
 - A name places the file below the project root, from any directory of the project: `:` separates directories, and
   `-` becomes `_` in file names. The test goes to the same place below `test/`. A name needs a `Metacrunchfile`.
 - A path (it contains `/` or `.`) places the file there, also without a project, and the file name gives the name. It
-  gets a test only with `--test`, in `test/` below the working directory, which loads the file by its path.
+  gets a test only with `--test`, in `test/` below the working directory, which loads the file by its path. Run it
+  outside the project, or the test joins the project's `rake test`.
 - `--no-test` leaves the test out, `--desc TEXT` sets the description of a job, transform or command, and `--force`
-  overwrites existing files. A name declared in another file of the project is refused.
+  overwrites existing files. A name declared in another file of the project is refused, and so is a test class
+  that another test defines already.
 - Sources and sinks are classes, not names of the project: the parts of their names are `a-z`, `0-9` and `_`,
   starting with a letter. A name that would reopen a class or module (`file`, or `marc` next to `marc:dump`) or put a
   library such as `json` or `yaml` into `lib/` is refused, since `lib/` comes first on the load path of the tests.
