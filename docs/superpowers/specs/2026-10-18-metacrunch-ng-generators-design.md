@@ -191,10 +191,21 @@ the same name do not share a test file.
   letter first, no `-`), so that it maps to a Ruby constant: the parts are
   camel-cased at `_` (`json_array` → `JsonArray`, `marc2json` → `Marc2json`)
   and joined with `::`.
-- A source or sink must not reopen a class that Ruby or metacrunch defines:
-  the first constant must be undefined, or a module when more parts follow
-  (`metacrunch:lines` → `Metacrunch::Lines`). `file` would reopen `File`
-  and is refused.
+- A source or sink must not clash with constants or libraries (amended
+  after the final review):
+  - Every module on its way that Ruby or metacrunch defines must be a
+    module, and the class itself must not be defined (`metacrunch:lines` →
+    `Metacrunch::Lines` is fine; `file` would reopen `File`,
+    `metacrunch:job:x` the class `Metacrunch::Job`).
+  - By name, the same holds for the classes and modules that `lib/**/*.rb`
+    of the project declares (found with Prism), the target file aside so
+    that `--force` may write it again: `marc` next to `module Marc` of
+    `lib/marc/dump.rb`, or `marc:dump` next to `class Marc` of
+    `lib/marc.rb`, is refused.
+  - By name, the file must not stand in for a library: `lib/` comes first
+    on the load path of the project's tests, so `json`, `yaml` (anything
+    that `$LOAD_PATH.resolve_feature_path` finds) and names below
+    `minitest` or `rake` are refused.
 
 ### 3.2 Paths
 
@@ -234,7 +245,8 @@ Each is a usage error (exit 2), and nothing is written:
 | Invalid name | `"Catalog" is not a valid job name; use a-z, 0-9, _ and -, in parts separated by :` |
 | Invalid file name (path) | `MyJob.rb: "MyJob" is not a valid job name; use a-z, 0-9, _ and -` (as today) |
 | Invalid source or sink name | `"marc-dump" is not a valid source name; use a-z, 0-9 and _, starting with a letter, in parts separated by :` (path: `marc-dump.rb: …`, without the parts) |
-| Source or sink that would reopen a class | `"file" would reopen File; choose another name` |
+| Source or sink that would reopen a class or module | `"file" would reopen File; choose another name`; by name also `"marc" would reopen Marc of lib/marc/dump.rb; choose another name` |
+| Source or sink that would shadow a library (by name) | `"json" would shadow require "json"; choose another name` |
 | Reserved name | `"run" is the name of a built-in command; choose another name` (path: `run.rb: … choose another file name`, as today) |
 | Name without project | `no Metacrunchfile found in DIR or above; give a path (./ids.rb) or create a project with metacrunch new` |
 | Name declared in another file | `catalog:ids is already declared in commands/catalog.rb` |
@@ -545,7 +557,7 @@ module Marc
     # def open(context) = nil
 
     def each
-      File.foreach(@path, chomp: true) { |line| yield({"line" => line}) }
+      ::File.foreach(@path, chomp: true) { |line| yield({"line" => line}) }
     end
 
     # Optional: called at the end, also after an error.
@@ -555,7 +567,9 @@ module Marc
 end
 ```
 
-Each part but the last becomes a `module` around the class. The test writes
+Each part but the last becomes a `module` around the class, so the
+templates name `::File` and `::JSON`: inside `module Out`, `File` would be
+`Out::File` of `generate sink out:file`. The test writes
 a file into a temporary directory and checks the records of
 `Marc::Dump.new(path).enum_for(:each).to_a`.
 
@@ -577,11 +591,11 @@ module Marc
 
     # Called once before the first record.
     def open(_context)
-      @file = File.open(@path, "w")
+      @file = ::File.open(@path, "w")
     end
 
     def write(record)
-      @file.puts(JSON.generate(record))
+      @file.puts(::JSON.generate(record))
     end
 
     # Optional: with `sink Marc::Dump.new(...), batch: 1000` the job calls
