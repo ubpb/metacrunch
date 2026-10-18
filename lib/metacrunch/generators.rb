@@ -27,3 +27,5 @@ module Metacrunch
 end
 
 require_relative "generators/target"
+require_relative "generators/template"
+require_relative "generators/plan"
