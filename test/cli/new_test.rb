@@ -31,7 +31,8 @@ class NewTest < Minitest::Test
     in_tmpdir do
       _code, stdout, = cli("new", "my catalog")
 
-      assert_equal ["Next steps:", "  cd my\\ catalog", "  bundle install", "  bundle exec metacrunch generate job NAME",
+      assert_equal ["Next steps:", "  cd my\\ catalog", "  bundle install",
+                    "  bundle exec metacrunch generate job NAME",
                     "  bundle exec rake"], stdout.lines(chomp: true).last(5)
     end
   end
