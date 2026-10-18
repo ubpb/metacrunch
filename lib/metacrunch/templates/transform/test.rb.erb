@@ -6,7 +6,7 @@ class <%= target.test_class %> < Minitest::Test
 
   def test_keeps_records_with_an_id
     transform = PROJECT.fetch(<%= target.name.inspect %>)
-    result = Metacrunch::Testing.run(transform, source: [{"id" => 1}, {"title" => "x"}])
+    result = Metacrunch::Testing.run(transform, source: [{"id" => 1}, {"title" => "x"}], project: PROJECT)
 
     assert_equal [{"id" => 1}], result.records
   end
