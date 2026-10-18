@@ -246,6 +246,18 @@ class ProjectCliTest < Minitest::Test
     end
   end
 
+  # A name declared twice is reported by every call that loads the project,
+  # also when another name runs, so it shows before the name is needed.
+  def test_names_declared_twice_give_one_warning_each
+    in_project("jobs/dup.rb" => DUPLICATE) do |root|
+      code, _stdout, stderr = cli_in(root, "numbers", "4")
+      warning = "WARN  note is declared more than once (commands/note.rb, jobs/dup.rb); rename one"
+
+      assert_equal 0, code
+      assert_equal 1, stderr.scan(warning).size, stderr
+    end
+  end
+
   def test_unknown_names_hint_at_files_that_did_not_load
     in_project("jobs/broken.rb" => BROKEN) do |root|
       code, _stdout, stderr = cli_in(root, "nope")

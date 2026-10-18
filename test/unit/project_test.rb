@@ -90,6 +90,23 @@ class ProjectTest < Minitest::Test
     end
   end
 
+  def test_duplicates_name_each_name_declared_twice_with_its_files
+    in_tmpdir do |root|
+      project = load_project(root, "Metacrunchfile" => LOAD_ALL, "jobs/dup.rb" => job("dup"),
+                                   "commands/dup.rb" => command("dup"), "jobs/ok.rb" => job("ok"))
+
+      assert_equal({"dup" => ["commands/dup.rb", "jobs/dup.rb"]}, project.duplicates)
+    end
+  end
+
+  def test_a_project_without_duplicates_has_none
+    in_tmpdir do |root|
+      project = load_project(root, "Metacrunchfile" => LOAD_ALL, "jobs/ok.rb" => job("ok"))
+
+      assert_empty project.duplicates
+    end
+  end
+
   def test_a_name_declared_twice_is_unusable_and_the_others_work
     in_tmpdir do |root|
       project = load_project(root, "Metacrunchfile" => LOAD_ALL, "jobs/dup.rb" => job("dup"),

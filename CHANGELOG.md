@@ -44,7 +44,9 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme.
   edit|show|rotate` manages the files; `run`, `check` and `trace` take `-e`/`--environment` and `--credentials`.
 - Projects: a `Metacrunchfile` names a project's jobs and commands (`Metacrunch.load_files`); `metacrunch NAME` runs
   them from any directory of the project, and `metacrunch --help` lists them. A file that fails to load costs only
-  its own names. `Metacrunch.load_project` and `Project#invoke` do the same from Ruby.
+  its own names. A name declared twice is unusable, every call that loads the project warns about it, and
+  `Project#duplicates` lists such names for a test. `Metacrunch.load_project` and `Project#invoke` do the same from
+  Ruby.
 - Commands: `Metacrunch.command "name" do params { ... }; run { ... } end`, with the parameters, credentials, `-e`,
   `--help` and logging of jobs. `invoke` chains jobs and commands; the exit status reports the worst result.
   `Metacrunch::Testing.invoke` tests a command without running what it invokes.
