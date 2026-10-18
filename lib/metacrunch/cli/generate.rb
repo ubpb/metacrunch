@@ -53,6 +53,7 @@ module Metacrunch
         check_desc(target)
         check_declared(target)
         test = @test.nil? ? target.form == :name : @test
+        check_test_class(target) if test
         Generators::Files.plan(target, desc: @desc, test:).write(force: @force, out: @stdout, cwd: Dir.pwd)
         target.declared? ? check_loaded(target) : @stdout.puts(usage_hint(target))
         EXIT_CODES[:ok]
@@ -82,6 +83,20 @@ module Metacrunch
 
         other = project.declared(target.name).map(&:file).find { it != target.file }
         raise UsageError, "#{target.name} is already declared in #{project.relative(other)}" if other
+      end
+
+      # Test classes of one name would merge, and a test method of the
+      # same name would replace the other one without a failure.
+      def check_test_class(target)
+        dir = target.form == :name ? target.root.join("test").to_s : File.dirname(target.test)
+        pattern = /^\s*class #{Regexp.escape(target.test_class)}\b/
+        other = Dir.glob("**/*.rb", base: dir).map { File.join(dir, it) }.find do |file|
+          file != target.test && File.foreach(file).any? { pattern.match?(it) }
+        end
+        return unless other
+
+        raise UsageError, "#{Generators.relative(other, Dir.pwd)} defines #{target.test_class} already; " \
+                          "choose another #{target.form == :name ? "name" : "file name"}"
       end
 
       # Loads the project at or above the new file again, without
