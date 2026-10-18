@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+require_relative <%= helper.inspect %>
+require <%= library.inspect %>
+require "tmpdir"
+
+class <%= target.test_class %> < Minitest::Test
+
+  def test_writes_a_line_of_json_for_each_record
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "records.jsonl")
+      sink = <%= target.constant %>.new(path)
+      sink.open(nil)
+      sink.write({"id" => 1})
+      sink.write({"id" => 2})
+      sink.close
+
+      assert_equal %({"id":1}\n{"id":2}\n), File.read(path)
+    end
+  end
+
+end

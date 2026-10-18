@@ -1,0 +1,31 @@
+# frozen_string_literal: true
+
+require "json"
+
+# A sink: writes each record as a line of JSON into a file. In a job:
+#   sink <%= target.constant %>.new(params.output)
+class <%= target.class_name %>
+
+  def initialize(path)
+    @path = path
+  end
+
+  # Called once before the first record.
+  def open(_context)
+    @file = File.open(@path, "w")
+  end
+
+  def write(record)
+    @file.puts(JSON.generate(record))
+  end
+
+  # Optional: with `sink <%= target.constant %>.new(...), batch: 1000` the
+  # job calls write_batch with up to 1000 records instead of write.
+  # def write_batch(records) = records.each { write(it) }
+
+  # Called at the end, also after an error.
+  def close
+    @file&.close
+  end
+
+end
