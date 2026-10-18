@@ -168,6 +168,13 @@ class RunTest < Minitest::Test
     assert_equal [0, "  steps     helper/map#1"], [check.first, check[1].lines[2].chomp]
   end
 
+  def test_job_refuses_a_name_declared_twice_in_a_file
+    code, stdout, stderr = cli("run", "-j", "clean", job("duplicate.rb"), stdin: "5\n")
+
+    assert_equal [2, ""], [code, stdout]
+    assert_match(/Error: clean is declared more than once in .*duplicate\.rb; rename one/, stderr)
+  end
+
   def test_job_selects_a_transform_in_a_file
     assert_equal [0, "\"a\"\n"], cli("run", "-j", "trim", job("shared.rb"), stdin: "\" a \"\n").take(2)
   end

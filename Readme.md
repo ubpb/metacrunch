@@ -73,8 +73,8 @@ A job without a sink writes its records to stdout as JSON Lines. Logs and the ru
 
 A job can have a name and a one-line description: `Metacrunch.job "marc2es", desc: "MARCXML into the search index"
 do ... end`. A name consists of parts of `a-z`, `0-9`, `_` and `-`, separated by `:` (`catalog:reindex`). A file can
-define several jobs; `-j NAME` selects one. In a project, jobs run by name (see
-[Projects and commands](#projects-and-commands)).
+define several jobs; `-j NAME` selects one, and a name declared twice in the file cannot be selected until one is
+renamed. In a project, jobs run by name (see [Projects and commands](#projects-and-commands)).
 
 More jobs with sample data, from the smallest one to a cleaning job with workers, are in [`examples/`](examples).
 
