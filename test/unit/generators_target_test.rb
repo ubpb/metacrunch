@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "fileutils"
+require "tmpdir"
 require "metacrunch/generators"
 
 class GeneratorsTargetTest < Minitest::Test
@@ -43,6 +45,12 @@ class GeneratorsTargetTest < Minitest::Test
     ["sink", "file", ROOT] => '"file" would reopen File; choose another name',
     ["source", "file:reader", ROOT] => '"file:reader" would reopen File; choose another name',
     ["source", "lib/dir.rb", nil] => '"dir" would reopen Dir; choose another name',
+    ["sink", "metacrunch:job:x", ROOT] => '"metacrunch:job:x" would reopen Metacrunch::Job; choose another name',
+    ["source", "metacrunch:json_lines", ROOT] =>
+      '"metacrunch:json_lines" would reopen Metacrunch::JsonLines; choose another name',
+    ["sink", "json", ROOT] => '"json" would shadow require "json"; choose another name',
+    ["source", "yaml", ROOT] => '"yaml" would shadow require "yaml"; choose another name',
+    ["source", "rake:lines", ROOT] => '"rake:lines" would shadow require "rake/lines"; choose another name',
     ["job", "jobs/", nil] => "jobs/ is a directory; give a file name",
     ["job", "catalog:ids", nil] => "no Metacrunchfile found in /work/catalog/jobs or above; give a path " \
                                    "(./ids.rb) or create a project with metacrunch new"
@@ -100,8 +108,43 @@ class GeneratorsTargetTest < Minitest::Test
     assert_predicate target, :declared?
   end
 
+  def test_a_source_must_not_reopen_a_module_of_the_project
+    in_project("lib/marc/dump.rb" => "module Marc\n  class Dump; end\nend\n") do |root|
+      error = assert_raises(Metacrunch::UsageError) { Target.for("source", "marc", cwd: root.to_s, root:) }
+
+      assert_equal '"marc" would reopen Marc of lib/marc/dump.rb; choose another name', error.message
+    end
+  end
+
+  def test_a_sink_must_not_go_into_a_class_of_the_project
+    in_project("lib/marc.rb" => "class Marc; end\n") do |root|
+      error = assert_raises(Metacrunch::UsageError) { Target.for("sink", "marc:dump", cwd: root.to_s, root:) }
+
+      assert_equal '"marc:dump" would reopen Marc of lib/marc.rb; choose another name', error.message
+    end
+  end
+
+  def test_a_source_may_go_into_a_module_of_the_project_or_replace_itself
+    files = {"lib/marc.rb" => "module Marc; end\n", "lib/marc/dump.rb" => "module Marc\n  class Dump; end\nend\n"}
+
+    in_project(files) do |root|
+      assert_equal "Marc::Dump", Target.for("source", "marc:dump", cwd: root.to_s, root:).constant
+    end
+  end
+
   def test_a_source_may_go_into_an_existing_module
     assert_equal "Metacrunch::Lines", Target.for("source", "metacrunch:lines", cwd: CWD, root: ROOT).constant
+  end
+
+  private
+
+  # A project root in a temporary directory with files (path => code).
+  def in_project(files)
+    Dir.mktmpdir do |dir|
+      root = Pathname(File.realpath(dir))
+      files.each { |path, code| FileUtils.mkdir_p(root.join(path).dirname).then { File.write(root.join(path), code) } }
+      yield root
+    end
   end
 
 end

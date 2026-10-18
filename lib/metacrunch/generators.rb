@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "erb"
+require "prism"
 require "fileutils"
 require_relative "../metacrunch"
 
