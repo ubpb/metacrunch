@@ -1,0 +1,6 @@
+# frozen_string_literal: true
+
+# The project file: it names the jobs, transforms and commands of this
+# directory, so that `metacrunch NAME` runs them from any directory below
+# it and `metacrunch --help` lists them. `metacrunch generate` adds files.
+Metacrunch.load_files "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
