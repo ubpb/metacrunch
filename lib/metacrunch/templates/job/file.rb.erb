@@ -4,7 +4,7 @@
 # Reads JSON Lines from stdin and writes them to stdout:
 #   metacrunch <%= run %> < in.jsonl > out.jsonl
 # Declare a source or a sink to read or write elsewhere.
-Metacrunch.job <%= target.name.inspect %><%= ", desc: #{desc.inspect}" if desc %> do
+Metacrunch.job <%= target.name.inspect %><%= ", desc: #{desc}" if desc %> do
   params do
     # param :input, String, required: true, desc: "JSON Lines file"
   end

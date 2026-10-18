@@ -24,6 +24,15 @@ module Metacrunch
     # path relative to dir, for messages: "jobs/x.rb", "../jobs/x.rb".
     def relative(path, dir) = Pathname(path).relative_path_from(Pathname(dir)).to_s
 
+    # A double-quoted Ruby literal of text that keeps its printable
+    # characters: String#inspect escapes all but ASCII under LANG=C.
+    def literal(text)
+      runs = text.scan(/[[:ascii:]]+|[^[:ascii:]]+/).map do |run|
+        run.ascii_only? || !run.match?(/\A[[:print:]]+\z/) ? run.inspect[1...-1] : run
+      end
+      "\"#{runs.join}\""
+    end
+
   end
 end
 

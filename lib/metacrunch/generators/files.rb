@@ -21,7 +21,8 @@ module Metacrunch
         plan.add(target.test, Template.render(File.join(target.kind, template), **locals))
       end
 
-      # target and desc, and for the templates:
+      # target, and for the templates:
+      # - desc: the literal of desc, or nil
       # - run: what follows `metacrunch` to run it ("catalog:ids", "run tools/fix.rb")
       # - helper: test/test_helper relative to the test (name form)
       # - file: the file relative to the test
@@ -30,7 +31,7 @@ module Metacrunch
         test_dir = File.dirname(target.test)
         by_name = target.form == :name
         {
-          target:, desc:,
+          target:, desc: (Generators.literal(desc) if desc),
           run: by_name ? target.name : "run #{target.argument}",
           helper: (Generators.relative(target.root.join("test", "test_helper").to_s, test_dir) if by_name),
           file: Generators.relative(target.file, test_dir),

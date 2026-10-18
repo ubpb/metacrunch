@@ -38,8 +38,15 @@ module Metacrunch
       def define_options(parser)
         HELP.each_line(chomp: true) { parser.separator(it) }
         parser.on("--[no-]test", "Create a test (default: for a NAME)") { @test = it }
-        parser.on("--desc TEXT", "Description for metacrunch --help (job, transform, command)") { @desc = it }
+        parser.on("--desc TEXT", "Description for metacrunch --help (job, transform, command)") { @desc = utf8(it) }
         parser.on("--force", "Overwrite existing files") { @force = true }
+      end
+
+      # Arguments come in the locale's encoding, binary under LANG=C; UTF-8
+      # bytes are taken as UTF-8, so that the file shows the text itself.
+      def utf8(text)
+        copy = text.dup.force_encoding(Encoding::UTF_8)
+        copy.valid_encoding? ? copy : text
       end
 
       # Options may stand anywhere.

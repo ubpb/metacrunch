@@ -3,7 +3,7 @@
 
 # Runs its body; invoke runs jobs, transforms and other commands:
 #   metacrunch <%= run %>
-Metacrunch.command <%= target.name.inspect %><%= ", desc: #{desc.inspect}" if desc %> do
+Metacrunch.command <%= target.name.inspect %><%= ", desc: #{desc}" if desc %> do
   params do
     # param :input, String, required: true, desc: "JSON Lines file"
   end
