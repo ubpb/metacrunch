@@ -71,9 +71,14 @@ module Metacrunch
       raise JobLoadError, "#{path} defines several #{plural(declarations)} (#{names(declarations)}); #{hint}"
     end
 
+    # The declaration named name. A name declared twice is refused, as in a
+    # project, instead of taking the first; kind (see load) can make it
+    # unique.
     def pick_named(declarations, path, name, noun)
-      declarations.find { it.name == name } ||
-        raise(JobLoadError, "no #{noun} named #{name} in #{path} (available: #{names(declarations)})")
+      named = declarations.select { it.name == name }
+      raise JobLoadError, "#{name} is declared more than once in #{path}; rename one" if named.size > 1
+
+      named.first || raise(JobLoadError, "no #{noun} named #{name} in #{path} (available: #{names(declarations)})")
     end
 
     # "jobs", "jobs and commands" or "transforms, jobs and commands", in the

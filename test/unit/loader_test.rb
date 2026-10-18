@@ -77,6 +77,19 @@ class LoaderTest < Minitest::Test
     assert_match(/no job, transform or command named x in .*available: export, publish/, error.message)
   end
 
+  # A name declared twice in one file selects nothing, as in a project;
+  # the first declaration is not taken silently.
+  def test_a_name_declared_twice_in_a_file_is_refused
+    error = assert_raises(Metacrunch::JobLoadError) { Metacrunch::Loader.load(fixture("duplicate.rb"), name: "clean") }
+
+    assert_match(/\Aclean is declared more than once in .*duplicate\.rb; rename one\z/, error.message)
+  end
+
+  def test_a_kind_makes_a_name_declared_twice_unique
+    assert_instance_of Metacrunch::Job, Metacrunch.load_job(fixture("duplicate.rb"), name: "clean")
+    assert_instance_of Metacrunch::Transform, Metacrunch.load_transform(fixture("duplicate.rb"), name: "clean")
+  end
+
   def test_kind_restricts_the_selection
     error = assert_raises(Metacrunch::JobLoadError) do
       Metacrunch::Loader.load(fixture("mixed.rb"), name: "export", kind: Metacrunch::Command)
