@@ -83,7 +83,7 @@ class ExeTest < Minitest::Test
     end
   end
 
-  def test_jobs_created_by_new_run_through_their_shebang_line
+  def test_jobs_created_by_generate_run_through_their_shebang_line
     Dir.mktmpdir do |dir|
       bin = File.join(dir, "bin")
       FileUtils.mkdir_p(bin)
@@ -91,7 +91,7 @@ class ExeTest < Minitest::Test
       File.write(File.join(bin, "metacrunch"), wrapper)
       File.chmod(0o755, File.join(bin, "metacrunch"))
       env = {"PATH" => "#{bin}:#{ENV.fetch("PATH")}"}
-      Open3.capture3(env, "metacrunch", "new", "jobs/pass.rb", chdir: dir)
+      Open3.capture3(env, "metacrunch", "generate", "job", "jobs/pass.rb", chdir: dir)
       stdout, stderr, status = Open3.capture3(env, "./jobs/pass.rb", stdin_data: "{\"id\":1}\n", chdir: dir)
 
       assert_equal [0, "{\"id\":1}\n"], [status.exitstatus, stdout], stderr
