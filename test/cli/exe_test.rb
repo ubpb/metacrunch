@@ -48,16 +48,21 @@ class ExeTest < Minitest::Test
     refute_match(/SignalException|Interrupt \(/, stderr)
   end
 
+  # The filter between the jobs is grep, a tool that is no Ruby: a Ruby
+  # filter would inherit RUBYOPT=-rbundler/setup from bundle exec, and
+  # `ruby -rjson` then fails wherever the default json gem differs from
+  # the bundle's (Ruby head). The status is the last command's only, so
+  # stderr goes into every message.
   def test_jobs_chain_through_pipes
-    filter = Shellwords.join([RbConfig.ruby, "-rjson", "-ne", "puts $_ if JSON.parse($_)[\"n\"].odd?"])
+    filter = Shellwords.join(["grep", "-E", "\"n\":[135]}"])
     pipeline = [Shellwords.join(command("run", fixture("emit.rb"))), filter,
                 Shellwords.join(command("run", fixture("tag.rb")))].join(" | ")
     stdout, stderr, status = Open3.capture3("sh", "-c", pipeline)
     records = stdout.lines.map { JSON.parse(it) }
 
     assert_predicate status, :success?, stderr
-    assert_equal([1, 3, 5], records.map { it["n"] })
-    assert(records.all? { it["tagged"] })
+    assert_equal([1, 3, 5], records.map { it["n"] }, stderr)
+    assert(records.all? { it["tagged"] }, "untagged records; stderr: #{stderr}")
   end
 
   def test_a_closed_pipe_ends_the_job_by_sigpipe_and_flushes_other_sinks
