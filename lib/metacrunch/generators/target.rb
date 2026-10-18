@@ -7,6 +7,8 @@ module Metacrunch
     # snake case.
     COMPONENT_NAME = /\A[a-z][a-z0-9_]*(?::[a-z][a-z0-9_]*)*\z/
     COMPONENT_PART = /\A[a-z][a-z0-9_]*\z/
+    # Libraries the project's tests require besides those on the load path.
+    TEST_LIBRARIES = ["minitest", "rake"].freeze
 
     # Where `metacrunch generate` puts a file and its test, and the names in
     # them; Target.for computes it.
@@ -61,7 +63,7 @@ module Metacrunch
 
         def build(kind, form, argument, name, parts, file:, test:, root:)
           constants = DECLARED.include?(kind) ? [] : parts.map { camel(it) }
-          check_constant(name, constants) if constants.any?
+          check_component(name, constants, root, file.to_s, parts) if constants.any?
           new(kind:, form:, argument:, name:, file: file.to_s, test: test.to_s, root:, modules: constants[0...-1],
               class_name: constants.last, test_class: test_class(kind, name, constants))
         end
@@ -96,14 +98,66 @@ module Metacrunch
           end
         end
 
-        # A source or sink must not reopen a class of Ruby or metacrunch;
-        # a module may hold it ("metacrunch:lines").
-        def check_constant(name, constants)
-          top = constants.first
-          return unless Object.const_defined?(top, false)
-          return if constants.size > 1 && !Object.const_get(top, false).is_a?(Class)
+        # A source or sink must not reopen or clash with what Ruby, metacrunch
+        # or (by name) the project defines, nor stand in for a library: lib/
+        # comes first on the load path of the project's tests.
+        def check_component(name, constants, root, file, parts)
+          check_defined(name, constants)
+          return unless root
 
-          raise UsageError, "#{name.inspect} would reopen #{top}; choose another name"
+          check_project(name, constants, root, file)
+          library = parts.join("/")
+          return unless TEST_LIBRARIES.include?(parts.first) || $LOAD_PATH.resolve_feature_path(library)
+
+          raise UsageError, "#{name.inspect} would shadow require #{library.inspect}; choose another name"
+        end
+
+        # Each module on the way may exist as a module; the class must not
+        # exist ("metacrunch:lines" is fine, "file" and "metacrunch:job:x" are
+        # not).
+        def check_defined(name, constants)
+          scope = Object
+          constants.each_with_index do |constant, index|
+            break unless scope.const_defined?(constant, false)
+
+            scope = scope.const_get(constant, false)
+            next if index < constants.size - 1 && scope.instance_of?(Module)
+
+            raise UsageError, "#{name.inspect} would reopen #{constants.first(index + 1).join("::")}; " \
+                              "choose another name"
+          end
+        end
+
+        # The same for what lib/ of the project declares, the file itself
+        # aside, so that --force may write it again.
+        def check_project(name, constants, root, file)
+          declared = project_constants(root.join("lib"), file)
+          constants.each_index do |index|
+            path = constants.first(index + 1).join("::")
+            kind, where = declared[path]
+            next if kind.nil? || (kind == :module && index < constants.size - 1)
+
+            raise UsageError, "#{name.inspect} would reopen #{path} of #{Generators.relative(where, root.to_s)}; " \
+                              "choose another name"
+          end
+        end
+
+        # Full name => [:class or :module, file] of the classes and modules
+        # that lib/**/*.rb declares, except file.
+        def project_constants(lib, except)
+          files = Dir.glob("**/*.rb", base: lib.to_s).map { lib.join(it).to_s } - [except]
+          files.each_with_object({}) { |path, found| declarations(Prism.parse_file(path).value, [], path, found) }
+        end
+
+        def declarations(node, scope, path, found)
+          name = node.constant_path.full_name if node.is_a?(Prism::ClassNode) || node.is_a?(Prism::ModuleNode)
+          return node&.compact_child_nodes&.each { declarations(it, scope, path, found) } unless name
+
+          full = [*scope, name]
+          found[full.join("::")] ||= [node.is_a?(Prism::ClassNode) ? :class : :module, path]
+          declarations(node.body, full, path, found)
+        rescue Prism::ConstantPathNode::DynamicPartsInConstantPathError
+          nil
         end
 
         def camel(part) = part.split("_").map(&:capitalize).join
