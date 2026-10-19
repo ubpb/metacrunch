@@ -24,18 +24,19 @@ module Metacrunch
     end
 
     # Evaluates the recipe. binder takes the Params schema and returns the
-    # bound values. Raises ParamError for invalid arguments and
+    # bound values; root: the root callable (see RecipeParams#root).
+    # Raises ParamError for invalid arguments and
     # ArgumentError for a recipe without or with two run blocks.
-    def prepare(binder:)
-      builder = CommandBuilder.new(binder:)
+    def prepare(binder:, root: nil)
+      builder = CommandBuilder.new(binder:, root:)
       builder.instance_exec(&@recipe)
       builder.build
     end
 
     # The declared parameters. Evaluates the recipe only up to its first
     # statement, so the body never runs.
-    def describe
-      builder = CommandBuilder.new(binder: nil, describe: true)
+    def describe(root: nil)
+      builder = CommandBuilder.new(binder: nil, describe: true, root:)
       catch(RecipeParams::DESCRIBED) do
         builder.instance_exec(&@recipe)
         builder.build

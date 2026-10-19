@@ -47,6 +47,9 @@ module Metacrunch
       raise ArgumentError, "use takes transforms; #{name} is a #{Loader::KINDS.fetch(declaration.class)}"
     end
 
+    # The root of the project the job is built in (see Invoker#root).
+    def root = @resolver.root
+
     # Evaluates the recipe of transform with params bound (see
     # Params#bind_values) and returns its pipeline: steps and hooks, no
     # source and no sinks. stack: the transforms whose recipes are being

@@ -179,7 +179,7 @@ module Metacrunch
       unknown = stubs.keys.map(&:to_s).reject { File.file?(it) || invoker.project&.include?(it) }
       raise ArgumentError, "stub for unknown job, transform or command: #{unknown.first}" if unknown.any?
 
-      run_command(invoker, command.prepare(binder: values_binder(params)))
+      run_command(invoker, command.prepare(binder: values_binder(params), root: invoker.method(:root)))
     end
 
     # Binds params like the values of `use`, but tests read neither the

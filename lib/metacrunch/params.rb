@@ -49,6 +49,7 @@ module Metacrunch
     # The types as Ruby values, for values from code that are no Strings.
     VALUE_TYPE_NAMES = TYPE_NAMES.merge(Array => "an Array of Strings", :bool => "true or false").freeze
 
+    NO_ROOT = "root needs a project, and none was given"
     CREDENTIAL_PATH = /\A[^.]+(\.[^.]+)*\z/
     HIDDEN = "(hidden)"
 
@@ -81,9 +82,19 @@ module Metacrunch
 
     attr_reader :definitions, :args_definition
 
-    def initialize
+    # root: a callable that returns the project root, for defaults such as
+    # root.join("data/titles.jsonl"); nil where there is none.
+    def initialize(root: nil)
       @definitions = {}
       @args_definition = nil
+      @root = root
+    end
+
+    # The root of the project, a Pathname; see Invoker#root.
+    def root
+      raise ProjectError, NO_ROOT unless @root
+
+      @root.call
     end
 
     # Defaults are converted and checked like CLI values when the parameter

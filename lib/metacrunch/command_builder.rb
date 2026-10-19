@@ -8,8 +8,8 @@ module Metacrunch
 
     include RecipeParams
 
-    def initialize(binder:, describe: false)
-      init_params(binder, describe)
+    def initialize(binder:, describe: false, root: nil)
+      init_params(binder, describe, root)
       @body = nil
     end
 

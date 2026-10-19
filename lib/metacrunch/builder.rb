@@ -17,8 +17,10 @@ module Metacrunch
     # transform: the Transform whose recipe this builder evaluates; it
     # refuses source, sinks, error policy and profile. nil for a job.
     # stack: the transforms being evaluated, this one last (for cycles).
-    def initialize(binder:, logger:, describe: false, context: nil, transform: nil, stack: [])
-      init_params(binder, describe)
+    # root: the root callable (see RecipeParams#root); without it, the
+    # context's.
+    def initialize(binder:, logger:, describe: false, context: nil, root: nil, transform: nil, stack: [])
+      init_params(binder, describe, root || (context && -> { context.root }))
       @logger = logger
       @context = context
       @transform = transform
