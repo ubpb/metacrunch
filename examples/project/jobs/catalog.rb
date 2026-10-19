@@ -11,8 +11,7 @@
 Metacrunch.job "catalog", desc: "Write the public titles into a directory" do
   params do
     param :output, String, required: true, desc: "Directory for titles.jsonl; must exist"
-    param :input, String, default: File.expand_path("../data/titles.jsonl", __dir__),
-                          desc: "JSON Lines with title records"
+    param :input, String, default: root.join("data/titles.jsonl"), desc: "JSON Lines with title records"
   end
 
   source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }

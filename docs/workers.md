@@ -1,7 +1,7 @@
 # Workers
 
 `-w N` (`--workers N`) runs the steps in N worker processes; the source and the sinks stay in the main process.
-`-w auto` uses one worker per core but one. Records reach the sinks, the `rejects` and `errors` sinks and the log in
+`-w auto` uses one worker per core but one. Records reach the sinks, the `rejects` and `failures` sinks and the log in
 source order, so a job gives the same results with and without workers.
 
 ```

@@ -31,9 +31,9 @@ file. The CLI does not change the working directory: relative paths are relative
 | `--credentials DIR` | Credentials directory (default: `METACRUNCH_CREDENTIALS`, then `.metacrunch/` above the job file or, for a name, above the `Metacrunchfile`, then `~/.metacrunch/`) |
 | `-i`, `--input PATH` | Read JSON Lines from PATH (`-` for stdin) instead of the job's source |
 | `-o`, `--output PATH` | Write JSON Lines to PATH (`-` for stdout) instead of the job's sink |
-| `--rejects PATH`, `--errors PATH` | Write rejected or failed records with their context; both may name the same file |
+| `--rejects PATH`, `--failures PATH` | Write rejected or failed records with their context; both may name the same file |
 | `-n`, `--limit N` | Process only the first N source records |
-| `--on-error abort\|skip`, `--max-errors N` | Override the job's error policy |
+| `--on-failure abort\|skip`, `--max-failures N` | Override the job's failure policy |
 | `-w`, `--workers N\|auto` | Run the steps in N worker processes (see [Workers](workers.md)) |
 | `--stats PATH` | Write status and stats as JSON at the end (`-` for stdout) |
 | `--[no-]progress` | Progress on stderr; shown by default if stderr is a terminal and records do not go to the same terminal |
@@ -78,7 +78,7 @@ nothing: all sinks are replaced, and `before` and `after` hooks do not run. `--f
 | 0 | ok | every job it invoked ended `:ok` |
 | 1 | aborted | an exception left the body; an `InvokeError` is logged as its message |
 | 2 | usage error: command, options, file or name, parameters, `Metacrunchfile`; `check` found the job invalid | the same, for the command itself: its parameters, an unknown or duplicate name, the `Metacrunchfile` |
-| 3 | finished, but records failed (`on_error :skip`) | an invoked job ended `:ok_with_failures`, or `:aborted` and the command went on |
+| 3 | finished, but records failed (`on_failure :skip`) | an invoked job ended `:ok_with_failures`, or `:aborted` and the command went on |
 | 130 | interrupted by Ctrl-C (SIGINT) | the same |
 | 141 | stdout was closed by the reader (SIGPIPE) | the same |
 | 143 | terminated (SIGTERM) | the same |
