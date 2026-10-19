@@ -1,7 +1,7 @@
 # Projects, commands and gems
 
 A project gives jobs, transforms and commands names, so that `metacrunch NAME` runs them from any directory of the
-project. Commands chain jobs and other commands; gems can ship all three.
+project. Commands chain jobs, transforms and other commands; gems can ship all three.
 
 ## Projects
 

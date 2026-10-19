@@ -15,13 +15,13 @@ source ──▶ step ──▶ step ──▶ … ──▶ sink
              └────────┴──▶ rejects, errors
 ```
 
-Everything is plain Ruby. There are three kinds of recipes:
+Everything is plain Ruby. There are three kinds of recipes, and `metacrunch run` runs each of them:
 
 | | |
 |---|---|
-| **Job** | source, steps and sink; runs with `metacrunch run` |
+| **Job** | source, steps and sink |
 | **Transform** | named steps with parameters of their own, which jobs insert with `use` |
-| **Command** | a Ruby body that runs jobs and other commands with `invoke`, e.g. for a release |
+| **Command** | a Ruby body that runs jobs, transforms and other commands with `invoke`, e.g. for a release |
 
 - Steps say what they do: `map`, `filter`, `reject`, `flat_map`.
 - Rejected records keep their reason; the engine counts records per step and reason.
@@ -198,7 +198,7 @@ A project's `Metacrunchfile` loads its jobs, transforms and commands, which then
 Metacrunch.load_files "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 ```
 
-A command is a Ruby body with parameters; `invoke` runs jobs and other commands and returns their result:
+A command is a Ruby body with parameters; `invoke` runs jobs, transforms and other commands and returns their result:
 
 ```ruby
 # commands/catalog/release.rb
