@@ -137,6 +137,41 @@ class TestingTest < Minitest::Test
     ENV.delete("METACRUNCH_TEST_LANG")
   end
 
+  def test_runs_jobs_and_transforms_of_a_project_by_name
+    in_tmpdir do |root|
+      write_file(root, "Metacrunchfile", "Metacrunch.load_files \"*.rb\"\n")
+      write_file(root, "scale.rb", SCALE)
+      write_file(root, "doubled.rb", "# frozen_string_literal: true\n\nMetacrunch.job(\"doubled\") { use \"scale\" }\n")
+      project = Metacrunch.load_project(root)
+      results = [Metacrunch::Testing.run(project, "doubled", source: [1]),
+                 Metacrunch::Testing.run(project, "scale", source: [2])]
+      error = assert_raises(ArgumentError) { Metacrunch::Testing.run(project, "scale") }
+
+      assert_equal [[2], [4]], results.map(&:records)
+      assert_equal "a transform has no source; pass source:", error.message
+    end
+  end
+
+  def test_project_addressing_refuses_wrong_arguments
+    in_tmpdir do |root|
+      write_file(root, "Metacrunchfile", "Metacrunch.load_files \"*.rb\"\n")
+      write_file(root, "cmd.rb", "# frozen_string_literal: true\n\nMetacrunch.command(\"cmd\") { run { nil } }\n")
+      project = Metacrunch.load_project(root)
+      calls = [-> { Metacrunch::Testing.run(project, "cmd") }, -> { Metacrunch::Testing.run(project) },
+               -> { Metacrunch::Testing.run(project, "cmd", project:) }, -> { Metacrunch::Testing.run(build_job, "x") },
+               -> { Metacrunch::Testing.run("jobs/x.rb") }]
+      messages = calls.map { assert_raises(ArgumentError, &it).message }
+
+      assert_equal ["cmd is a command; test it with Testing.invoke",
+                    "the name of a job or transform is missing",
+                    "project: is for a job or transform; the first argument is a project already",
+                    "a job or transform needs no name, got \"x\"",
+                    "Testing.run takes a project and the name of a job or transform, or a job or transform; " \
+                    "got \"jobs/x.rb\""],
+                   messages
+    end
+  end
+
   def test_results_answer_ok
     results = [Metacrunch::Testing.run(build_job, params: {limit: 5}, source: [1]),
                Metacrunch::Testing.run(build_job, params: {limit: 5}, source: [0])]
