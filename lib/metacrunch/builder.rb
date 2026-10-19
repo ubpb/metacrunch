@@ -210,7 +210,7 @@ module Metacrunch
     end
 
     def add_sink(role, object, batch)
-      job_only!(role.to_s)
+      job_only!(role == :sink ? "sink" : "#{role} sink")
       use!
       raise ArgumentError, "#{role} already defined" if @sinks.key?(role)
 

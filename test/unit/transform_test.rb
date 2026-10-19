@@ -36,7 +36,8 @@ class TransformTest < Minitest::Test
       e.message
     end
     expected = JOB_STATEMENTS.keys.to_h do |statement|
-      [statement, "transform trim: a transform has no #{statement}; the job that uses it decides"]
+      thing = ["rejects", "failures"].include?(statement) ? "#{statement} sink" : statement
+      [statement, "transform trim: a transform has no #{thing}; the job that uses it decides"]
     end
 
     assert_equal expected, messages
