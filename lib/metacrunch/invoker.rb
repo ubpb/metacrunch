@@ -44,21 +44,22 @@ module Metacrunch
       project&.root || raise(ProjectError, "no #{Project::FILE} found in #{Dir.pwd} or above")
     end
 
-    # Runs target, a name or a path, with argv as on the command line, each
-    # converted with to_s. Returns the Result of a job or transform, or a
-    # command's value. Raises InvokeError if the target is unknown, argv is
-    # invalid for it or the job aborted; exceptions from a command's body
-    # pass unchanged.
-    def invoke(target, *argv, workers: nil, limit: nil)
+    # Runs target, a name or a path, with params bound by name (see
+    # Params#bind_values). Returns the Result of a job or transform, or a
+    # command's value. Raises InvokeError if the target is unknown, params
+    # are invalid for it or the job aborted, and ArgumentError if params is
+    # no Hash; exceptions from a command's body pass unchanged.
+    def invoke(target, params: {}, workers: nil, limit: nil)
       target = target.to_s
-      argv = arguments(target, argv)
+      raise ArgumentError, "invoke #{target}: params: must be a Hash, got #{params.inspect}" unless params.is_a?(Hash)
+
       declaration, anchor = wrap(target) { resolve(target) }
-      return invoke_job(declaration, argv, target:, anchor:, workers:, limit:) unless declaration.is_a?(Command)
+      return invoke_job(declaration, params, target:, anchor:, workers:, limit:) unless declaration.is_a?(Command)
       if workers || limit
         raise ArgumentError, "#{target} is a command; workers: and limit: apply to jobs and transforms"
       end
 
-      invoke_command(declaration, argv, target:, anchor:)
+      invoke_command(declaration, params, target:, anchor:)
     end
 
     # [declaration, anchor] for target. A target with / or . is a path; any
@@ -78,18 +79,20 @@ module Metacrunch
       raise ProjectError, "unknown job, transform, command or file: #{target}#{hint}"
     end
 
-    # The pipeline of a job or transform with argv bound: the command line,
-    # env:, the credentials searched from anchor, then the default. The
-    # transforms it uses resolve here and read the same credentials.
-    def pipeline(job, argv, anchor:)
+    # The pipeline of a job or transform with its parameters bound from
+    # argv (the command line) or params (code): then env:, the credentials
+    # searched from anchor, then the default. The transforms it uses
+    # resolve here and read the same credentials.
+    def pipeline(job, anchor:, argv: nil, params: nil)
       credentials = credentials_for(anchor)
       context = UseContext.new(resolver: self, env: @env, credentials:, logger: @logger)
-      job.pipeline(binder: binder(argv, credentials), logger: @logger, context:)
+      job.pipeline(binder: binder(credentials, argv:, params:), logger: @logger, context:)
     end
 
-    # Evaluates the command's recipe with argv bound as pipeline does.
-    def prepare(command, argv, anchor:)
-      command.prepare(binder: binder(argv, credentials_for(anchor)))
+    # Evaluates the command's recipe with argv or params bound as pipeline
+    # does.
+    def prepare(command, anchor:, argv: nil, params: nil)
+      command.prepare(binder: binder(credentials_for(anchor), argv:, params:))
     end
 
     # Runs the body of a prepared command and returns its value.
@@ -101,8 +104,8 @@ module Metacrunch
     # -o, ...); their defaults read stdin for a job without source and
     # write stdout for one without sink. Logs the job's error and its
     # summary, prefixed with label, and returns the Result.
-    def run_job(job, argv, anchor:, options: RunOptions.new, workers: nil, label: nil)
-      built = pipeline(job, argv, anchor:)
+    def run_job(job, anchor:, argv: nil, params: nil, options: RunOptions.new, workers: nil, label: nil)
+      built = pipeline(job, anchor:, argv:, params:)
       pipeline = options.apply(built, stdin: @stdin, stdout: @stdout)
       monitor = @progress&.call(options.records_to_stdout?(built))
       result = Engine.new(pipeline, executor: Executor.for(workers), monitor:).run
@@ -118,24 +121,6 @@ module Metacrunch
 
     private
 
-    # Arguments as on the command line. nil would bind an empty string, an
-    # Array (a forgotten *) or a Hash its inspect; they raise instead.
-    def arguments(target, argv)
-      argv.each_with_index do |argument, index|
-        problem = argument_problem(argument)
-        raise ArgumentError, "invoke #{target}: argument #{index + 1} #{problem}" if problem
-      end
-      argv.map(&:to_s)
-    end
-
-    def argument_problem(argument)
-      case argument
-      when nil then "is nil"
-      when Array then "is an Array; splat it with *"
-      when Hash then "is a Hash; give the arguments as on the command line"
-      end
-    end
-
     # Project#fetch raises for a name declared more than once.
     def by_name(project, name, select)
       raise UsageError, "--job selects in a file; #{name} is a name" if select
@@ -148,9 +133,9 @@ module Metacrunch
       [declaration, declaration.file]
     end
 
-    def invoke_job(job, argv, target:, anchor:, workers:, limit:)
+    def invoke_job(job, params, target:, anchor:, workers:, limit:)
       result = wrap(target) do
-        run_job(job, argv, anchor:, options: RunOptions.new(limit:), workers:, label: target)
+        run_job(job, anchor:, params:, options: RunOptions.new(limit:), workers:, label: target)
       rescue NoInputError
         # invoke has no -i: the job reads the stdin of the chain.
         raise NoInputError.new(target, hint: "pipe them into the command that invokes it")
@@ -159,8 +144,8 @@ module Metacrunch
       result
     end
 
-    def invoke_command(command, argv, target:, anchor:)
-      call(wrap(target) { prepare(command, argv, anchor:) })
+    def invoke_command(command, params, target:, anchor:)
+      call(wrap(target) { prepare(command, anchor:, params:) })
     end
 
     # The job has logged its error already.
@@ -184,9 +169,21 @@ module Metacrunch
                         directory: @credentials)
     end
 
-    def binder(argv, credentials)
+    # argv: the command line, with a warning for a secret given there.
+    # params: values from code (see Params#bind_values).
+    def binder(credentials, argv:, params:)
+      return ->(schema) { bind_params(schema, params, credentials) } if params
+
       warn = ->(message) { @logger.warn(message) }
       ->(schema) { schema.bind_argv(argv, env: @env, credentials:, warn:) }
+    end
+
+    # An unknown key is a wrong argument of invoke, as an invalid value is:
+    # both become a ParamError, which invoke raises as InvokeError.
+    def bind_params(schema, params, credentials)
+      schema.bind_values(params, env: @env, credentials:)
+    rescue ArgumentError => e
+      raise ParamError, e.message, cause: nil
     end
 
     # Logs the error and its cause once each (a StepError message already

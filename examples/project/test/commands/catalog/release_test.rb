@@ -16,7 +16,7 @@ class CatalogReleaseCommandTest < Minitest::Test
       run = release(out)
 
       assert_equal [:ok, ["catalog"]], [run.status, run.invoked.map(&:name)]
-      assert_equal ["--output", run.value.to_s], run.invoked.first.argv
+      assert_equal({output: run.value, input: nil}, run.invoked.first.params)
       assert_equal File.realpath(run.value), File.realpath(File.join(out, "current"))
     end
   end

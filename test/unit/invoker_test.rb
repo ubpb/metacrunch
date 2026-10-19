@@ -63,7 +63,7 @@ class InvokerTest < Minitest::Test
         end
 
         run do
-          invoke "numbers", *params.numbers
+          invoke "numbers", params: {numbers: params.numbers}
         rescue Metacrunch::InvokeError
           raise unless params.tolerant
 
@@ -75,7 +75,10 @@ class InvokerTest < Minitest::Test
       Metacrunch.command "outer" do
         params { args :numbers }
 
-        run { [invoke("chain", "--tolerant", *params.numbers), invoke("note", "done")] }
+        run do
+          [invoke("chain", params: {tolerant: true, numbers: params.numbers}),
+           invoke("note", params: {text: "done"})]
+        end
       end
     RUBY
     "commands/boom.rb" => "Metacrunch.command(\"boom\") { run { raise IOError, \"disk full\" } }\n"
@@ -111,7 +114,7 @@ class InvokerTest < Minitest::Test
 
   def test_invoking_a_job_returns_its_result_and_writes_stdout
     with_project do |invoker, out|
-      result = invoker.invoke("numbers", 4, Pathname("5"))
+      result = invoker.invoke("numbers", params: {numbers: ["4", Pathname("5")]})
 
       assert_equal [:ok, "25\n20\n"], [result.status, out.string]
     end
@@ -119,7 +122,7 @@ class InvokerTest < Minitest::Test
 
   def test_an_aborted_job_raises_an_invoke_error_with_its_result
     with_project do |invoker|
-      error = assert_raises(Metacrunch::InvokeError) { invoker.invoke("numbers", "0") }
+      error = assert_raises(Metacrunch::InvokeError) { invoker.invoke("numbers", params: {numbers: ["0"]}) }
 
       assert_equal ["numbers", :aborted, Metacrunch::StepError], [error.name, error.result.status, error.cause.class]
       assert_match(/\Anumbers aborted: Metacrunch::StepError: step map#1 failed at position 1/, error.message)
@@ -128,14 +131,14 @@ class InvokerTest < Minitest::Test
 
   def test_failed_records_return_the_result_and_worsen_the_status
     with_project do |invoker|
-      result = invoker.invoke("numbers", "--skip", "0", "4")
+      result = invoker.invoke("numbers", params: {skip: true, numbers: ["0", "4"]})
 
       assert_equal [:ok_with_failures, :ok_with_failures], [result.status, invoker.status]
     end
   end
 
   def test_a_command_returns_the_value_of_its_body
-    with_project { |invoker| assert_equal "done", invoker.invoke("note", "done") }
+    with_project { |invoker| assert_equal "done", invoker.invoke("note", params: {text: "done"}) }
   end
 
   def test_exceptions_from_a_body_propagate_unchanged
@@ -186,7 +189,7 @@ class InvokerTest < Minitest::Test
         project
       end
       lazy = invoker_for(lookup)
-      2.times { lazy.invoke("note", "x") }
+      2.times { lazy.invoke("note", params: {text: "x"}) }
 
       assert_equal 1, calls
     end
@@ -196,40 +199,57 @@ class InvokerTest < Minitest::Test
     with_project do |invoker, out, root|
       write_file(root, "note", "# frozen_string_literal: true\n\nMetacrunch.job { source [\"file\"] }\n")
       write_file(root, "solo", "# frozen_string_literal: true\n\nMetacrunch.job { source [\"solo\"] }\n")
-      value = Dir.chdir(root) { [invoker.invoke("note", "name"), invoker.invoke("solo").status] }
+      value = Dir.chdir(root) { [invoker.invoke("note", params: {text: "name"}), invoker.invoke("solo").status] }
 
       assert_equal ["name", :ok], value
       assert_equal "\"solo\"\n", out.string
     end
   end
 
-  def test_nil_arguments_are_refused
+  def test_params_from_code_are_bound_by_name
     with_project do |invoker|
-      error = assert_raises(ArgumentError) { invoker.invoke("note", "--x", nil) }
+      result = invoker.invoke("numbers", params: {skip: true, numbers: ["0", Pathname("4")]})
 
-      assert_equal "invoke note: argument 2 is nil", error.message
+      assert_equal [:ok_with_failures, 2], [result.status, result.stats.read]
     end
   end
 
-  def test_arrays_and_hashes_are_refused
-    with_project do |invoker|
-      messages = [["a", "b"], {text: "a"}].map do |argument|
-        invoker.invoke("note", argument)
-      rescue ArgumentError => e
-        e.message
-      end
+  def test_nil_params_count_as_not_given
+    with_project do |invoker, out|
+      invoker.invoke("scaled", params: {factor: nil, numbers: ["1"]})
 
-      assert_equal ["invoke note: argument 1 is an Array; splat it with *",
-                    "invoke note: argument 1 is a Hash; give the arguments as on the command line"], messages
+      assert_equal "2\n", out.string
+    end
+  end
+
+  def test_unknown_params_raise_invoke_errors
+    with_project do |invoker|
+      error = assert_raises(Metacrunch::InvokeError) { invoker.invoke("numbers", params: {skp: true}) }
+
+      assert_equal "invoke numbers: unknown parameter :skp (known: skip, numbers)", error.message
+    end
+  end
+
+  def test_params_must_be_a_hash
+    with_project do |invoker|
+      error = assert_raises(ArgumentError) { invoker.invoke("note", params: ["x"]) }
+
+      assert_equal "invoke note: params: must be a Hash, got [\"x\"]", error.message
+    end
+  end
+
+  def test_arguments_as_on_the_command_line_are_gone
+    with_project do |invoker|
+      assert_raises(ArgumentError) { invoker.invoke("note", "done") }
     end
   end
 
   def test_workers_and_limit_apply_to_jobs_only
     with_project do |invoker|
-      error = assert_raises(ArgumentError) { invoker.invoke("note", "x", workers: 2) }
+      error = assert_raises(ArgumentError) { invoker.invoke("note", params: {text: "x"}, workers: 2) }
 
       assert_equal "note is a command; workers: and limit: apply to jobs and transforms", error.message
-      assert_equal 2, invoker.invoke("numbers", "1", "2", "4", limit: 2).stats.read
+      assert_equal 2, invoker.invoke("numbers", params: {numbers: ["1", "2", "4"]}, limit: 2).stats.read
     end
   end
 
@@ -244,7 +264,7 @@ class InvokerTest < Minitest::Test
 
   def test_the_worst_status_comes_through_a_nested_command
     with_project do |invoker|
-      value = invoker.invoke("outer", "0")
+      value = invoker.invoke("outer", params: {numbers: ["0"]})
 
       assert_equal [:rescued, "done"], value
       assert_equal [:aborted, :ok_with_failures], [invoker.status, invoker.finished_status]
@@ -254,7 +274,7 @@ class InvokerTest < Minitest::Test
   def test_logs_the_error_and_the_summary_with_the_name
     log = StringIO.new
     with_project(logger: Logger.new(log)) do |invoker|
-      assert_raises(Metacrunch::InvokeError) { invoker.invoke("numbers", "0") }
+      assert_raises(Metacrunch::InvokeError) { invoker.invoke("numbers", params: {numbers: ["0"]}) }
 
       assert_match(/numbers: Metacrunch::StepError: step map#1 failed/, log.string)
       assert_match(/numbers: aborted: read 1, written 0/, log.string)
@@ -265,7 +285,7 @@ class InvokerTest < Minitest::Test
     with_project do |invoker, _out, root|
       output = File.join(root, "term.jsonl")
 
-      assert_raises(SignalException) { invoker.invoke("term", "--output", output) }
+      assert_raises(SignalException) { invoker.invoke("term", params: {output:}) }
       assert_equal "1\n", File.read(output)
     end
   end
@@ -294,13 +314,13 @@ class InvokerTest < Minitest::Test
 
   def test_project_invoke_runs_like_invoke_in_a_command
     with_project do |invoker|
-      assert_equal "done", invoker.project.invoke("note", "done", logger: Logger.new(nil), env: {})
+      assert_equal "done", invoker.project.invoke("note", params: {text: "done"}, logger: Logger.new(nil), env: {})
     end
   end
 
   def test_jobs_use_transforms_by_name
     with_project do |invoker, out|
-      invoker.invoke("scaled", "1", "2")
+      invoker.invoke("scaled", params: {numbers: ["1", "2"]})
 
       assert_equal "2\n4\n", out.string
     end
@@ -310,8 +330,8 @@ class InvokerTest < Minitest::Test
   # job's factor left unset) falls through to it.
   def test_values_at_use_win_over_the_environment_and_nil_falls_through
     with_project(env: {"SCALE_FACTOR" => "3"}) do |invoker, out|
-      invoker.invoke("scaled", "1")
-      invoker.invoke("scaled", "--factor", "5", "1")
+      invoker.invoke("scaled", params: {numbers: ["1"]})
+      invoker.invoke("scaled", params: {factor: 5, numbers: ["1"]})
 
       assert_equal "3\n5\n", out.string
     end
@@ -319,7 +339,7 @@ class InvokerTest < Minitest::Test
 
   def test_transforms_run_alone_like_jobs
     with_project(stdin: "1\n2\n") do |invoker, out|
-      result = invoker.invoke("scale", "--factor", "3")
+      result = invoker.invoke("scale", params: {factor: 3})
 
       assert_equal [:ok, "3\n6\n"], [result.status, out.string]
     end

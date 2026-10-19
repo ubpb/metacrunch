@@ -11,7 +11,7 @@ class JobTest < Minitest::Test
   SCALE = "Metacrunch.transform(\"scale\") { map { it * 2 } }\n"
   HALF = "Metacrunch.transform(\"half\") { map { it / 2 } }\n"
 
-  def test_run_binds_cli_arguments_and_returns_the_result
+  def test_run_binds_params_and_returns_the_result
     target = CollectingSink.new
     job = Metacrunch.job do
       params do
@@ -22,7 +22,7 @@ class JobTest < Minitest::Test
       map { it * params.factor }
       sink target
     end
-    result = job.run(["--factor", "3", "1", "2"], logger: SILENT)
+    result = job.run(params: {factor: 3, numbers: ["1", "2"]}, logger: SILENT)
 
     assert_equal :ok, result.status
     assert_equal [3, 6], target.records
@@ -35,7 +35,7 @@ class JobTest < Minitest::Test
       map { it * 2 }
       sink target
     end
-    result = job.run([], logger: SILENT, workers: 2)
+    result = job.run(logger: SILENT, workers: 2)
 
     assert_equal [:ok, [2, 4, 6, 8]], [result.status, target.records]
   end
@@ -46,7 +46,7 @@ class JobTest < Minitest::Test
       built += 1
       source []
     end
-    2.times { job.run([], logger: SILENT) }
+    2.times { job.run(logger: SILENT) }
 
     assert_equal 2, built
   end
@@ -57,7 +57,7 @@ class JobTest < Minitest::Test
       source []
     end
 
-    assert_raises(Metacrunch::ParamError) { job.run([], env: {}, logger: SILENT) }
+    assert_raises(Metacrunch::ParamError) { job.run(env: {}, logger: SILENT) }
   end
 
   def test_describe_returns_the_params_without_building_components
@@ -72,7 +72,7 @@ class JobTest < Minitest::Test
   def test_run_accepts_a_limit
     job = Metacrunch.job { source [1, 2, 3] }
 
-    assert_equal 2, job.run([], logger: Logger.new(nil), limit: 2).stats.read
+    assert_equal 2, job.run(logger: Logger.new(nil), limit: 2).stats.read
   end
 
   def test_a_job_needs_a_recipe
@@ -98,6 +98,26 @@ class JobTest < Minitest::Test
     assert_nil job.desc
   end
 
+  def test_run_reads_the_environment_for_params_not_given
+    target = CollectingSink.new
+    job = Metacrunch.job do
+      params { param :factor, Integer, env: "FACTOR", default: 1 }
+      source [2]
+      map { it * params.factor }
+      sink target
+    end
+    job.run(params: {factor: nil}, env: {"FACTOR" => "4"}, logger: SILENT)
+
+    assert_equal [8], target.records
+  end
+
+  def test_run_refuses_unknown_params
+    job = Metacrunch.job { params { param :factor, Integer }; source [] }
+    error = assert_raises(ArgumentError) { job.run(params: {facter: 3}, logger: SILENT) }
+
+    assert_equal "unknown parameter :facter (known: factor)", error.message
+  end
+
   def test_run_resolves_names_in_the_given_project
     in_tmpdir do |root|
       write_project(root)
@@ -107,7 +127,7 @@ class JobTest < Minitest::Test
         use "scale"
         sink target
       end
-      job.run([], logger: SILENT, project: Metacrunch.load_project(root))
+      job.run(logger: SILENT, project: Metacrunch.load_project(root))
 
       assert_equal [2], target.records
     end
@@ -118,7 +138,7 @@ class JobTest < Minitest::Test
       write_project(root)
       FileUtils.mkdir_p(File.join(root, "sub"))
       job = Metacrunch.job { source [1]; use "scale" }
-      result = Dir.chdir(File.join(root, "sub")) { job.run([], logger: SILENT) }
+      result = Dir.chdir(File.join(root, "sub")) { job.run(logger: SILENT) }
 
       assert_equal [:ok, ["scale/map#1"]], [result.status, result.stats.steps.keys]
     end
@@ -127,7 +147,7 @@ class JobTest < Minitest::Test
   def test_run_without_a_project_names_the_missing_metacrunchfile
     in_tmpdir do |dir|
       job = Metacrunch.job { source [1]; use "scale" }
-      error = Dir.chdir(dir) { assert_raises(Metacrunch::ProjectError) { job.run([], logger: SILENT) } }
+      error = Dir.chdir(dir) { assert_raises(Metacrunch::ProjectError) { job.run(logger: SILENT) } }
 
       assert_equal "unknown job, transform, command or file: scale (no Metacrunchfile found)", error.message
     end
@@ -142,7 +162,7 @@ class JobTest < Minitest::Test
         use path
         sink target
       end
-      job.run([], logger: SILENT)
+      job.run(logger: SILENT)
 
       assert_equal [2], target.records
     end
@@ -150,7 +170,7 @@ class JobTest < Minitest::Test
 
   def test_run_refuses_a_project_that_is_no_project
     job = Metacrunch.job { source [1]; use "scale" }
-    error = assert_raises(ArgumentError) { job.run([], logger: SILENT, project: "/path") }
+    error = assert_raises(ArgumentError) { job.run(logger: SILENT, project: "/path") }
 
     assert_equal "project: must be a Metacrunch::Project, got \"/path\"", error.message
   end
@@ -159,7 +179,7 @@ class JobTest < Minitest::Test
     in_tmpdir do |dir|
       path = write_file(dir, "two.rb", "# frozen_string_literal: true\n\n#{SCALE}#{HALF}")
       job = Metacrunch.job { source [1]; use path }
-      error = assert_raises(Metacrunch::JobLoadError) { job.run([], logger: SILENT) }
+      error = assert_raises(Metacrunch::JobLoadError) { job.run(logger: SILENT) }
 
       assert_match(/two\.rb defines several transforms \(scale, half\); #{Metacrunch::UseContext::PATH_HINT}\z/,
                    error.message)

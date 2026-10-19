@@ -28,10 +28,10 @@ class TestingInvokeTest < Minitest::Test
         end
 
         run do
-          result = invoke "a2c", "--index", "new", *params.files, workers: 4
+          result = invoke "a2c", params: {index: "new", files: params.files}, workers: 4
           next :kept unless result.ok?
 
-          invoke "es:switch-alias", "--to", "new", params.alias
+          invoke "es:switch-alias", params: {to: "new", alias: params.alias}
           :switched
         end
       end
@@ -66,8 +66,8 @@ class TestingInvokeTest < Minitest::Test
     run = invoke("catalog:reindex", params: {files: ["a.xml"]})
 
     assert_equal [:switched, :ok, nil], [run.value, run.status, run.error]
-    assert_equal [Invocation.new(name: "a2c", argv: ["--index", "new", "a.xml"], options: {workers: 4}),
-                  Invocation.new(name: "es:switch-alias", argv: ["--to", "new", "catalog"], options: {})],
+    assert_equal [Invocation.new(name: "a2c", params: {index: "new", files: ["a.xml"]}, options: {workers: 4}),
+                  Invocation.new(name: "es:switch-alias", params: {to: "new", alias: "catalog"}, options: {})],
                  run.invoked
   end
 
@@ -84,16 +84,16 @@ class TestingInvokeTest < Minitest::Test
     assert_equal :kept, run.value
   end
 
-  def test_callable_stubs_get_the_arguments
+  def test_callable_stubs_get_the_params
     seen = []
-    record = lambda do |argv|
-      seen << argv
+    record = lambda do |params|
+      seen << params
       :ok
     end
     run = invoke("catalog:reindex", params: {files: ["a.xml"]},
-                                    stubs: {"a2c" => record, "es:switch-alias" => ->(_argv) { :ignored }})
+                                    stubs: {"a2c" => record, "es:switch-alias" => ->(_params) { :ignored }})
 
-    assert_equal [:switched, [["--index", "new", "a.xml"]]], [run.value, seen]
+    assert_equal [:switched, [{index: "new", files: ["a.xml"]}]], [run.value, seen]
   end
 
   def test_a_stubbed_abort_raises_like_a_real_one
@@ -125,7 +125,7 @@ class TestingInvokeTest < Minitest::Test
   # A mistake in the stubs raises instead of ending the run :aborted, so a
   # test that expects an abort cannot pass by it.
   def test_stubs_for_jobs_must_give_a_status_or_a_result
-    errors = [:abort, ->(_argv) { "ok" }].map do |stub|
+    errors = [:abort, ->(_params) { "ok" }].map do |stub|
       assert_raises(ArgumentError) { invoke("catalog:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => stub}) }
     end
 

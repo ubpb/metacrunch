@@ -36,9 +36,9 @@ module Metacrunch
     # errors: [record, Failure] pairs.
     Result = Data.define(:records, :rejects, :errors, :stats, :status, :error)
 
-    # One invoke recorded by Testing.invoke. options: workers: and limit:
-    # as given.
-    Invocation = Data.define(:name, :argv, :options)
+    # One invoke recorded by Testing.invoke. params: as given. options:
+    # workers: and limit: as given.
+    Invocation = Data.define(:name, :params, :options)
 
     # value: what the body returned. status: :ok, :ok_with_failures (an
     # invoked job ended with failed records, or aborted and the body went
@@ -55,7 +55,7 @@ module Metacrunch
 
     # Records invokes instead of running them and answers from stubs: a
     # status Symbol or a Result for a job, any value for a command, or a
-    # callable that gets argv and returns one of these. Without a stub a
+    # callable that gets the params Hash and returns one of these. Without a stub a
     # job ends :ok and a command returns nil. Names resolve as in a real
     # run, so unknown names raise InvokeError.
     class RecordingInvoker < Invoker
@@ -72,22 +72,22 @@ module Metacrunch
 
       # ** takes the anchor:, which a recording needs no more than the
       # declaration itself.
-      def invoke_job(_job, argv, target:, workers:, limit:, **)
-        @invoked << Invocation.new(name: target, argv:, options: {workers:, limit:}.compact)
-        result = job_result(target, answer(target, argv, :ok))
+      def invoke_job(_job, params, target:, workers:, limit:, **)
+        @invoked << Invocation.new(name: target, params:, options: {workers:, limit:}.compact)
+        result = job_result(target, answer(target, params, :ok))
         track(result.status)
         aborted!(result, target)
         result
       end
 
-      def invoke_command(_command, argv, target:, **)
-        @invoked << Invocation.new(name: target, argv:, options: {})
-        answer(target, argv, nil)
+      def invoke_command(_command, params, target:, **)
+        @invoked << Invocation.new(name: target, params:, options: {})
+        answer(target, params, nil)
       end
 
-      def answer(target, argv, default)
+      def answer(target, params, default)
         stub = @stubs.fetch(target, default)
-        stub.respond_to?(:call) ? stub.call(argv) : stub
+        stub.respond_to?(:call) ? stub.call(params) : stub
       end
 
       def job_result(target, stub)
@@ -141,15 +141,15 @@ module Metacrunch
       )
     end
 
-    # Runs the body of a command with params bound as a Hash, like run
-    # does (no environment, no credentials): the command name of project,
-    # or a Command (from Metacrunch.load_command, say), whose names resolve
-    # in project:, else in the project of the working directory, loaded
-    # when a name is first needed. Every invoke in the body is recorded and
-    # answered from stubs (name => status Symbol, Result, value, or
-    # callable that gets argv) instead of run; see RecordingInvoker. A stub
-    # for a name that does not resolve raises ArgumentError, as does a job
-    # name for name; a job's stub without a status raises StubError (an
+    # Runs the body of a command with params bound as run does (no
+    # environment, no credentials): the command name of project, or a
+    # Command (from Metacrunch.load_command, say), whose names resolve in
+    # project:, else in the project of the working directory, loaded when a
+    # name is first needed. Every invoke in the body is recorded and
+    # answered from stubs (name => status Symbol, Result, value, or callable
+    # that gets the params) instead of run; see RecordingInvoker. A stub for
+    # a name that does not resolve raises ArgumentError, as does a job name
+    # for name; a job's stub without a status raises StubError (an
     # ArgumentError).
     def invoke(target, name = nil, params: {}, stubs: {}, logger: Logger.new(nil), project: nil)
       command, project = invoke_target(target, name, project)
