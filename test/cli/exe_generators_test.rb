@@ -69,9 +69,8 @@ class ExeGeneratorsTest < Minitest::Test
     in_tmpdir do |dir|
       generate_project(dir)
       generate_paths(File.join(dir, "loose").tap { FileUtils.mkdir_p(it) })
-      stdout, stderr, status = Open3.capture3(RbConfig.ruby, Gem.bin_path("rubocop", "rubocop"), "--config",
-                                              File.join(ROOT, ".rubocop.yml"), "--cache", "false", "--format",
-                                              "simple", chdir: dir)
+      stdout, stderr, status = rubocop("--config", File.join(ROOT, ".rubocop.yml"), "--cache", "false", "--format",
+                                       "simple", chdir: dir)
 
       assert_predicate status, :success?, stdout + stderr
       assert_match(/\b\d+ files inspected, no offenses detected/, stdout)
@@ -92,6 +91,15 @@ class ExeGeneratorsTest < Minitest::Test
   # The five kinds by path with tests, in dir.
   def generate_paths(dir)
     Dir.chdir(dir) { BY_PATH.each { |kind, path| generate("generate", kind, "--test", path) } }
+  end
+
+  # RuboCop of the repository's bundle. Its config inherits from
+  # rubocop-ubpb, a git gem that only Bundler finds; the process sets up
+  # Bundler itself, so the test passes with and without bundle exec.
+  def rubocop(*, chdir:)
+    env = {"BUNDLE_GEMFILE" => File.join(ROOT, "Gemfile")}
+    Open3.capture3(env, RbConfig.ruby, "-rbundler/setup", "-e", 'load Gem.bin_path("rubocop", "rubocop")', "--",
+                   *, chdir:)
   end
 
   def generate(*args)
