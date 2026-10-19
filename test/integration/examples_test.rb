@@ -161,8 +161,8 @@ class ExamplesTest < Minitest::Test
   # Runs sanitize.rb and returns its output, rejects, errors and issues files.
   def sanitize(dir, name, *options)
     files = ["out.jsonl", "rejects.jsonl", "errors.jsonl", "issues.tsv"].map { File.join(dir, "#{name}.#{it}") }
-    arguments = ["run", *options, "-i", example("data/publications.jsonl"), "--rejects", files[1], "--errors", files[2],
-                 example("sanitize.rb"), "--output", files[0], "--issues", files[3]]
+    arguments = ["run", *options, "-i", example("data/publications.jsonl"), "--rejects", files[1],
+                 "--failures", files[2], example("sanitize.rb"), "--output", files[0], "--issues", files[3]]
     _stdout, stderr, status = metacrunch(*arguments)
     raise "sanitize.rb failed (#{status.exitstatus}): #{stderr}" unless status.exitstatus == 3
 

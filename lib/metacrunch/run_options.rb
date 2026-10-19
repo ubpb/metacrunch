@@ -4,11 +4,11 @@ module Metacrunch
 
   # The options of `metacrunch run` that change the pipeline: source and
   # sinks replaced by JSON Lines, the filter default, the limit and the
-  # error policy. Paths may be "-" for stdin or stdout. The Invoker applies
+  # failure policy. Paths may be "-" for stdin or stdout. The Invoker applies
   # them to every job it runs; invoked jobs get the defaults.
-  RunOptions = Data.define(:input, :output, :rejects, :errors, :stats, :limit, :on_error, :max_errors) do
-    def initialize(input: nil, output: nil, rejects: nil, errors: nil, stats: nil, limit: nil, on_error: nil,
-                   max_errors: nil)
+  RunOptions = Data.define(:input, :output, :rejects, :failures, :stats, :limit, :on_failure, :max_failures) do
+    def initialize(input: nil, output: nil, rejects: nil, failures: nil, stats: nil, limit: nil, on_failure: nil,
+                   max_failures: nil)
       super
     end
 
@@ -20,14 +20,14 @@ module Metacrunch
       check_directories!
       apply_input(pipeline, stdin:).with(
         sink: sink(pipeline, stdout), **side_sinks(pipeline, stdout), limit: limit || pipeline.limit,
-        **error_policy(pipeline)
+        **failure_policy(pipeline)
       )
     end
 
-    # True if records (the output, rejects or errors) are written to
+    # True if records (the output, rejects or failures) are written to
     # stdout.
     def records_to_stdout?(pipeline)
-      [output, rejects, errors].include?(JsonLines::STDIO) || (output.nil? && pipeline.sink.nil?)
+      [output, rejects, failures].include?(JsonLines::STDIO) || (output.nil? && pipeline.sink.nil?)
     end
 
     # Only the input: -i, or JSON Lines from stdin for a job without
@@ -49,13 +49,13 @@ module Metacrunch
       SinkAdapter.new(JsonLines::Writer.new(stdout))
     end
 
-    # --rejects and --errors naming the same file share one writer.
+    # --rejects and --failures naming the same file share one writer.
     def side_sinks(pipeline, stdout)
       writers = {}
       writer = ->(path) { writers[key(path)] ||= JsonLines::ContextWriter.new(target(path, stdout)) }
       {
         rejects: rejects ? SinkAdapter.new(writer.call(rejects)) : pipeline.rejects,
-        errors: errors ? SinkAdapter.new(writer.call(errors)) : pipeline.errors
+        failures: failures ? SinkAdapter.new(writer.call(failures)) : pipeline.failures
       }
     end
 
@@ -80,23 +80,23 @@ module Metacrunch
       File.exist?(first) && File.exist?(second) && File.identical?(first, second)
     end
 
-    def error_policy(pipeline)
-      policy = on_error || pipeline.on_error
-      if max_errors && policy != :skip
-        raise UsageError, "--max-errors needs the error policy skip (add --on-error skip)"
+    def failure_policy(pipeline)
+      policy = on_failure || pipeline.on_failure
+      if max_failures && policy != :skip
+        raise UsageError, "--max-failures needs the failure policy skip (add --on-failure skip)"
       end
 
-      {on_error: policy, max_errors: policy == :skip ? max_errors || pipeline.max_errors : nil}
+      {on_failure: policy, max_failures: policy == :skip ? max_failures || pipeline.max_failures : nil}
     end
 
-    # Only one option may use stdout; --rejects and --errors share one
+    # Only one option may use stdout; --rejects and --failures share one
     # writer and count as one. A job without sink uses stdout for its
     # records unless -o is given.
     def check_stdout!(pipeline)
-      options = if rejects == JsonLines::STDIO && errors == JsonLines::STDIO
-        {"--output" => output, "--rejects/--errors" => rejects, "--stats" => stats}
+      options = if rejects == JsonLines::STDIO && failures == JsonLines::STDIO
+        {"--output" => output, "--rejects/--failures" => rejects, "--stats" => stats}
       else
-        {"--output" => output, "--rejects" => rejects, "--errors" => errors, "--stats" => stats}
+        {"--output" => output, "--rejects" => rejects, "--failures" => failures, "--stats" => stats}
       end
       users = options.select { |_option, path| path == JsonLines::STDIO }.keys
       users.unshift("the default output (the job has no sink)") if output.nil? && pipeline.sink.nil?
@@ -108,7 +108,8 @@ module Metacrunch
     # Output files go into existing directories only. --stats is written
     # after the run, so a typo would otherwise cost the whole run.
     def check_directories!
-      {"--output" => output, "--rejects" => rejects, "--errors" => errors, "--stats" => stats}.each do |option, path|
+      paths = {"--output" => output, "--rejects" => rejects, "--failures" => failures, "--stats" => stats}
+      paths.each do |option, path|
         next if path.nil? || path == JsonLines::STDIO
 
         directory = File.dirname(File.expand_path(path))
@@ -117,13 +118,13 @@ module Metacrunch
     end
 
     # A file must not be written twice, or read and written at once, except
-    # by --rejects and --errors, which share a writer.
+    # by --rejects and --failures, which share a writer.
     def check_files!
-      options = {"--input" => input, "--output" => output, "--rejects" => rejects, "--errors" => errors,
+      options = {"--input" => input, "--output" => output, "--rejects" => rejects, "--failures" => failures,
                  "--stats" => stats}
       files = options.reject { |_option, path| path.nil? || path == JsonLines::STDIO }
       files.to_a.combination(2).each do |(first, first_path), (second, second_path)|
-        next if [first, second] == ["--rejects", "--errors"]
+        next if [first, second] == ["--rejects", "--failures"]
         next unless same_file?(first_path, second_path)
 
         raise UsageError, "#{first} and #{second} name the same file: #{second_path}"

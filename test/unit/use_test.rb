@@ -133,8 +133,8 @@ class UseTest < Minitest::Test
       source [-1, 0, 5]
       use checks
       rejects rejected
-      errors failed
-      on_error :skip
+      failures failed
+      on_failure :skip
     end
     Metacrunch::Engine.new(pipeline).run
 

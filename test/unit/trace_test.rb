@@ -63,7 +63,7 @@ class TraceTest < Minitest::Test
         isbns.map { |isbn| record.merge("isbn" => isbn) }
       end
       map { |record| record["isbn"] == "b" ? raise(KeyError, "no b") : record.merge("ok" => true) }
-      on_error :skip
+      on_failure :skip
     end
 
     assert_equal <<~TEXT, output.sub(%r{  \(test/unit/trace_test\.rb:\d+\)}, "  (LOCATION)")
@@ -84,7 +84,7 @@ class TraceTest < Minitest::Test
     output = trace_run do
       source ["{"]
       map { JSON.parse(it) }
-      on_error :skip
+      on_failure :skip
     end
 
     assert_match(%r{failed: JSON::ParserError: .*  \(test/unit/trace_test\.rb:\d+\)$}, output)
@@ -134,7 +134,7 @@ class TraceTest < Minitest::Test
     output = trace_run do
       source [bad]
       map { it }
-      on_error :skip
+      on_failure :skip
     end
 
     assert_equal <<~TEXT, output

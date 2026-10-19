@@ -51,7 +51,9 @@ class CatalogJobTest < Minitest::Test
 
     assert_equal [:ok_with_failures, EXPECTED_FILES["records.jsonl"]], [result.status, result.records]
     assert_equal([["2", "Not public"]], result.rejects.map { |record, rejection| [record["_id"], rejection.reason] })
-    assert_equal([["5", "KeyError"]], result.errors.map { |record, failure| [record["_id"], failure.error.class.name] })
+    failed = result.failures.map { |record, failure| [record["_id"], failure.error.class.name] }
+
+    assert_equal [["5", "KeyError"]], failed
   end
 
   def test_min_year_can_come_from_the_environment

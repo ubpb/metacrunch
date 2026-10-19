@@ -15,7 +15,7 @@ module Metacrunch
 
     # Source: yields every line parsed with JSON.parse. A line that is not
     # valid JSON (or not valid UTF-8, or has duplicate keys) is yielded as
-    # InvalidRecord, so the job's error policy decides. Blank lines and byte
+    # InvalidRecord, so the job's failure policy decides. Blank lines and byte
     # order marks (also of concatenated files) are skipped.
     class Reader
 
@@ -188,7 +188,7 @@ module Metacrunch
 
     end
 
-    # Sink for the rejects and errors roles: writes every record with its
+    # Sink for the rejects and failures roles: writes every record with its
     # context as an envelope (record, id, position, marks, rejection,
     # failure). Values that are not JSON types are written as their inspect
     # string and strings with invalid UTF-8 scrubbed, so diagnostics never

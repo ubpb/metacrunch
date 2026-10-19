@@ -5,7 +5,7 @@ module Metacrunch
     # Runs the steps in forked worker processes; the source and the sinks
     # stay in this process. Batch k of the source goes to worker k mod N,
     # and the results are applied in the same order, so records, logs and
-    # errors reach the sinks in source order, as inline. See Run, Worker,
+    # failures reach the sinks in source order, as inline. See Run, Worker,
     # Frame and Dump.
     class Fork
 

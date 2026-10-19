@@ -165,7 +165,7 @@ class RunTest < Minitest::Test
     check = cli("check", job("helper.rb"))
 
     assert_equal [0, "\"a\"\n"], run.take(2)
-    assert_equal [0, "  steps     helper/map#1"], [check.first, check[1].lines[2].chomp]
+    assert_equal [0, "  steps      helper/map#1"], [check.first, check[1].lines[2].chomp]
   end
 
   def test_job_refuses_a_name_declared_twice_in_a_file

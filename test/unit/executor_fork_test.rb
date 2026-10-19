@@ -191,8 +191,8 @@ class ExecutorForkTest < Minitest::Test
     result = run_pipeline do
       source((1..6).to_a)
       map { raise ArgumentError, "bad" }
-      errors failed
-      on_error :skip, max_errors: 0
+      failures failed
+      on_failure :skip, max_failures: 0
     end
 
     assert_equal [:aborted, [1]], [result.status, failed.records]

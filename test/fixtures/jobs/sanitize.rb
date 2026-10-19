@@ -13,5 +13,5 @@ Metacrunch.job do
   end
   reject("No title") { it["title"].empty? }
   map { it.merge("year" => Integer(it["year"])) }
-  on_error :skip
+  on_failure :skip
 end

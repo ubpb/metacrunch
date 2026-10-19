@@ -16,5 +16,5 @@ Metacrunch.job "numbers" do
   map { |number| number.zero? ? raise(ZeroDivisionError, "zero is not allowed") : number * params.factor }
 
   sink PrintingSink.new
-  on_error :skip if params.skip_errors
+  on_failure :skip if params.skip_errors
 end

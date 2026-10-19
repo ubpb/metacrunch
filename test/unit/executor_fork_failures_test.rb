@@ -139,13 +139,13 @@ class ExecutorForkFailuresTest < Minitest::Test
     assert_match(/\Arecord at position 1 cannot be sent from a worker: can't dump IO/, result.error.message)
   end
 
-  def test_failures_with_exceptions_that_cannot_be_dumped_reach_the_errors_sink
+  def test_failures_with_exceptions_that_cannot_be_dumped_reach_the_failures_sink
     failed = CollectingSink.new
     result = run_pipeline do
       source [1]
       map { raise HoldsIO }
-      errors failed
-      on_error :skip
+      failures failed
+      on_failure :skip
     end
     error = failed.contexts.first.failure.error
 
@@ -189,7 +189,7 @@ class ExecutorForkFailuresTest < Minitest::Test
         result = run_pipeline(logger: ForeignLogger.new(file)) do
           source [1, 2]
           map { it == 2 ? raise("bad") : it }
-          on_error :skip
+          on_failure :skip
         end
 
         assert_equal :ok_with_failures, result.status

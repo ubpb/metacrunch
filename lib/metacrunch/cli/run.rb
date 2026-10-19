@@ -13,8 +13,8 @@ module Metacrunch
       USAGE = "run [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]"
       # The options that apply to jobs and transforms only, as the usage
       # error names them; -w is kept apart in @workers.
-      JOB_OPTIONS = {input: "-i", output: "-o", rejects: "--rejects", errors: "--errors", limit: "-n",
-                     on_error: "--on-error", max_errors: "--max-errors", stats: "--stats"}.freeze
+      JOB_OPTIONS = {input: "-i", output: "-o", rejects: "--rejects", failures: "--failures", limit: "-n",
+                     on_failure: "--on-failure", max_failures: "--max-failures", stats: "--stats"}.freeze
 
       def initialize(streams, lookup)
         super
@@ -35,21 +35,21 @@ module Metacrunch
           @options[:output] = path
         end
         parser.on("--rejects PATH", "Write rejected records with their context to PATH") { @options[:rejects] = it }
-        parser.on("--errors PATH", "Write failed records with their context to PATH") { @options[:errors] = it }
+        parser.on("--failures PATH", "Write failed records with their context to PATH") { @options[:failures] = it }
         parser.on("-n", "--limit N", Integer, "Process only the first N source records") do |count|
           raise UsageError, "--limit must be at least 1" unless count.positive?
 
           @options[:limit] = count
         end
-        parser.on("--on-error POLICY", "abort or skip, instead of the job's error policy") do |policy|
-          raise UsageError, "--on-error must be abort or skip" unless ["abort", "skip"].include?(policy)
+        parser.on("--on-failure POLICY", "abort or skip, instead of the job's failure policy") do |policy|
+          raise UsageError, "--on-failure must be abort or skip" unless ["abort", "skip"].include?(policy)
 
-          @options[:on_error] = policy.to_sym
+          @options[:on_failure] = policy.to_sym
         end
-        parser.on("--max-errors N", Integer, "Stop after more than N failed records (needs skip)") do |count|
-          raise UsageError, "--max-errors must not be negative" if count.negative?
+        parser.on("--max-failures N", Integer, "Stop after more than N failed records (needs skip)") do |count|
+          raise UsageError, "--max-failures must not be negative" if count.negative?
 
-          @options[:max_errors] = count
+          @options[:max_failures] = count
         end
         parser.on("-w", "--workers N", "Run the steps in N processes; auto: one per core but one") do |value|
           @workers = worker_count(value)

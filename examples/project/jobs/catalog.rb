@@ -2,7 +2,7 @@
 
 # Writes the public titles of a JSON Lines file to DIR/titles.jsonl, with
 # the steps of the transform catalog:public. A record without a title
-# fails; on_error :skip lets the run go on, and it ends with failed records
+# fails; on_failure :skip lets the run go on, and it ends with failed records
 # (exit status 3).
 #
 #   cd examples/project
@@ -18,5 +18,5 @@ Metacrunch.job "catalog", desc: "Write the public titles into a directory" do
   source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }
   use "catalog:public"
   sink Metacrunch::JsonLines::Writer.new(File.join(params.output, "titles.jsonl"))
-  on_error :skip
+  on_failure :skip
 end

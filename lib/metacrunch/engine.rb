@@ -3,7 +3,7 @@
 module Metacrunch
   # Runs a Pipeline: opens the source and the sinks, runs the hooks and has
   # the executor push the records through the steps into the sinks. Applies
-  # the error policy to the run, collects stats and returns a Result.
+  # the failure policy to the run, collects stats and returns a Result.
   class Engine
 
     # Errors a step can fail with. Everything else (NoMemoryError, signals,
@@ -91,7 +91,7 @@ module Metacrunch
     end
 
     def sinks
-      [@pipeline.sink, @pipeline.rejects, @pipeline.errors].compact
+      [@pipeline.sink, @pipeline.rejects, @pipeline.failures].compact
     end
 
     # Writes what the sinks have buffered, so batch: does not change which

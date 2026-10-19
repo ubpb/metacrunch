@@ -16,9 +16,9 @@ class BuilderTest < Minitest::Test
     "neither_callable_nor_block" => proc { source([]); map },
     "duplicate_step_name" => proc { source([]); map(name: "x") { it }; map(name: "x") { it } },
     "reserved_step_name" => proc { source([]); map(name: "source") { it } },
-    "unknown_error_policy" => proc { source([]); on_error :ignore },
-    "max_errors_without_skip" => proc { source([]); on_error :abort, max_errors: 3 },
-    "negative_max_errors" => proc { source([]); on_error :skip, max_errors: -1 },
+    "unknown_error_policy" => proc { source([]); on_failure :ignore },
+    "max_failures_without_skip" => proc { source([]); on_failure :abort, max_failures: 3 },
+    "negative_max_failures" => proc { source([]); on_failure :skip, max_failures: -1 },
     "params_after_other_statements" => proc { source([]); params { param :x } }
   }.freeze
 
@@ -31,13 +31,13 @@ class BuilderTest < Minitest::Test
       reject { it > 100 }
       flat_map(name: "explode") { [it, it] }
       sink target, batch: 10
-      on_error :skip, max_errors: 5
+      on_failure :skip, max_failures: 5
     end
     steps = pipeline.steps.map { [it.kind, it.name, it.reason] }
 
     assert_equal [[:map, "map#1", nil], [:filter, "filter#2", "Too small"], [:reject, "reject#3", nil],
                   [:flat_map, "explode", nil]], steps
-    assert_equal [:skip, 5], [pipeline.on_error, pipeline.max_errors]
+    assert_equal [:skip, 5], [pipeline.on_failure, pipeline.max_failures]
     assert_same target, pipeline.sink.sink
   end
 
@@ -52,14 +52,14 @@ class BuilderTest < Minitest::Test
     assert_equal([[nil, callable], ["Patent", callable]], pipeline.steps.map { [it.reason, it.callable] })
   end
 
-  def test_accepts_symbol_reasons_and_zero_max_errors
+  def test_accepts_symbol_reasons_and_zero_max_failures
     pipeline = build_pipeline do
       source []
       reject(:patent) { it }
-      on_error :skip, max_errors: 0
+      on_failure :skip, max_failures: 0
     end
 
-    assert_equal ["patent", 0], [pipeline.steps.first.reason, pipeline.max_errors]
+    assert_equal ["patent", 0], [pipeline.steps.first.reason, pipeline.max_failures]
   end
 
   def test_explains_invalid_reasons
@@ -118,6 +118,33 @@ class BuilderTest < Minitest::Test
     end
 
     assert_empty schema.definitions
+  end
+
+  def test_failures_and_the_failure_policy
+    sink = CollectingSink.new
+    pipeline = build_pipeline do
+      source []
+      failures sink, batch: 5
+      on_failure :skip, max_failures: 3
+    end
+
+    assert_equal [sink, 5, :skip, 3],
+                 [pipeline.failures.sink, pipeline.failures.batch, pipeline.on_failure, pipeline.max_failures]
+  end
+
+  def test_the_failure_policy_is_checked
+    messages = [-> { on_failure :retry }, -> { on_failure :abort, max_failures: 1 }].map do |statement|
+      assert_raises(ArgumentError) { build_pipeline { source []; instance_exec(&statement) } }.message
+    end
+
+    assert_equal ["on_failure must be one of [:abort, :skip], got :retry",
+                  "max_failures must be a non-negative Integer and needs on_failure :skip"], messages
+  end
+
+  def test_the_old_names_are_gone
+    [-> { errors CollectingSink.new }, -> { on_error :skip }].each do |statement|
+      assert_raises(NoMethodError) { build_pipeline { source []; instance_exec(&statement) } }
+    end
   end
 
   private

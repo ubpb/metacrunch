@@ -66,7 +66,7 @@ class EngineMonitorTest < Minitest::Test
     pipeline = build_pipeline do
       source [1, 2]
       map { raise "broken" }
-      on_error :skip
+      on_failure :skip
     end
     engine(pipeline, monitor:).run
 

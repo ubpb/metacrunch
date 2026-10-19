@@ -25,9 +25,9 @@ class RunFlagsTest < Minitest::Test
     assert_equal "1\n2\n", File.read(output)
   end
 
-  def test_rejects_and_errors_files_get_the_context
+  def test_rejects_and_failures_files_get_the_context
     bad = File.join(@dir, "bad.jsonl")
-    code, = cli("run", "--on-error", "skip", "--rejects", bad, "--errors", bad, job("numbers.rb"),
+    code, = cli("run", "--on-failure", "skip", "--rejects", bad, "--failures", bad, job("numbers.rb"),
                 "--", "-1", "0", "2")
     lines = File.readlines(bad).map { JSON.parse(it) }
 
@@ -42,19 +42,19 @@ class RunFlagsTest < Minitest::Test
 
   def test_invalid_option_values_are_usage_errors
     assert_match(/--limit must be at least 1/, cli("run", "--limit", "0", job("double.rb"))[2])
-    assert_match(/--max-errors must not be negative/, cli("run", "--max-errors", "-1", job("double.rb"))[2])
-    assert_match(/--on-error must be abort or skip/, cli("run", "--on-error", "maybe", job("double.rb"))[2])
+    assert_match(/--max-failures must not be negative/, cli("run", "--max-failures", "-1", job("double.rb"))[2])
+    assert_match(/--on-failure must be abort or skip/, cli("run", "--on-failure", "maybe", job("double.rb"))[2])
   end
 
   def test_the_error_policy_can_be_overridden
-    assert_equal 3, cli("run", "--on-error", "skip", job("numbers.rb"), "0", "1").first
-    assert_match(/--max-errors needs the error policy skip/,
-                 cli("run", "--max-errors", "3", job("numbers.rb"), "1")[2])
+    assert_equal 3, cli("run", "--on-failure", "skip", job("numbers.rb"), "0", "1").first
+    assert_match(/--max-failures needs the failure policy skip/,
+                 cli("run", "--max-failures", "3", job("numbers.rb"), "1")[2])
   end
 
   def test_invalid_json_lines_fail_like_records
     errors = File.join(@dir, "errors.jsonl")
-    code, stdout, = cli("run", "--on-error", "skip", "--errors", errors, job("double.rb"), stdin: "1\n{oops\n3\n")
+    code, stdout, = cli("run", "--on-failure", "skip", "--failures", errors, job("double.rb"), stdin: "1\n{oops\n3\n")
     failure = JSON.parse(File.read(errors))
 
     assert_equal [3, "2\n6\n"], [code, stdout]
@@ -121,6 +121,25 @@ class RunFlagsTest < Minitest::Test
 
     refute_includes quiet.string, "\e[2K"
     refute_includes disabled.string, "\e[2K"
+  end
+
+  def test_failures_options
+    path = File.join(@dir, "failures.jsonl")
+    code, = cli("run", "--failures", path, "--on-failure", "skip", "--max-failures", "10",
+                "-o", File.join(@dir, "out.jsonl"), job("sanitize.rb"),
+                stdin: "{\"id\":\"a\",\"title\":\"T\",\"year\":\"n.d.\"}\n")
+
+    assert_equal 3, code
+    assert_includes File.read(path), "\"id\":\"a\""
+  end
+
+  def test_the_old_options_are_gone
+    ["--errors", "--on-error", "--max-errors"].each do |option|
+      code, _out, err = cli("run", option, "x", job("double.rb"))
+
+      assert_equal 2, code
+      assert_includes err, "invalid option: #{option}"
+    end
   end
 
   def test_help_lists_the_run_options

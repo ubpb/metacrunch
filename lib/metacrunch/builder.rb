@@ -7,7 +7,7 @@ module Metacrunch
 
     include RecipeParams
 
-    ON_ERROR_POLICIES = [:abort, :skip].freeze
+    ON_FAILURE_POLICIES = [:abort, :skip].freeze
 
     attr_reader :logger
 
@@ -15,7 +15,7 @@ module Metacrunch
     # values. describe: stop as soon as the schema is known (for --help).
     # context: the UseContext that `use` resolves and binds transforms in.
     # transform: the Transform whose recipe this builder evaluates; it
-    # refuses source, sinks, error policy and profile. nil for a job.
+    # refuses source, sinks, failure policy and profile. nil for a job.
     # stack: the transforms being evaluated, this one last (for cycles).
     # root: the root callable (see RecipeParams#root); without it, the
     # context's.
@@ -32,8 +32,8 @@ module Metacrunch
       @statements = 0
       @prefixes = []
       @sinks = {}
-      @on_error = :abort
-      @max_errors = nil
+      @on_failure = :abort
+      @max_failures = nil
       @profile = false
       @before_hooks = []
       @after_hooks = []
@@ -102,22 +102,25 @@ module Metacrunch
       add_sink(:rejects, object, batch)
     end
 
-    def errors(object, batch: nil)
-      add_sink(:errors, object, batch)
+    # The sink for records that failed (a step raised; on_failure :skip).
+    def failures(object, batch: nil)
+      add_sink(:failures, object, batch)
     end
 
-    def on_error(policy, max_errors: nil)
-      job_only!("on_error")
+    # What a failed record does: :abort ends the run, :skip sends it to the
+    # failures sink and goes on, up to max_failures.
+    def on_failure(policy, max_failures: nil)
+      job_only!("on_failure")
       use!
-      unless ON_ERROR_POLICIES.include?(policy)
-        raise ArgumentError, "on_error must be one of #{ON_ERROR_POLICIES.inspect}, got #{policy.inspect}"
+      unless ON_FAILURE_POLICIES.include?(policy)
+        raise ArgumentError, "on_failure must be one of #{ON_FAILURE_POLICIES.inspect}, got #{policy.inspect}"
       end
-      unless max_errors.nil? || (policy == :skip && max_errors.is_a?(Integer) && !max_errors.negative?)
-        raise ArgumentError, "max_errors must be a non-negative Integer and needs on_error :skip"
+      unless max_failures.nil? || (policy == :skip && max_failures.is_a?(Integer) && !max_failures.negative?)
+        raise ArgumentError, "max_failures must be a non-negative Integer and needs on_failure :skip"
       end
 
-      @on_error = policy
-      @max_errors = max_errors
+      @on_failure = policy
+      @max_failures = max_failures
       nil
     end
 
@@ -141,8 +144,8 @@ module Metacrunch
 
       Pipeline.new(
         source: @source, id_extractor: @id_extractor, steps: @steps.dup.freeze,
-        sink: @sinks[:sink], rejects: @sinks[:rejects], errors: @sinks[:errors],
-        on_error: @on_error, max_errors: @max_errors, profile: @profile,
+        sink: @sinks[:sink], rejects: @sinks[:rejects], failures: @sinks[:failures],
+        on_failure: @on_failure, max_failures: @max_failures, profile: @profile,
         before_hooks: @before_hooks.dup.freeze, after_hooks: @after_hooks.dup.freeze,
         params: @values, logger: @logger, limit: nil
       )
@@ -152,7 +155,7 @@ module Metacrunch
 
     def recipe_kind = @transform ? "transform" : "job"
 
-    # Source, sinks, the error policy and profile belong to the job that
+    # Source, sinks, the failure policy and profile belong to the job that
     # uses a transform.
     def job_only!(statement)
       return unless @transform
