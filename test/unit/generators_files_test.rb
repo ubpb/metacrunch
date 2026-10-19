@@ -33,6 +33,16 @@ class GeneratorsFilesTest < Minitest::Test
     assert_empty problems
   end
 
+  # RuboCop's line limit (120) holds for the generated files of long names.
+  def test_long_names_keep_lines_within_120_characters
+    name = "catalog:normalize:subject_headings_for_titles"
+    long = ["job", "transform", "command"].flat_map do |kind|
+      plan(kind, name).entries.flat_map { |entry| entry.content.lines.select { it.chomp.length > 120 } }
+    end
+
+    assert_empty long
+  end
+
   def test_the_comment_shows_how_to_run_it
     by_name = plan("job", "catalog:ids").entries.first.content
     by_path = plan("job", "tools/fix").entries.first.content
