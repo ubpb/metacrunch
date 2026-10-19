@@ -81,6 +81,27 @@ class InvokerTest < Minitest::Test
         end
       end
     RUBY
+    "commands/risky.rb" => <<~RUBY,
+      Metacrunch.command "risky" do
+        params { args :numbers }
+
+        run do
+          invoke "numbers", params: {skip: true, numbers: params.numbers}
+          raise IOError, "disk full"
+        end
+      end
+    RUBY
+    "commands/careful.rb" => <<~RUBY,
+      Metacrunch.command "careful" do
+        params { args :numbers }
+
+        run do
+          invoke "risky", params: {numbers: params.numbers}
+        rescue IOError
+          :rescued
+        end
+      end
+    RUBY
     "commands/boom.rb" => "Metacrunch.command(\"boom\") { run { raise IOError, \"disk full\" } }\n"
   }.freeze
 
@@ -138,7 +159,7 @@ class InvokerTest < Minitest::Test
   end
 
   def test_a_command_returns_the_value_of_its_body
-    with_project { |invoker| assert_equal "done", invoker.invoke("note", params: {text: "done"}) }
+    with_project { |invoker| assert_equal "done", invoker.invoke("note", params: {text: "done"}).value }
   end
 
   def test_exceptions_from_a_body_propagate_unchanged
@@ -199,7 +220,7 @@ class InvokerTest < Minitest::Test
     with_project do |invoker, out, root|
       write_file(root, "note", "# frozen_string_literal: true\n\nMetacrunch.job { source [\"file\"] }\n")
       write_file(root, "solo", "# frozen_string_literal: true\n\nMetacrunch.job { source [\"solo\"] }\n")
-      value = Dir.chdir(root) { [invoker.invoke("note", params: {text: "name"}), invoker.invoke("solo").status] }
+      value = Dir.chdir(root) { [invoker.invoke("note", params: {text: "name"}).value, invoker.invoke("solo").status] }
 
       assert_equal ["name", :ok], value
       assert_equal "\"solo\"\n", out.string
@@ -262,12 +283,31 @@ class InvokerTest < Minitest::Test
                  "pipe them into the command that invokes it", error.message
   end
 
-  def test_the_worst_status_comes_through_a_nested_command
+  def test_invoking_a_command_returns_a_command_result
     with_project do |invoker|
-      value = invoker.invoke("outer", params: {numbers: ["0"]})
+      result = invoker.invoke("note", params: {text: "done"})
 
-      assert_equal [:rescued, "done"], value
+      assert_equal [Metacrunch::CommandResult, :ok, true, nil, "done"],
+                   [result.class, result.status, result.ok?, result.error, result.value]
+    end
+  end
+
+  def test_each_command_result_has_the_status_of_its_own_jobs
+    with_project do |invoker|
+      result = invoker.invoke("outer", params: {numbers: ["0"]})
+      chain, note = result.value
+
+      assert_equal [:ok_with_failures, :ok_with_failures, :ok], [result.status, chain.status, note.status]
+      assert_equal [:rescued, "done"], [chain.value, note.value]
       assert_equal [:aborted, :ok_with_failures], [invoker.status, invoker.finished_status]
+    end
+  end
+
+  def test_a_command_that_raises_keeps_the_status_of_its_jobs
+    with_project do |invoker|
+      result = invoker.invoke("careful", params: {numbers: ["0"]})
+
+      assert_equal [:ok_with_failures, :rescued], [result.status, result.value]
     end
   end
 
@@ -301,7 +341,7 @@ class InvokerTest < Minitest::Test
       out = StringIO.new
       invoker = invoker_for(Metacrunch.load_project(root), stdout: out, environment: "production")
 
-      assert_equal SECRET.reverse, invoker.invoke("secret:show")
+      assert_equal SECRET.reverse, invoker.invoke("secret:show").value
       assert_equal "\"#{SECRET.reverse}\"\n", out.string
     end
   end
@@ -314,7 +354,9 @@ class InvokerTest < Minitest::Test
 
   def test_project_invoke_runs_like_invoke_in_a_command
     with_project do |invoker|
-      assert_equal "done", invoker.project.invoke("note", params: {text: "done"}, logger: Logger.new(nil), env: {})
+      result = invoker.project.invoke("note", params: {text: "done"}, logger: Logger.new(nil), env: {})
+
+      assert_equal "done", result.value
     end
   end
 

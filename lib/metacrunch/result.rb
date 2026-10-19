@@ -13,4 +13,13 @@ module Metacrunch
     end
   end
 
+  # Outcome of invoking a command. status is :ok, or :ok_with_failures if a
+  # job run during its body (also through nested commands) ended with
+  # failures, or aborted and the body went on; value is what the body
+  # returned. error is nil: an exception that leaves the body passes
+  # unchanged. Shares status, ok? and error with Result.
+  CommandResult = Data.define(:status, :error, :value) do
+    def ok? = status == :ok
+  end
+
 end

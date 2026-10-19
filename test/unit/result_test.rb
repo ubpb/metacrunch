@@ -18,6 +18,13 @@ class ResultTest < Minitest::Test
     assert_predicate result, :ok?
   end
 
+  def test_command_results_share_the_core_of_results
+    ok = Metacrunch::CommandResult.new(status: :ok, error: nil, value: 1)
+    failed = ok.with(status: :ok_with_failures)
+
+    assert_equal [true, false, 1], [ok.ok?, failed.ok?, failed.value]
+  end
+
   private
 
   def stats
