@@ -166,8 +166,8 @@ accept a second argument get the (read-only) context: `write(record, ctx)`, `wri
 
 ```ruby
 sink    ElasticsearchSink.new(index: params.index), batch: 1000
-rejects JsonLinesFile.new("rejects.jsonl")   # rejected records, ctx.rejection
-errors  JsonLinesFile.new("errors.jsonl")    # failed records (on_error :skip), ctx.failure
+rejects Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")   # rejected records, ctx.rejection
+errors  Metacrunch::JsonLines::ContextWriter.new("errors.jsonl")    # failed records (on_error :skip), ctx.failure
 ```
 
 With `batch:` the sink gets `write_batch` calls with up to that many records; the rest is written at the end, also
@@ -305,9 +305,9 @@ $ metacrunch credentials rotate -e production
 
 `edit` creates `.metacrunch/credentials.yml.enc`, which you commit, and the key `.metacrunch/master.key`, which you
 never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `credential: "catalog.api_key"` reads
-`api_key` below `catalog`. Every value is read as its text and converted like a command-line value, so `0123`, `no` or `on` need no
-quotes; an empty value, `~` and `null` mean "not set". `edit` refuses to save invalid YAML and, on a terminal, offers
-to edit again.
+`api_key` below `catalog`. Every value is read as its text and converted like a command-line value, so `0123`, `no`
+or `on` need no quotes; an empty value, `~` and `null` mean "not set". `edit` refuses to save invalid YAML and, on a
+terminal, offers to edit again.
 
 | Environment | File | Key |
 |---|---|---|
@@ -353,8 +353,8 @@ Keep in mind:
 ## Running jobs
 
 ```
-$ metacrunch run [OPTIONS] NAME|JOB_FILE [JOB_PARAMS...] [ARGS...]
-$ metacrunch NAME|JOB_FILE [JOB_PARAMS...] [ARGS...]        # short for run
+$ metacrunch run [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]
+$ metacrunch NAME|FILE [PARAMS...] [ARGS...]                # short for run
 $ metacrunch run jobs/marc2es.rb --help                     # the job's parameters
 $ metacrunch marc2es --help                                 # the same, by name in a project
 ```
@@ -403,7 +403,7 @@ quietly by SIGPIPE.
 source order, so a job gives the same results with and without workers.
 
 ```
-$ metacrunch run -w 8 jobs/sanitize.rb data/publications.jsonl
+$ metacrunch run -w 8 -i examples/data/publications.jsonl examples/sanitize.rb --issues tmp/issues.tsv
 ```
 
 Workers pay off when the steps are expensive. With about 28 µs of work per record, 8 workers were about 5× as fast.
@@ -563,8 +563,8 @@ $ metacrunch generate source marc:dump
 ```
 
 `new DIR` creates a project: a `Metacrunchfile` that loads `jobs/`, `transforms/` and `commands/`, a `Gemfile`, a
-`Rakefile` whose `rake test` runs `test/**/*_test.rb`, a `lib/` for helpers, and `test/project_test.rb`, which fails
-when a file of the project does not load or a name is declared twice. It writes into a new or empty directory, or next
+`Rakefile` whose `rake test` runs `test/**/*_test.rb`, a `lib/` for helpers, `test/test_helper.rb`, and
+`test/project_test.rb`, which fails when a file of the project does not load or a name is declared twice. It writes into a new or empty directory, or next
 to other files, which it leaves alone; existing files of the skeleton need `--force`.
 
 `generate KIND NAME|PATH` creates a file that runs right away and a test that passes:
@@ -646,15 +646,15 @@ level and the progress setting.
 | 130, 143 | Ctrl-C, SIGTERM |
 
 `run` takes commands too; the job options (`-i`, `-o`, `-w`, ...) are a usage error for them, and `check` and
-`trace` take jobs and transforms only. A command file can also run by path, or as an executable with `#!/usr/bin/env metacrunch`;
-when it invokes a name, it finds the project from the working directory.
+`trace` take jobs and transforms only. A command file can also run by path, or as an executable with
+`#!/usr/bin/env metacrunch`; when it invokes a name, it finds the project from the working directory.
 
 Names search credentials from the project root (`.metacrunch/` next to the `Metacrunchfile`), also for commands from
 gems; a path searches from its file. A job below `jobs/x/` with a `.metacrunch/` of its own therefore uses the
 project's credentials by name and its own by path. Nothing changes the working directory: relative paths stay
 relative to where `metacrunch` was started, and `root.join(...)` reaches the project's files from anywhere.
 
-### Jobs and commands from gems
+### Jobs, transforms and commands from gems
 
 A gem ships job, transform and command files like a project's, and a constant with their glob for each kind:
 
@@ -792,7 +792,8 @@ result.status
 ```
 
 All sinks are replaced by in-memory sinks; nothing is written. Component constructors should therefore be
-cheap and free of side effects; do I/O in `open`, `each` and `write`.
+cheap and free of side effects; do I/O in `open`, `each` and `write`. Required parameters still need a value,
+even those that only the replaced source or sinks use; any value does, as `files: ["unused"]` above.
 
 A transform is tested the same way, with `source:`, since it has none. Names in `use` resolve in `project:`, else in
 the project of the nearest `Metacrunchfile` above the working directory, which is then loaded for every run; a test
