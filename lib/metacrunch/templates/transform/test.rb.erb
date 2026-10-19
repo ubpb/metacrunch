@@ -5,7 +5,8 @@ require_relative <%= helper.inspect %>
 class <%= target.test_class %> < Minitest::Test
 
   def test_keeps_records_with_an_id
-    result = Metacrunch::Testing.run(PROJECT, <%= target.name.inspect %>, source: [{"id" => 1}, {"title" => "x"}])
+    records = [{"id" => 1}, {"title" => "x"}]
+    result = Metacrunch::Testing.run(PROJECT, <%= target.name.inspect %>, source: records)
 
     assert_equal [{"id" => 1}], result.records
   end
