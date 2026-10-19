@@ -29,7 +29,7 @@ class ExamplesTest < Minitest::Test
   def test_catalog_writes_records_rejects_and_errors
     Dir.mktmpdir do |dir|
       _stdout, stderr, status = metacrunch("run", example("catalog.rb"), "--output", dir, example("data/catalog.json"))
-      counts = ["records", "rejects", "errors"].map { File.readlines(File.join(dir, "#{it}.jsonl")).size }
+      counts = ["records", "rejects", "failures"].map { File.readlines(File.join(dir, "#{it}.jsonl")).size }
 
       assert_equal 3, status.exitstatus, stderr
       assert_equal [7, 2, 1], counts
@@ -160,7 +160,7 @@ class ExamplesTest < Minitest::Test
 
   # Runs sanitize.rb and returns its output, rejects, errors and issues files.
   def sanitize(dir, name, *options)
-    files = ["out.jsonl", "rejects.jsonl", "errors.jsonl", "issues.tsv"].map { File.join(dir, "#{name}.#{it}") }
+    files = ["out.jsonl", "rejects.jsonl", "failures.jsonl", "issues.tsv"].map { File.join(dir, "#{name}.#{it}") }
     arguments = ["run", *options, "-i", example("data/publications.jsonl"), "--rejects", files[1],
                  "--failures", files[2], example("sanitize.rb"), "--output", files[0], "--issues", files[3]]
     _stdout, stderr, status = metacrunch(*arguments)

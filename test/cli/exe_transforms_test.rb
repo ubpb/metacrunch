@@ -72,13 +72,13 @@ class ExeTransformsTest < Minitest::Test
   # the exit status, the records, the rejects and failures files and the
   # stats without times.
   def enrich(root, *options)
-    files = ["rejects", "errors", "stats"].to_h { [it, File.join(root, "#{it}#{options.join}.json")] }
-    stdout, stderr, status = metacrunch("run", *options, "--rejects", files["rejects"], "--failures", files["errors"],
+    files = ["rejects", "failures", "stats"].to_h { [it, File.join(root, "#{it}#{options.join}.json")] }
+    stdout, stderr, status = metacrunch("run", *options, "--rejects", files["rejects"], "--failures", files["failures"],
                                         "--stats", files["stats"], "enrich", stdin_data: INPUT, chdir: root)
     raise "enrich failed (#{status.exitstatus}): #{stderr}" unless status.exitstatus == 3
 
     {status: status.exitstatus, records: stdout.lines.map { JSON.parse(it) },
-     rejects: File.read(files["rejects"]), failures: File.read(files["errors"]),
+     rejects: File.read(files["rejects"]), failures: File.read(files["failures"]),
      stats: JSON.parse(File.read(files["stats"]))["stats"].except("duration", "rate")}
   end
 

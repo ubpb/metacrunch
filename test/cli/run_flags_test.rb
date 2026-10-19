@@ -53,9 +53,9 @@ class RunFlagsTest < Minitest::Test
   end
 
   def test_invalid_json_lines_fail_like_records
-    errors = File.join(@dir, "errors.jsonl")
-    code, stdout, = cli("run", "--on-failure", "skip", "--failures", errors, job("double.rb"), stdin: "1\n{oops\n3\n")
-    failure = JSON.parse(File.read(errors))
+    failures = File.join(@dir, "failures.jsonl")
+    code, stdout, = cli("run", "--on-failure", "skip", "--failures", failures, job("double.rb"), stdin: "1\n{oops\n3\n")
+    failure = JSON.parse(File.read(failures))
 
     assert_equal [3, "2\n6\n"], [code, stdout]
     assert_equal ["{oops", 2, "source"], [failure["record"], failure["position"], failure.dig("failure", "step")]
