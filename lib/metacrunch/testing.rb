@@ -125,16 +125,18 @@ module Metacrunch
 
     module_function
 
-    # params are bound like the values of `use` (see Params#bind_values),
-    # with an empty environment and no credentials. The job's sinks are
-    # built but never opened.
-    # Records are collected even if the job has no sink; stats.written is
-    # 0 then, as in a real run. workers: run the steps in that many
-    # processes, to check that the job's records cross process boundaries.
-    # job may be a Transform, which needs source:. project: where the
-    # names of `use` resolve (see UseContext.for); the transforms of the
-    # job get neither environment nor credentials either.
-    def run(job, params: {}, source: nil, logger: Logger.new(nil), workers: nil, project: nil)
+    # Runs a job or transform without I/O: target is a Project with the
+    # name of one of its jobs or transforms, or a Job or Transform, whose
+    # names resolve in project:, else in the project of the working
+    # directory (see UseContext.for). params are bound like the values of
+    # `use` (see Params#bind_values), with an empty environment and no
+    # credentials; the transforms of the job get neither either. The job's
+    # sinks are built but never opened. Records are collected even if the
+    # job has no sink; stats.written is 0 then, as in a real run. workers:
+    # run the steps in that many processes, to check that the job's records
+    # cross process boundaries. A transform needs source:.
+    def run(target, name = nil, params: {}, source: nil, logger: Logger.new(nil), workers: nil, project: nil)
+      job, project = run_target(target, name, project)
       unless source.nil? || source.respond_to?(:each)
         raise ArgumentError, "source must respond to #each, got #{source.inspect}"
       end
@@ -184,6 +186,28 @@ module Metacrunch
     # environment nor credentials.
     def values_binder(params) = ->(schema) { schema.bind_values(params, env: {}, credentials: nil) }
     private_class_method :values_binder
+
+    # [job or transform, project] for run.
+    def run_target(target, name, project)
+      case target
+      when Project
+        raise ArgumentError, "project: is for a job or transform; the first argument is a project already" if project
+        raise ArgumentError, "the name of a job or transform is missing" unless name
+
+        declaration = target.fetch(name)
+        raise ArgumentError, "#{name} is a command; test it with Testing.invoke" if declaration.is_a?(Command)
+
+        [declaration, target]
+      when Job, Transform
+        raise ArgumentError, "a job or transform needs no name, got #{name.inspect}" if name
+
+        [target, project]
+      else
+        raise ArgumentError, "Testing.run takes a project and the name of a job or transform, or a job or " \
+                             "transform; got #{target.inspect}"
+      end
+    end
+    private_class_method :run_target
 
     # [command, project] for invoke; project may be a Proc.
     def invoke_target(target, name, project)

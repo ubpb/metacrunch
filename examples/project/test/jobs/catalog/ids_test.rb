@@ -9,7 +9,7 @@ require_relative "../../test_helper"
 class CatalogIdsJobTest < Minitest::Test
 
   def test_keeps_the_ids_of_the_public_titles
-    result = Metacrunch::Testing.run(PROJECT.fetch("catalog:ids"), project: PROJECT)
+    result = Metacrunch::Testing.run(PROJECT, "catalog:ids")
 
     assert_equal [{"id" => "t1"}, {"id" => "t2"}, {"id" => "t4"}, {"id" => "t5"}], result.records
   end

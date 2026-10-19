@@ -12,7 +12,7 @@ class CatalogJobTest < Minitest::Test
 
   def test_names_the_steps_of_the_transform
     Dir.mktmpdir do |out|
-      result = Metacrunch::Testing.run(PROJECT.fetch("catalog"), params: {output: out}, project: PROJECT)
+      result = Metacrunch::Testing.run(PROJECT, "catalog", params: {output: out})
 
       assert_equal ["catalog:public/reject#1", "catalog:public/map#2"], result.stats.steps.keys
       assert_equal 4, result.records.size
