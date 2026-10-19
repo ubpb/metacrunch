@@ -1,7 +1,7 @@
 # Transforms
 
 A transform is a named group of steps with parameters of its own and without source or sink. Jobs insert it with
-`use`; the job decides where the records come from, where they go and how errors are handled.
+`use`; the job decides where the records come from, where they go and what failed records do.
 
 ```ruby
 # transforms/normalize.rb
@@ -25,14 +25,14 @@ Metacrunch.job "export", desc: "Write the public titles, tidied, as JSON Lines" 
   end
 
   source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }
-  use "catalog:public", fields: ["id", "title"]
-  use "normalize", max_length: params.max_length
+  use "catalog:public", params: {fields: ["id", "title"]}
+  use "normalize", params: {max_length: params.max_length}
   sink Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
 end
 ```
 
 - A transform holds `params`, `map`, `filter`, `reject`, `flat_map`, `before`, `after` and `use`. `source`, `sink`,
-  `rejects`, `errors`, `on_error` and `profile` raise an `ArgumentError`: they belong to the job.
+  `rejects`, `failures`, `on_failure` and `profile` raise an `ArgumentError`: they belong to the job.
 - `use` takes a name (in a project, see [Projects](projects.md)), a path or a transform
   object, and inserts the transform's steps and hooks where it stands. The hooks of a job and its transforms run in
   the order of their statements.
@@ -41,9 +41,10 @@ end
 - A job file can keep a transform of its own as an object: `trim = Metacrunch.transform { map { ... } }` before the
   job, `use trim` inside it. The file still runs by path without `-j`, since transforms beside a single job or command
   count as its building blocks; leave such a transform unnamed and it takes no name in the project either.
-- The keywords of `use` set the transform's parameters, as Ruby values or as strings like on the command line;
+- `params:` of `use` sets the transform's parameters, as Ruby values or as strings like on the command line;
   `nil` counts as not given. A parameter without a value comes from its `env:` variable, then from the credentials
-  of the job, then its default. The steps and hooks of a transform see its own `params`, never the job's.
+  of the job, then its default. The steps and hooks of a transform see its own `params`, never the job's, and
+  `root` is the root of the job's project.
 - The steps get the transform's name as prefix, `normalize/map#1`, in stats, `trace`, `check`, errors and
   `ctx.step`; a second `use` of the same transform gives `normalize#2/...`. Generated step numbers count the
   statements of a recipe, `use` as one, so a transform that gains a step renames no step of the job. Explicit step
@@ -57,6 +58,6 @@ end
   `Metacrunch::Testing.run(transform, source: [...])` tests it (see [Testing](testing.md#testing-jobs-and-transforms)).
 
 Compared with a [pipe](cli.md#pipes) between two jobs, the transforms of one job share the context of each record (id,
-marks, rejections), one `rejects` and `errors` sink, one error policy, one summary and one exit status, and the
+marks, rejections), one `rejects` and `failures` sink, one failure policy, one summary and one exit status, and the
 records between them need not be JSON. Compared with step classes in plain Ruby, a transform has parameters and a
 name in the project, and runs and tests on its own.

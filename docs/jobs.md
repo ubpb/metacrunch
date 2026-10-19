@@ -9,16 +9,17 @@ Metacrunch.job "catalog", desc: "Write the public titles" do
     param :output, String, required: true
   end
 
-  source Metacrunch::JsonLines::Reader.new("data/titles.jsonl"), id: ->(record) { record["id"] }   # Sources
+  source Metacrunch::JsonLines::Reader.new(root.join("data/titles.jsonl")), id: ->(record) { record["id"] } # Sources
 
   reject("Not public") { !it["public"] }          # Steps, in order
   use "normalize"                                 # the steps of a transform
   map { |record| record.slice("id", "title") }
 
-  sink    Metacrunch::JsonLines::Writer.new(params.output)                 # Sinks
-  rejects Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")
+  sink     Metacrunch::JsonLines::Writer.new(params.output)                # Sinks
+  rejects  Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")
+  failures Metacrunch::JsonLines::ContextWriter.new("failures.jsonl")
 
-  on_error :skip, max_errors: 100                 # Errors
+  on_failure :skip, max_failures: 100             # Failures
   before { logger.info("writing #{params.output}") }                       # Hooks
 end
 ```
@@ -111,29 +112,32 @@ Any object with `#write(record)`. Optional `#write_batch(records)`, `#open(conte
 accept a second argument get the (read-only) context: `write(record, ctx)`, `write_batch(records, ctxs)`.
 
 ```ruby
-sink    Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
-rejects Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")   # rejected records, ctx.rejection
-errors  Metacrunch::JsonLines::ContextWriter.new("errors.jsonl")    # failed records (on_error :skip), ctx.failure
+sink     Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
+rejects  Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")    # rejected records, ctx.rejection
+failures Metacrunch::JsonLines::ContextWriter.new("failures.jsonl")   # failed records (on_failure :skip), ctx.failure
 ```
 
 With `batch:` the sink gets `write_batch` calls with up to that many records; the rest is written at the end, also
 when the job aborts or is interrupted, so `batch:` never changes which records arrive. One object used as both
-`sink` and `rejects` (or `errors`) is opened and closed once.
+`sink` and `rejects` (or `failures`) is opened and closed once.
 
 `Metacrunch::JsonLines::Writer.new(path)` writes JSON Lines (`-` for stdout, `.gz` files are compressed) and refuses
 values that are not JSON types. `Metacrunch::JsonLines::ContextWriter` writes every record with its context (id,
-position, marks, rejection, failure), which suits the `rejects` and `errors` roles.
+position, marks, rejection, failure), which suits the `rejects` and `failures` roles.
 
-## Errors
+## Failures
+
+A record fails when a step raises for it, which is a failure; an error is an exception. A failure holds its error
+(`ctx.failure.error`). The failure policy decides what a failed record does:
 
 ```ruby
-on_error :abort                    # default: stop at the first failing record
-on_error :skip, max_errors: 100    # log, send to the errors sink, continue; stop after 100 failures
-on_error :skip, max_errors: 0      # stop at the first failure, but after it reached the errors sink
+on_failure :abort                      # default: stop at the first failing record
+on_failure :skip, max_failures: 100    # log, send to the failures sink, continue; stop after 100 failures
+on_failure :skip, max_failures: 0      # stop at the first failure, but after it reached the failures sink
 ```
 
-Errors in sources, sinks, hooks, `open` and `close` always stop the job. Components are closed in any case.
-`NotImplementedError` and other script errors are handled like any other error.
+Errors in sources, sinks, hooks, `open` and `close` are no failures of a record: they always stop the job.
+Components are closed in any case. `NotImplementedError` and other script errors are handled like any other error.
 
 ## Hooks
 
@@ -150,7 +154,7 @@ after  { |result| logger.info(result.summary) }
 ```ruby
 params do
   param :output, String, required: true, desc: "JSON Lines file for the records"
-  param :input,  String, default: "data/titles.jsonl", env: "CATALOG_INPUT"
+  param :input,  String, default: root.join("data/titles.jsonl"), env: "CATALOG_INPUT"
   param :batch,  Integer, default: 1000
   param :dry,    :bool, default: false
   param :tags,   Array
@@ -166,6 +170,11 @@ variable (`env:`, an empty variable counts as unset), then the credentials (`cre
 gives 1000). Use the values with `params.output`; they are frozen. Options must be spelled out (`--out` is not
 `--output`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and `-h` is reserved
 for help.
+
+A value from code (`use`, `invoke`, `Job#run`, `Metacrunch::Testing`) is given as `params: {...}`, in the declared
+type or as a String; a Pathname counts as its path, and `nil` means not given. `root` is the root of the project the
+call runs in (see [Projects](projects.md)), so `default: root.join("data/titles.jsonl")` works from any directory
+of the project; `--help` shows it as an absolute path.
 
 ## What runs when
 

@@ -106,8 +106,7 @@ Metacrunch.command "catalog:release", desc: "Write a new release and switch out/
     out = params.out ? Pathname(params.out) : root.join("out")
     release = out.join("releases", Time.now.strftime("%Y%m%d-%H%M%S-%L"))
     FileUtils.mkdir_p(release)
-    input = params.input ? ["--input", params.input] : []
-    result = invoke "catalog", "--output", release, *input
+    result = invoke "catalog", params: {output: release, input: params.input}
     next logger.warn("catalog:release: #{result.status}; out/current not switched") unless result.ok?
 
     # A new link renamed over the old one: the switch is atomic.
@@ -124,27 +123,30 @@ The command writes a release of the job `catalog` and switches `out/current` to 
 readers of `out/current` never see a half-written or failed release.
 
 Parameters, `env:`, credentials, `-e`, `--help` and logging work as for jobs. `params` comes first; `run { ... }`
-holds the body, which `--help` never runs. In the body, `params`, `logger`, `invoke` and `root` (the project root, a
-`Pathname`) are available, and `next` ends it early (`return` does not work in a block). Helpers shared by several
-commands are plain Ruby: a module that the body `extend`s, or a proc for common parameters
+holds the body, which `--help` never runs: `run` declares what the command does when it runs, as `before` and
+`after` do for a job. In the body, `params`, `logger`, `invoke` and `root` (the project root, a `Pathname`, as in
+jobs and transforms) are available, and `next` ends it early (`return` does not work in a block). Helpers shared by
+several commands are plain Ruby: a module that the body `extend`s, or a proc for common parameters
 (`params { instance_exec(&COMMON_PARAMS) }`) in a required file.
 
-`invoke NAME, *ARGS, workers:, limit:` runs a job, transform or command with arguments as on the command line; each is
-converted with `to_s`, and `nil`, an Array (a forgotten `*`) or a Hash raise `ArgumentError`. An invoked job runs like
+`invoke NAME, params: {...}, workers:, limit:` runs a job, transform or command. `params` are bound as for
+`Job#run` (see [Parameters](jobs.md#parameters)): in the declared type or as a String, a Pathname as its path, `nil`
+as not given, so `input: params.input` passes an optional value on. An invoked job runs like
 `metacrunch run NAME`: it logs its summary as `catalog: ok: read ...`, reads stdin if it has no source and writes
 stdout if it has no sink. All jobs and commands of a chain share `-e`, `--credentials`, the environment, the log
 level and the progress setting.
 
 | Case | `invoke` |
 |---|---|
-| Job ends `:ok` or `:ok_with_failures` | returns its `Result`; the command decides |
+| Job or transform ends `:ok` or `:ok_with_failures` | returns its `Result` (`status`, `ok?`, `error`, `stats`); the command decides |
 | Job ends `:aborted` | raises `Metacrunch::InvokeError` (with `result`); the chain ends unless the command rescues it |
-| Unknown name, invalid arguments | raises `Metacrunch::InvokeError`: the command has a bug |
-| Command | returns the value of its body; its exceptions pass unchanged |
+| Unknown name, unknown or invalid params | raises `Metacrunch::InvokeError`: the command has a bug |
+| Command | returns a `CommandResult` (`status`, `ok?`, `error` (`nil`), `value`: what the body returned); its exceptions pass unchanged |
 | Ctrl-C, SIGTERM | the running job flushes and closes its sinks, then the chain ends by the signal |
 
-The exit status of a command reports the worst result of the jobs it invoked (see
-[Exit codes](cli.md#exit-codes)): 3 if one ended with failed records, 1 if an exception left the body.
+A command's status is the worst status of the jobs run during its body, nested commands included: `:ok`, or
+`:ok_with_failures` if one ended with failed records, or aborted and the body went on. Its exit status reports the
+same (see [Exit codes](cli.md#exit-codes)): 3 for `:ok_with_failures`, 1 if an exception left the body.
 
 `run` takes commands too; the job options (`-i`, `-o`, `-w`, ...) are a usage error for them, and `check` and
 `trace` take jobs and transforms only. A command file can also run by path, or as an executable with
@@ -203,7 +205,8 @@ lists the gem's jobs, transforms and commands with the project's.
 - Names with a prefix (`csv:check`) keep clear of the project's: a name that the gem and the project both
   declare cannot be used. A reserved name makes the gem's file a load error.
 - Credentials are searched from the project root, also for jobs and commands of a gem, so `-e production` works as
-  for the project's files. In a command, `root.join(...)` reaches the project's files and `__dir__` the gem's.
+  for the project's files. In a job, transform or command, `root.join(...)` reaches the project's files and
+  `__dir__` the gem's.
 - A file of the gem that fails to load costs only its own names, as a file of the project does.
 
 For a gem without such a constant, the glob can start at the gem's directory:

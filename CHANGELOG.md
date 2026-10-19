@@ -23,8 +23,8 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme and docs/.
 ### Added
 
 - Per-record context with `reject!` (ends the step), `mark`, `store` and a record logger.
-- `rejects` and `errors` sinks.
-- Error policy `on_error :abort | :skip` with `max_errors`.
+- `rejects` and `failures` sinks.
+- Failure policy `on_failure :abort | :skip` with `max_failures`.
 - Run results with stats per step and reason; `profile` for step timing.
 - `flat_map` streams its children; batched sinks are flushed after an abort, on Ctrl-C and on SIGTERM.
 - The CLI ends by the signal that stopped a job (exit status 130 for SIGINT, 143 for SIGTERM).
@@ -32,8 +32,8 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme and docs/.
 - Job files are loaded again only when they change.
 - Unix pipes: a job without source reads JSON Lines from stdin, a job without sink writes them to stdout.
 - `Metacrunch::JsonLines` reader and writers (also gzip); `Metacrunch::InvalidRecord` for records a source cannot read.
-- `run` options to replace the source and sinks (`-i`, `-o`, `--rejects`, `--errors`), `--limit`, `--on-error`,
-  `--max-errors`, `--stats` and a progress display.
+- `run` options to replace the source and sinks (`-i`, `-o`, `--rejects`, `--failures`), `--limit`, `--on-failure`,
+  `--max-failures`, `--stats` and a progress display.
 - `metacrunch trace` shows what each step does to a record; `metacrunch check` validates a job; `metacrunch new`
   creates a project, and `metacrunch generate` a job, transform, command, source or sink in it with a test, or by path
   (a test with `--test`).
@@ -50,15 +50,21 @@ A redesign. Jobs written for 4.x must be rewritten; see the Readme and docs/.
   `Project#duplicates` lists such names for a test. `Metacrunch.load_project` and `Project#invoke` do the same from
   Ruby.
 - Commands: `Metacrunch.command "name" do params { ... }; run { ... } end`, with the parameters, credentials, `-e`,
-  `--help` and logging of jobs. `invoke` chains jobs and commands; the exit status reports the worst result.
+  `--help` and logging of jobs. `invoke NAME, params: {...}` chains jobs, transforms and commands and returns a
+  `Result` or a `CommandResult`; the exit status reports the worst result.
   `Metacrunch::Testing.invoke` tests a command without running what it invokes. `Metacrunch.load_command` loads a
   command file, and `Testing.invoke` takes such a command, too.
 - Names and descriptions for jobs: `Metacrunch.job "a2c", desc: "..."`. Names are parts of `a-z`, `0-9`, `_` and
   `-`, separated by `:`; `Metacrunch.job` raises for other names, and `metacrunch generate` for names and file
   names that would give one or the name of a built-in command.
 - Transforms: `Metacrunch.transform "normalize" do params { ... }; map { ... } end` holds steps, hooks and parameters
-  without source or sink, and a job inserts them with `use "normalize", lang: "en"`. Their steps are named with the
-  transform as prefix (`normalize/map#1`); explicit step names must not contain `/`. Generated step numbers count the
-  step statements of a recipe, `use` as one, so a transform that gains a step renames no step of the job. A transform
-  runs, traces, checks and tests alone like a job without source and sink, and a file with one job or command besides
-  transforms runs by path without `-j`. `Metacrunch.load_transform`, and `project:` for `Job#run` and `Testing.run`.
+  without source or sink, and a job inserts them with `use "normalize", params: {lang: "en"}`. Their steps are named
+  with the transform as prefix (`normalize/map#1`); explicit step names must not contain `/`. Generated step numbers
+  count the step statements of a recipe, `use` as one, so a transform that gains a step renames no step of the job. A
+  transform runs, traces, checks and tests alone like a job without source and sink, and a file with one job or
+  command besides transforms runs by path without `-j`. `Metacrunch.load_transform`, and `project:` for `Job#run` and
+  `Testing.run`.
+- One form for values from code: `use`, `invoke`, `Project#invoke`, `Job#run` and `Metacrunch::Testing` take
+  `params: {...}`, bound by the same rules (a Pathname counts as its path, `nil` as not given). `root` reaches the
+  project's files in jobs, transforms and commands. `Testing.run` takes a project and a name, like `Testing.invoke`;
+  results answer `ok?`.

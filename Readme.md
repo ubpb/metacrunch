@@ -12,7 +12,7 @@ Records that a step rejects, or that fail, go to sinks of their own, together wi
 ```
 source ──▶ step ──▶ step ──▶ … ──▶ sink
              │        │
-             └────────┴──▶ rejects, errors
+             └────────┴──▶ rejects, failures
 ```
 
 Everything is plain Ruby. There are three kinds of recipes, and `metacrunch run` runs each of them:
@@ -122,7 +122,7 @@ in Practice", "public": true}`.
 # jobs/catalog.rb
 Metacrunch.job "catalog", desc: "Write the public titles" do
   params do
-    param :input, String, default: "data/titles.jsonl", desc: "JSON Lines with title records"
+    param :input, String, default: root.join("data/titles.jsonl"), desc: "JSON Lines with title records"
     param :output, String, required: true, desc: "JSON Lines file for the public titles"
   end
 
@@ -131,10 +131,10 @@ Metacrunch.job "catalog", desc: "Write the public titles" do
   reject("Not public") { !it["public"] }
   map { |record| {"id" => record["id"], "title" => record.fetch("title")} }
 
-  sink    Metacrunch::JsonLines::Writer.new(params.output)
-  rejects Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")
-  errors  Metacrunch::JsonLines::ContextWriter.new("errors.jsonl")
-  on_error :skip
+  sink     Metacrunch::JsonLines::Writer.new(params.output)
+  rejects  Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")
+  failures Metacrunch::JsonLines::ContextWriter.new("failures.jsonl")
+  on_failure :skip
 end
 ```
 
@@ -146,10 +146,11 @@ end
 | `flat_map` | an Enumerable of records | 0..n |
 
 - A source is any object with `#each`, a sink any object with `#write`; both may have `open` and `close`.
+- `root` is the root of the project, so `root.join(...)` reaches its files from any directory.
 - `filter` and `reject` with a reason, such as `"Not public"`, *reject* records: they are counted per reason and go
   to the `rejects` sink. Without a reason they are only *filtered*.
-- `on_error :skip` lets the run go on when a record fails (here: a record without a title); the record goes to the
-  `errors` sink and the run ends with exit status 3. The default, `:abort`, stops at the first failure.
+- `on_failure :skip` lets the run go on when a record fails (here: a record without a title); the record goes to
+  the `failures` sink and the run ends with exit status 3. The default, `:abort`, stops at the first failure.
 - A step that takes a second parameter gets the record's context, for notes (`ctx.mark`) and rejections
   (`ctx.reject!`) with a reason.
 
@@ -186,8 +187,8 @@ Metacrunch.transform "normalize", desc: "Tidy the titles, drop records without o
 end
 ```
 
-A job inserts its steps with `use "normalize", max_length: 40`. Alone, a transform reads JSON Lines from stdin:
-`metacrunch run normalize < data/titles.jsonl`. See [Transforms](docs/transforms.md).
+A job inserts its steps with `use "normalize", params: {max_length: 40}`. Alone, a transform reads JSON Lines from
+stdin: `metacrunch run normalize < data/titles.jsonl`. See [Transforms](docs/transforms.md).
 
 ### Projects and commands
 
@@ -208,7 +209,7 @@ Metacrunch.command "catalog:release", desc: "Write a new release and switch out/
   run do
     release = root.join("out/releases", Time.now.strftime("%Y%m%d-%H%M%S"))
     FileUtils.mkdir_p(release)
-    result = invoke "catalog", "--output", release.join("titles.jsonl")
+    result = invoke "catalog", params: {output: release.join("titles.jsonl")}
     next logger.warn("out/current not switched: #{result.status}") unless result.ok?
 
     link = root.join("out/current.new")
@@ -237,7 +238,7 @@ class CatalogTest < Minitest::Test
 
   def test_writes_the_public_titles
     records = [{"id" => "t1", "title" => "A", "public" => true}, {"id" => "t2", "title" => "B", "public" => false}]
-    result = Metacrunch::Testing.run(PROJECT.fetch("catalog"), params: {output: "unused"}, source: records)
+    result = Metacrunch::Testing.run(PROJECT, "catalog", params: {output: "unused"}, source: records)
 
     assert_equal [{"id" => "t1", "title" => "A"}], result.records
   end
@@ -262,7 +263,7 @@ See [The command line](docs/cli.md) for all options, pipes and exit codes, and [
 
 ## Documentation
 
-- [Jobs](docs/jobs.md): records, sources, steps, the record context, sinks, errors, hooks, parameters, what runs when
+- [Jobs](docs/jobs.md): records, sources, steps, the record context, sinks, failures, hooks, parameters, what runs when
 - [Transforms](docs/transforms.md): `use`, parameters, step names, testing a transform
 - [Projects, commands and gems](docs/projects.md): the `Metacrunchfile`, names, `new` and `generate`, `invoke`
 - [Testing](docs/testing.md): `Metacrunch::Testing.run` and `Metacrunch::Testing.invoke`

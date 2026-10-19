@@ -5,6 +5,16 @@ made by `metacrunch new` has the setup already: `test/test_helper.rb` loads the 
 `test/project_test.rb` checks that every file loads and every name is unique, `metacrunch generate` adds a test for
 each file, and `rake test` runs them all.
 
+| | Job, transform | Command |
+|---|---|---|
+| Method | `Testing.run` | `Testing.invoke` |
+| Addressing | `(PROJECT, "name")`, or the object with `project:` | the same |
+| Instead of I/O | `source:`, sinks in memory | `stubs:` for the names it invokes |
+| Result | `records`, `rejects`, `failures`, `stats`, `status`, `ok?`, `error` | `value`, `invoked`, `status`, `ok?`, `error` |
+
+Both bind `params:` like the values of `use` (see [Parameters](jobs.md#parameters)) and read neither the
+environment nor credentials.
+
 ## Testing jobs and transforms
 
 ```ruby
@@ -18,27 +28,29 @@ result = Metacrunch::Testing.run(
 
 result.records   # what reached the sink
 result.rejects   # [[record, rejection], ...]
-result.errors    # [[record, failure], ...]
+result.failures  # [[record, failure], ...]
 result.stats
-result.status
+result.status    # :ok, :ok_with_failures or :aborted
+result.ok?
 ```
 
 All sinks are replaced by in-memory sinks; nothing is written. Component constructors should therefore be
 cheap and free of side effects; do I/O in `open`, `each` and `write`. Required parameters still need a value,
 even those that only the replaced source or sinks use; any value does, as `"unused"` above.
 
-A transform is tested the same way, with `source:`, since it has none. Names in `use` resolve in `project:`, else in
-the project of the nearest `Metacrunchfile` above the working directory, which is then loaded for every run; a test
-class loads its project once:
+A transform is tested the same way, with `source:`, since it has none. A job or transform of a project is given by
+the project and its name; names in `use` and `root` then resolve in that project. An object resolves them in
+`project:`, else in the project of the nearest `Metacrunchfile` above the working directory, which is then loaded
+for every run; a test class loads its project once:
 
 ```ruby
 PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))
 
-result = Metacrunch::Testing.run(PROJECT.fetch("catalog:public"), params: {fields: ["id"]},
+result = Metacrunch::Testing.run(PROJECT, "catalog:public", params: {fields: ["id"]},
                                  source: [{"id" => "t1", "title" => "A", "public" => true}])
 result.records            # [{"id" => "t1"}]
 
-result = Metacrunch::Testing.run(PROJECT.fetch("catalog"), params: {output: "unused"}, project: PROJECT)
+result = Metacrunch::Testing.run(PROJECT, "catalog", params: {output: "unused"})
 result.stats.steps.keys   # ["catalog:public/reject#1", "catalog:public/map#2"]
 ```
 
@@ -72,12 +84,14 @@ class ReleaseTest < Minitest::Test
 end
 ```
 
-`Testing.invoke` runs the body with `params` bound from a Hash and records every `invoke` (`name`, `argv`,
-`options`) instead of running it. A stub answers with a status, a `Result`, a value for a command, or a callable that
-gets the arguments; without a stub a job ends `:ok` and a command returns `nil`. A stubbed `:aborted` raises like a
-real abort, an unknown name fails as in a real run, and credentials are never read. A stub for an unknown name, or a
-job's stub that gives no status or `Result`, raises `ArgumentError`, so a mistake in the stubs never passes for a
-failing command. `run.status` is `:ok`, `:ok_with_failures`, or `:aborted` with the exception in `run.error`.
+`Testing.invoke` runs the body with `params` bound from a Hash and records every `invoke` (`name`, `params`,
+`options`) instead of running it. A stub answers with a status or a `Result` for a job, a value or a
+`Metacrunch::CommandResult` (with `:ok` or `:ok_with_failures`) for a command, or a callable that gets the params;
+without a stub a job ends `:ok` and a command returns a `CommandResult` with the value `nil`. A stubbed `:aborted`
+raises like a real abort, an unknown name fails as in a real run, and credentials are never read. A stub for an
+unknown name, or a job's stub that gives no status or `Result`, raises `ArgumentError`, so a mistake in the stubs
+never passes for a failing command. `run.status` is `:ok`, `:ok_with_failures`, or `:aborted` with the exception in
+`run.error`; `run.value` is what the body returned.
 
 A command file outside a project is tested the same way: `Metacrunch.load_command("tools/release.rb")` loads it, and
 `Metacrunch::Testing.invoke(command, params: {...}, stubs: {...})` runs it. Its names resolve in `project:`, else in
