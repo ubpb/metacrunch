@@ -3,9 +3,9 @@
 require "fileutils"
 
 # Writes a new release of the catalog into out/releases/TIME/ and points
-# out/current at it, but only if the job ended :ok. It is the pattern of
-# loading a new search index and switching an alias, with directories and
-# a symbolic link instead, so that it runs anywhere.
+# out/current at it, but only if the job ended :ok: readers of out/current
+# never see a half-written or failed release. The switch renames a
+# symbolic link, so it is atomic.
 #
 #   cd examples/project
 #   bundle exec metacrunch catalog:release
