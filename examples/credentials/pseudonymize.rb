@@ -8,7 +8,7 @@ require "openssl"
 # and without the key, the "pepper", nobody can find a name by trying names.
 # The pepper is a secret, so the job reads it from the encrypted credentials
 # in examples/credentials/.metacrunch/, the nearest .metacrunch/ above this
-# file (see "Credentials" in the Readme).
+# file (see docs/credentials.md).
 #
 #   bundle exec metacrunch run -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb | head -n 2
 #   bundle exec metacrunch run -v -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb > /dev/null

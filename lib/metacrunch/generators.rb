@@ -6,9 +6,9 @@ require "fileutils"
 require_relative "../metacrunch"
 
 module Metacrunch
-  # What `metacrunch new` and `metacrunch generate` create (see the Readme,
-  # "Generating projects and files"): Target says where a file goes, Files
-  # and Skeleton compute the files, Plan writes them.
+  # What `metacrunch new` and `metacrunch generate` create (see
+  # docs/projects.md, "Generating projects and files"): Target says where a
+  # file goes, Files and Skeleton compute the files, Plan writes them.
   module Generators
 
     KINDS = ["job", "transform", "command", "source", "sink"].freeze

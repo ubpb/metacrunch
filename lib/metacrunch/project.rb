@@ -2,10 +2,9 @@
 
 module Metacrunch
   # A project: the directory of a Metacrunchfile, and the jobs, transforms
-  # and commands its files declare (see the Readme, "Projects and
-  # commands"). A name declared more than once stays in the project, but
-  # fetch refuses it and duplicates lists it; a file that fails to load is
-  # kept in load_errors.
+  # and commands its files declare (see docs/projects.md). A name declared
+  # more than once stays in the project, but fetch refuses it and
+  # duplicates lists it; a file that fails to load is kept in load_errors.
   class Project
 
     FILE = "Metacrunchfile"

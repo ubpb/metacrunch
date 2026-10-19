@@ -220,7 +220,7 @@ module Metacrunch
         def hint(status)
           return "" unless RUBY_PLATFORM.include?("darwin") && status.termsig == Signal.list.fetch("ABRT")
 
-          "; on macOS, a gem that uses Objective-C needs OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES (see the Readme)"
+          "; on macOS, a gem that uses Objective-C needs OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES (see docs/workers.md)"
         end
 
         # Ends the feeder and the workers. After a normal end the workers have
