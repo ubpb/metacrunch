@@ -48,9 +48,10 @@ module Metacrunch
       Engine.new(built.with(limit:), observer:, executor: Executor.for(workers)).run
     end
 
-    # The declared parameters. Builds no source, step or sink.
-    def describe
-      builder = Builder.new(binder: nil, logger: Metacrunch.logger, describe: true)
+    # The declared parameters. Builds no source, step or sink. root: the
+    # root callable for defaults (see RecipeParams#root).
+    def describe(root: nil)
+      builder = Builder.new(binder: nil, logger: Metacrunch.logger, describe: true, root:)
       catch(Builder::DESCRIBED) do
         builder.instance_exec(&@recipe)
         builder.build

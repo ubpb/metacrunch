@@ -17,8 +17,8 @@ module Metacrunch
     # by name; see Invoker#invoke.
     def invoke(target, params: {}, workers: nil, limit: nil) = @invoker.invoke(target, params:, workers:, limit:)
 
-    # The root of the current project, a Pathname. Raises ProjectError
-    # without project.
+    # The root of the current project, a Pathname (see Invoker#root).
+    # Raises ProjectError without project.
     def root = @invoker.root
 
   end

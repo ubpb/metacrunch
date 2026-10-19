@@ -57,7 +57,7 @@ module Metacrunch
       def requested_help(declaration, argv)
         return unless argv.take_while { it != "--" }.intersect?(HELP_OPTIONS)
 
-        schema = declaration.describe
+        schema = declaration.describe(root: invoker.method(:root))
         schema if schema.help_requested?(argv)
       end
 

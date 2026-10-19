@@ -39,9 +39,17 @@ module Metacrunch
       @project
     end
 
-    # The root of the project, a Pathname. Raises ProjectError without one.
+    # The root of the project, a Pathname. While the project is a Proc
+    # (loaded when a name first needs it), the nearest Metacrunchfile above
+    # the working directory is found without loading it. Raises
+    # ProjectError without one.
     def root
-      project&.root || raise(ProjectError, "no #{Project::FILE} found in #{Dir.pwd} or above")
+      return @project.root if @project.is_a?(Project)
+
+      file = Project.find(Dir.pwd) if @project.is_a?(Proc)
+      raise ProjectError, "no #{Project::FILE} found in #{Dir.pwd} or above" unless file
+
+      Pathname(File.dirname(file))
     end
 
     # Runs target, a name or a path, with params bound by name (see
@@ -93,7 +101,7 @@ module Metacrunch
     # Evaluates the command's recipe with argv or params bound as pipeline
     # does.
     def prepare(command, anchor:, argv: nil, params: nil)
-      command.prepare(binder: binder(credentials_for(anchor), argv:, params:))
+      command.prepare(binder: binder(credentials_for(anchor), argv:, params:), root: method(:root))
     end
 
     # Runs the body of a prepared command and returns its value.

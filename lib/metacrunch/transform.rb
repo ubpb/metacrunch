@@ -41,8 +41,8 @@ module Metacrunch
 
     # The declared parameters. Evaluates the recipe only up to its first
     # statement.
-    def describe
-      builder = Builder.new(binder: nil, logger: Metacrunch.logger, describe: true, transform: self)
+    def describe(root: nil)
+      builder = Builder.new(binder: nil, logger: Metacrunch.logger, describe: true, root:, transform: self)
       catch(RecipeParams::DESCRIBED) do
         builder.instance_exec(&@recipe)
         builder.build
