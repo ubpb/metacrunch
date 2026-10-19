@@ -20,7 +20,7 @@ class CatalogJobTest < Minitest::Test
       {"id" => "4", "title" => nil, "year" => 2001}
     ],
     "rejects.jsonl" => [{"_id" => "2", "public" => false, "title" => "Secret", "year" => 2021, "isbns" => []}],
-    "errors.jsonl" => [{"_id" => "5", "public" => true, "title" => "No ISBN field", "year" => 2005}]
+    "failures.jsonl" => [{"_id" => "5", "public" => true, "title" => "No ISBN field", "year" => 2005}]
   }.freeze
 
   SUMMARY = Regexp.new(Regexp.escape(
@@ -72,7 +72,7 @@ class CatalogJobTest < Minitest::Test
   private
 
   def read_outputs(dir)
-    ["records.jsonl", "rejects.jsonl", "errors.jsonl"].to_h do |name|
+    ["records.jsonl", "rejects.jsonl", "failures.jsonl"].to_h do |name|
       [name, File.readlines(File.join(dir, name)).map { |line| JSON.parse(line) }]
     end
   end

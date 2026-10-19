@@ -25,7 +25,7 @@ Metacrunch.job "catalog" do
 
   sink JsonLinesFile.new(File.join(params.output, "records.jsonl")), batch: 2
   rejects JsonLinesFile.new(File.join(params.output, "rejects.jsonl"))
-  failures JsonLinesFile.new(File.join(params.output, "errors.jsonl"))
+  failures JsonLinesFile.new(File.join(params.output, "failures.jsonl"))
   on_failure :skip, max_failures: 5
 
   after { |result| logger.info("catalog finished: #{result.status}") }
