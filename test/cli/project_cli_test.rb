@@ -39,7 +39,7 @@ class ProjectCliTest < Minitest::Test
         params { args :numbers }
 
         source params.numbers.map { Integer(it, 10) }
-        use "scale", factor: 10
+        use "scale", params: {factor: 10}
       end
     RUBY
     "commands/chain.rb" => <<~RUBY,

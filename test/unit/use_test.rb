@@ -32,7 +32,7 @@ class UseTest < Minitest::Test
     pipeline = build_job({"scale" => SCALE}) do
       source [1, 2]
       map { it + 1 }
-      use "scale", factor: 10
+      use "scale", params: {factor: 10}
       map { it - 1 }
     end
 
@@ -52,8 +52,8 @@ class UseTest < Minitest::Test
   def test_the_same_transform_twice_gets_its_own_values_and_a_numbered_prefix
     pipeline = build_job({"scale" => SCALE}) do
       source [1]
-      use "scale", factor: 2
-      use "scale", factor: 10
+      use "scale", params: {factor: 2}
+      use "scale", params: {factor: 10}
     end
 
     assert_equal ["scale/map#1", "scale#2/map#1"], pipeline.steps.map(&:name)
@@ -114,7 +114,7 @@ class UseTest < Minitest::Test
       params { param :mark, String }
 
       source ["a"]
-      use shout, mark: "!!"
+      use shout, params: {mark: "!!"}
       map { "#{it}#{params.mark}" }
     end
 
@@ -144,21 +144,21 @@ class UseTest < Minitest::Test
 
   def test_values_come_first_then_env_then_credentials
     credentials = FakeCredentials.new("api.token" => "credential")
-    token = ->(env, **values) { records(build_job(env:, credentials:) { source [1]; use TOKEN, **values }) }
+    token = ->(env, values = {}) { records(build_job(env:, credentials:) { source [1]; use TOKEN, params: values }) }
 
-    assert_equal ["given"], token.call({"TOKEN" => "env"}, token: "given")
+    assert_equal ["given"], token.call({"TOKEN" => "env"}, {token: "given"})
     assert_equal ["env"], token.call({"TOKEN" => "env"})
     assert_equal ["credential"], token.call({})
   end
 
   def test_unknown_keys_name_the_transform
-    error = assert_raises(ArgumentError) { build_job { source []; use SCALE, factr: 3 } }
+    error = assert_raises(ArgumentError) { build_job { source []; use SCALE, params: {factr: 3} } }
 
     assert_equal "use scale: unknown parameter :factr (known: factor)", error.message
   end
 
   def test_invalid_values_name_the_transform
-    error = assert_raises(Metacrunch::ParamError) { build_job { source []; use SCALE, factor: "many" } }
+    error = assert_raises(Metacrunch::ParamError) { build_job { source []; use SCALE, params: {factor: "many"} } }
 
     assert_equal "use scale: invalid value for factor: \"many\" is not an Integer", error.message
   end
@@ -257,6 +257,18 @@ class UseTest < Minitest::Test
     error = assert_raises(ArgumentError) { looping.pipeline(binder:, logger: SILENT, context:) }
 
     assert_equal "use cycle: loop → loop", error.message
+  end
+
+  def test_values_as_keywords_are_refused
+    error = assert_raises(ArgumentError) { build_job({"scale" => SCALE}) { source []; use "scale", factor: 2 } }
+
+    assert_equal "unknown keyword: :factor", error.message
+  end
+
+  def test_params_must_be_a_hash
+    error = assert_raises(ArgumentError) { build_job({"scale" => SCALE}) { source []; use "scale", params: [2] } }
+
+    assert_equal "use scale: params: must be a Hash, got [2]", error.message
   end
 
   def test_use_needs_a_context

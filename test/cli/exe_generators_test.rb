@@ -45,7 +45,8 @@ class ExeGeneratorsTest < Minitest::Test
     in_tmpdir do |dir|
       root = generate_project(dir)
       job = File.join(root, "jobs/catalog/ids.rb")
-      File.write(job, File.read(job).sub(%(  # use "catalog:clean", lang: "en"\n), %(  use "catalog:clean"\n)))
+      comment = %(  # use "catalog:clean", params: {lang: "en"}\n)
+      File.write(job, File.read(job).sub(comment, %(  use "catalog:clean"\n)))
       stdout, stderr, status = run_tests(root, from: dir)
 
       assert_equal [true, ""], [status.success?, stderr], stdout

@@ -45,7 +45,7 @@ class InvokerTest < Minitest::Test
         end
 
         source params.numbers.map { Integer(it, 10) }
-        use "scale", factor: params.factor
+        use "scale", params: {factor: params.factor}
       end
     RUBY
     "commands/note.rb" => <<~RUBY,

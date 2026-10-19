@@ -12,7 +12,7 @@ Metacrunch.job <%= target.name.inspect %><%= ", desc: #{desc}" if desc %> do
   # source MySource.new(params.input), id: ->(record) { record["id"] }
 
   reject("No id") { it["id"].nil? }
-  # use "catalog:clean", lang: "en"
+  # use "catalog:clean", params: {lang: "en"}
   map do |record, ctx|
     ctx.mark("No title") unless record.key?("title")
     record

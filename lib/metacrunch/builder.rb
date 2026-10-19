@@ -75,14 +75,15 @@ module Metacrunch
     end
 
     # Inserts the steps and hooks of a transform here. target: a Transform,
-    # or its name or path; values bind its parameters (see UseContext).
-    # Its steps are named with its label as prefix: normalize/map#1.
-    def use(target, **values)
+    # or its name or path; params: the values of its parameters (see
+    # Params#bind_values). Its steps are named with its label as prefix:
+    # normalize/map#1.
+    def use(target, params: {})
       use!
       raise ArgumentError, "use needs a context: build the job with Job#pipeline(context:)" unless @context
 
       transform = @context.transform(target)
-      built = @context.evaluate(transform, values, stack: @stack)
+      built = @context.evaluate(transform, params, stack: @stack)
       prefix = prefix_for(transform)
       @steps.concat(built.steps.map { it.with(name: "#{prefix}/#{it.name}") })
       @before_hooks.concat(built.before_hooks)
