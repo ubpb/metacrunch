@@ -6,7 +6,7 @@ require "yaml"
 
 module Metacrunch
   # Encrypted credentials for job parameters: one file and one key per
-  # environment in a .metacrunch/ directory (see the Readme, "Credentials").
+  # environment in a .metacrunch/ directory (see docs/credentials.md).
   module Credentials
 
     DIRECTORY = ".metacrunch"

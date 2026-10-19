@@ -1,0 +1,185 @@
+# Jobs
+
+A job is a recipe: `Metacrunch.job` declares where records come from, what happens to them and where they go. The
+sections below describe each statement:
+
+```ruby
+Metacrunch.job "catalog", desc: "Write the public titles" do
+  params do                                       # Parameters: first, if any
+    param :output, String, required: true
+  end
+
+  source Metacrunch::JsonLines::Reader.new("data/titles.jsonl"), id: ->(record) { record["id"] }   # Sources
+
+  reject("Not public") { !it["public"] }          # Steps, in order
+  use "normalize"                                 # the steps of a transform
+  map { |record| record.slice("id", "title") }
+
+  sink    Metacrunch::JsonLines::Writer.new(params.output)                 # Sinks
+  rejects Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")
+
+  on_error :skip, max_errors: 100                 # Errors
+  before { logger.info("writing #{params.output}") }                       # Hooks
+end
+```
+
+Every statement is optional: without `source` a job reads JSON Lines from stdin, without `sink` it writes JSON Lines
+to stdout (see [Pipes](cli.md#pipes)). `use` inserts the steps of a [transform](transforms.md). A file may declare
+several jobs; the name is optional for a job that runs by path, and `desc:` shows in `--help`.
+
+## Records
+
+A record can be any Ruby object. Records that leave a job should be `Hash` objects with `String` keys, because
+only those survive a JSON round trip. The engine neither copies nor freezes records: a step that emits the same
+object several times must not change it in place afterwards.
+
+## Sources
+
+Any object with `#each` that yields records. Optional `#open(context)` and `#close`. A source that yields several
+values at once (`yield key, value`) produces Array records (`[key, value]`).
+
+```ruby
+source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }
+```
+
+`id:` gives every record an id for logs and errors.
+
+`Metacrunch::JsonLines::Reader.new(path)` reads JSON Lines (`-` for stdin, `.gz` files are decompressed). A source
+can yield `Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines
+that are not valid JSON or not valid UTF-8. Invalid records fail like a step (the pseudo-step `source`) under the
+job's error policy. Note that JSON objects with duplicate keys count as invalid, and numbers beyond the Float range
+(`1e400`) are read as `Infinity`, which the writer refuses.
+
+## Steps
+
+| Step | The block returns | Effect |
+|---|---|---|
+| `map` | the new record (not `nil`) | 1:1 |
+| `filter` | truthy to keep the record | 0..1 |
+| `reject` | truthy to drop the record | 0..1 |
+| `flat_map` | an Enumerable of records (not a Hash) | 0..n |
+
+A step is a block or any object with `#call`, for example a class with `self.call`. Steps are named
+`map#1`, `filter#2`, … or explicitly: `map TitleCase, name: "titlecase"`.
+
+`filter` and `reject` take an optional reason (a String or Symbol). Records dropped with a reason are *rejected*:
+they are counted per reason and sent to the `rejects` sink. Without a reason they are *filtered*: counted, nothing
+else.
+
+`flat_map` streams: each record its Enumerable yields goes on through the pipeline right away. If the Enumerable
+raises halfway, the records it yielded before are already on their way. Errors from later steps and sinks pass
+through the Enumerable's `each`; a `rescue => e` there does not catch them, but a `rescue Exception` would, so do not
+use one around `yield`.
+
+```ruby
+reject("Not public") { !it["public"] }
+```
+
+## The record context
+
+A step that takes a second **required** parameter gets the record's context:
+
+```ruby
+map do |record, ctx|
+  ctx.mark("No title") if record["title"].nil?
+  ctx.reject!("Duplicate") if seen?(record)
+  record
+end
+```
+
+| Method | |
+|---|---|
+| `ctx.id`, `ctx.position`, `ctx.step` | Record id, position in the source, current step |
+| `ctx.reject!(reason, value: nil)` | Stop this record: ends the step at once; the record goes to the `rejects` sink |
+| `ctx.mark(reason, value: nil)`, `ctx.marks` | Non-fatal notes; the record continues |
+| `ctx.store` | Hash for per-record data shared between steps |
+| `ctx.logger` | Logger that prefixes messages with the record id |
+
+`flat_map` gives every emitted record its own copy of the context.
+
+`reject!` ends the step by raising `Metacrunch::Context::Rejected`, so no `return` or `next` is needed after it. The
+engine rescues it around every step. It is an `Exception`, not a `StandardError`: a `rescue => e` in the step does not
+catch it, but a `rescue Exception` would, so do not use one around `reject!`. Call `reject!` only on the context the
+step got; on the context of another record it fails the step with a `ContractError`.
+
+Optional parameters do not count, so methods such as `method(:Integer)` or `JSON.method(:generate)` can be used as
+steps directly: `map(&method(:Integer))`. A step written as `->(record, ctx = nil)` gets `nil` for `ctx`.
+
+## Sinks
+
+Any object with `#write(record)`. Optional `#write_batch(records)`, `#open(context)` and `#close`. Sinks that
+accept a second argument get the (read-only) context: `write(record, ctx)`, `write_batch(records, ctxs)`.
+
+```ruby
+sink    Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
+rejects Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")   # rejected records, ctx.rejection
+errors  Metacrunch::JsonLines::ContextWriter.new("errors.jsonl")    # failed records (on_error :skip), ctx.failure
+```
+
+With `batch:` the sink gets `write_batch` calls with up to that many records; the rest is written at the end, also
+when the job aborts or is interrupted, so `batch:` never changes which records arrive. One object used as both
+`sink` and `rejects` (or `errors`) is opened and closed once.
+
+`Metacrunch::JsonLines::Writer.new(path)` writes JSON Lines (`-` for stdout, `.gz` files are compressed) and refuses
+values that are not JSON types. `Metacrunch::JsonLines::ContextWriter` writes every record with its context (id,
+position, marks, rejection, failure), which suits the `rejects` and `errors` roles.
+
+## Errors
+
+```ruby
+on_error :abort                    # default: stop at the first failing record
+on_error :skip, max_errors: 100    # log, send to the errors sink, continue; stop after 100 failures
+on_error :skip, max_errors: 0      # stop at the first failure, but after it reached the errors sink
+```
+
+Errors in sources, sinks, hooks, `open` and `close` always stop the job. Components are closed in any case.
+`NotImplementedError` and other script errors are handled like any other error.
+
+## Hooks
+
+```ruby
+before { logger.info("starting") }
+after  { |result| logger.info(result.summary) }
+```
+
+`result.status` is `:ok`, `:ok_with_failures` or `:aborted`; `result.stats` has the counts per step and reason.
+`profile true` adds the time per step.
+
+## Parameters
+
+```ruby
+params do
+  param :output, String, required: true, desc: "JSON Lines file for the records"
+  param :input,  String, default: "data/titles.jsonl", env: "CATALOG_INPUT"
+  param :batch,  Integer, default: 1000
+  param :dry,    :bool, default: false
+  param :tags,   Array
+  param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key"
+  args  :files, min: 1
+end
+```
+
+`params` must be the first statement of a job. Values come from the command line, then the environment
+variable (`env:`, an empty variable counts as unset), then the credentials (`credential:`, see
+[Credentials](credentials.md)), then the default. Types: `String`, `Integer`, `Float`, `:bool`, `Array`
+(comma-separated). Defaults are converted and checked when declared (`Integer, default: "1000"`
+gives 1000). Use the values with `params.output`; they are frozen. Options must be spelled out (`--out` is not
+`--output`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and `-h` is reserved
+for help.
+
+## What runs when
+
+| When | What runs |
+|---|---|
+| A file is loaded: every call that uses it; in a project, every call that needs a name, `--help` included | the file's top-level code: `require`, constants |
+| The recipe is evaluated: `run`, `check`, `trace`, `Testing.run`, `Testing.invoke`; for `--help` only up to its first statement | the recipe's code and the arguments of its statements, such as `MySource.new(...)` |
+| The job or command runs | `before`, `open`, `each` and `write` of the components, the steps, `after`; a command's `run` block |
+
+`use` evaluates the recipe of a transform while the recipe of the job is evaluated, once per `use`; `--help` of the
+job stops before any `use`.
+
+A recipe only declares. Code before `params` and the arguments of the first statement run for every `--help`: a
+lookup table built there makes `--help` slow, and a relative path read there breaks `--help` when it is started from
+another directory. Preparation such as lookup tables and connections belongs into a `before` hook or a component's
+`open`, effects into components or a command's `run` block. Code that must stay in the recipe goes after `params`,
+where `--help` does not reach it.

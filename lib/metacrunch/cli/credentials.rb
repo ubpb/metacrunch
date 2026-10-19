@@ -145,8 +145,8 @@ module Metacrunch
       def rotate_key_file(location, plaintext, key)
         pending = "#{location.key_file}.new"
         if File.exist?(pending)
-          raise CredentialsError, "#{display(pending)} exists: an earlier rotate was interrupted. Check it as the " \
-                                  "Readme says (Credentials, rotation) before you rotate again"
+          raise CredentialsError, "#{display(pending)} exists: an earlier rotate was interrupted. Check it as " \
+                                  "docs/credentials.md says (Rotation) before you rotate again"
         end
 
         sealed = "#{location.file}.#{SecureRandom.hex(8)}.tmp"
