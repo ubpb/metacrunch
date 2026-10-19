@@ -18,7 +18,7 @@ class InvokerTest < Minitest::Test
 
         source params.numbers.map { Integer(it, 10) }
         map { 100 / it }
-        on_error(params.skip ? :skip : :abort)
+        on_failure(params.skip ? :skip : :abort)
       end
     RUBY
     "jobs/term.rb" => <<~RUBY,

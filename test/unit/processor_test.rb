@@ -53,7 +53,7 @@ class ProcessorTest < Minitest::Test
     processor = build_processor(outlet) do
       map { it == 2 ? raise(ArgumentError, "bad") : it }
       reject("Three") { it == 3 }
-      on_error :skip
+      on_failure :skip
     end
     [1, 2, 3].each { processor.call(it, it) }
 

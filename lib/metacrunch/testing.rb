@@ -33,8 +33,8 @@ module Metacrunch
     end
 
     # records: what reached the sink. rejects: [record, Rejection] pairs.
-    # errors: [record, Failure] pairs.
-    Result = Data.define(:records, :rejects, :errors, :stats, :status, :error) do
+    # failures: [record, Failure] pairs.
+    Result = Data.define(:records, :rejects, :failures, :stats, :status, :error) do
       def ok? = status == :ok
     end
 
@@ -143,7 +143,7 @@ module Metacrunch
 
       context = UseContext.for(project:, env: {}, credentials: nil, logger:)
       pipeline = job.pipeline(binder: values_binder(params), logger:, context:)
-      memory = {sink: MemorySink.new, rejects: MemorySink.new, errors: MemorySink.new}
+      memory = {sink: MemorySink.new, rejects: MemorySink.new, failures: MemorySink.new}
       adapters = memory.transform_values { |sink| SinkAdapter.new(sink) }
       adapters[:sink] = UncountedSinkAdapter.new(memory[:sink]) unless pipeline.sink
       source ||= pipeline.source
@@ -156,7 +156,7 @@ module Metacrunch
       Result.new(
         records: memory[:sink].records,
         rejects: memory[:rejects].records.zip(memory[:rejects].contexts.map(&:rejection)),
-        errors: memory[:errors].records.zip(memory[:errors].contexts.map(&:failure)),
+        failures: memory[:failures].records.zip(memory[:failures].contexts.map(&:failure)),
         stats: result.stats,
         status: result.status,
         error: result.error

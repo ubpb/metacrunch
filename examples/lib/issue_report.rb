@@ -7,7 +7,7 @@ module Examples
   # sink must have write_batch(records, ctxs), as JsonLines::Writer has.
   #
   # Marks of rejected and failed records are not reported here: those
-  # records go to the rejects and errors sinks, with their marks.
+  # records go to the rejects and failures sinks, with their marks.
   class IssueReport
 
     HEADER = "id\tposition\tstep\treason\tvalue\n"

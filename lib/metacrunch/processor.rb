@@ -2,7 +2,7 @@
 
 module Metacrunch
   # Pushes source records through the steps of a pipeline: builds the chain
-  # of steps, creates the per-record contexts and applies the error policy.
+  # of steps, creates the per-record contexts and applies the failure policy.
   # Records that leave the chain go to an outlet, which has three methods:
   # deliver(record, ctx), reject(record, ctx) and fail(record, ctx).
   # Executors run one Processor per process.
@@ -216,7 +216,7 @@ module Metacrunch
       @outlet.reject(record, ctx)
     end
 
-    # Applies the error policy first, so the observer sees ctx.failure
+    # Applies the failure policy first, so the observer sees ctx.failure
     # under :skip.
     def fail_observed(step, record, ctx, error)
       fail_record(step, record, ctx, error)
@@ -230,10 +230,10 @@ module Metacrunch
     end
 
     # :abort raises the StepError. :skip logs the failure and hands the
-    # record to the outlet, which enforces max_errors.
+    # record to the outlet, which enforces max_failures.
     def handle_failure(name, record, ctx, error)
       step_error = StepError.new(step: name, record_id: ctx.id, position: ctx.position, error:)
-      raise step_error, cause: error if @pipeline.on_error == :abort
+      raise step_error, cause: error if @pipeline.on_failure == :abort
 
       ctx.failure = Failure.new(error:, step: name)
       ctx.logger.error(step_error.message)

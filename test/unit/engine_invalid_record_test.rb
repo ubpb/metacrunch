@@ -38,7 +38,7 @@ class EngineInvalidRecordTest < Minitest::Test
     assert_equal "step source failed at position 2: ArgumentError: unreadable", error.message
   end
 
-  def test_invalid_records_go_to_the_errors_sink_under_skip
+  def test_invalid_records_go_to_the_failures_sink_under_skip
     bad = invalid_record
     target = CollectingSink.new
     failures = CollectingSink.new
@@ -46,8 +46,8 @@ class EngineInvalidRecordTest < Minitest::Test
       source [1, bad, 3], id: ->(record) { record * 100 }
       map { it * 2 }
       sink target
-      errors failures
-      on_error :skip
+      failures failures
+      on_failure :skip
     end
 
     assert_equal [:ok_with_failures, [2, 6]], [result.status, target.records]
@@ -60,7 +60,7 @@ class EngineInvalidRecordTest < Minitest::Test
     result = run_pipeline do
       source [bad]
       map { it }
-      on_error :skip
+      on_failure :skip
     end
 
     assert_equal({"ArgumentError" => 1}, result.stats.failed)
@@ -68,15 +68,15 @@ class EngineInvalidRecordTest < Minitest::Test
     assert_equal 0, result.stats.steps["map#1"].input
   end
 
-  def test_max_errors_counts_invalid_records
+  def test_max_failures_counts_invalid_records
     bad = invalid_record
     result = run_pipeline do
       source [bad, bad]
-      on_error :skip, max_errors: 1
+      on_failure :skip, max_failures: 1
     end
 
     assert_equal :aborted, result.status
-    assert_equal "2 failed records exceed max_errors 1", result.error.message
+    assert_equal "2 failed records exceed max_failures 1", result.error.message
   end
 
   def test_the_observer_sees_invalid_records_as_the_source_step
@@ -84,7 +84,7 @@ class EngineInvalidRecordTest < Minitest::Test
     observer = FailureObserver.new
     pipeline = build_pipeline do
       source [bad]
-      on_error :skip
+      on_failure :skip
     end
     Metacrunch::Engine.new(pipeline, observer:).run
 
@@ -96,7 +96,7 @@ class EngineInvalidRecordTest < Minitest::Test
     pipeline = build_pipeline do
       source [1]
       map { raise "broken" }
-      on_error :skip
+      on_failure :skip
     end
     Metacrunch::Engine.new(pipeline, observer:).run
 

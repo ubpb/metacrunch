@@ -239,8 +239,8 @@ class EngineTest < Minitest::Test
         end
       end
       sink CollectingSink.new
-      errors failed
-      on_error :skip
+      failures failed
+      on_failure :skip
     end
 
     assert_equal [[2], [["flat_map#1", Metacrunch::ContractError]]],
@@ -262,8 +262,8 @@ class EngineTest < Minitest::Test
         record
       end
       sink target
-      errors failed
-      on_error :skip
+      failures failed
+      on_failure :skip
     end
 
     failure = failed.contexts.first.failure
@@ -348,7 +348,7 @@ class EngineTest < Minitest::Test
       source [1]
       flat_map { [1, 2] }
       map(name: "later") { raise "later broke" }
-      on_error :skip
+      on_failure :skip
     end.stats
 
     assert_equal [0, 2], [stats.steps["flat_map#1"].failed, stats.steps["later"].failed]

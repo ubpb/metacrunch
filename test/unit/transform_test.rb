@@ -11,8 +11,8 @@ class TransformTest < Minitest::Test
     "source" => proc { source [] },
     "sink" => proc { sink CollectingSink.new },
     "rejects" => proc { rejects CollectingSink.new },
-    "errors" => proc { errors CollectingSink.new },
-    "on_error" => proc { on_error :skip },
+    "failures" => proc { failures CollectingSink.new },
+    "on_failure" => proc { on_failure :skip },
     "profile" => proc { profile true }
   }.freeze
 
@@ -25,8 +25,8 @@ class TransformTest < Minitest::Test
     pipeline = build(transform)
 
     assert_equal([["map#1", nil], ["reject#2", "Empty"]], pipeline.steps.map { [it.name, it.reason] })
-    assert_equal [nil, nil, nil, nil], [pipeline.source, pipeline.sink, pipeline.rejects, pipeline.errors]
-    assert_equal [1, :abort], [pipeline.before_hooks.size, pipeline.on_error]
+    assert_equal [nil, nil, nil, nil], [pipeline.source, pipeline.sink, pipeline.rejects, pipeline.failures]
+    assert_equal [1, :abort], [pipeline.before_hooks.size, pipeline.on_failure]
   end
 
   def test_refuses_the_statements_of_jobs

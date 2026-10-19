@@ -5,7 +5,7 @@ require_relative "lib/json_array_file"
 # A catalog export: reads a JSON array of title records, drops what must not
 # be published, writes one record per ISBN as JSON Lines. Shows the whole
 # DSL: parameters, reject with a reason, filter, marks, flat_map, the
-# rejects and errors sinks, the error policy and an after hook.
+# rejects and failures sinks, the failure policy and an after hook.
 #
 #   mkdir -p tmp
 #   bundle exec metacrunch run examples/catalog.rb --output tmp examples/data/catalog.json
@@ -37,8 +37,8 @@ Metacrunch.job "catalog" do
 
   sink Metacrunch::JsonLines::Writer.new(File.join(params.output, "records.jsonl")), batch: 100
   rejects Metacrunch::JsonLines::ContextWriter.new(File.join(params.output, "rejects.jsonl"))
-  errors Metacrunch::JsonLines::ContextWriter.new(File.join(params.output, "errors.jsonl"))
-  on_error :skip, max_errors: 10
+  failures Metacrunch::JsonLines::ContextWriter.new(File.join(params.output, "errors.jsonl"))
+  on_failure :skip, max_failures: 10
 
   after { |result| logger.info("catalog: #{result.stats.written} records in #{params.output}") }
 end

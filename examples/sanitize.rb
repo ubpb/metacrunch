@@ -10,7 +10,7 @@ require_relative "lib/issue_report"
 #
 #   mkdir -p tmp
 #   bundle exec metacrunch run -w 4 -i examples/data/publications.jsonl \
-#     --rejects tmp/rejects.jsonl --errors tmp/errors.jsonl --stats tmp/stats.json \
+#     --rejects tmp/rejects.jsonl --failures tmp/errors.jsonl --stats tmp/stats.json \
 #     examples/sanitize.rb --output tmp/publications.jsonl --issues tmp/issues.tsv
 #
 # examples/data/publications.jsonl gives 187 records, 8 rejects (no title) and 5
@@ -48,5 +48,5 @@ Metacrunch.job "sanitize" do
   map(name: "year") { it.merge("year" => Integer(it["year"], 10)) }
 
   sink Examples::IssueReport.new(params.issues, Metacrunch::JsonLines::Writer.new(params.output)), batch: 100
-  on_error :skip
+  on_failure :skip
 end

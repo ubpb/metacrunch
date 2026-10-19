@@ -33,7 +33,7 @@ class ExeTransformsTest < Minitest::Test
       Metacrunch.job "enrich" do
         use "checks"
         use "labels"
-        on_error :skip
+        on_failure :skip
       end
     RUBY
   }.freeze
@@ -69,16 +69,16 @@ class ExeTransformsTest < Minitest::Test
   private
 
   # Runs enrich with options and returns what two runs can be compared by:
-  # the exit status, the records, the rejects and errors files and the
+  # the exit status, the records, the rejects and failures files and the
   # stats without times.
   def enrich(root, *options)
     files = ["rejects", "errors", "stats"].to_h { [it, File.join(root, "#{it}#{options.join}.json")] }
-    stdout, stderr, status = metacrunch("run", *options, "--rejects", files["rejects"], "--errors", files["errors"],
+    stdout, stderr, status = metacrunch("run", *options, "--rejects", files["rejects"], "--failures", files["errors"],
                                         "--stats", files["stats"], "enrich", stdin_data: INPUT, chdir: root)
     raise "enrich failed (#{status.exitstatus}): #{stderr}" unless status.exitstatus == 3
 
     {status: status.exitstatus, records: stdout.lines.map { JSON.parse(it) },
-     rejects: File.read(files["rejects"]), errors: File.read(files["errors"]),
+     rejects: File.read(files["rejects"]), failures: File.read(files["errors"]),
      stats: JSON.parse(File.read(files["stats"]))["stats"].except("duration", "rate")}
   end
 

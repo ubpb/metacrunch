@@ -20,7 +20,7 @@ class EngineErrorPolicyTest < Minitest::Test
 
   end
 
-  # recipe => expected error message, also with on_error :skip
+  # recipe => expected error message, also with on_failure :skip
   ALWAYS_ABORT = {
     "source" => [proc { source(Enumerator.new { raise "source broke" }) }, /source broke/],
     "id_extractor" => [proc { source([1], id: ->(_record) { raise "id broke" }) }, /id broke/],
@@ -29,15 +29,15 @@ class EngineErrorPolicyTest < Minitest::Test
     "before_hook" => [proc { source([1]); before { raise "hook broke" } }, /hook broke/]
   }.freeze
 
-  def test_skip_continues_and_sends_failures_to_the_errors_sink
+  def test_skip_continues_and_sends_failures_to_the_failures_sink
     target = CollectingSink.new
     failed = CollectingSink.new
     result = run_pipeline do
       source [1, 2, 3]
       map(name: "check") { it == 2 ? raise(ArgumentError, "bad") : it }
       sink target
-      errors failed
-      on_error :skip
+      failures failed
+      on_failure :skip
     end
     failures = failed.records.zip(failed.contexts).map do |record, ctx|
       [record, ctx.failure.step, ctx.failure.error.message]
@@ -53,31 +53,31 @@ class EngineErrorPolicyTest < Minitest::Test
     run_pipeline(logger: Metacrunch.build_logger(io)) do
       source [{"id" => "x"}], id: ->(record) { record["id"] }
       map { raise ArgumentError, "bad" }
-      on_error :skip
+      on_failure :skip
     end
 
     assert_match(/ERROR \[x\] step map#1 failed at position 1 \(id x\): ArgumentError: bad/, io.string)
   end
 
-  def test_skip_aborts_when_max_errors_is_exceeded
+  def test_skip_aborts_when_max_failures_is_exceeded
     result = run_pipeline do
       source [1, 2, 3, 4]
       map { raise ArgumentError, "bad" }
-      on_error :skip, max_errors: 2
+      on_failure :skip, max_failures: 2
     end
 
     assert_equal [:aborted, 3], [result.status, result.stats.read]
-    assert_match(/3 failed records exceed max_errors 2/, result.error.message)
+    assert_match(/3 failed records exceed max_failures 2/, result.error.message)
     assert_instance_of Metacrunch::StepError, result.error.cause
   end
 
-  def test_zero_max_errors_stops_at_the_first_failure_after_recording_it
+  def test_zero_max_failures_stops_at_the_first_failure_after_recording_it
     failed = CollectingSink.new
     result = run_pipeline do
       source [1, 2, 3]
       map { raise ArgumentError, "bad" }
-      errors failed
-      on_error :skip, max_errors: 0
+      failures failed
+      on_failure :skip, max_failures: 0
     end
 
     assert_equal [:aborted, 1], [result.status, result.stats.read]
@@ -88,7 +88,7 @@ class EngineErrorPolicyTest < Minitest::Test
     result = run_pipeline do
       source [1, 2]
       map { it == 1 ? raise(NotImplementedError, "todo") : it }
-      on_error :skip
+      on_failure :skip
     end
 
     assert_equal [:ok_with_failures, {"NotImplementedError" => 1}], [result.status, result.stats.failed]
@@ -106,7 +106,7 @@ class EngineErrorPolicyTest < Minitest::Test
     define_method("test_errors_in_#{description}_abort_even_with_skip") do
       result = run_pipeline do
         instance_exec(&recipe)
-        on_error :skip
+        on_failure :skip
       end
 
       assert_equal :aborted, result.status
@@ -119,6 +119,6 @@ end
 ForkVariant.define(
   EngineErrorPolicyTest,
   inline_only: [
-    :test_zero_max_errors_stops_at_the_first_failure_after_recording_it
+    :test_zero_max_failures_stops_at_the_first_failure_after_recording_it
   ]
 )

@@ -28,7 +28,7 @@ module Metacrunch
             @events << [:reject, record, ctx.to_state] if @reject
           end
 
-          # Always sent: the parent counts failures for max_errors.
+          # Always sent: the parent counts failures for max_failures.
           def fail(record, ctx)
             @events << [:fail, record, ctx.to_state]
           end

@@ -18,7 +18,7 @@ class ProjectCliTest < Minitest::Test
 
         source params.numbers.map { Integer(it, 10) }
         map { 100 / it }
-        on_error(params.skip ? :skip : :abort)
+        on_failure(params.skip ? :skip : :abort)
       end
     RUBY
     "jobs/interrupted.rb" => <<~RUBY,
@@ -415,7 +415,7 @@ class ProjectCliTest < Minitest::Test
       code, stdout, = cli_in(root, "check", "scaled", "1")
 
       assert_equal 0, code
-      assert_match(%r{^  steps     scale/map#1$}, stdout)
+      assert_match(%r{^  steps      scale/map#1$}, stdout)
     end
   end
 

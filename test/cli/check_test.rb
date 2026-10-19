@@ -14,12 +14,12 @@ class CheckTest < Minitest::Test
     assert_equal 0, code
     assert_equal <<~TEXT, stdout
       #{job("catalog.rb")}: job "catalog" OK
-        input     JsonArrayFile (id extractor)
-        steps     reject#1 "Not public", filter#2, map#3, flat_map#4
-        output    JsonLinesFile, batch 2
-        rejects   JsonLinesFile
-        errors    JsonLinesFile
-        on_error  skip, max_errors 5
+        input      JsonArrayFile (id extractor)
+        steps      reject#1 "Not public", filter#2, map#3, flat_map#4
+        output     JsonLinesFile, batch 2
+        rejects    JsonLinesFile
+        failures   JsonLinesFile
+        on_failure skip, max_failures 5
     TEXT
     refute_includes stdout, "secret"
   end
@@ -27,10 +27,10 @@ class CheckTest < Minitest::Test
   def test_describes_a_filter_job
     assert_equal [0, <<~TEXT], cli("check", job("double.rb")).take(2)
       #{job("double.rb")}: job "double" OK
-        input     stdin (JSON Lines)
-        steps     map#1
-        output    stdout (JSON Lines)
-        on_error  abort
+        input      stdin (JSON Lines)
+        steps      map#1
+        output     stdout (JSON Lines)
+        on_failure abort
     TEXT
   end
 

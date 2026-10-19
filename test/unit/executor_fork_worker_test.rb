@@ -58,7 +58,7 @@ class ExecutorForkWorkerTest < Minitest::Test
       reject("One") { it == 1 }
       map { raise ArgumentError, "bad" }
       rejects CollectingSink.new
-      on_error :skip
+      on_failure :skip
     end
     events = frames[1][:events].map { |kind, _record, state| [kind, state.rejection&.reason, state.failure&.step] }
 

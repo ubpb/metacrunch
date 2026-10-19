@@ -28,11 +28,11 @@ module Metacrunch
         rows = [["input", input(pipeline)], ["steps", steps(pipeline)]]
         rows << ["output", pipeline.sink ? sink(pipeline.sink) : "stdout (JSON Lines)"]
         rows << ["rejects", sink(pipeline.rejects)] if pipeline.rejects
-        rows << ["errors", sink(pipeline.errors)] if pipeline.errors
-        rows << ["on_error", policy(pipeline)]
+        rows << ["failures", sink(pipeline.failures)] if pipeline.failures
+        rows << ["on_failure", policy(pipeline)]
         kind = job.is_a?(Transform) ? "transform" : "job"
         title = job.name ? "#{kind} #{job.name.inspect}" : kind
-        ["#{@target}: #{title} OK", *rows.map { |label, text| "  #{label.ljust(9)} #{text}" }].join("\n")
+        ["#{@target}: #{title} OK", *rows.map { |label, text| "  #{label.ljust(10)} #{text}" }].join("\n")
       end
 
       def input(pipeline)
@@ -51,9 +51,9 @@ module Metacrunch
       end
 
       def policy(pipeline)
-        return pipeline.on_error.to_s unless pipeline.max_errors
+        return pipeline.on_failure.to_s unless pipeline.max_failures
 
-        "#{pipeline.on_error}, max_errors #{pipeline.max_errors}"
+        "#{pipeline.on_failure}, max_failures #{pipeline.max_failures}"
       end
 
     end

@@ -62,13 +62,13 @@ class EngineBatchingTest < Minitest::Test
     assert_equal 3, result.stats.written
   end
 
-  def test_abort_over_max_errors_keeps_the_failed_records_in_a_batched_errors_sink
+  def test_abort_over_max_failures_keeps_the_failed_records_in_a_batched_failures_sink
     failed = BatchCollector.new
     result = run_pipeline do
       source [1, 2, 3, 4]
       map { raise ArgumentError, "bad" }
-      errors failed, batch: 100
-      on_error :skip, max_errors: 2
+      failures failed, batch: 100
+      on_failure :skip, max_failures: 2
     end
 
     assert_equal [:aborted, [1, 2, 3]], [result.status, failed.records]

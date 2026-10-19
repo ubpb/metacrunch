@@ -66,10 +66,10 @@ class ExeWorkersTest < Minitest::Test
     "#{JSON.generate({"id" => number, "title" => title, "year" => year})}\n"
   end
 
-  # Runs sanitize.rb and returns its output, rejects and errors files.
+  # Runs sanitize.rb and returns its output, rejects and failures files.
   def run_sanitize(dir, name, input, *options)
     files = ["out", "rejects", "errors"].map { File.join(dir, "#{name}.#{it}.jsonl") }
-    arguments = ["run", *options, "-i", input, "-o", files[0], "--rejects", files[1], "--errors", files[2]]
+    arguments = ["run", *options, "-i", input, "-o", files[0], "--rejects", files[1], "--failures", files[2]]
     _stdout, stderr, status = Open3.capture3(*command(*arguments, fixture("sanitize.rb")))
     raise "sanitize.rb failed (#{status.exitstatus}): #{stderr}" unless status.exitstatus == 3
 

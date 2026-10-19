@@ -78,45 +78,45 @@ class RunOptionsTest < Minitest::Test
     assert_equal "7\n", stdout.string
   end
 
-  def test_rejects_and_errors_may_share_a_file
+  def test_rejects_and_failures_may_share_a_file
     path = File.join(@dir, "bad.jsonl")
     pipeline = build_pipeline do
       source [1, 2, 3]
       reject("Two") { it == 2 }
       map { it == 3 ? raise("three") : it }
       sink CollectingSink.new
-      on_error :skip
+      on_failure :skip
     end
-    applied = apply(RunOptions.new(rejects: path, errors: File.join(@dir, ".", "bad.jsonl")), pipeline)
+    applied = apply(RunOptions.new(rejects: path, failures: File.join(@dir, ".", "bad.jsonl")), pipeline)
     Metacrunch::Engine.new(applied).run
     lines = File.readlines(path).map { JSON.parse(it) }
 
-    assert_same applied.rejects.sink, applied.errors.sink
+    assert_same applied.rejects.sink, applied.failures.sink
     assert_equal([["Two", nil], [nil, "RuntimeError"]],
                  lines.map { [it.dig("rejection", "reason"), it.dig("failure", "error")] })
   end
 
-  def test_rejects_and_errors_may_share_stdout
+  def test_rejects_and_failures_may_share_stdout
     stdout = StringIO.new
     pipeline = build_pipeline do
       source [1, 2]
       reject("Two") { it == 2 }
       map { raise "broken" }
       sink CollectingSink.new
-      on_error :skip
+      on_failure :skip
     end
-    applied = apply(RunOptions.new(rejects: "-", errors: "-"), pipeline, stdout:)
+    applied = apply(RunOptions.new(rejects: "-", failures: "-"), pipeline, stdout:)
     Metacrunch::Engine.new(applied).run
 
-    assert_same applied.rejects.sink, applied.errors.sink
+    assert_same applied.rejects.sink, applied.failures.sink
     assert_equal 2, stdout.string.lines.size
   end
 
-  def test_shared_stdout_of_rejects_and_errors_still_conflicts_with_records
+  def test_shared_stdout_of_rejects_and_failures_still_conflicts_with_records
     pipeline = build_pipeline { source [1] }
-    error = assert_raises(Metacrunch::UsageError) { apply(RunOptions.new(rejects: "-", errors: "-"), pipeline) }
+    error = assert_raises(Metacrunch::UsageError) { apply(RunOptions.new(rejects: "-", failures: "-"), pipeline) }
 
-    assert_equal "stdout is used by both the default output (the job has no sink) and --rejects/--errors",
+    assert_equal "stdout is used by both the default output (the job has no sink) and --rejects/--failures",
                  error.message
   end
 
@@ -125,10 +125,10 @@ class RunOptionsTest < Minitest::Test
       source [1]
       sink CollectingSink.new
     end
-    conflicts = [RunOptions.new(output: "-", rejects: "-"), RunOptions.new(errors: "-", stats: "-")]
+    conflicts = [RunOptions.new(output: "-", rejects: "-"), RunOptions.new(failures: "-", stats: "-")]
     messages = conflicts.map { |options| assert_raises(Metacrunch::UsageError) { apply(options, pipeline) }.message }
 
-    assert_equal ["stdout is used by both --output and --rejects", "stdout is used by both --errors and --stats"],
+    assert_equal ["stdout is used by both --output and --rejects", "stdout is used by both --failures and --stats"],
                  messages
   end
 
@@ -169,22 +169,22 @@ class RunOptionsTest < Minitest::Test
   def test_limit_and_error_policy_override_the_job
     pipeline = build_pipeline do
       source [1]
-      on_error :skip, max_errors: 5
+      on_failure :skip, max_failures: 5
     end
-    aborting = apply(RunOptions.new(limit: 3, on_error: :abort), pipeline)
-    skipping = apply(RunOptions.new(on_error: :skip), pipeline)
-    stricter = apply(RunOptions.new(max_errors: 0), pipeline)
+    aborting = apply(RunOptions.new(limit: 3, on_failure: :abort), pipeline)
+    skipping = apply(RunOptions.new(on_failure: :skip), pipeline)
+    stricter = apply(RunOptions.new(max_failures: 0), pipeline)
 
-    assert_equal [3, :abort, nil], [aborting.limit, aborting.on_error, aborting.max_errors]
-    assert_equal [:skip, 5], [skipping.on_error, skipping.max_errors]
-    assert_equal 0, stricter.max_errors
+    assert_equal [3, :abort, nil], [aborting.limit, aborting.on_failure, aborting.max_failures]
+    assert_equal [:skip, 5], [skipping.on_failure, skipping.max_failures]
+    assert_equal 0, stricter.max_failures
   end
 
-  def test_max_errors_needs_skip
+  def test_max_failures_needs_skip
     pipeline = build_pipeline { source [1] }
-    error = assert_raises(Metacrunch::UsageError) { apply(RunOptions.new(max_errors: 3), pipeline) }
+    error = assert_raises(Metacrunch::UsageError) { apply(RunOptions.new(max_failures: 3), pipeline) }
 
-    assert_equal "--max-errors needs the error policy skip (add --on-error skip)", error.message
+    assert_equal "--max-failures needs the failure policy skip (add --on-failure skip)", error.message
   end
 
   def test_apply_input_leaves_the_sinks_alone
