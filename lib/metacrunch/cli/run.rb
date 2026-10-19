@@ -69,7 +69,13 @@ module Metacrunch
         options = RunOptions.new(**@options)
         result = invoker.run_job(job, anchor: @anchor, argv:, options:, workers: @workers)
         write_stats(options.stats, result) if options.stats
-        EXIT_CODES.fetch(result.status)
+        exit_code(result)
+      end
+
+      # A ProjectError that ended the run, such as root without a project
+      # in a hook, is a usage error like any other project error.
+      def exit_code(result)
+        result.error.is_a?(ProjectError) ? EXIT_CODES[:usage] : EXIT_CODES.fetch(result.status)
       end
 
       # Invalid parameters of the command itself raise ParamError here, which
