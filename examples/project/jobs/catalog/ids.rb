@@ -12,5 +12,5 @@ Metacrunch.job "catalog:ids", desc: "Print the ids of the public titles" do
   end
 
   source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }
-  use "catalog:public", fields: ["id"]
+  use "catalog:public", params: {fields: ["id"]}
 end

@@ -47,16 +47,16 @@ module Metacrunch
       raise ArgumentError, "use takes transforms; #{name} is a #{Loader::KINDS.fetch(declaration.class)}"
     end
 
-    # Evaluates the recipe of transform with values bound (see
+    # Evaluates the recipe of transform with params bound (see
     # Params#bind_values) and returns its pipeline: steps and hooks, no
     # source and no sinks. stack: the transforms whose recipes are being
-    # evaluated around this use. Errors of the values name the transform,
+    # evaluated around this use. Errors of the params name the transform,
     # after the transforms around it: "use outer → inner: ...".
-    def evaluate(transform, values, stack:)
+    def evaluate(transform, params, stack:)
       chain = [*stack, transform].map(&:label).join(" → ")
       raise ArgumentError, "use cycle: #{chain}" if stack.include?(transform)
 
-      transform.pipeline(binder: binder(chain, values), logger: @logger, context: self, stack:)
+      transform.pipeline(binder: binder(chain, params), logger: @logger, context: self, stack:)
     end
 
     private
@@ -69,9 +69,9 @@ module Metacrunch
     end
 
     # No cause: the original message is part of the new one.
-    def binder(chain, values)
+    def binder(chain, params)
       lambda do |schema|
-        schema.bind_values(values, env: @env, credentials: @credentials)
+        schema.bind_values(params, env: @env, credentials: @credentials)
       rescue ParamError, ArgumentError => e
         raise e.class, "use #{chain}: #{e.message}", cause: nil
       end
