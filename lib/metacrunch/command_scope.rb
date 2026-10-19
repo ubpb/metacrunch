@@ -13,9 +13,9 @@ module Metacrunch
       @invoker = invoker
     end
 
-    # Runs a job or command by name or path, with arguments as on the
-    # command line; see Invoker#invoke.
-    def invoke(target, *argv, workers: nil, limit: nil) = @invoker.invoke(target, *argv, workers:, limit:)
+    # Runs a job, transform or command by name or path, with params bound
+    # by name; see Invoker#invoke.
+    def invoke(target, params: {}, workers: nil, limit: nil) = @invoker.invoke(target, params:, workers:, limit:)
 
     # The root of the current project, a Pathname. Raises ProjectError
     # without project.

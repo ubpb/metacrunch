@@ -20,8 +20,7 @@ Metacrunch.command "catalog:release", desc: "Write a new release and switch out/
     out = params.out ? Pathname(params.out) : root.join("out")
     release = out.join("releases", Time.now.strftime("%Y%m%d-%H%M%S-%L"))
     FileUtils.mkdir_p(release)
-    input = params.input ? ["--input", params.input] : []
-    result = invoke "catalog", "--output", release, *input
+    result = invoke "catalog", params: {output: release, input: params.input}
     next logger.warn("catalog:release: #{result.status}; out/current not switched") unless result.ok?
 
     # A new link renamed over the old one: the switch is atomic.

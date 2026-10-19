@@ -84,7 +84,7 @@ module Metacrunch
 
       # Evaluates the recipe with the job's arguments. Credentials are read
       # only if a parameter needs them.
-      def build_pipeline(job, argv) = invoker.pipeline(job, argv, anchor: @anchor)
+      def build_pipeline(job, argv) = invoker.pipeline(job, anchor: @anchor, argv:)
 
     end
   end

@@ -75,8 +75,8 @@ class ExeProjectTest < Minitest::Test
         end
 
         run do
-          invoke "numbers", *(params.skip ? ["--skip"] : []), *params.numbers
-          invoke "note", "done"
+          invoke "numbers", params: {skip: params.skip, numbers: params.numbers}
+          invoke "note", params: {text: "done"}
         end
       end
     RUBY
@@ -85,8 +85,8 @@ class ExeProjectTest < Minitest::Test
         params { args :output, min: 1, max: 1 }
 
         run do
-          invoke "forever", "--output", params.output.first
-          invoke "note", "after"
+          invoke "forever", params: {output: params.output.first}
+          invoke "note", params: {text: "after"}
         end
       end
     RUBY

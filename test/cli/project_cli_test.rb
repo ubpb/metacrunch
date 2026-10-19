@@ -52,11 +52,11 @@ class ProjectCliTest < Minitest::Test
 
         run do
           begin
-            invoke "numbers", *(params.skip ? ["--skip"] : []), *params.numbers
+            invoke "numbers", params: {skip: params.skip, numbers: params.numbers}
           rescue Metacrunch::InvokeError
             raise unless params.tolerant
           end
-          invoke "note", "done"
+          invoke "note", params: {text: "done"}
         end
       end
     RUBY
@@ -71,7 +71,7 @@ class ProjectCliTest < Minitest::Test
       Metacrunch.command "stop" do
         run do
           invoke "interrupted"
-          invoke "note", "after"
+          invoke "note", params: {text: "after"}
         end
       end
     RUBY
@@ -79,7 +79,7 @@ class ProjectCliTest < Minitest::Test
   }.freeze
 
   # A command outside jobs/ and commands/, run by path.
-  TOOL = "Metacrunch.command(\"tools:release\") { run { invoke \"note\", \"from tools\" } }\n"
+  TOOL = "Metacrunch.command(\"tools:release\") { run { invoke \"note\", params: {text: \"from tools\"} } }\n"
   # Writes a file if its body ever runs.
   DANGER = "Metacrunch.command(\"danger\") { run { File.write(\"ran\", \"\") } }\n"
   DUPLICATE = "Metacrunch.job(\"note\") { source [] }\n"

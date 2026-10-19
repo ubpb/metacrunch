@@ -30,20 +30,21 @@ module Metacrunch
       builder.build
     end
 
-    # Runs the job with CLI-style arguments. Raises ParamError for invalid
-    # arguments (CredentialsError, a ParamError, for unreadable credentials)
-    # and lets errors from the recipe itself (e.g. a component constructor
-    # or a DSL mistake) propagate. Errors while the pipeline runs end up in
-    # the Result. limit stops after that many records; workers runs the
-    # steps in that many processes. Credentials follow env:
-    # METACRUNCH_ENV, METACRUNCH_CREDENTIALS, METACRUNCH_MASTER_KEY, HOME.
-    # project: where the names of `use` resolve; without it, the project of
-    # the nearest Metacrunchfile above Dir.pwd, loaded when a name needs it.
-    def run(argv = [], env: ENV, logger: Metacrunch.logger, observer: nil, limit: nil, workers: nil, project: nil)
+    # Runs the job with params bound by name (see Params#bind_values):
+    # given values, then env:, then the credentials, then the default.
+    # Raises ArgumentError for an unknown key and ParamError for invalid
+    # values (CredentialsError, a ParamError, for unreadable credentials);
+    # errors from the recipe itself (a component constructor, a DSL
+    # mistake) propagate. Errors while the pipeline runs end up in the
+    # Result. limit stops after that many records; workers runs the steps in
+    # that many processes. Credentials follow env: METACRUNCH_ENV,
+    # METACRUNCH_CREDENTIALS, METACRUNCH_MASTER_KEY, HOME. project: where the
+    # names of `use` resolve; without it, the project of the nearest
+    # Metacrunchfile above Dir.pwd, loaded when a name needs it.
+    def run(params: {}, env: ENV, logger: Metacrunch.logger, observer: nil, limit: nil, workers: nil, project: nil)
       credentials = Credentials.store(job_file: file, env:, logger:)
-      warn = ->(message) { logger.warn(message) }
       context = UseContext.for(project:, env:, credentials:, logger:)
-      built = pipeline(binder: ->(schema) { schema.bind_argv(argv, env:, credentials:, warn:) }, logger:, context:)
+      built = pipeline(binder: ->(schema) { schema.bind_values(params, env:, credentials:) }, logger:, context:)
       Engine.new(built.with(limit:), observer:, executor: Executor.for(workers)).run
     end
 

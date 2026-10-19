@@ -10,7 +10,7 @@ Metacrunch.command <%= target.name.inspect %><%= ", desc: #{desc}" if desc %> do
 
   run do
     logger.info(<%= "#{target.name}: nothing to do yet".inspect %>)
-    # result = invoke "catalog:ids", "--input", params.input
+    # result = invoke "catalog:ids", params: {input: params.input}
     # next logger.warn("<%= target.name %>: #{result.status}") unless result.ok?
   end
 end

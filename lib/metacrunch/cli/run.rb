@@ -67,7 +67,7 @@ module Metacrunch
 
       def execute_job(job, argv)
         options = RunOptions.new(**@options)
-        result = invoker.run_job(job, argv, anchor: @anchor, options:, workers: @workers)
+        result = invoker.run_job(job, anchor: @anchor, argv:, options:, workers: @workers)
         write_stats(options.stats, result) if options.stats
         EXIT_CODES.fetch(result.status)
       end
@@ -75,7 +75,7 @@ module Metacrunch
       # Invalid parameters of the command itself raise ParamError here, which
       # Command#run turns into exit status 2. Then the body runs.
       def execute_command(command, argv)
-        finish(invoker.prepare(command, argv, anchor: @anchor))
+        finish(invoker.prepare(command, anchor: @anchor, argv:))
       end
 
       # 0, or 3 if an invoked job ended with failed records, or aborted and
