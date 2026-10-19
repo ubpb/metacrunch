@@ -5,7 +5,7 @@ module PipelineHelper
   SILENT_LOGGER = Logger.new(nil)
 
   def build_pipeline(params: {}, logger: SILENT_LOGGER, &recipe)
-    builder = Metacrunch::Builder.new(binder: ->(schema) { schema.bind_hash(params) }, logger:)
+    builder = Metacrunch::Builder.new(binder: ->(schema) { schema.bind_values(params, env: {}) }, logger:)
     builder.instance_exec(&recipe)
     builder.build
   end

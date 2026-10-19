@@ -3,9 +3,9 @@
 require "optparse"
 
 module Metacrunch
-  # The parameters a job declares in `params { ... }`, and their binding
-  # from CLI arguments (#bind_argv), the keyword values of `use`
-  # (#bind_values) or a Hash in tests (#bind_hash). Bound values are frozen.
+  # The parameters a recipe declares in `params { ... }`, and their binding
+  # from the command line (#bind_argv) or from values in code (#bind_values:
+  # use, invoke, Job#run, Testing). Bound values are frozen.
   class Params
 
     TYPES = [String, Integer, Float, :bool, Array].freeze
@@ -128,25 +128,17 @@ module Metacrunch
       raise ParamError, "#{e.reason}: #{e.args.map { it.sub(/=.*/m, "") }.join(" ")}", cause: nil
     end
 
-    # Binds a Hash, e.g. in tests. Values may already have the declared
-    # type or be strings, which are converted. No environment lookup.
-    def bind_hash(hash)
-      hash = hash.transform_keys(&:to_sym)
-      args_name = @args_definition&.name
-      unknown = hash.keys - @definitions.keys - [args_name]
-      raise ParamError, "unknown parameter #{unknown.first}" if unknown.any?
-
-      values = @definitions.to_h { |name, definition| [name, resolve(definition, hash[name])] }
-      build(values, args_name ? Array(hash[args_name]) : [])
-    end
-
-    # Binds the keyword values of `use`. A value may have the declared type
-    # or be a String, which is converted; nil means "not given". A
-    # parameter without a value is read from its env: variable, then from
-    # the credentials, then the default. The values come from code, so
-    # messages name a parameter by its name, not as option, and a secret
-    # gives no warning. Raises ArgumentError for an unknown key.
+    # Binds values from code: use, invoke, Project#invoke, Job#run and, with
+    # an empty environment and no credentials, Testing. A value may have the
+    # declared type or be a String, which is converted; a Pathname counts as
+    # its path; nil means "not given". A parameter without a value is read
+    # from its env: variable, then from the credentials, then the default.
+    # The values come from code, so messages name a parameter by its name,
+    # not as option, and a secret gives no warning. Raises ArgumentError for
+    # a non-Hash and an unknown key.
     def bind_values(values, env: ENV, credentials: nil)
+      raise ArgumentError, "params: must be a Hash, got #{values.inspect}" unless values.is_a?(Hash)
+
       values = values.transform_keys(&:to_sym)
       args_name = @args_definition&.name
       known = [*@definitions.keys, *args_name]
@@ -291,11 +283,21 @@ module Metacrunch
     end
 
     def convert(definition, raw, origin: nil, keyword: false)
+      raw = path_string(raw)
       value = raw.is_a?(String) ? CONVERTERS.fetch(definition.type).call(raw) : raw
       value = value.to_f if definition.type == Float && value.is_a?(Integer)
       VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin, keyword:)
     rescue ArgumentError, TypeError
       invalid!(definition, raw, origin, keyword:)
+    end
+
+    # A Pathname (anything with to_path) counts as the String of its path,
+    # also inside an Array.
+    def path_string(value)
+      return value.to_path if value.respond_to?(:to_path)
+      return value.map { path_string(it) } if value.is_a?(Array)
+
+      value
     end
 
     # No cause: the converter's error (Integer(), Float(), "not a boolean")
@@ -311,6 +313,7 @@ module Metacrunch
     # The args of bind_values: nil for none, a String for one, or an Array
     # of Strings, as the command line gives them.
     def args_values(value)
+      value = path_string(value)
       return [] if value.nil?
       return [value] if value.is_a?(String)
       return value if value.is_a?(Array) && value.all?(String)

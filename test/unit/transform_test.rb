@@ -95,7 +95,7 @@ class TransformTest < Minitest::Test
   private
 
   def build(transform, params: {})
-    transform.pipeline(binder: ->(schema) { schema.bind_hash(params) }, logger: SILENT)
+    transform.pipeline(binder: ->(schema) { schema.bind_values(params, env: {}) }, logger: SILENT)
   end
 
 end

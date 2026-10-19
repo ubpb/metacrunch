@@ -78,7 +78,9 @@ class BuilderTest < Minitest::Test
   end
 
   def test_jobs_without_params_reject_given_params
-    assert_raises(Metacrunch::ParamError) { build_pipeline(params: {index: "x"}) { source [] } }
+    error = assert_raises(ArgumentError) { build_pipeline(params: {index: "x"}) { source [] } }
+
+    assert_equal "unknown parameter :index (known: none)", error.message
   end
 
   INVALID_RECIPES.each do |description, recipe|

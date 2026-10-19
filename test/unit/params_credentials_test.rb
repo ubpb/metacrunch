@@ -170,7 +170,7 @@ class ParamsCredentialsTest < Minitest::Test
       param :index, String
       param :api_key, String, credential: "catalog.api_key"
     end
-    values = params.bind_hash(index: "test", api_key: SECRET)
+    values = params.bind_values({index: "test", api_key: SECRET}, env: {})
 
     assert_equal "#<data index=\"test\", api_key=[secret]>", values.inspect
     assert_equal values.inspect, values.to_s
@@ -178,7 +178,7 @@ class ParamsCredentialsTest < Minitest::Test
   end
 
   def test_the_values_keep_the_secret
-    values = api_key_schema.bind_hash(api_key: SECRET)
+    values = api_key_schema.bind_values({api_key: SECRET}, env: {})
 
     assert_equal [SECRET, {api_key: SECRET}], [values.api_key, values.to_h]
   end
@@ -234,8 +234,8 @@ class ParamsCredentialsTest < Minitest::Test
     assert_empty errors.map { it.full_message(highlight: false) }.grep(/#{SECRET}/)
   end
 
-  def test_bind_hash_ignores_credentials
-    assert_nil api_key_schema.bind_hash({}).api_key
+  def test_bind_values_without_credentials_finds_none
+    assert_nil api_key_schema.bind_values({}, env: {}).api_key
   end
 
   private

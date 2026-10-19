@@ -79,22 +79,12 @@ class ParamsTest < Minitest::Test
     assert_match(/unexpected arguments: a/, error.message)
   end
 
-  def test_bind_hash_keeps_typed_values_and_converts_strings
-    params = schema do
-      param :bulk, Integer
-      param :verbose, :bool
-      args :files
-    end
-    values = params.bind_hash(bulk: "10", verbose: true, files: ["a"])
+  def test_pathname_defaults_count_as_strings
+    params = Metacrunch::Params.new
+    params.param :input, String, default: Pathname("/data/titles.jsonl")
 
-    assert_equal({bulk: 10, verbose: true, files: ["a"]}, values.to_h)
-  end
-
-  def test_bind_hash_rejects_unknown_keys_and_wrong_types
-    params = schema { param :bulk, Integer }
-
-    assert_raises(Metacrunch::ParamError) { params.bind_hash(color: "red") }
-    assert_raises(Metacrunch::ParamError) { params.bind_hash(bulk: 1.5) }
+    assert_equal "/data/titles.jsonl", params.bind_values({}, env: {}).input
+    assert_includes params.help, "(default: /data/titles.jsonl)"
   end
 
   DECLARATION_ERRORS.each do |description, declaration|

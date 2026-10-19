@@ -90,6 +90,22 @@ class ParamsValuesTest < Minitest::Test
     assert_equal "missing required parameter --code (CODE unset; api.code: no credentials)", error.message
   end
 
+  def test_pathnames_count_as_strings
+    bound = schema.bind_values({lang: Pathname("en"), tags: [Pathname("a"), "b"], files: [Pathname("x.xml")]})
+
+    assert_equal ["en", ["a", "b"], ["x.xml"]], [bound.lang, bound.tags, bound.files]
+  end
+
+  def test_a_single_pathname_argument_works_too
+    assert_equal ["x.xml"], schema.bind_values({files: Pathname("x.xml")}).files
+  end
+
+  def test_values_must_be_a_hash
+    error = assert_raises(ArgumentError) { schema.bind_values([[:lang, "en"]]) }
+
+    assert_equal "params: must be a Hash, got [[:lang, \"en\"]]", error.message
+  end
+
   private
 
   # The ParamError message for values bound to params, or nil without one.

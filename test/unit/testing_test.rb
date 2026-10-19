@@ -120,6 +120,29 @@ class TestingTest < Minitest::Test
     ENV.delete("METACRUNCH_TEST_FACTOR")
   end
 
+  def test_params_are_bound_like_use_but_without_the_environment
+    job = Metacrunch.job do
+      params do
+        param :lang, String, env: "METACRUNCH_TEST_LANG", default: "de"
+        param :path, String
+      end
+      source [1]
+      map { [params.lang, params.path] }
+    end
+    ENV["METACRUNCH_TEST_LANG"] = "en"
+    result = Metacrunch::Testing.run(job, params: {path: Pathname("a/b")})
+
+    assert_equal [["de", "a/b"]], result.records
+  ensure
+    ENV.delete("METACRUNCH_TEST_LANG")
+  end
+
+  def test_unknown_params_raise_argument_errors
+    error = assert_raises(ArgumentError) { Metacrunch::Testing.run(build_job, params: {limt: 5}, source: []) }
+
+    assert_match(/\Aunknown parameter :limt \(known: /, error.message)
+  end
+
   private
 
   def build_job
