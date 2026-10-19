@@ -25,7 +25,7 @@ Everything is plain Ruby. There are three kinds of recipes, and `metacrunch run`
 
 - Steps say what they do: `map`, `filter`, `reject`, `flat_map`.
 - Rejected records keep their reason; the engine counts records per step and reason.
-- An error policy per job decides whether a failing record stops the run or is skipped.
+- A failure policy per job decides whether a failing record stops the run or is skipped.
 - Jobs read and write JSON Lines on stdin and stdout, so they chain with each other and with `jq`, `grep` or `sort`.
 - `-w N` runs the steps in N processes, with the results in source order.
 - `metacrunch trace` shows what each step does to a record; `Metacrunch::Testing` runs jobs in tests.

@@ -48,7 +48,7 @@ source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record[
 `Metacrunch::JsonLines::Reader.new(path)` reads JSON Lines (`-` for stdin, `.gz` files are decompressed). A source
 can yield `Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines
 that are not valid JSON or not valid UTF-8. Invalid records fail like a step (the pseudo-step `source`) under the
-job's error policy. Note that JSON objects with duplicate keys count as invalid, and numbers beyond the Float range
+job's failure policy. Note that JSON objects with duplicate keys count as invalid, and numbers beyond the Float range
 (`1e400`) are read as `Infinity`, which the writer refuses.
 
 ## Steps
@@ -174,7 +174,10 @@ for help.
 A value from code (`use`, `invoke`, `Job#run`, `Metacrunch::Testing`) is given as `params: {...}`, in the declared
 type or as a String; a Pathname counts as its path, and `nil` means not given. `root` is the root of the project the
 call runs in (see [Projects](projects.md)), so `default: root.join("data/titles.jsonl")` works from any directory
-of the project; `--help` shows it as an absolute path.
+of the project; `--help` shows it as an absolute path. Without a project, `root` raises `Metacrunch::ProjectError`
+"no Metacrunchfile found in DIR or above" when it is called: on the command line in the recipe or a hook, the run
+ends with exit status 2; in a step, the record fails. Call `root` in the recipe or a hook, and keep what a step
+needs in a local variable.
 
 ## What runs when
 

@@ -1,7 +1,7 @@
 # Running jobs from Ruby
 
 Jobs, transforms and commands also run from Ruby code, for example from a Rake task or an application, with the same
-parameters as on the command line. For tests, see [Testing](testing.md).
+parameters as on the command line, given as `params: {...}`. For tests, see [Testing](testing.md).
 
 ```ruby
 job = Metacrunch.load_job("jobs/catalog.rb")    # name: "catalog" selects one of several jobs
