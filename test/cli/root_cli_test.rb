@@ -48,6 +48,17 @@ class RootCliTest < Minitest::Test
     end
   end
 
+  def test_root_in_a_hook_outside_a_project_is_a_usage_error
+    in_tmpdir do |dir|
+      job = "# frozen_string_literal: true\n\nMetacrunch.job { source [1]; before { root } }\n"
+      path = write_file(dir, "hooked.rb", job)
+      code, _out, err = Dir.chdir(dir) { cli("run", path) }
+
+      assert_equal 2, code
+      assert_includes err, "no Metacrunchfile found in #{dir} or above"
+    end
+  end
+
   # By path from the temporary directory's parent, which has no
   # Metacrunchfile above it.
   def test_command_help_with_a_root_default
