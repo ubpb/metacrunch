@@ -7,6 +7,7 @@ class RootTest < Minitest::Test
 
   include CredentialsHelper
   include RootFixtures
+  include Override
   include ForkVariant::NoWorkerLeft
 
   SILENT = Logger.new(nil)
@@ -62,6 +63,22 @@ class RootTest < Minitest::Test
       invoker = Metacrunch::Invoker.new(project: -> { raise "must not load" }, logger: SILENT, env: {})
 
       assert_equal Pathname(dir), Dir.chdir(dir) { invoker.root }
+    end
+  end
+
+  def test_a_lazy_project_is_found_once_per_call
+    in_tmpdir do |dir|
+      write_file(dir, "Metacrunchfile", "")
+      invoker = Metacrunch::Invoker.new(project: -> { raise "must not load" }, logger: SILENT, env: {})
+      original = Metacrunch::Project.method(:find)
+      lookups = 0
+      counting = lambda do |path|
+        lookups += 1
+        original.call(path)
+      end
+      roots = override(Metacrunch::Project, :find, counting) { Dir.chdir(dir) { Array.new(3) { invoker.root } } }
+
+      assert_equal [[Pathname(dir)] * 3, 1], [roots, lookups]
     end
   end
 

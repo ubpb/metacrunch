@@ -41,15 +41,17 @@ module Metacrunch
 
     # The root of the project, a Pathname. While the project is a Proc
     # (loaded when a name first needs it), the nearest Metacrunchfile above
-    # the working directory is found without loading it. Raises
-    # ProjectError without one.
+    # the working directory is found without loading it, once per call: a
+    # step may ask for every record. Raises ProjectError without one.
     def root
       return @project.root if @project.is_a?(Project)
 
-      file = Project.find(Dir.pwd) if @project.is_a?(Proc)
-      raise ProjectError, "no #{Project::FILE} found in #{Dir.pwd} or above" unless file
+      @root ||= begin
+        file = Project.find(Dir.pwd) if @project.is_a?(Proc)
+        raise ProjectError, "no #{Project::FILE} found in #{Dir.pwd} or above" unless file
 
-      Pathname(File.dirname(file))
+        Pathname(File.dirname(file))
+      end
     end
 
     # Runs target, a name or a path, with params bound by name (see
