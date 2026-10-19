@@ -4,8 +4,8 @@ metacrunch
 [![CI](https://github.com/ubpb/metacrunch/actions/workflows/ci.yml/badge.svg)](https://github.com/ubpb/metacrunch/actions/workflows/ci.yml)
 
 metacrunch is a small data processing and ETL (extract, transform, load) toolkit for Ruby. A job reads records
-from a **source**, passes them through **steps** and writes the results to a **sink**. It is used for library metadata,
-for example to turn MARCXML records into JSON for a search index, but nothing in it is specific to library data.
+from a **source**, passes them through **steps** and writes the results to a **sink**. It grew out of metadata work in a
+library, but nothing in it is specific to library data: a record is any Ruby object, usually a Hash.
 
 - Jobs are plain Ruby files. Steps, sources and sinks are blocks or small Ruby classes; there is no second language.
 - Steps say what they do: `map`, `filter`, `reject`, `flat_map`.
@@ -71,8 +71,8 @@ $ metacrunch run jobs/numbers.rb --factor 3 -- 1 2 -5
 
 A job without a sink writes its records to stdout as JSON Lines. Logs and the run summary go to stderr.
 
-A job can have a name and a one-line description: `Metacrunch.job "marc2es", desc: "MARCXML into the search index"
-do ... end`. A name consists of parts of `a-z`, `0-9`, `_` and `-`, separated by `:` (`catalog:reindex`). A file can
+A job can have a name and a one-line description: `Metacrunch.job "catalog", desc: "Write the public titles" do ...
+end`. A name consists of parts of `a-z`, `0-9`, `_` and `-`, separated by `:` (`catalog:reindex`). A file can
 define several jobs; `-j NAME` selects one, and a name declared twice in the file cannot be selected until one is
 renamed. In a project, jobs run by name (see [Projects and commands](#projects-and-commands)).
 
@@ -93,7 +93,7 @@ Any object with `#each` that yields records. Optional `#open(context)` and `#clo
 values at once (`yield key, value`) produces Array records (`[key, value]`).
 
 ```ruby
-source MySource.new(params.files), id: ->(record) { record["_id"] }
+source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }
 ```
 
 `id:` gives every record an id for logs and errors.
@@ -114,7 +114,7 @@ job's error policy. Note that JSON objects with duplicate keys count as invalid,
 | `flat_map` | an Enumerable of records (not a Hash) | 0..n |
 
 A step is a block or any object with `#call`, for example a class with `self.call`. Steps are named
-`map#1`, `filter#2`, … or explicitly: `map MarcToJson, name: "marc2json"`.
+`map#1`, `filter#2`, … or explicitly: `map TitleCase, name: "titlecase"`.
 
 `filter` and `reject` take an optional reason (a String or Symbol). Records dropped with a reason are *rejected*:
 they are counted per reason and sent to the `rejects` sink. Without a reason they are *filtered*: counted, nothing
@@ -126,7 +126,7 @@ through the Enumerable's `each`; a `rescue => e` there does not catch them, but 
 use one around `yield`.
 
 ```ruby
-reject("Patent") { it["type"] == "patent" }
+reject("Not public") { !it["public"] }
 ```
 
 ## The record context
@@ -165,7 +165,7 @@ Any object with `#write(record)`. Optional `#write_batch(records)`, `#open(conte
 accept a second argument get the (read-only) context: `write(record, ctx)`, `write_batch(records, ctxs)`.
 
 ```ruby
-sink    ElasticsearchSink.new(index: params.index), batch: 1000
+sink    Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
 rejects Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")   # rejected records, ctx.rejection
 errors  Metacrunch::JsonLines::ContextWriter.new("errors.jsonl")    # failed records (on_error :skip), ctx.failure
 ```
@@ -203,11 +203,11 @@ after  { |result| logger.info(result.summary) }
 
 ```ruby
 params do
-  param :index, String, required: true, desc: "Elasticsearch index"
-  param :url,   String, default: "http://localhost:9200", env: "ES_URL"
-  param :bulk,  Integer, default: 1000
-  param :dry,   :bool, default: false
-  param :tags,  Array
+  param :output, String, required: true, desc: "JSON Lines file for the records"
+  param :input,  String, default: "data/titles.jsonl", env: "CATALOG_INPUT"
+  param :batch,  Integer, default: 1000
+  param :dry,    :bool, default: false
+  param :tags,   Array
   param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key"
   args  :files, min: 1
 end
@@ -217,8 +217,8 @@ end
 variable (`env:`, an empty variable counts as unset), then the credentials (`credential:`, see
 [Credentials](#credentials)), then the default. Types: `String`, `Integer`, `Float`, `:bool`, `Array`
 (comma-separated). Defaults are converted and checked when declared (`Integer, default: "1000"`
-gives 1000). Use the values with `params.index`; they are frozen. Options must be spelled out (`--ind` is not
-`--index`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and `-h` is reserved
+gives 1000). Use the values with `params.output`; they are frozen. Options must be spelled out (`--out` is not
+`--output`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and `-h` is reserved
 for help.
 
 ## Transforms
@@ -228,31 +228,29 @@ A transform is a named group of steps with parameters of its own and without sou
 
 ```ruby
 # transforms/normalize.rb
-Metacrunch.transform "normalize", desc: "Clean titles, drop records without one" do
+Metacrunch.transform "normalize", desc: "Tidy the titles, drop records without one" do
   params do
-    param :lang, String, default: "de", desc: "Language of the stopword list"
+    param :max_length, Integer, default: 80, desc: "Cut titles after this many characters"
   end
 
-  stopwords = nil
-  before { stopwords = Stopwords.load(params.lang) }
-  map { |record| record.merge("title" => Titles.clean(record["title"], stopwords)) }
-  reject("No title") { it["title"].nil? }
+  map { |record| record.merge("title" => record["title"].to_s.squeeze(" ").strip[0, params.max_length]) }
+  reject("No title") { it["title"].empty? }
 end
 ```
 
 ```ruby
-# jobs/marc2es.rb
-Metacrunch.job "marc2es" do
+# jobs/export.rb
+Metacrunch.job "export", desc: "Write the public titles, tidied, as JSON Lines" do
   params do
-    param :index, String, required: true
-    param :lang, String
-    args :files, min: 1
+    param :input, String, required: true
+    param :output, String, required: true
+    param :max_length, Integer
   end
 
-  source MarcReader.new(params.files), id: ->(record) { record["001"] }
-  use "marc:to-json", holdings: true
-  use "normalize", lang: params.lang
-  sink EsSink.new(index: params.index), batch: 1000
+  source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }
+  use "catalog:public", fields: ["id", "title"]
+  use "normalize", max_length: params.max_length
+  sink Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
 end
 ```
 
@@ -277,9 +275,9 @@ end
 - Transforms share their names with jobs and commands, so a transform and a job that runs it with a source of its own
   need two names. Name the transform after what it does and the job after what it produces, for example the transform
   `catalog:public` and the job `catalog`, as in [`examples/project`](examples/project).
-- Alone, a transform runs like a job without source and sink: `metacrunch run normalize --lang en < titles.jsonl`,
-  `trace` and `check` take it, and `Metacrunch::Testing.run(transform, source: [...])` tests it (see
-  [Testing jobs](#testing-jobs)).
+- Alone, a transform runs like a job without source and sink, from stdin to stdout:
+  `metacrunch run normalize --max-length 20 < data/titles.jsonl`. `trace` and `check` take it, and
+  `Metacrunch::Testing.run(transform, source: [...])` tests it (see [Testing jobs](#testing-jobs)).
 
 Compared with a [pipe](#pipes) between two jobs, the transforms of one job share the context of each record (id,
 marks, rejections), one `rejects` and `errors` sink, one error policy, one summary and one exit status, and the
@@ -355,8 +353,8 @@ Keep in mind:
 ```
 $ metacrunch run [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]
 $ metacrunch NAME|FILE [PARAMS...] [ARGS...]                # short for run
-$ metacrunch run jobs/marc2es.rb --help                     # the job's parameters
-$ metacrunch marc2es --help                                 # the same, by name in a project
+$ metacrunch run jobs/catalog.rb --help                     # the job's parameters
+$ metacrunch catalog --help                                 # the same, by name in a project
 ```
 
 Options of `metacrunch` go before the job; everything after it belongs to the job. Use `--` before job arguments that
@@ -381,7 +379,7 @@ file. The CLI does not change the working directory: relative paths are relative
 The options from `-i` to `--stats` apply to jobs and transforms only; for a command (see
 [Projects and commands](#projects-and-commands)) they are a usage error.
 
-A job file that starts with `#!/usr/bin/env metacrunch` and is executable runs as `./jobs/marc2es.rb ...`.
+A job file that starts with `#!/usr/bin/env metacrunch` and is executable runs as `./jobs/catalog.rb ...`.
 
 ### Pipes
 
@@ -389,10 +387,10 @@ A job without `source` reads JSON Lines from stdin, a job without `sink` writes 
 with each other and with other tools, and every stage runs in its own process:
 
 ```
-$ metacrunch run marc2json.rb dumps/*.xml | jq -c 'select(.year > 2000)' | metacrunch run json2es.rb --index test
+$ metacrunch run examples/hello.rb | jq -c 'select(.name != "Grace")' | metacrunch run examples/normalize.rb
 ```
 
-`source id: ->(record) { record["_id"] }` gives a job that reads stdin an id extractor. Only records survive a pipe,
+`source id: ->(record) { record["id"] }` gives a job that reads stdin an id extractor. Only records survive a pipe,
 not their context. When the reader of the pipe stops (`| head`), the job flushes and closes its other sinks and ends
 quietly by SIGPIPE.
 
@@ -411,7 +409,8 @@ With cheap steps (a few `map`s over Hashes, about 0.4 µs per record), sending r
 than it saves: 8 workers handled 0.5 M records/s, inline 2.8 M records/s.
 
 - Records travel between the processes with `Marshal`. Records, the `value:` of marks and rejections and `ctx.store`
-  must be Marshal-able. A source that reads XML should yield Strings and leave the parsing (Nokogiri) to a step. An
+  must be Marshal-able. A source that reads large documents (XML, JSON) should yield them as Strings and leave the
+  parsing to a step. An
   exception that cannot be sent is replaced by a `Metacrunch::WorkerError` with the original class and message.
   Marshal does not keep the frozen state: a frozen source record arrives unfrozen in the steps.
 - Workers speed up only the steps. The main process reads the source, sends and receives the records and writes the
@@ -450,9 +449,9 @@ $ export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 ### Debugging and checking jobs
 
 ```
-$ metacrunch trace -n 5 jobs/marc2es.rb --index test dumps/a.xml
-$ metacrunch trace --position 4711 jobs/marc2es.rb --index test dumps/a.xml
-$ metacrunch check jobs/marc2es.rb --index test dumps/a.xml
+$ metacrunch trace -n 2 catalog --output out
+$ metacrunch trace --position 3 catalog --output out
+$ metacrunch check catalog --output out
 ```
 
 `trace` shows what every step does to the first records (or to the records at `--position`, or with `--id`): the
@@ -477,12 +476,12 @@ signal, so shells and `xargs` see the interruption. Data already written to stdo
 ### Running jobs from Ruby
 
 ```ruby
-job = Metacrunch.load_job("jobs/marc2es.rb")    # name: "marc2es" selects one of several jobs
-result = job.run(["--index", "test", "dumps/a.xml"], workers: 4, limit: 1000)
+job = Metacrunch.load_job("jobs/catalog.rb")    # name: "catalog" selects one of several jobs
+result = job.run(["--output", "out"], workers: 4, limit: 1000)
 
 result.status    # :ok, :ok_with_failures or :aborted
 result.error     # the error that aborted the run, or nil
-result.summary   # "ok: read 1000, written 998, rejected 2 (Patent: 2) in 0.41s ..."
+result.summary   # "ok: read 1000, written 998, rejected 2 (Not public: 2) in 0.41s ..."
 ```
 
 `run` takes the job's parameters as command-line arguments, and the environment for parameters with `env:` as
@@ -499,8 +498,8 @@ nearest `Metacrunchfile` above the working directory, loaded when the first name
 
 ```ruby
 project = Metacrunch.load_project                          # the nearest Metacrunchfile above Dir.pwd
-project.names                                              # ["catalog:reindex", "marc2es", ...]
-project.invoke("catalog:reindex", "dumps/a.xml")           # like invoke in a command
+project.names                                              # ["catalog", "catalog:ids", "catalog:public", ...]
+project.invoke("catalog:release")                          # like invoke in a command
 ```
 
 `project.invoke` returns a job's `Result` or a command's value and raises `Metacrunch::InvokeError` as `invoke` does
@@ -519,18 +518,18 @@ Metacrunch.load_files "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 ```
 project/
 ├── Metacrunchfile
-├── .metacrunch/                credentials
-├── jobs/marc2es.rb             Metacrunch.job "marc2es", desc: "..."
-├── transforms/normalize.rb     Metacrunch.transform "normalize", desc: "..."
-├── commands/catalog/reindex.rb Metacrunch.command "catalog:reindex", desc: "..."
+├── .metacrunch/                   credentials
+├── jobs/catalog.rb                Metacrunch.job "catalog", desc: "..."
+├── transforms/catalog/public.rb   Metacrunch.transform "catalog:public", desc: "..."
+├── commands/catalog/release.rb    Metacrunch.command "catalog:release", desc: "..."
 ├── lib/
 └── test/
 ```
 
 ```
-$ metacrunch marc2es --index test dumps/a.xml        # from any directory of the project
-$ metacrunch catalog:reindex dumps/*.xml
-$ metacrunch catalog:reindex --help
+$ metacrunch catalog --output out                    # from any directory of the project
+$ metacrunch catalog:release
+$ metacrunch catalog:release --help
 $ metacrunch --help                                  # lists the jobs, transforms and commands
 ```
 
@@ -559,7 +558,7 @@ $ metacrunch new catalog
 $ cd catalog
 $ metacrunch generate job catalog:ids
 $ metacrunch generate transform normalize --desc "Tidy the titles"
-$ metacrunch generate source marc:dump
+$ metacrunch generate source files:lines
 ```
 
 `new DIR` creates a project: a `Metacrunchfile` that loads `jobs/`, `transforms/` and `commands/`, a `Gemfile`, a
@@ -573,8 +572,8 @@ to other files, which it leaves alone; existing files of the skeleton need `--fo
 |---|---|---|
 | `generate job catalog:ids` | `jobs/catalog/ids.rb`, `test/jobs/catalog/ids_test.rb` | a job that filters JSON Lines from stdin to stdout |
 | `generate transform normalize` | `transforms/normalize.rb`, `test/transforms/normalize_test.rb` | steps for `use`; alone a filter like the job |
-| `generate command es:create-index` | `commands/es/create_index.rb`, `test/commands/es/create_index_test.rb` | a body that logs a line, with `invoke` as a comment |
-| `generate source marc:dump` | `lib/marc/dump.rb` (`Marc::Dump`), `test/lib/marc/dump_test.rb` | a class that yields a record for each line of a file |
+| `generate command catalog:publish` | `commands/catalog/publish.rb`, `test/commands/catalog/publish_test.rb` | a body that logs a line, with `invoke` as a comment |
+| `generate source files:lines` | `lib/files/lines.rb` (`Files::Lines`), `test/lib/files/lines_test.rb` | a class that yields a record for each line of a file |
 | `generate sink json_array` | `lib/json_array.rb` (`JsonArray`), `test/lib/json_array_test.rb` | a class that writes each record as a line of JSON |
 
 - A name places the file below the project root, from any directory of the project: `:` separates directories, and
@@ -586,7 +585,7 @@ to other files, which it leaves alone; existing files of the skeleton need `--fo
   overwrites existing files. A name declared in another file of the project is refused, and so is a test class
   that another test defines already.
 - Sources and sinks are classes, not names of the project: the parts of their names are `a-z`, `0-9` and `_`,
-  starting with a letter. A name that would reopen a class or module (`file`, or `marc` next to `marc:dump`) or put a
+  starting with a letter. A name that would reopen a class or module (`file`, or `files` next to `files:lines`) or put a
   library such as `json` or `yaml` into `lib/` is refused, since `lib/` comes first on the load path of the tests.
 - After writing a job, transform or command, `generate` loads the project again and notes when the
   `Metacrunchfile` does not load the new file, for example because its globs are not recursive (`jobs/*.rb`).
@@ -596,36 +595,45 @@ to other files, which it leaves alone; existing files of the skeleton need `--fo
 A command is a named recipe like a job, with parameters and a body instead of a pipeline:
 
 ```ruby
-# commands/catalog/reindex.rb
-Metacrunch.command "catalog:reindex", desc: "Load an export into a new index and switch the alias" do
+# commands/catalog/release.rb
+require "fileutils"
+
+Metacrunch.command "catalog:release", desc: "Write a new release and switch out/current to it" do
   params do
-    param :url, String, default: "http://localhost:9200", env: "ES_URL"
-    param :alias, String, default: "catalog"
-    args :files, min: 1
+    param :input, String, desc: "JSON Lines with title records (default: the job's)"
+    param :out, String, desc: "Directory for releases/ and current (default: out/ in the project)"
   end
 
   run do
-    index = "#{params.alias}-#{Time.now.strftime("%Y%m%d%H%M")}"
-    es = ["--url", params.url]
+    out = params.out ? Pathname(params.out) : root.join("out")
+    release = out.join("releases", Time.now.strftime("%Y%m%d-%H%M%S-%L"))
+    FileUtils.mkdir_p(release)
+    input = params.input ? ["--input", params.input] : []
+    result = invoke "catalog", "--output", release, *input
+    next logger.warn("catalog:release: #{result.status}; out/current not switched") unless result.ok?
 
-    invoke "es:create-index", *es, "--mappings", root.join("etc/catalog_mappings.json"), index
-    result = invoke "marc2es", *es, "--index", index, *params.files, workers: 8
-    next logger.warn("alias not switched: #{result.status}") unless result.ok?
-
-    invoke "es:switch-alias", *es, "--to", index, params.alias
+    # A new link renamed over the old one: the switch is atomic.
+    link = out.join("current.new")
+    FileUtils.rm_f(link)
+    File.symlink(release.relative_path_from(out), link)
+    File.rename(link, out.join("current"))
+    release
   end
 end
 ```
+
+The command writes a release of the job `catalog` and switches `out/current` to it only after a clean run, so
+readers of `out/current` never see a half-written or failed release.
 
 Parameters, `env:`, credentials, `-e`, `--help` and logging work as for jobs. `params` comes first; `run { ... }`
 holds the body, which `--help` never runs. In the body, `params`, `logger`, `invoke` and `root` (the project root, a
 `Pathname`) are available, and `next` ends it early (`return` does not work in a block). Helpers shared by several
 commands are plain Ruby: a module that the body `extend`s, or a proc for common parameters
-(`params { instance_exec(&ES_PARAMS) }`) in a required file.
+(`params { instance_exec(&COMMON_PARAMS) }`) in a required file.
 
 `invoke NAME, *ARGS, workers:, limit:` runs a job, transform or command with arguments as on the command line; each is
 converted with `to_s`, and `nil`, an Array (a forgotten `*`) or a Hash raise `ArgumentError`. An invoked job runs like
-`metacrunch run NAME`: it logs its summary as `marc2es: ok: read ...`, reads stdin if it has no source and writes
+`metacrunch run NAME`: it logs its summary as `catalog: ok: read ...`, reads stdin if it has no source and writes
 stdout if it has no sink. All jobs and commands of a chain share `-e`, `--credentials`, the environment, the log
 level and the progress setting.
 
@@ -659,25 +667,25 @@ relative to where `metacrunch` was started, and `root.join(...)` reaches the pro
 A gem ships job, transform and command files like a project's, and a constant with their glob for each kind:
 
 ```
-metacrunch-elasticsearch/
+metacrunch-csv/
 └── lib/metacrunch/
-    ├── elasticsearch.rb                  # the constants; requires the helpers
-    └── elasticsearch/
-        ├── client.rb                     # helpers: classes and constants go here
-        ├── commands/create_index.rb      # Metacrunch.command "es:create-index" do ... end
-        ├── transforms/to_bulk.rb         # Metacrunch.transform "es:to-bulk" do ... end
-        └── jobs/reindex.rb               # Metacrunch.job "es:reindex" do ... end
+    ├── csv.rb                            # the constants; requires the helpers
+    └── csv/
+        ├── reader.rb                     # helpers: classes and constants go here
+        ├── commands/check.rb             # Metacrunch.command "csv:check" do ... end
+        ├── transforms/to_records.rb      # Metacrunch.transform "csv:to-records" do ... end
+        └── jobs/import.rb                # Metacrunch.job "csv:import" do ... end
 ```
 
 ```ruby
-# lib/metacrunch/elasticsearch.rb
-require_relative "elasticsearch/client"
+# lib/metacrunch/csv.rb
+require_relative "csv/reader"
 
 module Metacrunch
-  module Elasticsearch
-    COMMANDS = File.expand_path("elasticsearch/commands/*.rb", __dir__)
-    TRANSFORMS = File.expand_path("elasticsearch/transforms/*.rb", __dir__)
-    JOBS = File.expand_path("elasticsearch/jobs/*.rb", __dir__)
+  module Csv
+    COMMANDS = File.expand_path("csv/commands/*.rb", __dir__)
+    TRANSFORMS = File.expand_path("csv/transforms/*.rb", __dir__)
+    JOBS = File.expand_path("csv/jobs/*.rb", __dir__)
   end
 end
 ```
@@ -686,20 +694,20 @@ A project adds the gem to its `Gemfile` and opts in, next to its own files:
 
 ```ruby
 # Metacrunchfile
-require "metacrunch/elasticsearch"
+require "metacrunch/csv"
 
-Metacrunch.load_files Metacrunch::Elasticsearch::COMMANDS, Metacrunch::Elasticsearch::JOBS,
-                      Metacrunch::Elasticsearch::TRANSFORMS, "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
+Metacrunch.load_files Metacrunch::Csv::COMMANDS, Metacrunch::Csv::TRANSFORMS, Metacrunch::Csv::JOBS,
+                      "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 ```
 
-`bundle exec metacrunch es:create-index ...` then runs a command of the gem, and `bundle exec metacrunch --help` lists
-the gem's jobs, transforms and commands with the project's.
+`bundle exec metacrunch csv:check data/titles.csv` then runs a command of the gem, and `bundle exec metacrunch --help`
+lists the gem's jobs, transforms and commands with the project's.
 
 - The job, transform and command files define no constants, since every `Metacrunch.load_project` loads them
   again; classes and helpers belong in files that the gem's main file requires.
 - The gem does not `require` its job, transform and command files: only `load_files` registers them with the project,
   while a `require` would load them once per process, and a second project in the same process would lack them.
-- Names with a prefix (`es:create-index`) keep clear of the project's: a name that the gem and the project both
+- Names with a prefix (`csv:check`) keep clear of the project's: a name that the gem and the project both
   declare cannot be used. A reserved name makes the gem's file a load error.
 - Credentials are searched from the project root, also for jobs and commands of a gem, so `-e production` works as
   for the project's files. In a command, `root.join(...)` reaches the project's files and `__dir__` the gem's.
@@ -708,8 +716,8 @@ the gem's jobs, transforms and commands with the project's.
 For a gem without such a constant, the glob can start at the gem's directory:
 
 ```ruby
-gem_dir = Gem::Specification.find_by_name("metacrunch-elasticsearch").gem_dir
-Metacrunch.load_files File.join(gem_dir, "lib/metacrunch/elasticsearch/commands/*.rb")
+gem_dir = Gem::Specification.find_by_name("metacrunch-csv").gem_dir
+Metacrunch.load_files File.join(gem_dir, "lib/metacrunch/csv/commands/*.rb")
 ```
 
 The constant is still the better way: the gem can then move its files without breaking projects.
@@ -723,7 +731,7 @@ without records, Rake, Thor or just fit better.
 ```ruby
 require "metacrunch/testing"
 
-class CatalogTest < Minitest::Test
+class ReleaseTest < Minitest::Test
 
   PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))
 
@@ -732,12 +740,14 @@ class CatalogTest < Minitest::Test
     assert_empty PROJECT.duplicates
   end
 
-  def test_keeps_the_alias_when_records_failed
-    run = Metacrunch::Testing.invoke(PROJECT, "catalog:reindex", params: {files: ["dumps/a.xml"]},
-                                     stubs: {"marc2es" => :ok_with_failures})
+  def test_keeps_current_when_records_failed
+    Dir.mktmpdir do |out|
+      run = Metacrunch::Testing.invoke(PROJECT, "catalog:release", params: {out:},
+                                       stubs: {"catalog" => :ok_with_failures})
 
-    assert_equal ["es:create-index", "marc2es"], run.invoked.map(&:name)
-    assert_equal :ok_with_failures, run.status
+      assert_equal [:ok_with_failures, ["catalog"]], [run.status, run.invoked.map(&:name)]
+      refute_path_exists File.join(out, "current")
+    end
   end
 
 end
@@ -779,9 +789,9 @@ where `--help` does not reach it.
 require "metacrunch/testing"
 
 result = Metacrunch::Testing.run(
-  Metacrunch.load_job("jobs/marc2es.rb"),
-  params: {index: "test", files: ["unused"]},
-  source: [{"title" => "no id"}]
+  Metacrunch.load_job("jobs/export.rb"),
+  params: {input: "unused", output: "unused"},
+  source: [{"id" => "t1", "title" => " A ", "public" => true}, {"id" => "t2", "title" => "B", "public" => false}]
 )
 
 result.records   # what reached the sink
@@ -793,7 +803,7 @@ result.status
 
 All sinks are replaced by in-memory sinks; nothing is written. Component constructors should therefore be
 cheap and free of side effects; do I/O in `open`, `each` and `write`. Required parameters still need a value,
-even those that only the replaced source or sinks use; any value does, as `files: ["unused"]` above.
+even those that only the replaced source or sinks use; any value does, as `"unused"` above.
 
 A transform is tested the same way, with `source:`, since it has none. Names in `use` resolve in `project:`, else in
 the project of the nearest `Metacrunchfile` above the working directory, which is then loaded for every run; a test
@@ -802,10 +812,12 @@ class loads its project once:
 ```ruby
 PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))
 
-result = Metacrunch::Testing.run(PROJECT.fetch("normalize"), params: {lang: "en"}, source: [{"title" => " A "}])
-result = Metacrunch::Testing.run(PROJECT.fetch("marc2es"), params: {index: "test", files: ["unused"]},
-                                 source: [File.read("test/fixtures/record.xml")], project: PROJECT)
-result.stats.steps.keys   # ["marc:to-json/map#1", ..., "normalize/map#1", ...]
+result = Metacrunch::Testing.run(PROJECT.fetch("catalog:public"), params: {fields: ["id"]},
+                                 source: [{"id" => "t1", "title" => "A", "public" => true}])
+result.records            # [{"id" => "t1"}]
+
+result = Metacrunch::Testing.run(PROJECT.fetch("catalog"), params: {output: "unused"}, project: PROJECT)
+result.stats.steps.keys   # ["catalog:public/reject#1", "catalog:public/map#2"]
 ```
 
 The parameters of transforms get the values of `use` and their defaults; `Testing.run` reads neither the
