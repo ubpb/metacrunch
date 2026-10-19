@@ -45,10 +45,11 @@ module Metacrunch
     end
 
     # Runs target, a name or a path, with params bound by name (see
-    # Params#bind_values). Returns the Result of a job or transform, or a
-    # command's value. Raises InvokeError if the target is unknown, params
-    # are invalid for it or the job aborted, and ArgumentError if params is
-    # no Hash; exceptions from a command's body pass unchanged.
+    # Params#bind_values). Returns the Result of a job or transform, or the
+    # CommandResult of a command. Raises InvokeError if the target is
+    # unknown, params are invalid for it or the job aborted, and
+    # ArgumentError if params is no Hash; exceptions from a command's body
+    # pass unchanged.
     def invoke(target, params: {}, workers: nil, limit: nil)
       target = target.to_s
       raise ArgumentError, "invoke #{target}: params: must be a Hash, got #{params.inspect}" unless params.is_a?(Hash)
@@ -145,7 +146,21 @@ module Metacrunch
     end
 
     def invoke_command(command, params, target:, anchor:)
-      call(wrap(target) { prepare(command, anchor:, params:) })
+      prepared = wrap(target) { prepare(command, anchor:, params:) }
+      command_result { call(prepared) }
+    end
+
+    # Runs the block, the body of an invoked command, with a status of its
+    # own: the worst status of the jobs run meanwhile, nested commands
+    # included. The status of the chain keeps them too, also when the block
+    # raises.
+    def command_result
+      outer = @status
+      @status = :ok
+      value = yield
+      CommandResult.new(status: finished_status, error: nil, value:)
+    ensure
+      track(outer)
     end
 
     # The job has logged its error already.

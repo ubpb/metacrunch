@@ -34,7 +34,9 @@ module Metacrunch
 
     # records: what reached the sink. rejects: [record, Rejection] pairs.
     # errors: [record, Failure] pairs.
-    Result = Data.define(:records, :rejects, :errors, :stats, :status, :error)
+    Result = Data.define(:records, :rejects, :errors, :stats, :status, :error) do
+      def ok? = status == :ok
+    end
 
     # One invoke recorded by Testing.invoke. params: as given. options:
     # workers: and limit: as given.
@@ -43,7 +45,9 @@ module Metacrunch
     # value: what the body returned. status: :ok, :ok_with_failures (an
     # invoked job ended with failed records, or aborted and the body went
     # on) or :aborted (an exception left the body; error holds it).
-    CommandRun = Data.define(:value, :status, :error, :invoked)
+    CommandResult = Data.define(:value, :status, :error, :invoked) do
+      def ok? = status == :ok
+    end
 
     # A stub that gives no valid answer. Testing.invoke raises it instead
     # of ending the run :aborted, so a mistake in a test's stubs is never
@@ -54,10 +58,11 @@ module Metacrunch
                             duration: 0.0)
 
     # Records invokes instead of running them and answers from stubs: a
-    # status Symbol or a Result for a job, any value for a command, or a
-    # callable that gets the params Hash and returns one of these. Without a stub a
-    # job ends :ok and a command returns nil. Names resolve as in a real
-    # run, so unknown names raise InvokeError.
+    # status Symbol or a Result for a job, a value or a
+    # Metacrunch::CommandResult for a command, or a callable that gets the
+    # params Hash and returns one of these. Without a stub a job ends :ok
+    # and a command returns nil. Names resolve as in a real run, so unknown
+    # names raise InvokeError.
     class RecordingInvoker < Invoker
 
       attr_reader :invoked
@@ -82,7 +87,22 @@ module Metacrunch
 
       def invoke_command(_command, params, target:, **)
         @invoked << Invocation.new(name: target, params:, options: {})
-        answer(target, params, nil)
+        command_stub_result(target, answer(target, params, nil))
+      end
+
+      # A value is what the stubbed body returned; a CommandResult also
+      # gives the status, which counts toward the command under test.
+      def command_stub_result(target, stub)
+        unless stub.is_a?(Metacrunch::CommandResult)
+          return Metacrunch::CommandResult.new(status: :ok, error: nil, value: stub)
+        end
+        unless [:ok, :ok_with_failures].include?(stub.status)
+          raise StubError, "the stub for #{target} must give a CommandResult with status :ok or :ok_with_failures, " \
+                           "got #{stub.status.inspect}"
+        end
+
+        track(stub.status)
+        stub
       end
 
       def answer(target, params, default)
@@ -157,7 +177,7 @@ module Metacrunch
       unknown = stubs.keys.map(&:to_s).reject { File.file?(it) || invoker.project&.include?(it) }
       raise ArgumentError, "stub for unknown job, transform or command: #{unknown.first}" if unknown.any?
 
-      command_run(invoker, command.prepare(binder: values_binder(params)))
+      run_command(invoker, command.prepare(binder: values_binder(params)))
     end
 
     # Binds params like the values of `use`, but tests read neither the
@@ -196,15 +216,15 @@ module Metacrunch
     end
     private_class_method :project_command
 
-    def command_run(invoker, prepared)
+    def run_command(invoker, prepared)
       value = invoker.call(prepared)
-      CommandRun.new(value:, status: invoker.finished_status, error: nil, invoked: invoker.invoked)
+      CommandResult.new(value:, status: invoker.finished_status, error: nil, invoked: invoker.invoked)
     rescue StubError
       raise
     rescue *Engine::RECOVERABLE => e
-      CommandRun.new(value: nil, status: :aborted, error: e, invoked: invoker.invoked)
+      CommandResult.new(value: nil, status: :aborted, error: e, invoked: invoker.invoked)
     end
-    private_class_method :command_run
+    private_class_method :run_command
 
   end
 end

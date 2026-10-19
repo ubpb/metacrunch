@@ -137,6 +137,13 @@ class TestingTest < Minitest::Test
     ENV.delete("METACRUNCH_TEST_LANG")
   end
 
+  def test_results_answer_ok
+    results = [Metacrunch::Testing.run(build_job, params: {limit: 5}, source: [1]),
+               Metacrunch::Testing.run(build_job, params: {limit: 5}, source: [0])]
+
+    assert_equal [true, false], results.map(&:ok?)
+  end
+
   def test_unknown_params_raise_argument_errors
     error = assert_raises(ArgumentError) { Metacrunch::Testing.run(build_job, params: {limt: 5}, source: []) }
 

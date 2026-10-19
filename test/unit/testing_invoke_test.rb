@@ -45,6 +45,7 @@ class TestingInvokeTest < Minitest::Test
         end
       end
     RUBY
+    "commands/outer.rb" => "Metacrunch.command(\"outer\") { run { invoke(\"es:switch-alias\") } }\n",
     "commands/typo.rb" => "Metacrunch.command(\"typo\") { run { invoke \"a2x\" } }\n"
   }.freeze
   # A command outside the project's globs that invokes a name.
@@ -135,6 +136,27 @@ class TestingInvokeTest < Minitest::Test
 
   def test_params_are_bound_from_a_hash
     assert_raises(Metacrunch::ParamError) { invoke("catalog:reindex") }
+  end
+
+  def test_results_answer_ok
+    assert_predicate invoke("catalog:reindex", params: {files: ["a.xml"]}), :ok?
+  end
+
+  def test_command_stubs_give_a_value_or_a_command_result
+    partly = Metacrunch::CommandResult.new(status: :ok_with_failures, error: nil, value: :partly)
+    plain = invoke("outer", stubs: {"es:switch-alias" => :switched})
+    stubbed = invoke("outer", stubs: {"es:switch-alias" => partly})
+
+    assert_equal [:ok, :ok, :switched], [plain.status, plain.value.status, plain.value.value]
+    assert_equal [:ok_with_failures, partly], [stubbed.status, stubbed.value]
+  end
+
+  def test_command_stubs_must_not_abort
+    aborted = Metacrunch::CommandResult.new(status: :aborted, error: nil, value: nil)
+    error = assert_raises(ArgumentError) { invoke("outer", stubs: {"es:switch-alias" => aborted}) }
+
+    assert_equal "the stub for es:switch-alias must give a CommandResult with status :ok or :ok_with_failures, " \
+                 "got :aborted", error.message
   end
 
   def test_jobs_are_tested_with_testing_run
