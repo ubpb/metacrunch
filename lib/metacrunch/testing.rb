@@ -105,8 +105,9 @@ module Metacrunch
 
     module_function
 
-    # params are bound like CLI values (strings are converted), without
-    # environment lookup. The job's sinks are built but never opened.
+    # params are bound like the values of `use` (see Params#bind_values),
+    # with an empty environment and no credentials. The job's sinks are
+    # built but never opened.
     # Records are collected even if the job has no sink; stats.written is
     # 0 then, as in a real run. workers: run the steps in that many
     # processes, to check that the job's records cross process boundaries.
@@ -119,7 +120,7 @@ module Metacrunch
       end
 
       context = UseContext.for(project:, env: {}, credentials: nil, logger:)
-      pipeline = job.pipeline(binder: ->(schema) { schema.bind_hash(params) }, logger:, context:)
+      pipeline = job.pipeline(binder: values_binder(params), logger:, context:)
       memory = {sink: MemorySink.new, rejects: MemorySink.new, errors: MemorySink.new}
       adapters = memory.transform_values { |sink| SinkAdapter.new(sink) }
       adapters[:sink] = UncountedSinkAdapter.new(memory[:sink]) unless pipeline.sink
@@ -156,8 +157,13 @@ module Metacrunch
       unknown = stubs.keys.map(&:to_s).reject { File.file?(it) || invoker.project&.include?(it) }
       raise ArgumentError, "stub for unknown job, transform or command: #{unknown.first}" if unknown.any?
 
-      command_run(invoker, command.prepare(binder: ->(schema) { schema.bind_hash(params) }))
+      command_run(invoker, command.prepare(binder: values_binder(params)))
     end
+
+    # Binds params like the values of `use`, but tests read neither the
+    # environment nor credentials.
+    def values_binder(params) = ->(schema) { schema.bind_values(params, env: {}, credentials: nil) }
+    private_class_method :values_binder
 
     # [command, project] for invoke; project may be a Proc.
     def invoke_target(target, name, project)

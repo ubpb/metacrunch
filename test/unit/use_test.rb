@@ -252,7 +252,7 @@ class UseTest < Minitest::Test
 
   def test_a_transform_alone_cannot_use_itself
     looping = Metacrunch.transform("loop") { use "loop" }
-    binder = ->(schema) { schema.bind_hash({}) }
+    binder = ->(schema) { schema.bind_values({}, env: {}) }
     context = context_for({"loop" => looping})
     error = assert_raises(ArgumentError) { looping.pipeline(binder:, logger: SILENT, context:) }
 
@@ -261,7 +261,8 @@ class UseTest < Minitest::Test
 
   def test_use_needs_a_context
     job = Metacrunch.job { source []; use SCALE }
-    error = assert_raises(ArgumentError) { job.pipeline(binder: ->(schema) { schema.bind_hash({}) }, logger: SILENT) }
+    binder = ->(schema) { schema.bind_values({}, env: {}) }
+    error = assert_raises(ArgumentError) { job.pipeline(binder:, logger: SILENT) }
 
     assert_equal "use needs a context: build the job with Job#pipeline(context:)", error.message
   end
@@ -286,7 +287,8 @@ class UseTest < Minitest::Test
   # in declarations.
   def build_job(declarations = {}, params: {}, env: {}, credentials: nil, &recipe)
     context = context_for(declarations, env:, credentials:)
-    Metacrunch.job(&recipe).pipeline(binder: ->(schema) { schema.bind_hash(params) }, logger: SILENT, context:)
+    binder = ->(schema) { schema.bind_values(params, env: {}) }
+    Metacrunch.job(&recipe).pipeline(binder:, logger: SILENT, context:)
   end
 
   # The records that reach the sink when pipeline runs.
