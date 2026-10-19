@@ -40,7 +40,7 @@ module Bench
   module_function
 
   def build(&)
-    builder = Metacrunch::Builder.new(binder: ->(schema) { schema.bind_hash({}) }, logger: Logger.new(nil))
+    builder = Metacrunch::Builder.new(binder: ->(schema) { schema.bind_values({}, env: {}) }, logger: Logger.new(nil))
     builder.instance_exec(&)
     builder.build
   end
