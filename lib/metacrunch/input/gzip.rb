@@ -8,6 +8,24 @@ module Metacrunch
     # it, as the source of another Stream. Internal.
     class Gzip
 
+      # zlib warns under -w when a member is ended in the middle ("attempt
+      # to close unfinished zstream; reset forced"). While its thread is in
+      # Gzip#finish, this drops just that warning; $VERBOSE, which all
+      # threads share, stays as it is.
+      module Quiet
+
+        MESSAGE = "attempt to close unfinished zstream"
+        KEY = :metacrunch_gzip_finish
+
+        def warn(message, ...)
+          return if Thread.current[KEY] && message.include?(MESSAGE)
+
+          super
+        end
+
+      end
+      Warning.singleton_class.prepend(Quiet)
+
       def initialize(stream, name)
         @stream = stream
         @name = name
@@ -27,9 +45,7 @@ module Metacrunch
       end
 
       # Ends the gzip layer without closing the stream and without checking
-      # what was not read. Ending a member in the middle makes zlib warn
-      # under -w ("attempt to close unfinished zstream"), so warnings are
-      # off meanwhile.
+      # what was not read, and without zlib's warning about that (Quiet).
       def finish
         quietly { @gzip.finish } unless @gzip.closed?
       rescue Zlib::Error
@@ -39,11 +55,10 @@ module Metacrunch
       private
 
       def quietly
-        verbose = $VERBOSE
-        $VERBOSE = nil
+        Thread.current[Quiet::KEY] = true
         yield
       ensure
-        $VERBOSE = verbose
+        Thread.current[Quiet::KEY] = nil
       end
 
       def member
