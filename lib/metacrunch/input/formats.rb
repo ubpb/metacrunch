@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "shellwords"
+
 module Metacrunch
   class Input
     # Tells gzip, tar and the formats metacrunch cannot read from the first
@@ -24,11 +26,18 @@ module Metacrunch
         # True if head could be the start of one of the magics.
         def possible?(head) = magics.any? { it.start_with?(head) }
 
-        # file: what the hint names, a path or a member's name; nil for
-        # stdin and IOs.
+        # file: the path of the file whose outer layer the format is; nil
+        # for stdin, IOs and documents inside gzip or tar, where a command
+        # on a file would decompress the wrong layer.
         def message(name, file)
-          "#{name}: #{label}, which metacrunch cannot read; #{advice} first, " \
-            "e.g. #{tool} #{file || "FILE"} | metacrunch run job.rb -i -"
+          "#{name}: #{label}, which metacrunch cannot read; #{advice} first, e.g. #{hint(name, file)}"
+        end
+
+        def hint(name, file)
+          return "#{tool} #{Shellwords.escape(file)} | metacrunch run job.rb -i -" if file
+          return "... | #{tool} | metacrunch run job.rb -i -" if name == STDIO
+
+          "with #{tool}"
         end
       end
 

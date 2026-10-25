@@ -106,14 +106,14 @@ module Metacrunch
       raise InputError, "#{path}: #{Files.reason(e)}"
     end
 
-    # Yields the documents of stream. file: what the hint of an unsupported
-    # format names (the path, a member's name, or nil); depth: the layers
-    # of gzip and tar around stream.
+    # Yields the documents of stream. file: the path, for the hint of an
+    # unsupported format on the outer layer of a file, else nil; depth: the
+    # layers of gzip and tar around stream.
     def layers(stream, name, file, depth, &)
       format = detect(stream)
       case format
       when :plain then document(stream, name, &)
-      when :gzip then gzip(stream, name, file, depth, &)
+      when :gzip then gzip(stream, name, depth, &)
       when :tar then tar(stream, name, depth, &)
       else raise InputError, format.message(name, file)
       end
@@ -134,11 +134,11 @@ module Metacrunch
       stream.close
     end
 
-    def gzip(stream, name, file, depth, &)
+    def gzip(stream, name, depth, &)
       deeper(name, depth)
       gzip = Gzip.new(stream, name)
       begin
-        layers(Stream.new(gzip), name, file, depth + 1, &)
+        layers(Stream.new(gzip), name, nil, depth + 1, &)
       ensure
         gzip.finish
       end
@@ -146,8 +146,8 @@ module Metacrunch
 
     def tar(stream, name, depth, &)
       deeper(name, depth)
-      Tar.new(stream, name).each_member do |member, member_name, full_name|
-        layers(member, member_name, full_name, depth + 1, &)
+      Tar.new(stream, name).each_member do |member, member_name|
+        layers(member, member_name, nil, depth + 1, &)
       end
     end
 

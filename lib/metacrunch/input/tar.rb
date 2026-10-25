@@ -22,8 +22,8 @@ module Metacrunch
         @name = name
       end
 
-      # Yields a Stream, the name and the full name of every regular member
-      # whose base name does not start with ".". A member the block did not
+      # Yields a Stream and the name of every regular member whose base name
+      # does not start with ".". A member the block did not
       # read to its end is read to its end afterwards, to check it. So is
       # what follows the end of the archive, so that a gzip layer around it
       # reaches its footer and checks it.
@@ -35,7 +35,7 @@ module Metacrunch
           entry = Gem::Package::TarReader::Entry.new(header, @blocks)
           full_name = full_name(entry)
           member = Member.new(entry, "#{@name}:#{full_name}")
-          yield Stream.new(member), member.name, full_name if document?(entry, full_name)
+          yield Stream.new(member), member.name if document?(entry, full_name)
           member.drain
           entry.close
         end
