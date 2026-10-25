@@ -123,6 +123,15 @@ class InputStreamTest < Minitest::Test
     assert(lines.all? { it.encoding == Encoding::BINARY && !it.frozen? })
   end
 
+  # A source may hand out a String it keeps; the stream copies it instead
+  # of changing its encoding.
+  def test_strings_of_the_source_keep_their_encoding
+    block = +"ä\n"
+    Stream.new(Blocks.new(block)).read
+
+    assert_equal Encoding::UTF_8, block.encoding
+  end
+
   def test_reads_the_source_in_blocks
     source = Blocks.new("a")
     Stream.new(source).read
