@@ -110,12 +110,21 @@ module Metacrunch
     # format names (the path, a member's name, or nil); depth: the layers
     # of gzip and tar around stream.
     def layers(stream, name, file, depth, &)
-      format = Formats.detect(stream.peek(Formats::PEEK))
+      format = detect(stream)
       case format
       when :plain then document(stream, name, &)
       when :gzip then gzip(stream, name, file, depth, &)
       when :tar then tar(stream, name, depth, &)
       else raise InputError, format.message(name, file)
+      end
+    end
+
+    # Reads ahead block by block until the first bytes tell the format.
+    def detect(stream)
+      loop do
+        head, complete = stream.lookahead(Formats::PEEK)
+        format = Formats.detect(head, complete:)
+        return format if format
       end
     end
 
