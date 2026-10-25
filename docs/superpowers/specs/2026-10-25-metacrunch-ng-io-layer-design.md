@@ -149,6 +149,19 @@ Amended after the final review (2026-10-25):
 - `Stream#each_line` searches every block for `"\n"` once, so long lines
   cost linear time (2.2).
 
+Amended with the review's minors (2026-10-25):
+
+- Hints quote the path and name a file only for its outer layer (3.4).
+- `Output#close` returns nil; errors of closing a file that is discarded
+  after another error are dropped (6.3).
+- The stream copies a non-binary block of an IO instead of changing its
+  encoding (2.2).
+- zlib's warning when a gzip member is ended early is dropped by a filter
+  on `Warning.warn` for the finishing thread only; `$VERBOSE` stays as it
+  is (3.2).
+- `docs/files.md` names the known limits and the tar archive cut between
+  two members.
+
 ## 2. Units and API
 
 ```ruby
@@ -325,9 +338,13 @@ The message names the format and the tool that decompresses it:
 dump.jsonl.zst: is zstd compressed, which metacrunch cannot read; decompress it first, e.g. zstd -dc dump.jsonl.zst | metacrunch run job.rb -i -
 ```
 
-The tools in the hints: `bzip2 -dc`, `xz -dc`, `zstd -dc`, `unzip -p`. For
-a tar member the name has the member (`dump.tar:a.jsonl.bz2`) and the hint
-the same command on the member's name.
+The tools in the hints: `bzip2 -dc`, `xz -dc`, `zstd -dc`, `unzip -p`. The
+command names the file (quoted for the shell) only when the format is the
+outer layer of a file. For stdin the hint is a pipe (`... | zstd -dc |
+metacrunch run job.rb -i -`); for IOs and documents inside gzip or tar it is
+only the tool (`e.g. with zstd -dc`), since a command on the outer file
+would decompress the wrong layer. A tar member's name has the member
+(`dump.tar:a.jsonl.bz2`).
 
 ## 4. Input: order, progress, resources
 
