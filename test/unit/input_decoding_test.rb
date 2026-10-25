@@ -89,6 +89,18 @@ class InputDecodingTest < Minitest::Test
     assert(ObjectSpace.each_object(File).none? { it.path == path && !it.closed? })
   end
 
+  # $VERBOSE is shared by all threads: silencing zlib's warning by switching
+  # it off would silence other threads' warnings meanwhile.
+  def test_stopping_early_leaves_verbose_alone
+    path = write("big.gz", gzip(Random.new(1).bytes(200_000)))
+    changes = []
+    trace_var(:$VERBOSE) { changes << it }
+    Input.new(path).each_document { |stream, _name| break stream.read(10) }
+    untrace_var(:$VERBOSE)
+
+    assert_empty changes
+  end
+
   def test_unsupported_formats_are_named_with_a_hint
     {"BZh91AY&SY" => "is bzip2 compressed, which metacrunch cannot read; decompress it first, e.g. bzip2 -dc",
      "\xFD7zXZ\x00" => "is xz compressed, which metacrunch cannot read; decompress it first, e.g. xz -dc",
