@@ -37,7 +37,8 @@ object several times must not change it in place afterwards.
 ## Sources
 
 Any object with `#each` that yields records. Optional `#open(context)` and `#close`. A source that yields several
-values at once (`yield key, value`) produces Array records (`[key, value]`).
+values at once (`yield key, value`) produces Array records (`[key, value]`). A source with `#progress` (0.0 to 1.0)
+feeds the progress display. A source that reads files is best built on `Metacrunch::Input` (see [Files](files.md)).
 
 ```ruby
 source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }
@@ -45,9 +46,10 @@ source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record[
 
 `id:` gives every record an id for logs and errors.
 
-`Metacrunch::JsonLines::Reader.new(path)` reads JSON Lines (`-` for stdin, `.gz` files are decompressed). A source
-can yield `Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines
-that are not valid JSON or not valid UTF-8. Invalid records fail like a step (the pseudo-step `source`) under the
+`Metacrunch::JsonLines::Reader.new(targets)` reads JSON Lines from a path, `-` for stdin, an IO or an Array of them;
+gzip files and tar archives are unpacked whatever their names (see [Files](files.md)). A source can yield
+`Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines that are not
+valid JSON or not valid UTF-8. Invalid records fail like a step (the pseudo-step `source`) under the
 job's failure policy. Note that JSON objects with duplicate keys count as invalid, and numbers beyond the Float range
 (`1e400`) are read as `Infinity`, which the writer refuses.
 
@@ -109,7 +111,8 @@ steps directly: `map(&method(:Integer))`. A step written as `->(record, ctx = ni
 ## Sinks
 
 Any object with `#write(record)`. Optional `#write_batch(records)`, `#open(context)` and `#close`. Sinks that
-accept a second argument get the (read-only) context: `write(record, ctx)`, `write_batch(records, ctxs)`.
+accept a second argument get the (read-only) context: `write(record, ctx)`, `write_batch(records, ctxs)`. A sink that
+writes files is best built on `Metacrunch::Output` (see [Files](files.md)).
 
 ```ruby
 sink     Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
@@ -121,9 +124,9 @@ With `batch:` the sink gets `write_batch` calls with up to that many records; th
 when the job aborts or is interrupted, so `batch:` never changes which records arrive. One object used as both
 `sink` and `rejects` (or `failures`) is opened and closed once.
 
-`Metacrunch::JsonLines::Writer.new(path)` writes JSON Lines (`-` for stdout, `.gz` files are compressed) and refuses
-values that are not JSON types. `Metacrunch::JsonLines::ContextWriter` writes every record with its context (id,
-position, marks, rejection, failure), which suits the `rejects` and `failures` roles.
+`Metacrunch::JsonLines::Writer.new(target)` writes JSON Lines to a path (`.gz` is compressed), `-` for stdout or an
+IO, and refuses values that are not JSON types. `Metacrunch::JsonLines::ContextWriter` writes every record with its
+context (id, position, marks, rejection, failure), which suits the `rejects` and `failures` roles.
 
 ## Failures
 

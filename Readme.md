@@ -53,7 +53,9 @@ Requires Ruby 4.0. The commands in this Readme call `metacrunch`; with Bundler, 
 
 The extension gems of 4.x (`metacrunch-file`, `metacrunch-marcxml`, `metacrunch-elasticsearch`, `metacrunch-db`,
 `metacrunch-redis`) do not work with metacrunch 5 yet. Until they are ported, JSON Lines is built in, and any other
-source or sink is a small class of your own (see [Sources](docs/jobs.md#sources) and [Sinks](docs/jobs.md#sinks)).
+source or sink is a small class of your own (see [Sources](docs/jobs.md#sources) and [Sinks](docs/jobs.md#sinks)),
+built on `Metacrunch::Input` and `Metacrunch::Output`, which read gzip and tar and take care of stdin, stdout and
+pipes (see [Files](docs/files.md)).
 
 ## Quickstart: a job
 
@@ -264,6 +266,7 @@ See [The command line](docs/cli.md) for all options, pipes and exit codes, and [
 ## Documentation
 
 - [Jobs](docs/jobs.md): records, sources, steps, the record context, sinks, failures, hooks, parameters, what runs when
+- [Files](docs/files.md): `Metacrunch::Input` and `Metacrunch::Output` for sources and sinks: gzip, tar, stdin, pipes
 - [Transforms](docs/transforms.md): `use`, parameters, step names, testing a transform
 - [Projects, commands and gems](docs/projects.md): the `Metacrunchfile`, names, `new` and `generate`, `invoke`
 - [Testing](docs/testing.md): `Metacrunch::Testing.run` and `Metacrunch::Testing.invoke`

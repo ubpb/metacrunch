@@ -23,7 +23,8 @@ than it saves: 8 workers handled 0.5 M records/s, inline 2.8 M records/s.
   source that yields the lines, `File.foreach(params.input, chomp: true)`, with `map { JSON.parse(it) }` as the first
   step handled 0.31 M instead of 0.19 M records/s. Such a job takes its file as a parameter, not with `-i`. Its `id:`
   gets the line, not the parsed record (`line["id"]` is just `"id"`), and it does without the reader's handling of
-  `.gz` files, blank lines and invalid UTF-8.
+  blank lines and invalid UTF-8. Built on `Metacrunch::Input` (see [Files](files.md)), such a source still reads gzip
+  and tar.
 - Libraries must be loaded before the workers start: `require` them at job level, not in a step's `open` or `call`
   and not while the source reads. A record of a class that only one of the processes knows stops the run with an
   error that says so.
