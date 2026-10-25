@@ -34,7 +34,8 @@ The first bytes decide, not the name, for files, stdin and IOs alike:
 | bzip2, xz, zstd, zip | An error that names the format and the command to decompress it first, e.g. `zstd -dc dump.jsonl.zst \| metacrunch run job.rb -i -` |
 | anything else | The document as it is |
 
-Unpacked content is checked again, so `.tar.gz`, a tar of `.gz` files and gzip inside gzip work, up to 4 layers.
+Unpacked content is checked again, so `.tar.gz`, a tar of `.gz` files and gzip inside gzip work, up to 4 layers. On
+a slow pipe, detection does not hold back the first line of a line-based format such as JSON Lines.
 
 ### Errors
 
@@ -49,7 +50,8 @@ dump.tar.gz:records/7.xml: broken tar archive (ends inside the member's data)
 ```
 
 All paths are checked before the first document, so a typo in the last of several files ends the run before anything
-is read. gzip and tar files that end too early, an interrupted download for example, are errors, not shorter data.
+is read. gzip and tar files that end too early, an interrupted download for example, are errors, not shorter data, and
+so are wrong gzip CRCs and tar header checksums.
 
 ### Progress
 

@@ -136,6 +136,19 @@ Added while writing the spec, from checks on Ruby 4.0.7 and RubyGems 4.0.20:
   files, also for freshly created files. Skipping members whose base name
   starts with a dot (3.3) is therefore needed, not only a nicety.
 
+Amended after the final review (2026-10-25):
+
+- A tar archive is read to the end of its input after the end-of-archive
+  marker, so that a gzip layer around it reaches and checks its CRC and
+  length (3.3); before, a corrupt or cut `.tar.gz` passed.
+- The checksum of a tar header is checked by the layer; RubyGems parses the
+  field but never checks it. A member name with a NUL byte is broken (3.3).
+- Members of type `7` (contiguous file) are regular files (3.3).
+- Detection reads ahead block by block and decides as soon as the first
+  bytes allow it; it no longer waits for 262 bytes of a slow pipe (3.1).
+- `Stream#each_line` searches every block for `"\n"` once, so long lines
+  cost linear time (2.2).
+
 ## 2. Units and API
 
 ```ruby
@@ -241,9 +254,12 @@ colon; the original error, if any, is the `cause`. Section 5 lists them.
 
 ### 3.1 Rules
 
-Before a document is yielded, the layer peeks at up to 262 bytes. The check
+Before a document is yielded, the layer looks at up to 262 bytes. The check
 runs on every layer: on every target, on the content of every gzip layer and
-on every tar member.
+on every tar member. It reads ahead one block at a time and decides as soon
+as it can: tar needs 262 bytes unless a `"\n"` in the first 100 bytes (the
+name field of a tar header), before any NUL, rules it out. So a line-based
+format on a slow pipe is not held back beyond its first line.
 
 | Start | Format | Effect |
 |---|---|---|
@@ -282,8 +298,9 @@ on every tar member.
 
 ### 3.3 tar
 
-- Only regular files (`file?`) are documents. Directories, symbolic links,
-  hard links and pax headers are skipped.
+- Only regular files (type `0`, the NUL of older tars, and `7`) are
+  documents. Directories, symbolic links, hard links, pax headers and GNU
+  sparse files are skipped.
 - Members whose base name starts with `.` are skipped: AppleDouble files
   (`._name`) that `tar` on macOS adds, and `.DS_Store`.
 - The layer checks what RubyGems does not: tar input that ends inside a
@@ -292,9 +309,13 @@ on every tar member.
   drained to check this when its block returns; when reading stops early
   (`break`, an error), nothing is drained or checked. A missing
   end-of-archive marker (the two zero blocks) is accepted, as GNU tar
-  accepts it.
-- Errors of RubyGems' tar reader (`Gem::Package::TarInvalidError`, e.g. a bad
-  checksum or garbage) become `InputError`.
+  accepts it. After the marker, the rest of the input is read and dropped,
+  so that a gzip layer around the archive reaches and checks its footer.
+- The header checksum is checked (the unsigned sum, or the signed one older
+  tars wrote): RubyGems parses the field but does not check it. A wrong sum
+  and a member name with a NUL byte raise `InputError` ("broken tar archive
+  (wrong header checksum)"), as do errors of RubyGems' header parser
+  (`Gem::Package::TarInvalidError`, e.g. garbage).
 
 ### 3.4 Unsupported formats
 
