@@ -43,21 +43,24 @@ module Metacrunch
       end
 
       # Yields every line with its "\n"; the last one may lack it. Without
-      # a block an Enumerator.
+      # a block an Enumerator. Bytes searched once for "\n" are not searched
+      # again, so a long line costs time in proportion to its length.
       def each_line(&)
         return enum_for(:each_line) unless block_given?
 
         check_open
+        searched = 0
         loop do
           fill(1)
           break if @buffer.empty?
 
-          last = @buffer.rindex(NEWLINE)
-          if last
-            take(last + 1).each_line(&)
+          if @buffer.byteindex(NEWLINE, searched)
+            take(@buffer.byterindex(NEWLINE) + 1).each_line(&)
+            searched = 0
           elsif @eof
             yield take(@buffer.bytesize)
           else
+            searched = @buffer.bytesize
             @buffer << next_block
           end
         end
