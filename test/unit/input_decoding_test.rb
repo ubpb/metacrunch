@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "rubygems/package"
 require "tmpdir"
 
 class InputDecodingTest < Minitest::Test
@@ -134,6 +135,12 @@ class InputDecodingTest < Minitest::Test
     assert_equal :gzip, Formats.detect(gzip("x").byteslice(0, Formats::PEEK))
     assert_equal :plain, Formats.detect("{\"a\":1}\n")
     assert_equal :plain, Formats.detect("")
+  end
+
+  def test_detect_tar
+    header = Gem::Package::TarHeader.new(name: "a", mode: 0o644, size: 0, prefix: "", mtime: 0).to_s
+
+    assert_equal :tar, Formats.detect(header.byteslice(0, Formats::PEEK))
   end
 
   def test_detect_unsupported_formats

@@ -2,10 +2,10 @@
 
 module Metacrunch
   # The documents of one or more targets, for sources and other readers:
-  # gzip (and, from Task 4, tar) is detected by its content and unpacked,
-  # up to MAX_LAYERS deep. Not a source itself: it has each_document, not
-  # each. Used from one thread; only #progress may be read from another
-  # one. See docs/files.md.
+  # gzip and tar are detected by their content and unpacked, up to
+  # MAX_LAYERS deep. Not a source itself: it has each_document, not each.
+  # Used from one thread; only #progress may be read from another one. See
+  # docs/files.md.
   class Input
 
     MAX_LAYERS = 4
@@ -114,6 +114,7 @@ module Metacrunch
       case format
       when :plain then document(stream, name, &)
       when :gzip then gzip(stream, name, file, depth, &)
+      when :tar then tar(stream, name, depth, &)
       else raise InputError, format.message(name, file)
       end
     end
@@ -134,6 +135,13 @@ module Metacrunch
       end
     end
 
+    def tar(stream, name, depth, &)
+      deeper(name, depth)
+      Tar.new(stream, name).each_member do |member, member_name, full_name|
+        layers(member, member_name, full_name, depth + 1, &)
+      end
+    end
+
     def deeper(name, depth)
       raise InputError, "#{name}: more than #{MAX_LAYERS} layers of gzip and tar" if depth == MAX_LAYERS
     end
@@ -145,3 +153,4 @@ require_relative "input/stream"
 require_relative "input/raw"
 require_relative "input/formats"
 require_relative "input/gzip"
+require_relative "input/tar"
