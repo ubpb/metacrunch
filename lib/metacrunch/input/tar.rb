@@ -19,11 +19,13 @@ module Metacrunch
 
       # Yields a Stream, the name and the full name of every regular member
       # whose base name does not start with ".". A member the block did not
-      # read to its end is read to its end afterwards, to check it.
+      # read to its end is read to its end afterwards, to check it. So is
+      # what follows the end of the archive, so that a gzip layer around it
+      # reaches its footer and checks it.
       def each_member
         until @blocks.eof?
           header = next_header
-          return if header.empty?
+          break if header.empty?
 
           entry = Gem::Package::TarReader::Entry.new(header, @blocks)
           full_name = full_name(entry)
@@ -33,6 +35,7 @@ module Metacrunch
           entry.close
         end
         check_blocks
+        @blocks.drain
       end
 
       private
@@ -86,6 +89,13 @@ module Metacrunch
           data = @stream.readpartial(length, outbuf)
           @pos += data.bytesize
           data
+        end
+
+        # Reads the rest of the stream, to its end.
+        def drain
+          loop { readpartial(Stream::BLOCK) }
+        rescue EOFError
+          nil
         end
 
       end
