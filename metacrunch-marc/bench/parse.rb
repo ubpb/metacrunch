@@ -7,6 +7,7 @@
 require "metacrunch/marcxml"
 require "stringio"
 require "tmpdir"
+require "zlib"
 
 Marcxml = Metacrunch::Marcxml
 COUNT = Integer(ARGV.fetch(0, "10000"))
@@ -48,6 +49,10 @@ Dir.mktmpdir do |dir|
   measure("each (from a file)") { File.open(path) { |io| Marcxml.each(io) { nil } } }
   measure("each (from a StringIO)") { Marcxml.each(StringIO.new(File.read(path))) { nil } }
   measure("each_xml (from a file)") { File.open(path) { |io| Marcxml.each_xml(io) { nil } } }
+  measure("Reader (from a file)") { Marcxml::Reader.new(path).each { nil } }
+  gzip_path = File.join(dir, "records.xml.gz")
+  File.binwrite(gzip_path, Zlib.gzip(File.binread(path)))
+  measure("Reader (from a gzip file)") { Marcxml::Reader.new(gzip_path).each { nil } }
   xmls = File.open(path) { Marcxml.each_xml(it).to_a }
   measure("parse (one record string)") { xmls.each { Marcxml.parse(it) } }
   measure("to_xml") { records.each(&:to_xml) }
