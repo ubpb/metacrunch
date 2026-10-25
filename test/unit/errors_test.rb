@@ -24,4 +24,9 @@ class ErrorsTest < Minitest::Test
     assert_equal ["Net::Broken", "socket closed"], [error.original_class, error.original_message]
   end
 
+  def test_input_and_output_errors_are_metacrunch_errors
+    assert_operator Metacrunch::InputError, :<, Metacrunch::Error
+    assert_operator Metacrunch::OutputError, :<, Metacrunch::Error
+  end
+
 end
