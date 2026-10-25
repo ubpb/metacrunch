@@ -2,13 +2,15 @@
 
 module Metacrunch
   class Input
-    # Tells gzip and the formats metacrunch cannot read from the first bytes
-    # of a document. Internal.
+    # Tells gzip, tar and the formats metacrunch cannot read from the first
+    # bytes of a document. Internal.
     module Formats
 
       # How many bytes detection looks at: tar's magic ends at byte 262.
       PEEK = 262
       GZIP = "\x1F\x8B\x08".b
+      TAR = "ustar".b
+      TAR_AT = 257
 
       # A format metacrunch recognizes but cannot read.
       Unsupported = Data.define(:pattern, :label, :advice, :tool) do
@@ -31,10 +33,11 @@ module Metacrunch
 
       module_function
 
-      # :gzip, :plain or an Unsupported, for head: the first PEEK bytes of a
-      # document (fewer for a short one).
+      # :gzip, :tar, :plain or an Unsupported, for head: the first PEEK
+      # bytes of a document (fewer for a short one).
       def detect(head)
         return :gzip if head.start_with?(GZIP)
+        return :tar if head.byteslice(TAR_AT, TAR.bytesize) == TAR
 
         UNSUPPORTED.find { it.match?(head) } || :plain
       end
