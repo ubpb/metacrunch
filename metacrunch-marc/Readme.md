@@ -174,7 +174,8 @@ sink Metacrunch::Marcxml::Writer.new(params.output)   # a path (".gz" compresses
 Writes one `<collection>` with a `<record>` per record; records are `Record`s or record XML as a String (see Workers). The closing tag is written also when a run aborts, so the file
 stays well-formed. A value set in a step with a character that XML 1.0 cannot represent (a control character other
 than tab and line breaks) stops the run with the record's position; records read with such a character are already
-`InvalidRecord`s. Names ending with `.zst`, `.bz2`, `.xz`, `.zip` or `.tar` are refused; see `Metacrunch::Output`.
+`InvalidRecord`s. Names ending with `.zst`, `.bz2`, `.xz`, `.zip`, `.tar`, `.tar.gz` or `.tgz` are refused; see
+`Metacrunch::Output`.
 
 ### Workers
 
