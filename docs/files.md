@@ -50,14 +50,27 @@ dump.tar.gz:records/7.xml: broken tar archive (ends inside the member's data)
 ```
 
 All paths are checked before the first document, so a typo in the last of several files ends the run before anything
-is read. gzip and tar files that end too early, an interrupted download for example, are errors, not shorter data, and
-so are wrong gzip CRCs and tar header checksums.
+is read. gzip files that end too early and tar archives that end inside a member or a header, an interrupted download
+for example, are errors, not shorter data, and so are wrong gzip CRCs and tar header checksums. A tar archive that ends
+exactly between two members cannot be told from a complete one, since its end marker is optional; it is read as it
+is, as `tar` reads it.
+
+The hint for a format metacrunch cannot read names the command with the file (quoted for the shell) when the format is
+the file's outer layer, a pipe for stdin, and only the tool for IOs and for documents inside gzip or tar.
 
 ### Progress
 
 With only regular files as targets, `progress` is the share of their bytes read so far (for gzip, of the compressed
 bytes), counted in blocks of 64 KiB. A source that returns it from its own `progress` method feeds the progress display
 of `metacrunch run`. With stdin, an IO or a FIFO among the targets it is `nil`.
+
+### Known limits
+
+- Member names longer than the fields of a tar header (stored in pax records) appear shortened in messages; the data
+  is read in full.
+- Old tar archives without the `ustar` mark (v7) are read as plain content.
+- GNU sparse members of a tar archive are skipped.
+- Members larger than 8 GiB, whose size tar stores in binary, raise an error.
 
 ### A source on `Input`
 
