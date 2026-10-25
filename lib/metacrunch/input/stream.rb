@@ -118,11 +118,11 @@ module Metacrunch
       end
 
       # The next block as a binary String, or "" at the end (and @eof set).
+      # The sources of the layer hand out binary Strings; a String of
+      # another encoding (from an IO) is copied, not changed.
       def next_block
         block = @source.readpartial(BLOCK)
-        return block if block.encoding == Encoding::BINARY
-
-        block.frozen? ? block.b : block.force_encoding(Encoding::BINARY)
+        block.encoding == Encoding::BINARY ? block : block.b
       rescue EOFError
         @eof = true
         "".b
