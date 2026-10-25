@@ -47,6 +47,20 @@ class InputTarTest < Minitest::Test
     assert_equal [["#{path}:a.jsonl", "1\n"]], documents(path)
   end
 
+  # POSIX: "0", NUL (older tars) and "7" (contiguous file) are regular files.
+  def test_all_kinds_of_regular_members_are_documents
+    data = "1\n"
+    members = ["0", "\0", "7"].map do |flag|
+      header = Gem::Package::TarHeader.new(name: "flag-#{flag.ord}.jsonl", mode: 0o644, size: data.bytesize,
+                                           typeflag: flag, prefix: "", mtime: 0)
+      header.to_s + data.ljust(512, "\0")
+    end
+    path = write("flags.tar", members.join + ("\0" * 1024))
+    names = documents(path).map { it.first.split(":").last }
+
+    assert_equal ["flag-48.jsonl", "flag-0.jsonl", "flag-55.jsonl"], names
+  end
+
   def test_members_read_only_in_part_do_not_disturb_the_next_one
     path = write("records.tar", tar("a.jsonl" => "a" * 3000, "b.jsonl" => "b" * 3000))
     heads = []

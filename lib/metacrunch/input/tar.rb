@@ -13,6 +13,7 @@ module Metacrunch
 
       BLOCK = 512
       CHECKSUM = (148...156)
+      CONTIGUOUS = "7"
 
       def self.broken(name, reason) = InputError.new("#{name}: broken tar archive (#{reason})")
 
@@ -74,7 +75,11 @@ module Metacrunch
         raise Tar.broken(@name, e.message)
       end
 
-      def document?(entry, full_name) = entry.file? && !File.basename(full_name).start_with?(".")
+      # Regular files: "0" (file?, also for the NUL of older tars) and "7"
+      # (a contiguous file, which is a regular file to every reader).
+      def document?(entry, full_name)
+        (entry.file? || entry.header.typeflag == CONTIGUOUS) && !File.basename(full_name).start_with?(".")
+      end
 
       def check_blocks
         raise Tar.broken(@name, "ends inside a 512-byte block") if @blocks.short?
