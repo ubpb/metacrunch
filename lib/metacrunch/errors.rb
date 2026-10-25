@@ -46,6 +46,15 @@ module Metacrunch
   # declared more than once. The CLI exits with 2.
   class ProjectError < Error; end
 
+  # A target could not be read: it is missing, a directory, not readable,
+  # broken gzip or tar data, a format metacrunch cannot read, or nested too
+  # deeply. The message starts with the name of the file or tar member.
+  class InputError < Error; end
+
+  # An output could not be opened, written or closed. The message starts
+  # with the name of the output.
+  class OutputError < Error; end
+
   # invoke failed: the target is unknown, the arguments are invalid for
   # it, or the job aborted. name: the target as given; result: the Result
   # of an aborted job, else nil. The original error is the cause.
