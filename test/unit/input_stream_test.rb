@@ -95,6 +95,17 @@ class InputStreamTest < Minitest::Test
     assert_equal ["1\n", "23\n", "#{long}\n", "4"], lines
   end
 
+  # Each block is searched for "\n" once: a line of 32 MB takes far less
+  # than a second (searching the whole buffer after every block took two).
+  def test_a_very_long_line_is_read_in_linear_time
+    blocks = Array.new(512) { ("x" * Stream::BLOCK).b }
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    sizes = Stream.new(Blocks.new(*blocks, "\n".b)).each_line.map(&:bytesize)
+
+    assert_equal [(512 * Stream::BLOCK) + 1], sizes
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 0.5
+  end
+
   def test_each_line_without_a_block_is_an_enumerator
     assert_instance_of Enumerator, stream("a\n").each_line
   end
