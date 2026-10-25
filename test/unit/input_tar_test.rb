@@ -115,6 +115,35 @@ class InputTarTest < Minitest::Test
     assert_match(/\A#{Regexp.escape(path)}: broken gzip data/, error.message)
   end
 
+  # A changed name keeps an octal checksum field, but not the right sum.
+  def test_a_wrong_header_checksum_raises
+    archive = tar("a.txt" => "a")
+    archive.setbyte(0, "b".ord)
+    path = write("badsum.tar", archive)
+    error = assert_raises(Metacrunch::InputError) { documents(path) }
+
+    assert_equal "#{path}: broken tar archive (wrong header checksum)", error.message
+  end
+
+  def test_headers_with_the_signed_checksum_of_old_tars_are_read
+    archive = tar("é.txt" => "a")
+    bytes = archive.byteslice(0, 512).bytes
+    bytes[148, 8] = Array.new(8, 32)
+    archive[148, 8] = format("%06o\0 ", bytes.sum { it > 127 ? it - 256 : it })
+    path = write("signed.tar", archive)
+
+    assert_equal [["#{path}:é.txt", "a"]], documents(path)
+  end
+
+  def test_a_nul_in_a_member_name_raises
+    data = "1\n"
+    header = Gem::Package::TarHeader.new(name: "a\0b.jsonl", mode: 0o644, size: data.bytesize, prefix: "", mtime: 0)
+    path = write("nul.tar", header.to_s + data.ljust(512, "\0") + ("\0" * 1024))
+    error = assert_raises(Metacrunch::InputError) { documents(path) }
+
+    assert_equal "#{path}: broken tar archive (a member name contains a NUL byte)", error.message
+  end
+
   def test_tar_counts_as_a_layer
     data = tar("a" => Zlib.gzip(Zlib.gzip(Zlib.gzip(Zlib.gzip("x")))))
     path = write("deep.tar", data)

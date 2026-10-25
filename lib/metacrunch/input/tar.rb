@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rubygems/package"
+require "stringio"
 
 module Metacrunch
   class Input
@@ -9,6 +10,9 @@ module Metacrunch
     # that ends inside a 512-byte block or inside a member's data is broken.
     # Internal.
     class Tar
+
+      BLOCK = 512
+      CHECKSUM = (148...156)
 
       def self.broken(name, reason) = InputError.new("#{name}: broken tar archive (#{reason})")
 
@@ -42,16 +46,30 @@ module Metacrunch
 
       def next_header
         check_blocks
-        header = Gem::Package::TarHeader.from(@blocks)
+        raw = @blocks.read(BLOCK)
         check_blocks
+        header = Gem::Package::TarHeader.from(StringIO.new(raw))
+        check_sum(raw, header) unless header.empty?
         header
       rescue Gem::Package::TarInvalidError, ArgumentError => e
-        check_blocks
         raise Tar.broken(@name, e.message)
       end
 
+      # RubyGems parses the checksum field but does not check it. The sum
+      # counts the field as spaces; old tars summed signed bytes.
+      def check_sum(raw, header)
+        bytes = raw.bytes
+        bytes[CHECKSUM] = Array.new(CHECKSUM.size, 32)
+        return if [bytes.sum, bytes.sum { it > 127 ? it - 256 : it }].include?(header.checksum)
+
+        raise Tar.broken(@name, "wrong header checksum")
+      end
+
       def full_name(entry)
-        entry.full_name
+        name = entry.full_name
+        raise Tar.broken(@name, "a member name contains a NUL byte") if name.include?("\0")
+
+        name
       rescue Gem::Package::TarInvalidError => e
         raise Tar.broken(@name, e.message)
       end
