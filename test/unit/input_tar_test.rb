@@ -95,6 +95,26 @@ class InputTarTest < Minitest::Test
     assert_match(/\A#{Regexp.escape(path)}: broken tar archive \(.*octal.*\)\z/, error.message)
   end
 
+  # gzip checks its CRC and length at its end, behind the end of the tar
+  # archive; stored blocks keep the flipped byte from breaking the deflate
+  # data first.
+  def test_a_tar_gz_with_a_wrong_checksum_raises
+    archive = Zlib.gzip(tar("a.bin" => Random.new(3).bytes(100_000)), level: 0)
+    archive.setbyte(archive.bytesize / 2, archive.getbyte(archive.bytesize / 2) ^ 1)
+    path = write("corrupt.tgz", archive)
+    error = assert_raises(Metacrunch::InputError) { documents(path) }
+
+    assert_match(/\A#{Regexp.escape(path)}: broken gzip data \(.*crc/, error.message)
+  end
+
+  def test_a_tar_gz_without_its_footer_raises
+    archive = Zlib.gzip(tar("a.bin" => Random.new(3).bytes(100_000)))
+    path = write("cut.tgz", archive.byteslice(0, archive.bytesize - 4))
+    error = assert_raises(Metacrunch::InputError) { documents(path) }
+
+    assert_match(/\A#{Regexp.escape(path)}: broken gzip data/, error.message)
+  end
+
   def test_tar_counts_as_a_layer
     data = tar("a" => Zlib.gzip(Zlib.gzip(Zlib.gzip(Zlib.gzip("x")))))
     path = write("deep.tar", data)
