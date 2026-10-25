@@ -171,6 +171,25 @@ class WriterTest < Minitest::Test
     assert_raises(SignalException) { writer.close }
   end
 
+  def test_close_after_a_failed_open_writes_nothing
+    path = File.join(@dir, "missing", "out.xml")
+    writer = Writer.new(path)
+
+    assert_raises(Metacrunch::OutputError) { writer.open(nil) }
+    assert_nil writer.close
+    refute_path_exists path
+  end
+
+  def test_rejects_invalid_targets
+    assert_raises(ArgumentError) { Writer.new(42) }
+  end
+
+  def test_refuses_names_it_cannot_write
+    error = assert_raises(Metacrunch::OutputError) { open_writer(File.join(@dir, "out.xml.zst")) }
+
+    assert_match(/cannot write zstd/, error.message)
+  end
+
   private
 
   def record = Marcxml::Record.new(fields: [Marcxml::ControlField.new("001", "1")])

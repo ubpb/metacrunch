@@ -155,13 +155,15 @@ records out of the wrapper first.
 source Metacrunch::Marcxml::Reader.new(params.files, normalize: :nfc), id: ->(record) { record["001"]&.value }
 ```
 
-Reads one target or an Array of them: paths (`.xml`, `.gz` with all its members as `zcat` reads them, `.tar`,
-`.tar.gz`, `.tgz`; every file in an archive is read as MARCXML), `"-"` for stdin, or IOs, which it does not close. A record that is not well-formed becomes a
-`Metacrunch::InvalidRecord` and fails under the job's error policy; the records after it are read. A file that starts
-like gzip is read as gzip whatever its name; a file that does not start like XML stops the run. So does a record
-that the end of a file cuts off, e.g. after an interrupted download. An error of a whole
-input (a missing file, a broken gzip file) stops the run. The progress display shows how much of the files has been
-read.
+Reads what `Metacrunch::Input` reads (see metacrunch's
+[Files](https://github.com/ubpb/metacrunch/blob/metacrunch-ng/docs/files.md)): one target or an Array of them —
+paths, `"-"` for stdin, or IOs, which it does not close. gzip (all members, as `zcat` reads them) and tar archives
+(every regular member, but not those whose names start with `.`) are detected by their content, whatever their names.
+A record that is not well-formed becomes a `Metacrunch::InvalidRecord` and fails under the job's failure policy; the
+records after it are read. A document that does not start like XML stops the run with `Metacrunch::InputError`, and
+so does a record that the end of a file cuts off, e.g. after an interrupted download. Errors of a whole input (a
+missing file, broken or truncated gzip or tar data) stop the run with `Metacrunch::InputError` and the file name. The
+progress display shows how much of the files has been read.
 
 ### Writer
 
@@ -172,7 +174,7 @@ sink Metacrunch::Marcxml::Writer.new(params.output)   # a path (".gz" compresses
 Writes one `<collection>` with a `<record>` per record; records are `Record`s or record XML as a String (see Workers). The closing tag is written also when a run aborts, so the file
 stays well-formed. A value set in a step with a character that XML 1.0 cannot represent (a control character other
 than tab and line breaks) stops the run with the record's position; records read with such a character are already
-`InvalidRecord`s.
+`InvalidRecord`s. Names ending with `.zst`, `.bz2`, `.xz`, `.zip` or `.tar` are refused; see `Metacrunch::Output`.
 
 ### Workers
 
