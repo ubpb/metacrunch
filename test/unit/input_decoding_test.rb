@@ -122,6 +122,34 @@ class InputDecodingTest < Minitest::Test
     assert_equal "", content(write("empty.gz", gzip("")))
   end
 
+  # Detection must not wait for 262 bytes when a "\n" in a tar header's name
+  # field already rules tar out: a slow producer's first record comes at once.
+  def test_the_first_line_of_a_slow_pipe_arrives_at_once
+    reader, writer = IO.pipe
+    writer.write("1\n")
+    lines = Queue.new
+    thread = Thread.new { Input.new(reader).each_document { |stream, _name| stream.each_line { lines << it } } }
+    first = lines.pop(timeout: 2)
+    writer.close
+    thread.join
+
+    assert_equal "1\n", first
+  ensure
+    [reader, writer].each { it&.close unless it&.closed? }
+  end
+
+  def test_a_slow_pipe_with_gzip_or_a_short_head
+    assert_equal :gzip, Formats.detect("\x1F\x8B\x08".b, complete: false)
+    assert_nil Formats.detect("\x1F".b, complete: false)
+    assert_nil Formats.detect("BZh9".b, complete: false)
+  end
+
+  def test_tar_is_awaited_until_a_newline_rules_it_out
+    assert_nil Formats.detect("records/a.jsonl".b, complete: false)
+    assert_equal :plain, Formats.detect("{\"a\":1}\n".b, complete: false)
+    assert_equal :plain, Formats.detect("records/a.jsonl".b, complete: true)
+  end
+
   def test_progress_of_gzip_is_the_compressed_position
     input = Input.new(write("random.gz", gzip(Random.new(2).bytes(4 * Input::Stream::BLOCK))))
     values = []

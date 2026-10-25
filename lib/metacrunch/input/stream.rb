@@ -80,6 +80,16 @@ module Metacrunch
         @buffer.empty?
       end
 
+      # Internal: up to length bytes ahead, after reading one more block if
+      # fewer are buffered, and whether that is all of them (length bytes,
+      # or the end). Detection asks again until it can decide, so it never
+      # waits for more than one block of a slow pipe.
+      def lookahead(length)
+        check_open
+        @buffer << next_block if @buffer.bytesize < length && !@eof
+        [@buffer.byteslice(0, length), @buffer.bytesize >= length || @eof]
+      end
+
       # Internal: puts bytes back in front of the buffer (the rest that a
       # gzip member did not use).
       def unread(bytes)
