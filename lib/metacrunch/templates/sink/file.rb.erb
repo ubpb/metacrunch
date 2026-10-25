@@ -1,22 +1,22 @@
 # frozen_string_literal: true
 
 require "json"
+require "metacrunch"
 
-# A sink: writes each record as a line of JSON into a file. In a job:
+# A sink: writes each record as a line of JSON to its target: a path, "-"
+# for stdout or an IO; a path ending with .gz is compressed. In a job:
 #   sink <%= target.constant %>.new(params.output)
 class <%= target.class_name %>
 
-  def initialize(path)
-    @path = path
+  def initialize(target)
+    @output = ::Metacrunch::Output.new(target)
   end
 
   # Called once before the first record.
-  def open(_context)
-    @file = ::File.open(@path, "w")
-  end
+  def open(_context) = @output.open
 
   def write(record)
-    @file.puts(::JSON.generate(record))
+    @output.write("#{::JSON.generate(record)}\n")
   end
 
   # Optional: with `sink <%= target.constant %>.new(...), batch: 1000` the
@@ -24,8 +24,6 @@ class <%= target.class_name %>
   # def write_batch(records) = records.each { write(it) }
 
   # Called at the end, also after an error.
-  def close
-    @file&.close
-  end
+  def close = @output.close
 
 end

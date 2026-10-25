@@ -1,13 +1,16 @@
 # frozen_string_literal: true
 
-# A source: yields a record for each line of a file. The file is read in
-# each, not in new, so that --help, check and tests with another source
-# read nothing. In a job:
+require "metacrunch"
+
+# A source: yields a record for each line of its targets: paths, "-" for
+# stdin, IOs or an Array of them; gzip and tar are unpacked. The targets
+# are read in each, not in new, so that --help, check and tests with
+# another source read nothing. In a job:
 #   source <%= target.constant %>.new(params.input)
 class <%= target.class_name %>
 
-  def initialize(path)
-    @path = path
+  def initialize(targets)
+    @input = ::Metacrunch::Input.new(targets)
   end
 
   # Optional: called once before the first record, with context.params
@@ -15,8 +18,13 @@ class <%= target.class_name %>
   # def open(context) = nil
 
   def each
-    ::File.foreach(@path, chomp: true) { |line| yield({"line" => line}) }
+    @input.each_document do |stream, _name|
+      stream.each_line { |line| yield({"line" => line.chomp.force_encoding(Encoding::UTF_8)}) }
+    end
   end
+
+  # Optional: the share of the input read so far, for the progress display.
+  def progress = @input.progress
 
   # Optional: called at the end, also after an error.
   # def close = nil
