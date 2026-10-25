@@ -50,16 +50,20 @@ module Metacrunch
     end
 
     # Closes an own file, flushes an IO from outside. Does nothing before
-    # open and the second time.
+    # open and the second time. Returns nil.
     def close
       io = @io
       file = @file
       @io = nil
       @file = nil
       return unless io
-      return discard(io, file) if @broken
 
-      guard { file ? io.close : flush(io) }
+      if @broken
+        discard(io, file)
+      else
+        guard { file ? io.close : flush(io) }
+      end
+      nil
     ensure
       discard(io, file) if file && !file.closed?
     end
@@ -105,16 +109,16 @@ module Metacrunch
       raise OutputError, "#{@name}: #{Files.reason(e)}"
     end
 
-    # Closes an own file whose buffer can no longer be written.
+    # Closes an own file whose buffer can no longer be written. Errors are
+    # dropped: the run already ends with the error that came first.
     def discard(io, file)
       return unless file
 
-      begin
-        io.close unless io.closed?
-      rescue Errno::EPIPE, IOError, Zlib::Error
+      [io, file].each do |closable|
+        closable.close unless closable.closed?
+      rescue SystemCallError, IOError, Zlib::Error
         nil
       end
-      file.close unless file.closed?
     end
 
   end

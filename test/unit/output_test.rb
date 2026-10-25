@@ -141,6 +141,28 @@ class OutputTest < Minitest::Test
     assert(ObjectSpace.each_object(File).none? { it.path == fifo && !it.closed? })
   end
 
+  def test_close_returns_nil_also_for_ios_from_outside
+    output = Output.new(StringIO.new).open
+    output.write("a\n")
+
+    assert_nil output.close
+  end
+
+  # The disk fills up while the gzip trailer is written; the file then fails
+  # to close as well. The run sees one OutputError, not a bare Errno.
+  def test_a_full_disk_while_closing_an_own_gzip_file
+    path = File.join(@dir, "out.jsonl.gz")
+    output = Output.new(path).open
+    file = output.instance_variable_get(:@file)
+    file.define_singleton_method(:write) { |*| raise Errno::ENOSPC }
+    file.define_singleton_method(:close) { raise Errno::ENOSPC }
+    error = assert_raises(Metacrunch::OutputError) { output.close }
+
+    assert_equal "#{path}: no space left on device", error.message
+  ensure
+    IO.instance_method(:close).bind_call(file) if file && !file.closed?
+  end
+
   def test_close_before_open_and_twice_does_nothing
     output = Output.new(StringIO.new).open
     output.close
