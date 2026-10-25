@@ -28,7 +28,8 @@ module Metacrunch
         parser.on("--[no-]progress", "Show progress on stderr (default: if stderr is a terminal)") { @progress = it }
         parser.separator("")
         parser.separator("For jobs and transforms only:")
-        parser.on("-i", "--input PATH", "Read JSON Lines from PATH (- for stdin) instead of the job's source") do |path|
+        parser.on("-i", "--input PATH", "Read JSON Lines from PATH (- for stdin) instead of the job's source",
+                  "(gzip and tar are unpacked)") do |path|
           @options[:input] = path
         end
         parser.on("-o", "--output PATH", "Write JSON Lines to PATH (- for stdout) instead of the job's sink") do |path|
@@ -134,7 +135,7 @@ module Metacrunch
       def write_stats(path, result)
         error = result.error && {"class" => result.error.class.name, "message" => result.error.message}
         json = JSON.pretty_generate({"status" => result.status, "error" => error, "stats" => result.stats.to_h})
-        path == JsonLines::STDIO ? @stdout.puts(json) : File.write(path, "#{json}\n")
+        path == STDIO ? @stdout.puts(json) : File.write(path, "#{json}\n")
       end
 
     end

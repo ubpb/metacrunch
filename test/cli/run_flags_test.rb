@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "rubygems/package"
 require "tmpdir"
+require "zlib"
 
 class RunFlagsTest < Minitest::Test
 
@@ -23,6 +25,44 @@ class RunFlagsTest < Minitest::Test
 
     assert_equal [0, ""], [code, stdout]
     assert_equal "1\n2\n", File.read(output)
+  end
+
+  def test_input_reads_tar_gz_archives
+    io = StringIO.new(+"", "wb")
+    Gem::Package::TarWriter.new(io) do |tar|
+      {"a.jsonl" => "1\n2\n", "b.jsonl" => "3\n"}.each do |name, content|
+        tar.add_file_simple(name, 0o644, content.bytesize) { it.write(content) }
+      end
+    end
+    input = File.join(@dir, "dump.tar.gz")
+    File.binwrite(input, Zlib.gzip(io.string))
+
+    assert_equal [0, "2\n4\n6\n"], cli("run", "-i", input, job("double.rb")).take(2)
+  end
+
+  def test_gzip_piped_into_stdin
+    assert_equal [0, "2\n4\n"], cli("run", "-i", "-", job("double.rb"), stdin: Zlib.gzip("1\n2\n")).take(2)
+    assert_equal [0, "2\n4\n"], cli("run", job("double.rb"), stdin: Zlib.gzip("1\n2\n")).take(2)
+  end
+
+  def test_empty_input_gives_no_records
+    empty = File.join(@dir, "empty.jsonl.gz")
+    File.binwrite(empty, Zlib.gzip(""))
+
+    assert_equal [0, ""], cli("run", job("double.rb"), stdin: "").take(2)
+    assert_equal [0, ""], cli("run", "-i", empty, job("double.rb")).take(2)
+  end
+
+  def test_a_missing_input_file_ends_the_run
+    missing = File.join(@dir, "missing.jsonl")
+    code, stdout, stderr = cli("run", "-i", missing, job("double.rb"))
+
+    assert_equal [1, ""], [code, stdout]
+    assert_includes stderr, "ERROR Metacrunch::InputError: #{missing}: no such file"
+  end
+
+  def test_the_help_of_input_names_gzip_and_tar
+    assert_includes cli("help", "run")[1], "(gzip and tar are unpacked)"
   end
 
   def test_rejects_and_failures_files_get_the_context

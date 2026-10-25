@@ -27,13 +27,13 @@ module Metacrunch
     # True if records (the output, rejects or failures) are written to
     # stdout.
     def records_to_stdout?(pipeline)
-      [output, rejects, failures].include?(JsonLines::STDIO) || (output.nil? && pipeline.sink.nil?)
+      [output, rejects, failures].include?(STDIO) || (output.nil? && pipeline.sink.nil?)
     end
 
     # Only the input: -i, or JSON Lines from stdin for a job without
     # source (the filter default).
     def apply_input(pipeline, stdin:)
-      return pipeline.with(source: JsonLines::Reader.new(input == JsonLines::STDIO ? stdin : input)) if input
+      return pipeline.with(source: JsonLines::Reader.new(input == STDIO ? stdin : input)) if input
       return pipeline if pipeline.source
       raise NoInputError if stdin.tty?
 
@@ -59,12 +59,12 @@ module Metacrunch
       }
     end
 
-    def target(path, stdout) = path == JsonLines::STDIO ? stdout : path
+    def target(path, stdout) = path == STDIO ? stdout : path
 
     # Identifies a file across spellings and symlinks: existing files by
     # their real path, new ones by their real directory.
     def key(path)
-      return path if path == JsonLines::STDIO
+      return path if path == STDIO
 
       expanded = File.expand_path(path)
       return File.realpath(expanded) if File.exist?(expanded)
@@ -93,12 +93,12 @@ module Metacrunch
     # writer and count as one. A job without sink uses stdout for its
     # records unless -o is given.
     def check_stdout!(pipeline)
-      options = if rejects == JsonLines::STDIO && failures == JsonLines::STDIO
+      options = if rejects == STDIO && failures == STDIO
         {"--output" => output, "--rejects/--failures" => rejects, "--stats" => stats}
       else
         {"--output" => output, "--rejects" => rejects, "--failures" => failures, "--stats" => stats}
       end
-      users = options.select { |_option, path| path == JsonLines::STDIO }.keys
+      users = options.select { |_option, path| path == STDIO }.keys
       users.unshift("the default output (the job has no sink)") if output.nil? && pipeline.sink.nil?
       return if users.size < 2
 
@@ -110,7 +110,7 @@ module Metacrunch
     def check_directories!
       paths = {"--output" => output, "--rejects" => rejects, "--failures" => failures, "--stats" => stats}
       paths.each do |option, path|
-        next if path.nil? || path == JsonLines::STDIO
+        next if path.nil? || path == STDIO
 
         directory = File.dirname(File.expand_path(path))
         raise UsageError, "#{option}: directory does not exist: #{directory}" unless File.directory?(directory)
@@ -122,7 +122,7 @@ module Metacrunch
     def check_files!
       options = {"--input" => input, "--output" => output, "--rejects" => rejects, "--failures" => failures,
                  "--stats" => stats}
-      files = options.reject { |_option, path| path.nil? || path == JsonLines::STDIO }
+      files = options.reject { |_option, path| path.nil? || path == STDIO }
       files.to_a.combination(2).each do |(first, first_path), (second, second_path)|
         next if [first, second] == ["--rejects", "--failures"]
         next unless same_file?(first_path, second_path)

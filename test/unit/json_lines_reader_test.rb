@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "rubygems/package"
 require "tmpdir"
 
 class JsonLinesReaderTest < Minitest::Test
@@ -67,7 +68,7 @@ class JsonLinesReaderTest < Minitest::Test
   end
 
   def test_progress_grows_while_reading
-    reader = Reader.new(write("big.jsonl", "\"#{"x" * 10}\"\n" * 3000))
+    reader = Reader.new(write("big.jsonl", "\"#{"x" * 10}\"\n" * 30_000))
     values = reader.enum_for(:each).map { reader.progress }
 
     assert(values.any? { it.positive? && it < 1.0 })
@@ -105,6 +106,43 @@ class JsonLinesReaderTest < Minitest::Test
     assert_equal [1], read(Reader.new("-"))
   ensure
     $stdin = original
+  end
+
+  def test_reads_arrays_of_targets
+    assert_equal [1, 2, 3], read(Reader.new([write("a.jsonl", "1\n2\n"), StringIO.new("3\n")]))
+  end
+
+  def test_reads_tar_archives_and_gzip_whatever_the_name
+    io = StringIO.new(+"", "wb")
+    Gem::Package::TarWriter.new(io) do |tar|
+      {"a.jsonl" => "1\n", "b.jsonl.gz" => gzip("2\n")}.each do |name, content|
+        tar.add_file_simple(name, 0o644, content.bytesize) { it.write(content) }
+      end
+    end
+    path = File.join(@dir, "records.data")
+    File.binwrite(path, gzip(io.string))
+
+    assert_equal [1, 2], read(Reader.new(path))
+  end
+
+  def test_reads_gzip_from_stdin
+    original = $stdin
+    $stdin = StringIO.new(gzip("1\n2\n"))
+
+    assert_equal [1, 2], read(Reader.new("-"))
+  ensure
+    $stdin = original
+  end
+
+  def test_each_without_a_block_is_an_enumerator
+    assert_equal [1, 2], Reader.new(StringIO.new("1\n2\n")).each.to_a
+  end
+
+  def test_a_missing_file_raises_an_input_error
+    path = File.join(@dir, "missing.jsonl")
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
+
+    assert_equal "#{path}: no such file", error.message
   end
 
   def test_breaking_out_closes_the_file
