@@ -61,8 +61,9 @@ class ReaderTest < Minitest::Test
 
   def test_garbage_after_gzip_data_raises
     path = write("garbage.xml.gz", "#{Zlib.gzip(fixture("collection.xml"))}garbage")
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
 
-    assert_raises(Zlib::GzipFile::Error) { read(Reader.new(path)) }
+    assert_equal "#{path}: data after the end of the gzip data", error.message
   end
 
   def test_reads_gzip_whatever_the_name
@@ -73,9 +74,9 @@ class ReaderTest < Minitest::Test
 
   def test_a_file_that_is_not_xml_raises
     path = write("data.json", %({"id": 1}\n))
-    error = assert_raises(Metacrunch::Error) { read(Reader.new(path)) }
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
 
-    assert_equal %(#{path} is not XML: it starts with "{\\"id\\": 1}\\n"), error.message
+    assert_equal %(#{path}: is not XML: it starts with "{\\"id\\": 1}\\n"), error.message
   end
 
   def test_xml_after_a_byte_order_mark_and_whitespace
@@ -85,7 +86,15 @@ class ReaderTest < Minitest::Test
   end
 
   def test_a_broken_tar_gz_raises
-    assert_raises(Zlib::GzipFile::Error) { read(Reader.new(write("broken.tar.gz", "not gzip"))) }
+    path = write("broken.tar.gz", Zlib.gzip(tar("a.xml" => fixture("collection.xml"))).byteslice(0, 40))
+
+    assert_match(/broken gzip data/, assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }.message)
+  end
+
+  def test_a_file_named_gz_that_is_not_gzip_is_checked_as_xml
+    path = write("plain.gz", "not gzip")
+
+    assert_match(/: is not XML/, assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }.message)
   end
 
   def test_stopping_inside_a_gzip_file
@@ -171,12 +180,12 @@ class ReaderTest < Minitest::Test
   end
 
   def test_progress
-    records = Array.new(600) { %(<record><controlfield tag="001">#{it}</controlfield></record>) }
+    records = Array.new(3000) { %(<record><controlfield tag="001">#{it}</controlfield></record>) }
     reader = Reader.new(write("many.xml", "<collection>#{records.join("\n")}</collection>"))
     progress = reader.enum_for(:each).map { reader.progress }
 
     assert_equal progress.sort, progress
-    assert_in_delta 0.0, progress.first
+    assert(progress.any? { it.positive? && it < 1.0 })
     assert_in_delta 1.0, reader.progress
   end
 
@@ -217,9 +226,48 @@ class ReaderTest < Minitest::Test
     assert_empty(ObjectSpace.each_object(File).select { !it.closed? && it.path == path })
   end
 
-  def test_missing_files_and_broken_gzip_raise
-    assert_raises(Errno::ENOENT) { read(Reader.new(File.join(@dir, "missing.xml"))) }
-    assert_raises(Zlib::GzipFile::Error) { read(Reader.new(write("broken.gz", "not gzip"))) }
+  def test_a_missing_file_raises
+    missing = File.join(@dir, "missing.xml")
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(missing)) }
+
+    assert_equal "#{missing}: no such file", error.message
+  end
+
+  def test_broken_gzip_raises
+    broken = write("broken.gz", Zlib.gzip(fixture("collection.xml")).byteslice(0, 30))
+
+    assert_match(/broken gzip data/, assert_raises(Metacrunch::InputError) { read(Reader.new(broken)) }.message)
+  end
+
+  def test_reads_tar_archives_whatever_the_name
+    path = write("records.dat", tar("a.xml.gz" => Zlib.gzip(fixture("collection.xml"))))
+
+    assert_equal IDS, ids(read(Reader.new(path)))
+  end
+
+  def test_skips_members_whose_names_start_with_a_dot
+    hidden = %(<record><controlfield tag="001">hidden-1</controlfield></record>)
+    archive = tar("._a.xml" => hidden, "a.xml" => fixture("collection.xml"))
+
+    assert_equal IDS, ids(read(Reader.new(write("mac.tar", archive))))
+  end
+
+  def test_a_truncated_tar_raises
+    archive = tar("a.xml" => fixture("collection.xml"))
+    path = write("cut.tar", archive.byteslice(0, 2048))
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
+
+    assert_match(/broken tar archive \(ends inside the member's data\)/, error.message)
+  end
+
+  def test_checks_xml_on_stdin_too
+    stdin = $stdin
+    $stdin = StringIO.new(%({"id": 1}\n))
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new("-")) }
+
+    assert_match(/\A-: is not XML/, error.message)
+  ensure
+    $stdin = stdin
   end
 
   private
