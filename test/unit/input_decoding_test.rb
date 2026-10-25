@@ -115,11 +115,43 @@ class InputDecodingTest < Minitest::Test
     end
   end
 
-  def test_stdin_and_ios_name_file_in_the_hint
+  def test_the_hint_quotes_the_path
+    path = write("my dump.jsonl.zst", "\x28\xB5\x2F\xFDdata".b)
+    error = assert_raises(Metacrunch::InputError) { documents(path) }
+
+    assert error.message.end_with?("e.g. zstd -dc #{path.gsub(" ", "\\ ")} | metacrunch run job.rb -i -")
+  end
+
+  def test_stdin_gets_a_hint_for_its_pipe
+    original = $stdin
+    $stdin = StringIO.new("\x28\xB5\x2F\xFDdata".b)
+    error = assert_raises(Metacrunch::InputError) { documents("-") }
+
+    assert_equal "-: is zstd compressed, which metacrunch cannot read; decompress it first, " \
+                 "e.g. ... | zstd -dc | metacrunch run job.rb -i -", error.message
+  ensure
+    $stdin = original
+  end
+
+  def test_ios_get_a_general_hint
     error = assert_raises(Metacrunch::InputError) { documents(StringIO.new("\x28\xB5\x2F\xFDdata".b)) }
 
-    assert_equal "StringIO: is zstd compressed, which metacrunch cannot read; decompress it first, " \
-                 "e.g. zstd -dc FILE | metacrunch run job.rb -i -", error.message
+    assert_equal "StringIO: is zstd compressed, which metacrunch cannot read; decompress it first, e.g. with zstd -dc",
+                 error.message
+  end
+
+  # Inside gzip or tar there is no file to name: a command on the outer file
+  # would decompress the wrong layer.
+  def test_nested_documents_get_a_general_hint
+    zstd = "\x28\xB5\x2F\xFDdata".b
+    io = StringIO.new(+"", "wb")
+    Gem::Package::TarWriter.new(io) { |tar| tar.add_file_simple("a.zst", 0o644, zstd.bytesize) { it.write(zstd) } }
+    gzip_path = write("dump.gz", gzip(zstd))
+    tar_path = write("dump.tar", io.string)
+    hint = "is zstd compressed, which metacrunch cannot read; decompress it first, e.g. with zstd -dc"
+
+    assert_equal "#{gzip_path}: #{hint}", input_error(gzip_path)
+    assert_equal "#{tar_path}:a.zst: #{hint}", input_error(tar_path)
   end
 
   def test_text_that_looks_a_little_like_a_magic_number_is_plain
@@ -198,6 +230,8 @@ class InputDecodingTest < Minitest::Test
   end
 
   def content(path) = documents(path).map(&:last).join
+
+  def input_error(target) = assert_raises(Metacrunch::InputError) { documents(target) }.message
 
   def write(name, content)
     path = File.join(@dir, name)

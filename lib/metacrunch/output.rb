@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "shellwords"
 require "zlib"
 
 module Metacrunch
@@ -91,7 +92,7 @@ module Metacrunch
       return unless format
 
       raise OutputError, "#{@name}: metacrunch cannot write #{format}; write plain output and compress it, " \
-                         "e.g. metacrunch run job.rb | #{command.sub("PATH", @target)}"
+                         "e.g. metacrunch run job.rb | #{command.sub("PATH", Shellwords.escape(@target))}"
     end
 
     def flush(io)

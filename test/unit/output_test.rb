@@ -97,6 +97,13 @@ class OutputTest < Minitest::Test
     end
   end
 
+  def test_the_hint_for_a_refused_name_quotes_the_path
+    path = File.join(@dir, "my out.jsonl.zst")
+    error = assert_raises(Metacrunch::OutputError) { Output.new(path).open }
+
+    assert error.message.end_with?("| zstd > #{path.gsub(" ", "\\ ")}")
+  end
+
   def test_dash_is_the_stdout_of_open
     stdout, = capture_io { write_all("-", "a\n") }
 
