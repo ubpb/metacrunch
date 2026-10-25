@@ -1,18 +1,15 @@
 # frozen_string_literal: true
 
 require "metacrunch"
-require "zlib"
 
 module Metacrunch
   module Marcxml
-    # A metacrunch sink: writes Records as one MARCXML <collection> to a
-    # file (.gz compressed), stdout ("-") or an IO. close writes the end of
-    # the collection, also after an aborted run, so the output stays
-    # well-formed.
+    # A metacrunch sink: writes Records as one MARCXML <collection> to what
+    # Metacrunch::Output takes: a file (.gz compressed), stdout ("-") or an
+    # IO. close writes the end of the collection, also after an aborted run,
+    # so the output stays well-formed.
     class Writer
 
-      STDIO = "-"
-      GZIP = ".gz"
       HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<collection xmlns=\"#{NAMESPACE}\">\n".freeze
       FOOTER = "</collection>\n"
 
@@ -21,34 +18,33 @@ module Metacrunch
       RECORD_START = %r{\A\s*<(?:[A-Za-z_][\w.-]*:)?record[\s>/]}
 
       def initialize(target)
-        @target = target.is_a?(Pathname) ? target.to_s : target
-        @io = nil
-        @own = false
-        @broken = false
+        @output = Metacrunch::Output.new(target)
+        @open = false
       end
 
       def open(_context)
-        @io, @own = output
-        emit(HEADER)
+        @output.open
+        @open = true
+        @output.write(HEADER)
       end
 
       def write(record, ctx)
-        emit(xml(record, ctx))
+        @output.write(xml(record, ctx))
       end
 
       def write_batch(records, ctxs)
-        emit(records.zip(ctxs).map { |record, ctx| xml(record, ctx) }.join)
+        @output.write(records.zip(ctxs).map { |record, ctx| xml(record, ctx) }.join)
       end
 
+      # Writes the end of the collection, also after an aborted run, and
+      # closes the output. Does nothing the second time.
       def close
-        io = @io
-        @io = nil
-        return unless io
+        return unless @open
 
-        guard { io.write(FOOTER) }
-        guard { @own ? io.close : io.flush }
+        @open = false
+        @output.write(FOOTER)
       ensure
-        discard(io) if @own && io && !io.closed?
+        @output.close
       end
 
       private
@@ -73,37 +69,6 @@ module Metacrunch
         end
 
         xml.end_with?("\n") ? xml : "#{xml}\n"
-      end
-
-      def emit(text)
-        guard { @io.write(text) }
-      end
-
-      # Turns EPIPE into SIGPIPE, once; afterwards nothing is written.
-      def guard
-        return if @broken
-
-        yield
-      rescue Errno::EPIPE
-        @broken = true
-        raise SignalException, "PIPE"
-      end
-
-      # Closes a file after a broken pipe; its buffer can no longer be
-      # written.
-      def discard(io)
-        io.close
-      rescue Errno::EPIPE
-        nil
-      end
-
-      # [io, own]: own IOs are closed, IOs from outside only flushed.
-      def output
-        return [$stdout, false] if @target == STDIO
-        return [@target, false] unless @target.is_a?(String)
-        return [Zlib::GzipWriter.open(@target), true] if @target.end_with?(GZIP)
-
-        [File.open(@target, "w"), true]
       end
 
     end
