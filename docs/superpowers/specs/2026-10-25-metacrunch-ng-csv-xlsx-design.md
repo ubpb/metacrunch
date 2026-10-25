@@ -3,7 +3,7 @@
 - Date: 2026-10-25
 - Branch: `metacrunch-ng-csv-xlsx` of metacrunch (this spec, later the links in the docs); the gems live in two new
   repositories, `metacrunch-csv` and `metacrunch-xlsx`, next to `metacrunch-marcxml`
-- Status: approved design, not implemented
+- Status: approved design, not implemented; amended while planning (see 1.4)
 - Builds on: [sub-project 11 spec](2026-10-25-metacrunch-ng-io-layer-design.md) (`Metacrunch::Input`, `Output`,
   `InputError`, `OutputError`)
 
@@ -64,7 +64,8 @@ Rejected alternatives:
 
 - `Metacrunch::Csv::Reader.new("export.csv", col_sep: ";", encoding: "Windows-1252")` yields Hash records with UTF-8
   String values; `"00123"` stays `"00123"`.
-- Writer → Reader gives back the same records (Strings, `""`, `nil`).
+- Writer → Reader gives back the same records: Strings and `""`; `nil` comes back as `""`, since the writer writes it
+  as an empty field.
 - A report job of the 4.x kind (database rows to XLSX) runs with `Metacrunch::Xlsx::Writer` and `columns:`; the file
   opens in Excel without a repair message, with a frozen, bold, filtered header, text as text and numbers as numbers.
 - 100 000 rows × 10 cells to XLSX in at most 2 s and below 50 MB peak memory.
@@ -95,6 +96,20 @@ Found while writing the spec (Ruby 4.0.7, csv 3.3.6):
 - Ruby's `csv` parses in the source encoding (with separators given in it) but does not transcode values to UTF-8,
   also with `encoding: "Windows-1252:UTF-8"` on an IO. The reader transcodes each value itself (3.5).
 - `CSV#shift` goes on after `CSV::MalformedCSVError`, and `CSV#line` gives the raw line of the row that failed.
+
+Found while planning, with a prototype of both gems (2026-10-25):
+
+- Ruby's `csv` checks every block it reads with `valid_encoding?` and cannot go on after invalid bytes: it raises the
+  same error again on every `shift`. The reader therefore parses UTF-8 and the single-byte encodings as bytes and
+  checks each value itself (3.4, 3.5); in other encodings invalid bytes stop the document.
+- `csv` reads blocks with `gets(separator, 8192)`. Blocks larger than asked for make reading twice as slow. A block that
+  ends inside a character makes valid UTF-16 data fail, as `IO#gets` would never return such a block.
+- The line number of `CSV::InvalidEncodingError` counts `csv`'s blocks, not rows.
+- `csv` accepts a `col_sep` equal to the `quote_char`; `"x".encode("UTF-16")` adds a byte order mark to every string.
+- In Ruby 4.0, `rexml` is a bundled gem: metacrunch-xlsx declares it (and `rubyzip`) for its tests. `roo` does not
+  decode `_xHHHH_`, so the escape is checked in the XML.
+- Measured with the prototype: reading 1 million rows 0.96 times and writing 0.41 times Ruby's `csv`; 100 000 rows ×
+  10 cells to XLSX in 1.1 s with 43 MB.
 
 ## 2. Gems and layout
 
@@ -137,8 +152,9 @@ source Metacrunch::Csv::Reader.new(params.file, headers: false)                 
 `Reader.new(targets, col_sep: ",", quote_char: '"', encoding: "UTF-8", headers: true)`:
 
 - `targets`: what `Metacrunch::Input.new` takes (paths, `"-"`, IOs, Arrays of them; gzip and tar are unpacked).
-- `col_sep`: a non-empty String. `quote_char`: a String of one character. `encoding`: a name Ruby's `Encoding.find`
-  knows. `headers`: `true`, `false`, or a non-empty Array of unique, non-empty Strings.
+- `col_sep`: a non-empty String. `quote_char`: a String of one character other than `col_sep`. Both must exist in the
+  encoding. `encoding`: a name Ruby's `Encoding.find` knows, of an encoding with a byte order (`UTF-16` and `UTF-32`
+  without `LE` or `BE` are refused). `headers`: `true`, `false`, or a non-empty Array of unique, non-empty Strings.
 - `new` checks types and values with `ArgumentError` and touches no file.
 - Every document is read on its own: in a tar archive of CSV files each file has its own header row.
 - `progress` is the input's; `each` without a block returns an Enumerator.
@@ -168,24 +184,29 @@ failure policy decides; reading goes on with the next row:
 | Case | `error` |
 |---|---|
 | Wrong quoting (`2,"bad"quote`) | `CSV::MalformedCSVError` |
-| Bytes that are invalid in the encoding, or a value that has no UTF-8 form | `CSV::InvalidEncodingError` or `Encoding::UndefinedConversionError` |
+| Bytes that are invalid in UTF-8 or a single-byte encoding (ISO-8859-1, Windows-1252, ...), or a value that has no UTF-8 form | `CSV::InvalidEncodingError` or `Encoding::UndefinedConversionError` |
 | More fields than columns (`headers:` `true` or an Array) | `Metacrunch::Csv::ParseError` ("row has 4 fields, the header 3") |
 
 - `raw` is the row as it stands in the file (`CSV#line`), transcoded to UTF-8 where possible, else scrubbed.
 - An unclosed quote takes the rest of the document with it: the rest is one `InvalidRecord`.
+- Invalid bytes in UTF-16, UTF-32 or another multibyte encoding stop the document with a `Metacrunch::InputError`
+  (`data.csv: the data is not valid UTF-16LE`): Ruby's `csv` cannot go on after them.
 - The header row is checked once per document: a duplicate or an empty column name is a `Metacrunch::InputError`,
   e.g. `data.csv: the header row names the column "a" twice`, `data.csv: the header row has an empty column name
-  (column 3)`. Errors of the input itself (a missing file, broken gzip) come from `Input`.
+  (column 3)`; so is a header row that cannot be read (`data.csv: the header row cannot be read (...)`). Errors of the
+  input itself (a missing file, broken gzip) come from `Input`.
 
 ### 3.5 Implementation
 
-- `Metacrunch::Csv::Lines` adapts an `Input::Stream` for `CSV.new`: `gets(nil, limit)` reads up to `limit` bytes and
-  tags them with the source encoding, `eof?` asks the stream, `external_encoding`/`internal_encoding` report the
-  source encoding. Internal.
-- Ruby's `csv` parses in the source encoding, with `col_sep` and `quote_char` encoded into it, and `headers: false`:
-  the reader builds the Hash itself, which gives it the checks of 3.4 and the `""`/`nil` rule of 3.3.
-- For an encoding other than UTF-8 the reader transcodes each value (and the header names) with `encode("UTF-8")`.
-  A value that cannot be transcoded makes its row an `InvalidRecord`.
+- `Metacrunch::Csv::Lines` adapts an `Input::Stream` for `CSV.new`: `gets(separator, limit)` reads up to `limit`
+  bytes, tags them with the encoding `csv` parses in and completes a character split at the end of the block, as
+  `IO#gets` does; `eof?` asks the stream, `external_encoding`/`internal_encoding` report the encoding. Internal.
+- UTF-8 and the single-byte encodings (`Metacrunch::Csv.bytewise?`: no byte of a character looks like ASCII) are
+  parsed as bytes, with `col_sep` and `quote_char` as bytes; the reader checks every value against the encoding and
+  transcodes it to UTF-8. Other encodings are parsed in the encoding, with the separators encoded into it, and every
+  value is transcoded to UTF-8.
+- Ruby's `csv` parses with `headers: false`: the reader builds the Hash itself, which gives it the checks of 3.4 and
+  the `""`/`nil` rule of 3.3. A value that cannot be transcoded makes its row an `InvalidRecord`.
 
 ## 4. The column model (`Columns`, one copy per gem)
 
@@ -236,7 +257,8 @@ sink Metacrunch::Csv::Writer.new(params.output, columns: {"ID" => "id", "Titel" 
 | `nil` | empty |
 | anything else (Time, Date, Array, Hash, other objects) | error: `record at position 7: column "date" is a Time; turn it into a String in a step` |
 
-A character that the target encoding cannot represent is an error with the record's position, not a replacement.
+A character that the target encoding cannot represent is an error with the record's position, not a replacement; so
+is a String that is not valid in its own encoding (`record at position 7: column "title" is not valid UTF-8`).
 
 ## 6. `Metacrunch::Xlsx::Writer`
 
@@ -254,7 +276,8 @@ sink Metacrunch::Xlsx::Writer.new("report.xlsx", columns: {"ID" => "id", "Titel"
 - `sheet:` the worksheet's name: 1 to 31 characters, none of `[ ] : * ? / \`, not starting or ending with `'`;
   `ArgumentError` otherwise.
 - `widths:` column widths in characters: a Hash of header name => width, or an Array by position; widths are
-  positive numbers. A name that is not a column is an error once the columns are known (in `open` with `columns:`,
+  numbers above 0 and up to 255 (Excel's widest column), or `nil` for the default. A name that is not a column is an
+  error once the columns are known (in `open` with `columns:`,
   else at the first record). Without `widths:` Excel's default width applies; fitting widths to the content is not
   possible while streaming.
 
@@ -266,7 +289,7 @@ sink Metacrunch::Xlsx::Writer.new("report.xlsx", columns: {"ID" => "id", "Titel"
 
 | Value | Cell |
 |---|---|
-| `String` | text (inline string); `"00123"` stays text. Text of the form `_xHHHH_` is escaped (`_x005F_xHHHH_`) so that Excel does not read it as a character code. |
+| `String` | text (inline string); `"00123"` stays text. Text of the form `_xHHHH_` is escaped (`_x005F_xHHHH_`) so that Excel does not read it as a character code. A String in another encoding is converted to UTF-8; one that is invalid or has no UTF-8 form is an error. |
 | `Integer` with up to 15 digits, finite `Float` | number |
 | `true`, `false` | boolean |
 | `nil` | empty (no cell is written) |
@@ -291,8 +314,9 @@ Each is an error with the record's position, not a broken file:
 - The worksheet is streamed row by row into the ZIP container (zip_kit's streamer over `Metacrunch::Output`); memory
   stays constant. The autofilter range and the workbook are written in `close`, when the last row is known.
 - `close` finishes the ZIP container also after an aborted run, with the rows written so far, so the file opens; as the
-  marcxml writer writes its `</collection>`.
-- `write_batch` writes the rows of a batch in one piece.
+  marcxml writer writes its `</collection>`. A header row that cannot be written (a control character in a name) and a
+  `widths:` name that is not a column stop the run; `close` then finishes the file without a header.
+- `write_batch` writes the rows one by one into the compressed stream, which buffers them.
 
 ## 7. Errors
 
@@ -300,7 +324,7 @@ Each is an error with the record's position, not a broken file:
 |---|---|---|
 | `new` of reader and writers | `ArgumentError` | invalid options or targets |
 | Reader | `Metacrunch::InvalidRecord` (yielded) | a row: wrong quoting, invalid bytes, no UTF-8 form, too many fields |
-| Reader | `Metacrunch::InputError` | the header row: duplicate or empty names; the input itself (from `Input`) |
+| Reader | `Metacrunch::InputError` | the header row: duplicate or empty names, or not readable; invalid bytes in UTF-16 and other multibyte encodings; the input itself (from `Input`) |
 | Writers | `Metacrunch::Error` | column model (4), values (5.2, 6.2), Excel's limits (6.3), characters the target encoding lacks (5.2) |
 | Writers | `Metacrunch::OutputError`, SIGPIPE | the output itself (from `Output`) |
 
@@ -324,7 +348,8 @@ Each is an error with the record's position, not a broken file:
 ### 8.2 metacrunch-xlsx
 
 - Columns: as in 8.1.
-- Cells read back with `roo` (a development dependency): text, numbers, booleans, empty cells, `"00123"` as text, the
+- Cells read back with `roo` (a development dependency, with `rubyzip` and `rexml`): text, numbers, booleans, empty
+  cells, `"00123"` as text, the
   sheet name, column widths.
 - The XML parts parsed one by one with REXML in strict mode: the frozen pane, the autofilter range, the defined name
   `_xlnm._FilterDatabase`, the bold header style, the `_xHHHH_` escape.
