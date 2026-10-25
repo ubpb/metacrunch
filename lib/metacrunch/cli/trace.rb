@@ -33,7 +33,8 @@ module Metacrunch
         end
         parser.on("--id LIST", Array, "Trace only records with these ids") { @ids = it.uniq }
         parser.on("--full", "Show whole records instead of changes") { @full = true }
-        parser.on("-i", "--input PATH", "Read JSON Lines from PATH (- for stdin) instead of the job's source") do |path|
+        parser.on("-i", "--input PATH", "Read JSON Lines from PATH (- for stdin) instead of the job's source",
+                  "(gzip and tar are unpacked)") do |path|
           @input = path
         end
       end

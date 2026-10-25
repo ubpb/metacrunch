@@ -64,8 +64,9 @@ class TraceCommandTest < Minitest::Test
     assert_match(/--id needs a job whose source has an id extractor/, stderr)
   end
 
+  # The input is larger than the block of 64 KiB the reader reads ahead.
   def test_repeated_positions_are_traced_once_and_stop_the_source
-    input = StringIO.new("1\n" * 100)
+    input = StringIO.new("1\n" * 100_000)
     _code, stdout, = cli("trace", "--position", "2,2", job("double.rb"), stdin: input)
 
     assert_match(/^traced 1 record: /, stdout)

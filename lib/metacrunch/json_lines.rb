@@ -1,17 +1,14 @@
 # frozen_string_literal: true
 
 require "json"
-require "zlib"
 
 module Metacrunch
-  # A source and sinks for JSON Lines: one JSON value per line. Each takes a
-  # path (String or Pathname), "-" for stdin or stdout, or an IO object; IO
-  # objects are never closed. Paths ending in ".gz" are read and written with
-  # gzip.
+  # A source and sinks for JSON Lines: one JSON value per line. The reader
+  # takes what Input takes (paths, "-" for stdin, IOs or an Array of them;
+  # gzip and tar are unpacked whatever their names), the writers what
+  # Output takes (paths, ".gz" compressed, "-" for stdout, IOs). IO objects
+  # are never closed.
   module JsonLines
-
-    STDIO = "-"
-    GZIP = ".gz"
 
     # Source: yields every line parsed with JSON.parse. A line that is not
     # valid JSON (or not valid UTF-8, or has duplicate keys) is yielded as
@@ -19,24 +16,20 @@ module Metacrunch
     # order marks (also of concatenated files) are skipped.
     class Reader
 
-      # How often (in lines) the position in a file is sampled for #progress.
-      PROGRESS_EVERY = 1024
       BOM = "\uFEFF"
       BLANK = Object.new.freeze
       private_constant :BLANK
 
-      def initialize(target)
-        @target = target.is_a?(Pathname) ? target.to_s : target
-        @size = nil
-        @done = 0
+      def initialize(targets)
+        @input = Input.new(targets)
       end
 
+      # Without a block an Enumerator.
       def each
-        with_input do |io, file|
-          lines = 0
-          io.each_line do |line|
-            lines += 1
-            @done = file.pos if file && (lines % PROGRESS_EVERY).zero?
+        return enum_for(:each) unless block_given?
+
+        @input.each_document do |stream, _name|
+          stream.each_line do |line|
             line.force_encoding(Encoding::UTF_8)
             line.delete_prefix!(BOM)
             record = parse(line)
@@ -45,16 +38,8 @@ module Metacrunch
         end
       end
 
-      # The share of the file read so far, from 0.0 to 1.0; nil for stdin,
-      # IO objects and before reading. For gzip files it is the position in
-      # the compressed file.
-      def progress
-        size = @size
-        return unless size
-        return 1.0 if size.zero?
-
-        [@done.fdiv(size), 1.0].min
-      end
+      # The share of the input read so far; see Input#progress.
+      def progress = @input.progress
 
       private
 
@@ -70,82 +55,32 @@ module Metacrunch
         line.b.strip.empty? ? BLANK : InvalidRecord.new(raw: line.chomp, error: e)
       end
 
-      # Yields the IO to read lines from and the File for progress (nil for
-      # stdin, IO objects, pipes and FIFOs, which have no size or position).
-      # Files are closed when each ends, also by break.
-      def with_input
-        return yield($stdin, nil) if @target == STDIO
-        return yield(@target, nil) unless @target.is_a?(String)
-
-        File.open(@target, "rb") do |file|
-          regular = file.stat.file?
-          @size = regular ? file.size : nil
-          @done = 0
-          yield @target.end_with?(GZIP) ? GzipMembers.new(file) : file, regular ? file : nil
-          @done = @size if regular
-        end
-      end
-
     end
-
-    # The lines of all members of a gzip stream, as zcat reads them. Files
-    # written with `cat a.gz b.gz` or `gzip >>` have several members.
-    class GzipMembers
-
-      def initialize(io)
-        @io = io
-      end
-
-      def each_line(&)
-        loop do
-          gzip = Zlib::GzipReader.new(@io)
-          begin
-            gzip.each_line(&)
-            unused = gzip.unused
-          ensure
-            gzip.finish
-          end
-          @io.ungetbyte(unused) if unused
-          break if @io.eof?
-        end
-      end
-
-    end
-    private_constant :GzipMembers
 
     # Sink: writes every record as one line of JSON. Values that are not
     # JSON types (objects, Time, NaN) are refused instead of written as their
-    # to_s. A closed pipe (EPIPE, e.g. `| head`) ends the run like SIGPIPE:
-    # the writer raises SignalException("PIPE") and writes nothing afterwards.
+    # to_s. A closed pipe (e.g. `| head`) ends the run like SIGPIPE; see
+    # Output.
     class Writer
 
       def initialize(target)
-        @target = target.is_a?(Pathname) ? target.to_s : target
-        @io = nil
-        @own = false
-        @broken = false
+        @output = Output.new(target)
       end
 
       def open(_context)
-        @io, @own = output
+        @output.open
       end
 
       def write(record, ctx)
-        emit(line(record, ctx))
+        @output.write(line(record, ctx))
       end
 
       def write_batch(records, ctxs)
-        emit(records.zip(ctxs).map { |record, ctx| line(record, ctx) }.join)
+        @output.write(records.zip(ctxs).map { |record, ctx| line(record, ctx) }.join)
       end
 
       def close
-        io = @io
-        @io = nil
-        return unless io
-
-        guard { @own ? io.close : io.flush }
-      ensure
-        discard(io) if @own && io && !io.closed?
+        @output.close
       end
 
       private
@@ -154,36 +89,6 @@ module Metacrunch
         "#{JSON.generate(record, strict: true)}\n"
       rescue JSON::GeneratorError => e
         raise Error, "record at position #{ctx.position} is not JSON (#{record.class}): #{e.message}"
-      end
-
-      def emit(text)
-        guard { @io.write(text) }
-      end
-
-      # Turns EPIPE into SIGPIPE, once; afterwards nothing is written.
-      def guard
-        return if @broken
-
-        yield
-      rescue Errno::EPIPE
-        @broken = true
-        raise SignalException, "PIPE"
-      end
-
-      # Closes a file after a broken pipe; its buffer can no longer be written.
-      def discard(io)
-        io.close
-      rescue Errno::EPIPE
-        nil
-      end
-
-      # [io, own]: own IOs are closed, IOs from outside only flushed.
-      def output
-        return [$stdout, false] if @target == STDIO
-        return [@target, false] unless @target.is_a?(String)
-        return [Zlib::GzipWriter.open(@target), true] if @target.end_with?(GZIP)
-
-        [File.open(@target, "w"), true]
       end
 
     end
