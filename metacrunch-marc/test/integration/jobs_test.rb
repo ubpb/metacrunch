@@ -36,7 +36,7 @@ class JobsTest < Minitest::Test
       sink Marcxml::Writer.new(output)
     end
 
-    assert_equal :ok, job.run([], workers: 2, logger: Logger.new(nil)).status
+    assert_equal :ok, job.run(workers: 2, logger: Logger.new(nil)).status
     assert_equal Marcxml.each(run_marking_job(workers: nil, parse: true)).to_a, Marcxml.each(File.read(output)).to_a
   end
 
@@ -46,13 +46,13 @@ class JobsTest < Minitest::Test
                      %(<record><controlfield tag="001">2</record></collection>))
     job = Metacrunch.job do
       source Marcxml::Reader.new(path)
-      on_error :skip
+      on_failure :skip
     end
     result = Metacrunch::Testing.run(job)
 
     assert_equal :ok_with_failures, result.status
     assert_equal 1, result.records.size
-    assert_equal "source", result.errors.first.last.step
+    assert_equal "source", result.failures.first.last.step
   end
 
   def test_testing_run_with_parsed_records
@@ -76,7 +76,7 @@ class JobsTest < Minitest::Test
       map { it["001"].value == "article-1" ? raise("broken") : it }
       sink Marcxml::Writer.new(output)
     end
-    result = job.run([], logger: Logger.new(nil))
+    result = job.run(logger: Logger.new(nil))
 
     assert_equal :aborted, result.status
     assert_equal(["book-1"], Marcxml.each(File.read(output)).map { it["001"].value })
@@ -93,7 +93,7 @@ class JobsTest < Minitest::Test
       map(name: "mark") { it.add(Marcxml::DataField.new("999", " ", " ", [["a", "processed"]])) }
       sink Marcxml::Writer.new(output)
     end
-    result = job.run([], workers:, logger: Logger.new(nil))
+    result = job.run(workers:, logger: Logger.new(nil))
 
     assert_equal :ok, result.status, result.error
     File.read(output)
