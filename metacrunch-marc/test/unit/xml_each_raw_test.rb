@@ -5,54 +5,9 @@ require "test_helper"
 class XmlEachRawTest < Minitest::Test
 
   include Fixtures
+  include Inputs
 
   Marc = Metacrunch::Marc
-
-  # Gives the input one byte per call, to cut every tag.
-  class Trickle
-
-    def initialize(string)
-      @bytes = string.b
-      @position = 0
-    end
-
-    def readpartial(_length)
-      raise EOFError if @position >= @bytes.bytesize
-
-      @position += 1
-      @bytes.byteslice(@position - 1, 1)
-    end
-
-  end
-
-  # Gives the input in chunks of a fixed size, whatever is asked for.
-  class Chunked
-
-    def initialize(string, size)
-      @bytes = string.b
-      @size = size
-      @position = 0
-    end
-
-    def readpartial(_length)
-      raise EOFError if @position >= @bytes.bytesize
-
-      @position += @size
-      @bytes.byteslice(@position - @size, @size)
-    end
-
-  end
-
-  # Has only read, as some IO-like objects do.
-  class ReadOnly
-
-    def initialize(string)
-      @io = StringIO.new(string)
-    end
-
-    def read(length) = @io.read(length)
-
-  end
 
   def test_cuts_a_collection_into_records
     xmls = Marc::Xml.each_raw(fixture("collection.xml")).to_a
