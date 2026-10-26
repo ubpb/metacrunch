@@ -101,7 +101,7 @@ class Iso2709ParseTest < Minitest::Test
   def test_a_short_record
     error = assert_raises(Marc::ParseError) { Iso2709.parse("0012\x1D") }
 
-    assert_equal "the record has 5 bytes, fewer than its leader of 24 and the terminator", error.message
+    assert_equal "the record ends inside its leader of 24 bytes", error.message
   end
 
   def test_the_leader_must_be_ascii
@@ -236,6 +236,13 @@ class Iso2709ParseTest < Minitest::Test
     error = assert_raises(Marc::ParseError) { Iso2709.parse(book * 2) }
 
     assert_equal "2 records found where one was expected (use Marc::Iso2709.each)", error.message
+  end
+
+  # E.g. a DOS end-of-file byte.
+  def test_parse_names_bytes_after_the_record
+    error = assert_raises(Marc::ParseError) { Iso2709.parse("#{book}\x1A".b) }
+
+    assert_equal %(bytes after the record that are not a record: "\\x1A"), error.message
   end
 
   def test_parse_skips_line_breaks_around_the_record

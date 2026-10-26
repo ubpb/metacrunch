@@ -34,6 +34,12 @@ class Iso2709EachTest < Minitest::Test
     assert_equal(["1", "2"], Iso2709.each(input).map { it["001"].value })
   end
 
+  def test_skips_record_terminators_without_a_record
+    input = "#{book("1")}\x1D\n\x1D#{book("2")}".b
+
+    assert_equal(["1", "2"], Iso2709.each(input).map { it["001"].value })
+  end
+
   def test_a_record_cut_off_by_the_end_of_the_input
     input = book("1") + book("2").byteslice(0, 30)
 
