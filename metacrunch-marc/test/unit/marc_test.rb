@@ -47,6 +47,15 @@ class MarcTest < Minitest::Test
     assert_equal ["1"], Metacrunch::Marc.parse("\xEF\xBB\xBF\n#{book}".b).values("001")
   end
 
+  # Iso2709.parse does not use the leader's numbers, and neither does
+  # Marc.parse for one record.
+  def test_parse_reads_iso2709_records_with_broken_leader_numbers
+    record = book
+    record[12, 5] = "     "
+
+    assert_equal Metacrunch::Marc::Iso2709.parse(record).fields, Metacrunch::Marc.parse(record).fields
+  end
+
   def test_parse_normalizes
     assert_equal "Müller", Metacrunch::Marc.parse(raw(["001", "Mu\u0308ller"]), normalize: :nfc)["001"].value
   end
@@ -55,6 +64,7 @@ class MarcTest < Minitest::Test
     {
       " \n" => "no record found",
       "id;title\n1;x\n" => %(neither MARCXML, ISO 2709 nor MARC-in-JSON: it starts with "id;title\\n1;x\\n"),
+      "2024;title\n" => %(neither MARCXML, ISO 2709 nor MARC-in-JSON: it starts with "2024;title\\n"),
       %([{"fields": []}]) => %(a record must be a JSON object, got [{"fields" => []}])
     }.each do |string, message|
       error = assert_raises(Metacrunch::Marc::ParseError) { Metacrunch::Marc.parse(string) }

@@ -47,6 +47,8 @@ module Metacrunch
         check_normalize(normalize)
         format, head = Formats.detect { string.byteslice(0, it) }
         raise ParseError, "no record found" if format == :none
+
+        format = :iso2709 if format == :unknown && Formats.iso2709_record?(string)
         raise ParseError, Formats.unknown(head) if format == :unknown
 
         Formats.library(format).parse(string, normalize:)

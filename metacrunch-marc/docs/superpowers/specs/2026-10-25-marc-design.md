@@ -483,7 +483,11 @@ clearly instead of being framed as one large invalid record.
 
 `Metacrunch::Marc.parse(string, normalize: nil)` detects the format of a
 String by the same rule and parses exactly one record with that format's
-`parse`. It raises `ParseError` for a JSON array, for a String without a
+`parse`. A String the rule cannot tell that starts with a digit and ends with
+the record terminator is taken as ISO 2709: one record needs no record length
+or base address, as `Iso2709.parse` does not use them. (Amended after the
+review: otherwise `parse: false` with `Marc.parse` refused records that
+`parse: true` read.) It raises `ParseError` for a JSON array, for a String without a
 record and for one it cannot detect: `neither MARCXML, ISO 2709 nor
 MARC-in-JSON: it starts with "id;title;..."`. It is the parse step for raw
 records in workers (10).

@@ -346,6 +346,14 @@ class ReaderTest < Minitest::Test
     end
   end
 
+  def test_parse_false_with_marc_parse_reads_what_parse_true_reads
+    broken = book("2")
+    broken[12, 5] = "     "
+    path = write("leaders.mrc", book("1") + broken)
+
+    assert_equal ids(read(Reader.new(path))), ids(read(Reader.new(path, parse: false)).map { Marc.parse(it) })
+  end
+
   def test_a_broken_iso2709_record_is_an_invalid_record
     broken = book("2").sub("Title", "Ti\x1Etle")
     items = read(Reader.new(write("broken.mrc", book("1") + broken + book("3"))))
