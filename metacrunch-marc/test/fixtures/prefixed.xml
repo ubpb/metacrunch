@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<marc:collection xmlns:marc="http://www.loc.gov/MARC21/slim">
+  <marc:record>
+    <marc:leader>00000nam a2200000 c 4500</marc:leader>
+    <marc:controlfield tag="001">prefixed-1</marc:controlfield>
+    <marc:datafield tag="245" ind1="0" ind2="0">
+      <marc:subfield code="a">First</marc:subfield>
+    </marc:datafield>
+  </marc:record>
+  <marc:record>
+    <marc:controlfield tag="001">prefixed-2</marc:controlfield>
+  </marc:record>
+</marc:collection>
