@@ -89,6 +89,9 @@ class ParamsFileTest < Minitest::Test
       "production: {api_key: {a: 1}}\n" =>
         "FILE: production.api_key: a value must be text, a list or {credential: PATH}",
       "default: {tags: [[1]]}\n" => "FILE: default.tags: a value must be text, a list or {credential: PATH}",
+      "default: {batch: !!float 1.5}\n" => "FILE: default.batch: a value must be text, a list or {credential: PATH}",
+      "default: {enc: !ruby/encoding UTF-8}\n" =>
+        "FILE: default.enc: a value must be text, a list or {credential: PATH}",
       "default: {api_key: {credential: x.y, other: 1}}\n" =>
         "FILE: default.api_key: a value must be text, a list or {credential: PATH}",
       "default: {api_key: {credential: a..b}}\n" =>

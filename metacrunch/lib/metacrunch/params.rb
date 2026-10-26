@@ -408,7 +408,8 @@ module Metacrunch
     # that also hides them (one per set of names).
     def secret_class(secrets)
       base = values_class
-      declared = base.const_defined?(:SECRETS) ? base::SECRETS : []
+      # From the definitions: a SECRETS constant could also be a top-level one.
+      declared = @definitions.values.select(&:secret?).map(&:name)
       extra = secrets - declared
       return base if extra.empty?
 

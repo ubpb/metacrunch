@@ -173,6 +173,21 @@ class ParamsFileBindingTest < Minitest::Test
     assert_includes params.bind_argv(["--api-key", "visible"], env: {}).inspect, %(api_key="visible")
   end
 
+  # A job file may define SECRETS at the top level; it is no declared
+  # secret of a parameter.
+  def test_a_top_level_secrets_constant_changes_nothing
+    Object.const_set(:SECRETS, ["index"].freeze)
+    params = schema { param :index, String, default: "d" }
+    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
+    credentials = FakeCredentials.new("catalog.api_key" => "sk")
+    secret = schema { param :api_key }.bind_argv([], env: {}, credentials:, file:)
+
+    assert_equal "d", params.bind_argv([], env: {}).index
+    assert_includes secret.inspect, "api_key=[secret]"
+  ensure
+    Object.send(:remove_const, :SECRETS) if Object.const_defined?(:SECRETS, false)
+  end
+
   private
 
   def schema(&)

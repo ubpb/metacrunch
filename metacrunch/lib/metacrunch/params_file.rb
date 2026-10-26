@@ -89,7 +89,8 @@ module Metacrunch
     def value(section, key, value)
       return value if value.nil? || value.is_a?(String)
       return reference(section, key, value) if value.is_a?(Hash)
-      return value if value.all? { it.nil? || it.is_a?(String) }
+      # Tags still give other objects: !!float a Float, !ruby/encoding an Encoding.
+      return value if value.is_a?(Array) && value.all? { it.nil? || it.is_a?(String) }
 
       raise ParamError, "#{@path}: #{section}.#{key}: #{FORMS}"
     end
