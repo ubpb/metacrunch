@@ -137,6 +137,14 @@ module Metacrunch
       # <collection> declares it).
       def to_xml(namespace: true) = Xml::Serializer.record(self, namespace:)
 
+      # The record as ISO 2709, a String in UTF-8. Raises SerializeError for
+      # what ISO 2709 cannot hold: tags other than 3 ASCII characters,
+      # indicators and codes other than 1, data fields without subfields,
+      # a leader other than 24 ASCII characters, and fields over 9,999 or
+      # records over 99,999 bytes; oversize: :allow writes those numbers as
+      # all nines instead, which tolerant readers read.
+      def to_iso2709(oversize: :error) = Iso2709::Serializer.record(self, oversize:)
+
       # One line per field in the mnemonic form of MarcEdit, the leader as
       # "=LDR".
       def to_s
