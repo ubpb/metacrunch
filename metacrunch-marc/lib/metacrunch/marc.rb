@@ -20,6 +20,9 @@ require_relative "marc/xml/splitter"
 require_relative "marc/iso2709"
 require_relative "marc/iso2709/parser"
 require_relative "marc/iso2709/serializer"
+require_relative "marc/json"
+require_relative "marc/json/parser"
+require_relative "marc/json/serializer"
 
 module Metacrunch
   # MARC for metacrunch: an ordered record model (Record, ControlField,
