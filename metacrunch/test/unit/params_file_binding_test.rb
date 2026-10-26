@@ -103,6 +103,69 @@ class ParamsFileBindingTest < Minitest::Test
     assert_equal "d", params.bind_argv([], env: {}, file:).index
   end
 
+  def test_a_reference_reads_the_credentials
+    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
+    credentials = FakeCredentials.new("catalog.api_key" => "sk")
+
+    assert_equal "sk", schema { param :api_key }.bind_argv([], env: {}, credentials:, file:).api_key
+  end
+
+  def test_a_value_from_the_credentials_is_hidden
+    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
+    credentials = FakeCredentials.new("catalog.api_key" => "sk")
+    inspected = schema { param :api_key }.bind_argv([], env: {}, credentials:, file:).inspect
+
+    assert_includes inspected, "api_key=[secret]"
+    refute_includes inspected, "sk"
+  end
+
+  def test_an_invalid_value_from_the_credentials_is_hidden
+    file = params_file("default: {port: {credential: catalog.port}}\n")
+    credentials = FakeCredentials.new("catalog.port" => "x")
+    error = assert_raises(Metacrunch::ParamError) do
+      schema { param :port, Integer }.bind_argv([], env: {}, credentials:, file:)
+    end
+
+    assert_equal "invalid value for port from credential catalog.port in test: (hidden) is not an Integer",
+                 error.message
+  end
+
+  def test_a_missing_reference_fails
+    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
+    params = schema { param :api_key }
+    missing = assert_raises(Metacrunch::ParamError) do
+      params.bind_argv([], env: {}, credentials: FakeCredentials.new({}), file:)
+    end
+    none = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, file:) }
+
+    assert_equal ["api_key from #{file.path} (default): catalog.api_key not in test",
+                  "api_key from #{file.path} (default): no credentials"], [missing.message, none.message]
+  end
+
+  def test_a_reference_converts_lists
+    file = params_file("default: {hosts: {credential: es.hosts}}\n")
+    credentials = FakeCredentials.new("es.hosts" => ["es1", "es2"])
+
+    assert_equal ["es1", "es2"], schema { param :hosts, Array }.bind_argv([], env: {}, credentials:, file:).hosts
+  end
+
+  def test_a_plain_value_for_a_secret_warns
+    file = params_file("default: {api_key: plain}\n")
+    warnings = []
+    params = schema { param :api_key, String, credential: "catalog.api_key" }
+
+    assert_equal "plain", params.bind_argv([], env: {}, file:, warn: ->(message) { warnings << message }).api_key
+    assert_equal ["api_key is a secret; refer to it in #{file.path} as {credential: catalog.api_key}"], warnings
+  end
+
+  def test_other_bindings_keep_their_secrets
+    params = schema { param :api_key }
+    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
+    params.bind_argv([], env: {}, credentials: FakeCredentials.new("catalog.api_key" => "sk"), file:)
+
+    assert_includes params.bind_argv(["--api-key", "visible"], env: {}).inspect, %(api_key="visible")
+  end
+
   private
 
   def schema(&)

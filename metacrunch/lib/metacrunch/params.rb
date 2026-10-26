@@ -133,10 +133,11 @@ module Metacrunch
       positional = option_parser(given).parse(argv)
       check_file!(file) if file
       selection = file&.select(environment)
+      secrets = []
       values = @definitions.to_h do |name, definition|
-        [name, bind(definition, given, env, credentials, warn, file: selection)]
+        [name, bind(definition, given, env, credentials, warn, file: selection, secrets:)]
       end
-      build(values, positional)
+      build(values, positional, secrets:)
     rescue OptionParser::ParseError => e
       # Without "=value" and without cause: a mistyped option may carry a
       # secret (--api-ky=...).
@@ -270,16 +271,17 @@ module Metacrunch
       end
     end
 
-    # file: the ParamsFile::Selection of the run, or nil. A null value in it
-    # counts as not given.
-    def bind(definition, given, env, credentials, warn, keyword: false, file: nil)
+    # file: the ParamsFile::Selection of the run, or nil; a null value in it
+    # counts as not given. secrets collects the names of parameters whose
+    # value a reference in the file took from the credentials.
+    def bind(definition, given, env, credentials, warn, keyword: false, file: nil, secrets: nil)
       if given.key?(definition.name)
         warn&.call(secret_warning(definition)) if definition.secret?
         return resolve(definition, given[definition.name], keyword:)
       end
 
       value, section = file&.fetch(definition.name.to_s)
-      return resolve(definition, value, origin: "#{file.path} (#{section})", keyword: true) unless value.nil?
+      return file_value(definition, value, section, file, credentials:, warn:, secrets:) unless value.nil?
 
       raw = env_value(definition, env)
       return resolve(definition, raw, origin: "environment variable #{definition.env}", keyword:) unless raw.nil?
@@ -288,6 +290,28 @@ module Metacrunch
       return resolve(definition, raw, origin: credentials.origin(definition.credential), keyword:) unless raw.nil?
 
       resolve(definition, nil, sources: -> { sources(definition, credentials) }, keyword:)
+    end
+
+    # A value of the params file: text or a list, converted like a
+    # command-line value, or a reference, resolved through the credentials
+    # and hidden in messages and inspect.
+    def file_value(definition, value, section, file, credentials:, warn:, secrets:)
+      unless value.is_a?(ParamsFile::Reference)
+        warn&.call(file_secret_warning(definition, file)) if definition.secret?
+        return resolve(definition, value, origin: "#{file.path} (#{section})", keyword: true)
+      end
+
+      raw = credentials&.lookup(value.path)
+      if raw.nil?
+        detail = credentials ? credentials.missing(value.path) : "no credentials"
+        raise ParamError, "#{definition.name} from #{file.path} (#{section}): #{detail}"
+      end
+      secrets << definition.name
+      resolve(definition, raw, origin: credentials.origin(value.path), keyword: true, hidden: true)
+    end
+
+    def file_secret_warning(definition, file)
+      "#{definition.name} is a secret; refer to it in #{file.path} as {credential: #{definition.credential}}"
     end
 
     # What was tried for a missing value, e.g. "CATALOG_API_KEY unset;
@@ -307,21 +331,22 @@ module Metacrunch
       "#{definition.option} is a secret; pass it by #{by} instead"
     end
 
-    def resolve(definition, raw, origin: nil, sources: nil, keyword: false)
-      value = raw.nil? ? definition.default : frozen_copy(convert(definition, raw, origin:, keyword:))
+    # hidden: whether messages hide the value, as for a secret.
+    def resolve(definition, raw, origin: nil, sources: nil, keyword: false, hidden: definition.secret?)
+      value = raw.nil? ? definition.default : frozen_copy(convert(definition, raw, origin:, keyword:, hidden:))
       return value unless definition.required && value.nil?
 
       detail = sources&.call
       raise ParamError, "missing required parameter #{label(definition, keyword)}#{" (#{detail})" if detail}"
     end
 
-    def convert(definition, raw, origin: nil, keyword: false)
+    def convert(definition, raw, origin: nil, keyword: false, hidden: definition.secret?)
       raw = path_string(raw)
       value = raw.is_a?(String) ? CONVERTERS.fetch(definition.type).call(raw) : raw
       value = value.to_f if definition.type == Float && value.is_a?(Integer)
-      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin, keyword:)
+      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin, keyword:, hidden:)
     rescue ArgumentError, TypeError
-      invalid!(definition, raw, origin, keyword:)
+      invalid!(definition, raw, origin, keyword:, hidden:)
     end
 
     # A Pathname (anything with to_path) counts as the String of its path,
@@ -335,10 +360,10 @@ module Metacrunch
 
     # No cause: the converter's error (Integer(), Float(), "not a boolean")
     # would repeat a hidden value.
-    def invalid!(definition, raw, origin, keyword: false)
+    def invalid!(definition, raw, origin, keyword: false, hidden: definition.secret?)
       expected = (keyword && !raw.is_a?(String) ? VALUE_TYPE_NAMES : TYPE_NAMES).fetch(definition.type)
       from = origin ? " from #{origin}" : ""
-      shown = definition.secret? ? HIDDEN : raw.inspect
+      shown = hidden ? HIDDEN : raw.inspect
       raise ParamError, "invalid value for #{label(definition, keyword)}#{from}: #{shown} is not #{expected}",
             cause: nil
     end
@@ -368,14 +393,30 @@ module Metacrunch
       end
     end
 
-    def build(values, positional)
+    # secrets: parameters that are secret in this binding only.
+    def build(values, positional, secrets: [])
       if @args_definition
         check_args!(positional)
         values[@args_definition.name] = frozen_copy(positional)
       elsif positional.any?
         raise ParamError, "unexpected arguments: #{positional.join(" ")}"
       end
-      values_class.new(**values)
+      secret_class(secrets).new(**values)
+    end
+
+    # The values class, or for secrets beyond the declared ones a subclass
+    # that also hides them (one per set of names).
+    def secret_class(secrets)
+      base = values_class
+      declared = base.const_defined?(:SECRETS) ? base::SECRETS : []
+      extra = secrets - declared
+      return base if extra.empty?
+
+      @secret_classes ||= {}
+      @secret_classes[extra.sort] ||= Class.new(base) do
+        const_set(:SECRETS, (declared + extra).freeze)
+        include Redacted
+      end
     end
 
     def check_args!(positional)
