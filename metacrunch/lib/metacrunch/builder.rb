@@ -177,7 +177,8 @@ module Metacrunch
 
     # Generated names count the step statements of the recipe, use
     # included, so a transform that gains a step renames no step of the
-    # job. / is reserved for the prefixes of transforms.
+    # job. / is reserved for the prefixes of transforms, "source" and "sink"
+    # for the failures of source and sink.
     def add_step(kind, reason, callable, block, name)
       use!
       raise ArgumentError, "#{kind}: pass a callable or a block, not both" if callable && block
@@ -187,7 +188,7 @@ module Metacrunch
 
       @statements += 1
       name = (name || "#{kind}##{@statements}").to_s
-      raise ArgumentError, "the step name #{SOURCE_STEP} is reserved" if name == SOURCE_STEP
+      raise ArgumentError, "the step name #{name} is reserved" if [SOURCE_STEP, SINK_STEP].include?(name)
       if name.include?("/")
         raise ArgumentError, "the step name #{name} contains /, which is reserved for the prefixes of transforms"
       end

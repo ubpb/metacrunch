@@ -55,6 +55,30 @@ module Metacrunch
   # with the name of the output.
   class OutputError < Error; end
 
+  # Raised by a sink's write or write_batch when it could not write some
+  # records but wrote the others. failed: {index in the batch => error},
+  # sorted by index; write reports index 0. The engine applies the failure
+  # policy to each of these records under the pseudo-step "sink". Only the
+  # job's sink may raise it; from the rejects or failures sink it aborts
+  # the run.
+  class SinkFailures < Error
+
+    attr_reader :failed
+
+    def initialize(failed)
+      unless failed.is_a?(Hash) && !failed.empty? &&
+             failed.all? { |index, error| index.is_a?(Integer) && !index.negative? && error.is_a?(Exception) }
+        raise ArgumentError,
+              "failed must be a non-empty Hash of indices (0 or more) to exceptions, got #{failed.inspect}"
+      end
+
+      @failed = failed.sort_by(&:first).to_h.freeze
+      first = @failed.each_value.first
+      super("#{@failed.size} #{@failed.size == 1 ? "record" : "records"} not written: #{first.class}: #{first.message}")
+    end
+
+  end
+
   # invoke failed: the target is unknown, the arguments are invalid for
   # it, or the job aborted. name: the target as given; result: the Result
   # of an aborted job, else nil. The original error is the cause.
