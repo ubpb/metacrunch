@@ -10,15 +10,22 @@ class LockfilesTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
 
   def test_every_lockfile_lists_the_ruby_platform_and_an_x86_64_linux_one
-    ["."].concat(Monorepo.gems(ROOT)).each do |dir|
-      platforms = platforms_of(File.join(ROOT, dir, "Gemfile.lock"))
+    lockfiles.each do |lockfile|
+      platforms = platforms_of(File.join(ROOT, lockfile))
 
-      assert_includes platforms, "ruby", "#{dir}/Gemfile.lock"
-      assert(platforms.any? { it.start_with?("x86_64-linux") }, "#{dir}/Gemfile.lock lists no x86_64 Linux platform")
+      assert_includes platforms, "ruby", lockfile
+      assert(platforms.any? { it.start_with?("x86_64-linux") }, "#{lockfile} lists no x86_64 Linux platform")
     end
   end
 
   private
+
+  # The lockfiles of the root, of every gem and of the gems' further Gemfiles.
+  def lockfiles
+    gems = Monorepo.gems(ROOT)
+    further = gems.flat_map { Monorepo.gemfiles(ROOT, it) }.map { "#{it.delete_prefix("#{ROOT}/")}.lock" }
+    ["."].concat(gems).map { File.join(it, "Gemfile.lock") }.concat(further)
+  end
 
   def platforms_of(lockfile)
     File.read(lockfile)[/^PLATFORMS\n(.*?)\n\n/m, 1].split

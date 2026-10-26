@@ -23,8 +23,12 @@ module Monorepo
     File.join(root, gem, "lib", *gem.split("-"), "version.rb")
   end
 
-  # Writes version into the version.rb of every gem, then calls lock with each gem's directory. Checks every
-  # file before it writes one.
+  # The further Gemfiles of a gem, sorted: metacrunch-elasticsearch/gemfiles/elasticsearch_8.gemfile. CI runs the
+  # gem's tests with each of them, too.
+  def gemfiles(root, gem) = Dir[File.join(root, gem, "gemfiles", "*.gemfile")]
+
+  # Writes version into the version.rb of every gem, then calls lock with each gem's directory and the paths of its
+  # further Gemfiles. Checks every file before it writes one.
   def set_version(version, root: Dir.pwd, lock: method(:bundle_lock))
     raise ArgumentError, "not a version: #{version.inspect}" unless canonical?(version)
 
@@ -32,7 +36,7 @@ module Monorepo
     texts.each do |gem, text|
       File.write(version_file(root, gem), text.sub(VERSION_LINE, "\\1VERSION = \"#{version}\""))
     end
-    texts.each_key { lock.call(File.join(root, it)) }
+    texts.each_key { |gem| [File.join(root, gem), *gemfiles(root, gem)].each { lock.call(it) } }
   end
 
   def canonical?(version)
@@ -51,9 +55,13 @@ module Monorepo
     text
   end
 
-  def bundle_lock(dir)
-    locked = Bundler.with_unbundled_env { system("bundle", "lock", chdir: dir) }
-    raise Error, "bundle lock failed in #{File.basename(dir)}" unless locked
+  # Locks the bundle of a gem's directory, or of a further Gemfile (a path ending in .gemfile).
+  def bundle_lock(target)
+    gemfile = target.end_with?(".gemfile")
+    env = gemfile ? {"BUNDLE_GEMFILE" => target} : {}
+    dir = gemfile ? File.dirname(target) : target
+    locked = Bundler.with_unbundled_env { system(env, "bundle", "lock", chdir: dir) }
+    raise Error, "bundle lock failed #{gemfile ? "for" : "in"} #{File.basename(target)}" unless locked
   end
 
 end

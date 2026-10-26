@@ -7,6 +7,7 @@ updates:
       - "/metacrunch-csv"
       - "/metacrunch-xlsx"
       - "/metacrunch-marc"
+      - "/metacrunch-elasticsearch"
     schedule:
       interval: weekly
   - package-ecosystem: github-actions

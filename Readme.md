@@ -19,6 +19,7 @@ This repository holds metacrunch and its extension gems. Start with [metacrunch'
 | `metacrunch-csv` | [`metacrunch-csv/`](metacrunch-csv) | a source and a sink for CSV |
 | `metacrunch-xlsx` | [`metacrunch-xlsx/`](metacrunch-xlsx) | a sink that streams Excel files |
 | `metacrunch-marc` | [`metacrunch-marc/`](metacrunch-marc) | MARCXML, ISO 2709 and MARC-in-JSON on one record model |
+| `metacrunch-elasticsearch` | [`metacrunch-elasticsearch/`](metacrunch-elasticsearch) | a source, a bulk sink and index commands for Elasticsearch 8 and 9 |
 
 ## Installation
 
@@ -64,6 +65,11 @@ of their own.
 The lockfiles are committed, and CI installs them frozen. Every gem's lockfile records metacrunch as a path gem, so a
 changed dependency in a gemspec, above all in metacrunch's, changes the lockfiles of the gems that load it: run
 `bundle exec rake bundle` and commit every changed `Gemfile.lock`.
+
+A gem may have further Gemfiles in `gemfiles/`: metacrunch-elasticsearch tests the client for Elasticsearch 8 with
+`gemfiles/elasticsearch_8.gemfile`. `rake bundle`, `rake test` and `rake version` take them along; Dependabot updates
+only `Gemfile.lock`, so after its updates `bundle exec rake bundle` brings the further lockfiles up to date. The
+tests of metacrunch-elasticsearch against a server need Elasticsearch (see its Readme); without it they are skipped.
 
 ## License
 
