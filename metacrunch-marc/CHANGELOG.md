@@ -29,7 +29,8 @@ model. Code written for metacrunch-marcxml 4.x must be adapted; see the Readme.
 - ISO 2709 in UTF-8: `Metacrunch::Marc::Iso2709.parse`, `.each` and `.each_raw`, and `Record#to_iso2709` with
   `oversize:`. Reading trusts the terminators, so records with wrong lengths and records over 99,999 bytes are read;
   MARC-8 records fail with a hint to convert them.
-- MARC-in-JSON, one record per line: `Metacrunch::Marc::Json.parse`, `.each` and `.each_raw`, and `Record.from_h`.
+- MARC-in-JSON, one record per line: `Metacrunch::Marc::Json.parse`, `.each` and `.each_raw`, `Record#to_json` and
+  `Record.from_h`.
 - `Metacrunch::Marc.parse` reads one record in any of the three formats.
 - `Metacrunch::Marc::Reader`, a source on `Metacrunch::Input`: all three formats, told by the content of each
   document; files, gzip files (also with several members) and tar archives recognized by their content, stdin and

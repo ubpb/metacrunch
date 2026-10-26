@@ -107,7 +107,8 @@ record.remove { it.equal?(field) }
 ### Output
 
 - `record.to_xml` returns the record as MARCXML; `namespace: false` leaves out `xmlns`.
-- `record.to_iso2709` returns it as ISO 2709, a String in UTF-8 (see [ISO 2709](#iso-2709)).
+- `record.to_iso2709` returns it as ISO 2709, binary MARC as in `.mrc` files (ruby-marc's `to_marc`), a String in
+  UTF-8 (see [ISO 2709](#iso-2709)).
 - `record.to_json` returns it as one line of MARC-in-JSON (see [MARC-in-JSON](#marc-in-json)); `JSON.generate` uses it
   for records inside other values.
 - `record.to_h` returns MARC-in-JSON: `{"leader" => "...", "fields" => [{"001" => "..."}, {"245" => {"ind1" => "1",
@@ -118,16 +119,17 @@ record.remove { it.equal?(field) }
 
 ## Formats
 
-Each format has the same three functions:
-
 ```ruby
-Metacrunch::Marc::Xml.parse(string)                    # exactly one record from a String
-Metacrunch::Marc::Xml.each(io_or_string) { ... }       # every record, streaming
-Metacrunch::Marc::Xml.each_raw(io_or_string) { ... }   # every record as a String, without parsing it
-# the same for Metacrunch::Marc::Iso2709 and Metacrunch::Marc::Json
+Metacrunch::Marc.parse(string)                            # one record in any format, told by its first bytes
 
-Metacrunch::Marc.parse(string)                         # one record, in the format its first bytes show
+Metacrunch::Marc::Iso2709.parse(string)                   # one record, ISO 2709 only
+Metacrunch::Marc::Iso2709.each(io_or_string) { ... }      # every record, streaming
+Metacrunch::Marc::Iso2709.each_raw(io_or_string) { ... }  # every record as a String, without parsing it
+# the same for Metacrunch::Marc::Xml and Metacrunch::Marc::Json
 ```
+
+`Metacrunch::Marc.parse` reads a record whatever its format, e.g. the Strings the [Reader](#reader) yields with
+`parse: false`. The format modules read their format only, so input in another format fails, and they also stream.
 
 `each` and `each_raw` read Strings and IO-like objects (files, `StringIO`, `Zlib::GzipReader`, pipes); without a block
 they return an Enumerator. They read in chunks, so the time grows in proportion to the input. `parse` raises
@@ -175,8 +177,9 @@ MARC records out of the wrapper first.
 
 ### ISO 2709
 
-ISO 2709 is read and written in UTF-8. Parsing takes about 12 µs and writing about 6 µs per record in
-`bench/parse.rb` (records of 3 KB as MARCXML are 1.2 KB as ISO 2709).
+ISO 2709 is the exchange format of MARC 21 known as binary MARC: the `.mrc` files, which ruby-marc writes with
+`to_marc` and this gem with `to_iso2709`. It is read and written in UTF-8. Parsing takes about 12 µs and writing about
+6 µs per record in `bench/parse.rb` (records of 3 KB as MARCXML are 1.2 KB as ISO 2709).
 
 Reading trusts the terminators, not the numbers, as yaz-marcdump and MARC4J's permissive reader do:
 
