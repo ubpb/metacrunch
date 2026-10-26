@@ -79,6 +79,44 @@ class ParamsFileBindingTest < Minitest::Test
     assert_equal "#{file.path}: default.index: unknown parameter (known: none)", error.message
   end
 
+  # A flat file without sections: a reference or a null at the top level
+  # reads as a section named like the parameter.
+  def test_a_parameter_at_the_top_level_is_named
+    params = schema do
+      param :api_key
+      param :index
+    end
+    messages = ["api_key: {credential: catalog.api_key}\n", "index:\n"].map do |content|
+      file = params_file(content)
+      assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, file:) }.message.sub(file.path, "FILE")
+    end
+
+    assert_equal ["FILE: api_key is a parameter, not a section: parameters go under default: or an environment section",
+                  "FILE: index is a parameter, not a section: parameters go under default: or an environment section"],
+                 messages
+  end
+
+  # An environment may be named like a parameter.
+  def test_an_environment_named_like_a_parameter_is_a_section
+    params = schema do
+      param :test, :bool, default: false
+      param :index
+    end
+    file = params_file("test: {index: t}\n")
+
+    assert_equal "t", params.bind_argv([], env: {}, file:, environment: "test").index
+  end
+
+  def test_a_parameter_named_default_keeps_the_default_section
+    params = schema do
+      param :default
+      param :index
+    end
+    file = params_file("default:\nproduction: {index: p}\n")
+
+    assert_equal "p", params.bind_argv([], env: {}, file:, environment: "production").index
+  end
+
   def test_positional_arguments_cannot_come_from_the_file
     params = schema { args :files }
     file = params_file("default: {files: [a.json]}\n")

@@ -168,11 +168,11 @@ end
 
 `params` must be the first statement of a job. Values come from the command line, then a params file (`--params`,
 see [Parameter files](#parameter-files)), then the environment variable (`env:`, an empty variable counts as unset),
-then the credentials (`credential:`, see [Credentials](credentials.md)), then the default. Types: `String`, `Integer`, `Float`, `:bool`, `Array`
-(comma-separated). Defaults are converted and checked when declared (`Integer, default: "1000"`
-gives 1000). Use the values with `params.output`; they are frozen. Options must be spelled out (`--out` is not
-`--output`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and `-h` is reserved
-for help.
+then the credentials (`credential:`, see [Credentials](credentials.md)), then the default. Types: `String`,
+`Integer`, `Float`, `:bool`, `Array` (comma-separated). Defaults are converted and checked when declared
+(`Integer, default: "1000"` gives 1000). Use the values with `params.output`; they are frozen. Options must be spelled
+out (`--out` is not `--output`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and
+`-h` is reserved for help.
 
 A value from code (`use`, `invoke`, `Job#run`, `Metacrunch::Testing`) is given as `params: {...}`, in the declared
 type or as a String; a Pathname counts as its path, and `nil` means not given. `root` is the root of the project the
@@ -216,8 +216,8 @@ $ metacrunch run --params config/export.yml -e production export.rb
   warning, as one on the command line is.
 - Without `-e` and `METACRUNCH_ENV`, only `default:` counts. An environment without a section is an error if the
   file has any environment section; a file with only `default:` serves every environment.
-- The file applies to the job, transform or command named on the command line, with `run`, `check` and `trace`;
-  what it invokes or uses gets its values from code. `metacrunch check --params FILE -e NAME job.rb` checks a file,
+- `run`, `check` and `trace` take the file for the job or transform named on the command line, and `run` also for a
+  command; what that target invokes or uses gets its values from code. `metacrunch check --params FILE -e NAME job.rb` checks a file,
   e.g. in CI, and `-v` logs the file and the sections it used.
 
 ## What runs when

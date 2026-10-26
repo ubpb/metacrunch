@@ -85,7 +85,8 @@ class ParamsFileTest < Minitest::Test
       "- a\n" => "FILE must contain a mapping of sections (default: and environments) at the top level",
       "Prod: {index: x}\n" =>
         %(FILE: invalid section "Prod": use default or an environment name (a-z, 0-9, _ and -)),
-      "batch: 1000\n" => "FILE: section batch must be a mapping of parameters",
+      "batch: 1000\n" =>
+        "FILE: section batch must be a mapping of parameters (parameters go under default: or an environment section)",
       "production: {api_key: {a: 1}}\n" =>
         "FILE: production.api_key: a value must be text, a list or {credential: PATH}",
       "default: {tags: [[1]]}\n" => "FILE: default.tags: a value must be text, a list or {credential: PATH}",

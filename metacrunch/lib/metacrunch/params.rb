@@ -135,7 +135,7 @@ module Metacrunch
       selection = file&.select(environment)
       secrets = []
       values = @definitions.to_h do |name, definition|
-        [name, bind(definition, given, env, credentials, warn, file: selection, secrets:)]
+        [name, bind(definition, given, env, credentials, warn, selection:, secrets:)]
       end
       build(values, positional, secrets:)
     rescue OptionParser::ParseError => e
@@ -262,6 +262,7 @@ module Metacrunch
     # the arguments come from the command line only.
     def check_file!(file)
       known = @definitions.keys.map(&:to_s)
+      check_flat_file!(file, known)
       file.each_key do |section, key|
         where = "#{file.path}: #{section}.#{key}"
         raise ParamError, "#{where}: arguments cannot be given in a params file" if key == @args_definition&.name&.to_s
@@ -271,17 +272,28 @@ module Metacrunch
       end
     end
 
-    # file: the ParamsFile::Selection of the run, or nil; a null value in it
-    # counts as not given. secrets collects the names of parameters whose
-    # value a reference in the file took from the credentials.
-    def bind(definition, given, env, credentials, warn, keyword: false, file: nil, secrets: nil)
+    # A file without sections reads a parameter at the top level (a
+    # reference, a null) as a section. A section named like a parameter that
+    # holds no parameter is taken for one; an environment named so is not.
+    def check_flat_file!(file, known)
+      file.keys_by_section.each do |section, keys|
+        next if section == ParamsFile::DEFAULT || !known.include?(section) || keys.intersect?(known)
+
+        raise ParamError, "#{file.path}: #{section} is a parameter, not a section: #{ParamsFile::SECTIONS_HINT}"
+      end
+    end
+
+    # selection: the ParamsFile::Selection of the run, or nil; a null value
+    # in it counts as not given. secrets collects the names of parameters
+    # whose value a reference in the file took from the credentials.
+    def bind(definition, given, env, credentials, warn, keyword: false, selection: nil, secrets: nil)
       if given.key?(definition.name)
         warn&.call(secret_warning(definition)) if definition.secret?
         return resolve(definition, given[definition.name], keyword:)
       end
 
-      value, section = file&.fetch(definition.name.to_s)
-      return file_value(definition, value, section, file, credentials:, warn:, secrets:) unless value.nil?
+      value, section = selection&.fetch(definition.name.to_s)
+      return file_value(definition, value, section, selection, credentials:, warn:, secrets:) unless value.nil?
 
       raw = env_value(definition, env)
       return resolve(definition, raw, origin: "environment variable #{definition.env}", keyword:) unless raw.nil?
@@ -295,23 +307,23 @@ module Metacrunch
     # A value of the params file: text or a list, converted like a
     # command-line value, or a reference, resolved through the credentials
     # and hidden in messages and inspect.
-    def file_value(definition, value, section, file, credentials:, warn:, secrets:)
+    def file_value(definition, value, section, selection, credentials:, warn:, secrets:)
       unless value.is_a?(ParamsFile::Reference)
-        warn&.call(file_secret_warning(definition, file)) if definition.secret?
-        return resolve(definition, value, origin: "#{file.path} (#{section})", keyword: true)
+        warn&.call(file_secret_warning(definition, selection)) if definition.secret?
+        return resolve(definition, value, origin: "#{selection.path} (#{section})", keyword: true)
       end
 
       raw = credentials&.lookup(value.path)
       if raw.nil?
         detail = credentials ? credentials.missing(value.path) : "no credentials"
-        raise ParamError, "#{definition.name} from #{file.path} (#{section}): #{detail}"
+        raise ParamError, "#{definition.name} from #{selection.path} (#{section}): #{detail}"
       end
       secrets << definition.name
       resolve(definition, raw, origin: credentials.origin(value.path), keyword: true, hidden: true)
     end
 
-    def file_secret_warning(definition, file)
-      "#{definition.name} is a secret; refer to it in #{file.path} as {credential: #{definition.credential}}"
+    def file_secret_warning(definition, selection)
+      "#{definition.name} is a secret; refer to it in #{selection.path} as {credential: #{definition.credential}}"
     end
 
     # What was tried for a missing value, e.g. "CATALOG_API_KEY unset;
@@ -405,7 +417,8 @@ module Metacrunch
     end
 
     # The values class, or for secrets beyond the declared ones a subclass
-    # that also hides them (one per set of names).
+    # that also hides them (one per set of names). Data compares classes, so
+    # such values are not == to equal values of the base class; to_h is.
     def secret_class(secrets)
       base = values_class
       # From the definitions: a SECRETS constant could also be a top-level one.

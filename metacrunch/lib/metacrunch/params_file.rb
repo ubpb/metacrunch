@@ -9,6 +9,8 @@ module Metacrunch
 
     DEFAULT = "default"
     FORMS = "a value must be text, a list or {credential: PATH}"
+    # For files without sections, whose parameters stand at the top level.
+    SECTIONS_HINT = "parameters go under default: or an environment section"
 
     # A value that refers to the credentials.
     Reference = Data.define(:path)
@@ -43,6 +45,9 @@ module Metacrunch
     def each_key
       @sections.each { |section, values| values.each_key { yield section, it } }
     end
+
+    # The keys of every section, also of empty ones: name => [key, ...].
+    def keys_by_section = @sections.transform_values(&:keys)
 
     # The values of environment (nil for none) merged over those of
     # default:. Raises ParamError for an environment without a section if
@@ -81,7 +86,9 @@ module Metacrunch
 
     def section(name, values)
       return {} if values.nil?
-      raise ParamError, "#{@path}: section #{name} must be a mapping of parameters" unless values.is_a?(Hash)
+      unless values.is_a?(Hash)
+        raise ParamError, "#{@path}: section #{name} must be a mapping of parameters (#{SECTIONS_HINT})"
+      end
 
       values.to_h { |key, value| [key.to_s, value(name, key, value)] }
     end
