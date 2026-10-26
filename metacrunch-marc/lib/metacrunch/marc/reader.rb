@@ -44,13 +44,16 @@ module Metacrunch
 
       private
 
-      # The format of a document, or nil for one without data.
+      # The format of a document, or nil for one without data. Peeks from one
+      # byte on: peek waits until it has as many bytes, and a pipe that
+      # pauses after a short first record must not hold it back.
       def format(stream, name)
-        format, head = Formats.detect { stream.peek(it) }
+        format, = Formats.detect(1) { stream.peek(it) }
         case format
         when :none then nil
         when :array then raise Metacrunch::InputError, "#{name}: #{ARRAY}"
-        when :unknown then raise Metacrunch::InputError, "#{name}: is #{Formats.unknown(head)}"
+        # Detection may have looked at one byte only; the message shows more.
+        when :unknown then raise Metacrunch::InputError, "#{name}: is #{Formats.unknown(stream.peek(Formats::WINDOW))}"
         else format
         end
       end

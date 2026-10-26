@@ -504,7 +504,9 @@ Metacrunch::Marc::Reader.new(targets, parse: true, normalize: nil)
   them; gzip and tar unpacked by content). IOs are not closed.
 - `each_document` gives the streams; each document is detected on its own
   (7), so a tar archive may mix formats. The stream is peeked in growing
-  windows until a byte that is not skipped, or the end.
+  windows from one byte on (amended after the review: a pipe that pauses
+  after a short first record must not hold it back) until the format is
+  clear, or the end.
 - A document that is not MARC raises `Metacrunch::InputError` with its name:
   `dump.dat: is neither MARCXML, ISO 2709 nor MARC-in-JSON: it starts with
   "id;title;..."`; a JSON array: `records.json: is a JSON array of records;

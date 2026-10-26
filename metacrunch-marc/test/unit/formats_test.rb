@@ -49,6 +49,7 @@ class FormatsTest < Minitest::Test
   def test_an_incomplete_head_asks_for_more
     assert_nil Formats.format(" " * 64, complete: false)
     assert_nil Formats.format("#{" " * 60}0006", complete: false)
+    assert_nil Formats.format("\xEF".b, complete: false)
   end
 
   def test_unknown_names_the_start
