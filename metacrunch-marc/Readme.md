@@ -203,7 +203,9 @@ Reading trusts the terminators, not the numbers, as yaz-marcdump and MARC4J's pe
   decrease (data in another order than the directory), a leader or a tag that is not ASCII, and indicators other than
   two characters raise `ParseError`.
 - A field with a subfield delimiter is a data field, any other a control field, so local control fields such as `FMT`
-  are read right. Indicators and codes are read as characters.
+  are read right. Indicators and codes are read as characters. A control field with a stray subfield delimiter, which
+  some records of the Library of Congress have at the end of 001, raises `ParseError`; ruby-marc keeps the delimiter
+  in the value.
 - Bytes are read as UTF-8, whatever leader/09 says. MARC-8 records in plain ASCII are read; others fail with a hint:
   `leader/09 says MARC-8; convert the file to UTF-8 first, e.g. yaz-marcdump -f MARC-8 -t UTF-8 -o marc -l 9=97
   in.mrc > out.mrc`.

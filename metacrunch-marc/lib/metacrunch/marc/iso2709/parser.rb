@@ -19,6 +19,9 @@ module Metacrunch
         DIGITS = "0-9"
         MARC8 = "leader/09 says MARC-8; convert the file to UTF-8 first, e.g. " \
                 "yaz-marcdump -f MARC-8 -t UTF-8 -o marc -l 9=97 in.mrc > out.mrc"
+        # The characters of a field shown before a misplaced subfield
+        # delimiter.
+        MISPLACED_EXCERPT = 20
 
         def self.parse(raw, normalize:) = new(raw, normalize).record
 
@@ -123,10 +126,7 @@ module Metacrunch
           return ControlField.new(tag, value(piece.force_encoding(Encoding::UTF_8), clean)) unless delimiter
 
           indicators = piece.byteslice(0, delimiter).force_encoding(Encoding::UTF_8)
-          unless indicators.length == 2
-            raise ParseError,
-                  "field #{Values.readable(tag)}: ISO 2709 indicators are 2 characters, got #{indicators.inspect}"
-          end
+          raise ParseError, "field #{Values.readable(tag)}: #{misplaced(indicators)}" unless indicators.length == 2
 
           parts = piece.byteslice(delimiter + 1, piece.bytesize - delimiter - 1).split(DELIMITER, -1)
           subfields = parts.map do |part|
@@ -136,6 +136,15 @@ module Metacrunch
             Subfield.new(part[0], value(part[1..], clean))
           end
           DataField.new(tag, indicators[0], indicators[1], subfields)
+        end
+
+        # The problem of a field with a subfield delimiter after text that is
+        # not 2 indicators: a data field with other indicators, or a control
+        # field with a stray delimiter. Long text is cut off.
+        def misplaced(text)
+          excerpt = text.length > MISPLACED_EXCERPT ? "#{text[0, MISPLACED_EXCERPT].inspect}..." : text.inspect
+          "a subfield delimiter after #{excerpt}: not the 2 indicators of a data field, and not allowed in a " \
+            "control field"
         end
 
         # A value, in NFC with normalize: :nfc. Values of a record that is

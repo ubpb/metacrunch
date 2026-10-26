@@ -9,6 +9,7 @@ class Iso2709ParseTest < Minitest::Test
   Marc = Metacrunch::Marc
   Iso2709 = Metacrunch::Marc::Iso2709
   MARC8 = "00000nam  2200000 c 4500"
+  MISPLACED = "not the 2 indicators of a data field, and not allowed in a control field"
 
   def test_parses_a_record
     record = Iso2709.parse(book)
@@ -150,11 +151,24 @@ class Iso2709ParseTest < Minitest::Test
   end
 
   def test_a_data_field_has_two_indicators
-    {"1" => %(got "1"), "100" => %(got "100")}.each do |indicators, got|
+    ["1", "100"].each do |indicators|
       error = assert_raises(Marc::ParseError) { Iso2709.parse(raw(["245", "#{indicators}\x1Fax"])) }
 
-      assert_equal "field 245: ISO 2709 indicators are 2 characters, #{got}", error.message
+      assert_equal %(field 245: a subfield delimiter after "#{indicators}": #{MISPLACED}), error.message
     end
+  end
+
+  # As in 8 of 250,000 records of the Library of Congress.
+  def test_a_control_field_that_ends_with_a_subfield_delimiter
+    error = assert_raises(Marc::ParseError) { Iso2709.parse(raw(["001", "   00038361\x1F"])) }
+
+    assert_equal %(field 001: a subfield delimiter after "   00038361": #{MISPLACED}), error.message
+  end
+
+  def test_a_long_field_before_a_subfield_delimiter_is_cut_in_the_message
+    error = assert_raises(Marc::ParseError) { Iso2709.parse(raw(["008", "#{"x" * 40}\x1Fa"])) }
+
+    assert_equal %(field 008: a subfield delimiter after "xxxxxxxxxxxxxxxxxxxx"...: #{MISPLACED}), error.message
   end
 
   def test_indicators_are_characters
