@@ -14,8 +14,6 @@ module Metacrunch
 
         OPTIONS = {skip: :skip_none, convert_special: true, smart: false}.freeze
 
-        UNREPRESENTABLE = "cannot be represented in XML 1.0"
-
         # Parses input (an object with readpartial or read) and passes each
         # Record to block. normalize: nil or :nfc.
         def self.run(input, normalize:, &block)
@@ -182,8 +180,8 @@ module Metacrunch
           value = utf8(value)
           raise ParseError, "invalid UTF-8 in attribute #{name}" unless value.valid_encoding?
 
-          forbidden = Serializer.unrepresentable(value)
-          raise ParseError, "attribute #{name}: #{forbidden.inspect} #{UNREPRESENTABLE}" if forbidden
+          forbidden = Values.unrepresentable(value)
+          raise ParseError, "attribute #{name}: #{forbidden.inspect} #{Values::UNREPRESENTABLE}" if forbidden
 
           value
         end
@@ -191,15 +189,7 @@ module Metacrunch
         # Ox returns binary strings for input without an XML declaration.
         def utf8(value) = value.force_encoding(Encoding::UTF_8)
 
-        def checked(value)
-          raise ParseError, "#{value_name}: invalid UTF-8" unless value.valid_encoding?
-
-          forbidden = Serializer.unrepresentable(value)
-          raise ParseError, "#{value_name}: #{forbidden.inspect} #{UNREPRESENTABLE}" if forbidden
-          return value if @normalize.nil? || value.ascii_only?
-
-          value.unicode_normalize(:nfc)
-        end
+        def checked(value) = Values.parsed(value, @normalize) { value_name }
 
         def value_name
           case @kind
