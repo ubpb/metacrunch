@@ -1,0 +1,57 @@
+# frozen_string_literal: true
+
+require "test_helper"
+require "json"
+require "open3"
+require "rbconfig"
+
+# Runs the examples as a user would, through metacrunch's executable, against the Elasticsearch of the integration
+# tests (whose ELASTICSEARCH_* variables the examples read).
+class ExamplesTest < Minitest::Test
+
+  include Integration
+
+  ROOT = File.expand_path("../..", __dir__)
+  BIN = Gem.loaded_specs.fetch("metacrunch").bin_file("metacrunch")
+
+  def test_load_sends_a_refused_book_to_the_failures_file
+    create_index
+    Dir.mktmpdir do |dir|
+      failures = File.join(dir, "failures.jsonl")
+      _, stderr, status = metacrunch("run", example("load.rb"), "--index", @index, "--failures", failures,
+                                     example("data/books.jsonl"))
+
+      assert_equal 3, status.exitstatus, stderr
+      assert_equal(["9780140449266"], File.readlines(failures).map { JSON.parse(it).dig("record", "isbn") })
+    end
+  end
+
+  def test_export_writes_what_a_query_string_matches
+    create_index
+    index_documents([{"id" => "1", "title" => "Faust", "lang" => "de"},
+                     {"id" => "2", "title" => "Emma", "lang" => "en"}])
+    stdout, stderr, status = metacrunch("run", example("export.rb"), "--index", @index, "--query", "lang:de")
+    titles = stdout.lines.map { JSON.parse(it)["title"] }
+
+    assert_predicate status, :success?, stderr
+    assert_equal ["Faust"], titles
+  end
+
+  def test_the_project_rebuilds_behind_an_alias_and_lists_its_indices
+    books = "#{@index}-books"
+    _, stderr, status = metacrunch("books:rebuild", "--alias", books, chdir: example("project"))
+
+    assert_predicate status, :success?, stderr
+    assert_equal 5, stored(books).size
+    stdout, stderr, = metacrunch("es:list", "#{books}-*", chdir: example("project"))
+
+    assert_match(/\A#{books}-\d{8}-\d{6}  #{books}  5 /, stdout.lines[1].to_s, stderr)
+  end
+
+  private
+
+  def example(name) = File.join(ROOT, "examples", name)
+
+  def metacrunch(*, chdir: ROOT) = Open3.capture3(RbConfig.ruby, BIN, *, chdir:)
+
+end
