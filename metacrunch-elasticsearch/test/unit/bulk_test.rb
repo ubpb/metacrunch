@@ -33,6 +33,13 @@ class BulkTest < Minitest::Test
     assert_equal [[0], [1]], [items.map(&:position), failed.keys]
   end
 
+  def test_an_id_key_finds_string_and_symbol_keys_alike
+    by_symbol, = Bulk.items([{"isbn" => "1"}], index: "books", id: :isbn, action: :delete)
+    by_string, = Bulk.items([{isbn: "2"}], index: "books", id: "isbn", action: :delete)
+
+    assert_equal ["1", "2"], [by_symbol.first.id, by_string.first.id]
+  end
+
   def test_ids_from_a_callable_and_integers_as_strings
     items, = Bulk.items([{n: 7}], index: "books", id: ->(record) { record[:n] * 2 }, action: :delete)
 

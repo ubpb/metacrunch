@@ -92,7 +92,7 @@ module Metacrunch
       end
 
       def id_of(record, id, action)
-        value = id.respond_to?(:call) ? id.call(record) : id && record[id]
+        value = id.respond_to?(:call) ? id.call(record) : id && key_value(record, id)
         if value.nil?
           raise Error, "#{action} needs an id, and the record has none" if NEEDS_ID.include?(action)
 
@@ -107,6 +107,14 @@ module Metacrunch
         raise Error, "the id is longer than #{MAX_ID_BYTES} bytes" if text.bytesize > MAX_ID_BYTES
 
         text
+      end
+
+      # The value of key, or of the same key as a String or Symbol: records
+      # from JSON have String keys, Hashes built in Ruby often Symbols.
+      def key_value(record, key)
+        return record[key] if record.key?(key)
+
+        record[key.is_a?(Symbol) ? key.to_s : key.to_sym]
       end
 
       def lines(action, index, id, record)
