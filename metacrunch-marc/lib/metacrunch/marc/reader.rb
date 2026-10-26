@@ -4,15 +4,18 @@ require "metacrunch"
 
 module Metacrunch
   module Marc
-    # A metacrunch source: reads MARCXML from what Metacrunch::Input reads
-    # (paths, "-" for stdin, IOs or an Array of them; gzip and tar are
-    # unpacked whatever their names) and yields a Record per record, or
-    # with parse: false its XML string, which is cheaper to send to workers.
-    # A record that cannot be parsed is yielded as Metacrunch::InvalidRecord;
-    # a document that does not start like XML raises Metacrunch::InputError.
+    # A metacrunch source: reads MARCXML, ISO 2709 and MARC-in-JSON from what
+    # Metacrunch::Input reads (paths, "-" for stdin, IOs or an Array of them;
+    # gzip and tar are unpacked whatever their names). The format of each
+    # document is told by its first bytes (see Formats), so inputs may mix
+    # formats. Yields a Record per record, or with parse: false the record
+    # as a String in its format, which is cheaper to send to workers. A
+    # record that cannot be parsed is yielded as Metacrunch::InvalidRecord; a
+    # document in another format raises Metacrunch::InputError.
     class Reader
 
-      BOM = "\xEF\xBB\xBF".b
+      ARRAY = "is a JSON array of records; convert it to one record per line first, e.g. " \
+              "jq -c '.[]' in.json > out.jsonl"
 
       # targets: what Metacrunch::Input takes. IOs are never closed.
       def initialize(targets, parse: true, normalize: nil)
@@ -20,19 +23,19 @@ module Metacrunch
         Marc.check_normalize(normalize)
         if normalize && !parse
           raise ArgumentError, "normalize: needs parse: true; with parse: false normalize in the step that parses: " \
-                               "Metacrunch::Marc::Xml.parse(xml, normalize: :nfc)"
+                               "Metacrunch::Marc.parse(raw, normalize: :nfc)"
         end
         @parse = parse
         @normalize = normalize
       end
 
       # Without a block an Enumerator.
-      def each
+      def each(&)
         return enum_for(:each) unless block_given?
 
         @input.each_document do |stream, name|
-          check_xml(stream, name)
-          Xml.each_raw(stream) { |xml| yield(@parse ? record(xml) : xml) }
+          format = format(stream, name)
+          read(Formats.library(format), stream, &) if format
         end
       end
 
@@ -41,19 +44,25 @@ module Metacrunch
 
       private
 
-      # After a byte order mark and whitespace, a document must start with
-      # "<"; an empty one passes.
-      def check_xml(stream, name)
-        text = stream.peek(64).delete_prefix(BOM).lstrip
-        return if text.empty? || text.start_with?("<")
-
-        raise Metacrunch::InputError, "#{name}: is not XML: it starts with #{text[0, 16].inspect}"
+      # The format of a document, or nil for one without data.
+      def format(stream, name)
+        format, head = Formats.detect { stream.peek(it) }
+        case format
+        when :none then nil
+        when :array then raise Metacrunch::InputError, "#{name}: #{ARRAY}"
+        when :unknown then raise Metacrunch::InputError, "#{name}: is #{Formats.unknown(head)}"
+        else format
+        end
       end
 
-      def record(xml)
-        Xml.parse(xml, normalize: @normalize)
+      def read(library, stream)
+        library.each_raw(stream) { |raw| yield(@parse ? record(library, raw) : raw) }
+      end
+
+      def record(library, raw)
+        library.parse(raw, normalize: @normalize)
       rescue ParseError => e
-        Metacrunch::InvalidRecord.new(raw: xml, error: e)
+        Metacrunch::InvalidRecord.new(raw:, error: e)
       end
 
     end
