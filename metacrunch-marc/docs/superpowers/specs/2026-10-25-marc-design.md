@@ -427,7 +427,10 @@ Other values raise `ArgumentError`.
 
 Documented in the Readme: MARC-8 beyond ASCII (5.3), continued fields (a
 field over 9,999 bytes split into several directory entries; the piece count
-check fails), indicator counts other than 2 and code lengths other than 1.
+check fails), indicator counts other than 2 and code lengths other than 1,
+and leaders that start with spaces (a blank record length): the spaces are
+skipped as those between records (5.2), and detection (7) needs the record
+length of a document's first record (amended after the review).
 
 ## 6. MARC-in-JSON
 
