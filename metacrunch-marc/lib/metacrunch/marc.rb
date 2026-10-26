@@ -23,6 +23,7 @@ require_relative "marc/iso2709/serializer"
 require_relative "marc/json"
 require_relative "marc/json/parser"
 require_relative "marc/json/serializer"
+require_relative "marc/formats"
 
 module Metacrunch
   # MARC for metacrunch: an ordered record model (Record, ControlField,
@@ -35,6 +36,21 @@ module Metacrunch
     NORMALIZATIONS = [nil, :nfc].freeze
 
     class << self
+
+      # The one record in string, in the format its first bytes show (see
+      # Formats): MARCXML, ISO 2709 or MARC-in-JSON. Raises ParseError for
+      # none, several or another format. It is the step that parses what the
+      # Reader yields with parse: false.
+      def parse(string, normalize: nil)
+        raise ArgumentError, "string must be a String, got #{string.class}" unless string.is_a?(String)
+
+        check_normalize(normalize)
+        format, head = Formats.detect { string.byteslice(0, it) }
+        raise ParseError, "no record found" if format == :none
+        raise ParseError, Formats.unknown(head) if format == :unknown
+
+        Formats.library(format).parse(string, normalize:)
+      end
 
       # Raises ArgumentError unless normalize is nil or :nfc.
       def check_normalize(normalize)
