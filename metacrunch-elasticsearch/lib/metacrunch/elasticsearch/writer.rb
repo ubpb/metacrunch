@@ -15,6 +15,8 @@ module Metacrunch
       # Only what the writer reads of a bulk response.
       FILTER_PATH = "errors,items.*.status,items.*.error"
       MAX_DELAY = 60
+      # Index blocks that refuse writes.
+      WRITE_BLOCKS = ["write", "read_only", "read_only_allow_delete"].freeze
 
       # index: a name, or an alias with one index (or a write index). id: a
       # key or a callable(record) giving the _id; nil lets Elasticsearch
@@ -128,7 +130,7 @@ module Metacrunch
           exists = client.indices.exists(index: @index)
           raise OutputError, "elasticsearch #{@index}: no such index or alias" unless exists
 
-          check_write_index(client)
+          check_writable(client, write_target(client))
           client
         rescue Error => e
           raise OutputError, "elasticsearch #{@index}: #{e.message}"
@@ -137,16 +139,31 @@ module Metacrunch
         end
       end
 
-      # An alias with several indices takes writes only with a write index;
-      # Elasticsearch would refuse every record.
-      def check_write_index(client)
+      # The index the records go to: the index, the one of an alias, or the
+      # write index of an alias of several. Without a write index such an
+      # alias takes no writes, and Elasticsearch would refuse every record.
+      def write_target(client)
         indices = client.indices.get_alias(name: @index).body
-        return if indices.size < 2 || indices.any? { |_, entry| entry.dig("aliases", @index, "is_write_index") }
+        return indices.keys.first if indices.size == 1
+
+        write = indices.find { |_, entry| entry.dig("aliases", @index, "is_write_index") }
+        return write.first if write
 
         raise OutputError, "elasticsearch #{@index}: the alias points to #{indices.keys.sort.join(", ")} and to none " \
                            "of them as its write index"
       rescue Elastic::Transport::Transport::Errors::NotFound
-        nil
+        @index
+      end
+
+      # A closed index, or one with a block that refuses writes, would refuse
+      # every record too.
+      def check_writable(client, name)
+        rows = client.cat.indices(index: name, h: "index,status", format: "json", expand_wildcards: "all").body
+        raise OutputError, "elasticsearch #{@index}: #{name} is closed" if rows.any? { it["status"] == "close" }
+
+        blocks = client.indices.get_settings(index: name, filter_path: "*.settings.index.blocks").body
+        block = WRITE_BLOCKS.find { blocks.dig(name, "settings", "index", "blocks", it) == "true" }
+        raise OutputError, "elasticsearch #{@index}: #{name} (index.blocks.#{block}) refuses writes" if block
       end
 
       def logger = @logger || Metacrunch.logger

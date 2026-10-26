@@ -29,6 +29,33 @@ class WriterTest < Minitest::Test
     assert_equal "elasticsearch books: no such index or alias", error.message
   end
 
+  def test_open_refuses_a_closed_index
+    serve_bulk(@fake)
+    @fake.on("GET", "/_cat/indices/books") { [200, [{"index" => "books", "status" => "close"}]] }
+    error = assert_raises(Metacrunch::OutputError) { open_writer }
+
+    assert_equal "elasticsearch books: books is closed", error.message
+  end
+
+  def test_open_refuses_an_index_with_a_write_block
+    serve_bulk(@fake)
+    blocked = {"books" => {"settings" => {"index" => {"blocks" => {"write" => "true"}}}}}
+    @fake.on("GET", "/books/_settings") { [200, blocked] }
+    error = assert_raises(Metacrunch::OutputError) { open_writer }
+
+    assert_equal "elasticsearch books: books (index.blocks.write) refuses writes", error.message
+  end
+
+  def test_behind_an_alias_with_a_write_index_only_that_index_is_checked
+    serve_bulk(@fake)
+    aliases = {"books-1" => {"aliases" => {"books" => {}}},
+               "books-2" => {"aliases" => {"books" => {"is_write_index" => true}}}}
+    @fake.on("GET", "/_alias/books") { [200, aliases] }
+    open_writer
+
+    assert_equal ["/_cat/indices/books-2", "/books-2/_settings"], @fake.calls.map(&:path).last(2)
+  end
+
   def test_open_refuses_an_alias_of_several_indices_without_a_write_index
     serve_bulk(@fake)
     @fake.on("GET", "/_alias/books") do

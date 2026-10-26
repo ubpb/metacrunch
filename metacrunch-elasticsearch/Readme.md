@@ -163,8 +163,10 @@ sink Metacrunch::Elasticsearch::Writer.new(es, index: "books", id: "isbn",
 | `:delete` | `delete` | yes | removes it; a missing document counts as written |
 
 Use the writer with `batch:`: without it, every record is a request of its own. The writer cuts a batch into requests
-of at most `max_bytes`; a document larger than that goes alone. The writer checks on `open` that the index exists:
-Elasticsearch would create a missing one with guessed mappings.
+of at most `max_bytes`; a document larger than that goes alone. The writer checks on `open` that the index exists
+(Elasticsearch would create a missing one with guessed mappings), and that the index the records go to is open, has
+no block that refuses writes, and, behind an alias of several indices, is the alias's write index: otherwise
+Elasticsearch would refuse every record.
 
 ### Failures
 

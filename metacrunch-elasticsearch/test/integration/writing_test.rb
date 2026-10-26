@@ -65,6 +65,23 @@ class WritingTest < Minitest::Test
     assert_match "and to none of them as its write index", error.message
   end
 
+  def test_open_refuses_a_closed_index
+    client.indices.close(index: @index)
+    error = assert_raises(Metacrunch::OutputError) { open_writer }
+
+    assert_equal "elasticsearch #{@index}: #{@index} is closed", error.message
+  end
+
+  def test_open_refuses_an_index_behind_an_alias_with_a_write_block
+    client.indices.put_alias(index: @index, name: "#{@index}-alias")
+    client.indices.put_settings(index: @index, body: {"index.blocks.write" => true})
+    error = assert_raises(Metacrunch::OutputError) { open_writer(index: "#{@index}-alias") }
+
+    assert_equal "elasticsearch #{@index}-alias: #{@index} (index.blocks.write) refuses writes", error.message
+  ensure
+    client.indices.put_settings(index: @index, body: {"index.blocks.write" => nil})
+  end
+
   def test_open_refuses_a_missing_index
     error = assert_raises(Metacrunch::OutputError) { open_writer(index: "#{@index}-missing") }
 

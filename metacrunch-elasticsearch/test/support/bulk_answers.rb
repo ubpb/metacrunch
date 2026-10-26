@@ -13,9 +13,14 @@ module BulkAnswers
     503 => {"type" => "unavailable_shards_exception", "reason" => "primary shard is not active"}
   }.freeze
 
+  # The writer's checks at open find books open and without blocks.
   def serve_bulk(fake, &status)
     fake.on("HEAD", "/books") { [200, nil] }
     fake.on("GET", "/_alias/books") { [404, {"error" => "alias [books] missing", "status" => 404}] }
+    fake.on("GET", %r{\A/_cat/indices/}) do |request|
+      [200, request.path.split("/").last.split(",").map { {"index" => it, "status" => "open"} }]
+    end
+    fake.on("GET", %r{\A/[^_][^/]*/_settings\z}) { [200, {}] }
     fake.on("POST", "/_bulk") do |request|
       items = bulk_actions(request).map do |action, target|
         code = status&.call(action, target["_id"]) || 200
