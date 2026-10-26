@@ -108,6 +108,15 @@ Found while planning, with a prototype of both gems (2026-10-25):
 - `csv` accepts a `col_sep` equal to the `quote_char`; `"x".encode("UTF-16")` adds a byte order mark to every string.
 - In Ruby 4.0, `rexml` is a bundled gem: metacrunch-xlsx declares it (and `rubyzip`) for its tests. `roo` does not
   decode `_xHHHH_`, so the escape is checked in the XML.
+Found in the final review and decided on 2026-10-26 (the user asked to fix every finding; BigDecimal was decided by
+the executor, as the case of the 4.x report jobs, and can be changed):
+
+- Ruby's `csv` detects the row separator from a sample, counting line breaks inside quoted values too; the reader
+  passes the first line break outside quotes as `row_sep` (3.3).
+- A BigDecimal (NUMERIC columns from a database) is written as a decimal in CSV and as a number in XLSX (5.2, 6.2).
+- A signal that wakes the thread inside zlib makes `Zlib::Deflate` raise `Zlib::BufError`, although it keeps the input
+  it did not take; zip_kit's `DeflatedWriter` then leaves that piece out of its CRC, so Ctrl-C left broken files. The
+  XLSX writer deflates its parts itself (6.4).
 - Measured with the prototype: reading 1 million rows 0.96 times and writing 0.41 times Ruby's `csv`; 100 000 rows ×
   10 cells to XLSX in 1.1 s with 43 MB.
 
@@ -152,8 +161,8 @@ source Metacrunch::Csv::Reader.new(params.file, headers: false)                 
 `Reader.new(targets, col_sep: ",", quote_char: '"', encoding: "UTF-8", headers: true)`:
 
 - `targets`: what `Metacrunch::Input.new` takes (paths, `"-"`, IOs, Arrays of them; gzip and tar are unpacked).
-- `col_sep`: a non-empty String. `quote_char`: a String of one character other than `col_sep`. Both must exist in the
-  encoding. `encoding`: a name Ruby's `Encoding.find` knows, of an encoding with a byte order (`UTF-16` and `UTF-32`
+- `col_sep`: a non-empty String. `quote_char`: a String of one character other than `col_sep`, one byte in UTF-8 and
+  the single-byte encodings (which are parsed as bytes, 3.5). Both must exist in the encoding. `encoding`: a name Ruby's `Encoding.find` knows, of an encoding with a byte order (`UTF-16` and `UTF-32`
   without `LE` or `BE` are refused). `headers`: `true`, `false`, or a non-empty Array of unique, non-empty Strings.
 - `new` checks types and values with `ArgumentError` and touches no file.
 - Every document is read on its own: in a tar archive of CSV files each file has its own header row.
@@ -175,6 +184,8 @@ source Metacrunch::Csv::Reader.new(params.file, headers: false)                 
 
 - Values are never converted: they stay Strings.
 - Blank lines are skipped. A document without rows, and one with a header row only, yields no records.
+- Rows end with the first line break outside quotes in the first 64 KiB of a document (`"\r\n"`, `"\n"` or `"\r"`);
+  without one there, Ruby's `csv` decides. Quoted line breaks stay in their values.
 
 ### 3.4 Errors
 
@@ -214,7 +225,8 @@ The CSV and the XLSX writer turn a record into a row the same way.
 
 - `columns:` is `nil`, an Array of unique, non-empty Strings (the keys, which are also the header), or a Hash of
   header => key with String headers and String keys. Anything else is an `ArgumentError` from `new`.
-- **Hash records**, with `columns:`: other keys of a record are not written; missing keys are empty cells.
+- **Hash records**, with `columns:`: other keys of a record are not written; missing keys are empty cells. A column is
+  found by its key, else by the key as a Symbol, as in Hashes from a database (decided in the final review).
 - **Hash records**, without `columns:`: the keys of the first record define the columns, in their order. A later
   record with a key the first one does not have stops the run (`Metacrunch::Error`): `record at position 7 has the
   key "isbn", which the first record does not have; name the columns with columns:`. Missing keys are empty cells.
@@ -251,14 +263,16 @@ sink Metacrunch::Csv::Writer.new(params.output, columns: {"ID" => "id", "Titel" 
 
 | Value | Field |
 |---|---|
-| `String` | as it is |
+| `String` | as it is; Strings in another encoding are converted |
 | `Integer`, `Float` | `to_s` |
+| `BigDecimal` | a decimal (`to_s("F")`: `123.45`) |
 | `true`, `false` | `true`, `false` |
-| `nil` | empty |
+| `nil` | empty; a row of one empty field is written as `""`, as a blank line would be skipped when reading |
 | anything else (Time, Date, Array, Hash, other objects) | error: `record at position 7: column "date" is a Time; turn it into a String in a step` |
 
 A character that the target encoding cannot represent is an error with the record's position, not a replacement; so
-is a String that is not valid in its own encoding (`record at position 7: column "title" is not valid UTF-8`).
+is a String that is not valid in its own encoding (`record at position 7: column "title" is not valid UTF-8`) or has
+no UTF-8 form (a BINARY String with bytes above 127).
 
 ## 6. `Metacrunch::Xlsx::Writer`
 
@@ -273,10 +287,10 @@ sink Metacrunch::Xlsx::Writer.new("report.xlsx", columns: {"ID" => "id", "Titel"
 
 - `target`: what `Metacrunch::Output.new` takes. `"-"` writes the file to stdout (the ZIP container streams).
 - `columns:` and `header:` as in section 4.
-- `sheet:` the worksheet's name: 1 to 31 characters, none of `[ ] : * ? / \`, not starting or ending with `'`;
-  `ArgumentError` otherwise.
+- `sheet:` the worksheet's name: 1 to 31 characters, none of `[ ] : * ? / \` and no control characters, not starting or
+  ending with `'`, with a UTF-8 form (other encodings are converted); `ArgumentError` otherwise.
 - `widths:` column widths in characters: a Hash of header name => width, or an Array by position; widths are
-  numbers above 0 and up to 255 (Excel's widest column), or `nil` for the default. A name that is not a column is an
+  Integers or finite Floats above 0 and up to 255 (Excel's widest column), or `nil` for the default. A name that is not a column is an
   error once the columns are known (in `open` with `columns:`,
   else at the first record). Without `widths:` Excel's default width applies; fitting widths to the content is not
   possible while streaming.
@@ -289,8 +303,8 @@ sink Metacrunch::Xlsx::Writer.new("report.xlsx", columns: {"ID" => "id", "Titel"
 
 | Value | Cell |
 |---|---|
-| `String` | text (inline string); `"00123"` stays text. Text of the form `_xHHHH_` is escaped (`_x005F_xHHHH_`) so that Excel does not read it as a character code. A String in another encoding is converted to UTF-8; one that is invalid or has no UTF-8 form is an error. |
-| `Integer` with up to 15 digits, finite `Float` | number |
+| `String` | text (inline string); `"00123"` stays text. Text of the form `_xHHHH_` is escaped (`_x005F_xHHHH_`, also in chains) so that Excel does not read it as a character code; a carriage return is written as `_x000D_`, as Excel does, since XML would read it as a line feed. A String in another encoding is converted to UTF-8; one that is invalid or has no UTF-8 form is an error. |
+| `Integer` with up to 15 digits, finite `Float`, finite `BigDecimal` with up to 15 significant digits | number |
 | `true`, `false` | boolean |
 | `nil` | empty (no cell is written) |
 | `Integer` with more than 15 digits | error: Excel keeps 15 significant digits and would change it silently |
@@ -317,6 +331,9 @@ Each is an error with the record's position, not a broken file:
   marcxml writer writes its `</collection>`. A header row that cannot be written (a control character in a name) and a
   `widths:` name that is not a column stop the run; `close` then finishes the file without a header.
 - `write_batch` writes the rows one by one into the compressed stream, which buffers them.
+- Every part is deflated by the writer (`Metacrunch::Xlsx::Entry`): it counts CRC and size itself and ignores the
+  `Zlib::BufError` a signal causes, and writes into the ZIP container with interrupts held back, so Ctrl-C cannot
+  break the file. After SIGPIPE (the reader of a pipe went away) `close` finishes nothing.
 
 ## 7. Errors
 
