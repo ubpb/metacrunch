@@ -33,12 +33,18 @@ The reader tells the format of each file by its content, so the same job reads a
 
 ## Installation
 
+metacrunch 5 and this gem are not released yet; until then they come from Git with Bundler, metacrunch from the
+same source:
+
 ```ruby
 # Gemfile
-gem "metacrunch-marc"
+git "https://github.com/ubpb/metacrunch.git", branch: "metacrunch-ng" do
+  gem "metacrunch-marc"
+end
 ```
 
-Requires Ruby 4.0 and metacrunch 5. The only other dependency is [Ox](https://github.com/ohler55/ox), for MARCXML.
+Requires Ruby 4.0 and metacrunch in the same version as this gem. The only other dependency is
+[Ox](https://github.com/ohler55/ox), for MARCXML.
 
 ## Records
 
@@ -231,9 +237,10 @@ source Metacrunch::Marc::Reader.new(params.files, normalize: :nfc), id: ->(recor
 ```
 
 Reads what `Metacrunch::Input` reads (see metacrunch's
-[Files](https://github.com/ubpb/metacrunch/blob/metacrunch-ng/docs/files.md)): one target or an Array of them —
-paths, `"-"` for stdin, or IOs, which it does not close. gzip (all members, as `zcat` reads them) and tar archives
-(every regular member, but not those whose names start with `.`) are detected by their content, whatever their names.
+[Files](https://github.com/ubpb/metacrunch/blob/metacrunch-ng/metacrunch/docs/files.md)): one target or an Array
+of them — paths, `"-"` for stdin, or IOs, which it does not close. gzip (all members, as `zcat` reads them) and tar
+archives (every regular member, but not those whose names start with `.`) are detected by their content, whatever
+their names.
 
 The format of each document (a file, the content of a gzip file, a tar member) is told by its first bytes, after a
 byte order mark and whitespace: `<` is MARCXML, `{` MARC-in-JSON, a record length and a base address (five digits at

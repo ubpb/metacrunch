@@ -5,6 +5,8 @@
 The first version, for metacrunch 5. It replaces the CSV source and sink of the 4.x gem metacrunch-file, which were
 built on smarter_csv.
 
+It lives in the metacrunch repository, shares metacrunch's version and requires metacrunch in exactly that version.
+
 ### Added
 
 - `Metacrunch::Csv::Reader`, a source on `Metacrunch::Input` and Ruby's `csv`: files, stdin, IOs, gzip and tar; the
