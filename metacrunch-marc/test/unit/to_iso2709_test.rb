@@ -93,7 +93,7 @@ class ToIso2709Test < Minitest::Test
       DataField.new("245", "\x1F", " ", [["a", "x"]]) => %(field 245: "\\u001F" cannot be represented in XML 1.0),
       DataField.new("245", " ", " ", [["a", "x\xFF".b]]) => %(field 245 $a: invalid UTF-8 "x\\xFF"),
       DataField.new("245", " ", " ", [["a", "x\u0001"]]) => %(field 245 $a: "\\u0001" cannot be represented in XML 1.0),
-      ControlField.new("\x0101", "1") => %(field \u000101: "\\u0001" cannot be represented in XML 1.0)
+      ControlField.new("\x0101", "1") => %(field \\x0101: "\\u0001" cannot be represented in XML 1.0)
     }.each do |field, message|
       error = assert_raises(Marc::SerializeError) { Record.new(fields: [field]).to_iso2709 }
 
