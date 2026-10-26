@@ -271,7 +271,8 @@ tasks.
 ### 5.4 Ignored files
 
 Each gem keeps its `.gitignore`; patterns that start with `/` are relative to the gem's directory. The root's
-`.gitignore` lists `.DS_Store`, `/.bundle/`, `/pkg/` and `/tmp/`.
+`.gitignore` lists `.DS_Store`, `/.bundle/`, `/pkg/`, `/tmp/` and `/vendor/` (setup-ruby's bundler cache and
+`bundle config path vendor/bundle` put gems there).
 
 ## 6. CI and Dependabot
 
