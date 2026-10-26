@@ -33,7 +33,7 @@ same source:
 
 ```ruby
 # Gemfile
-git "https://github.com/ubpb/metacrunch.git", branch: "metacrunch-ng" do
+git "https://github.com/ubpb/metacrunch.git" do
   gem "metacrunch-xlsx"
 end
 ```

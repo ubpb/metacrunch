@@ -28,10 +28,10 @@ module Metacrunch
       end
 
       # The Gemfile line of metacrunch: "~> MAJOR.MINOR" for a release; Git
-      # for a prerelease, which RubyGems does not have.
+      # (the default branch) for a prerelease, which RubyGems does not have.
       def gem_line(version)
         version = Gem::Version.new(version)
-        return %(gem "metacrunch", github: "ubpb/metacrunch", branch: "metacrunch-ng") if version.prerelease?
+        return %(gem "metacrunch", github: "ubpb/metacrunch") if version.prerelease?
 
         %(gem "metacrunch", "~> #{version.segments.first(2).join(".")}")
       end

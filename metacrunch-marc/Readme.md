@@ -38,7 +38,7 @@ same source:
 
 ```ruby
 # Gemfile
-git "https://github.com/ubpb/metacrunch.git", branch: "metacrunch-ng" do
+git "https://github.com/ubpb/metacrunch.git" do
   gem "metacrunch-marc"
 end
 ```
@@ -237,10 +237,9 @@ source Metacrunch::Marc::Reader.new(params.files, normalize: :nfc), id: ->(recor
 ```
 
 Reads what `Metacrunch::Input` reads (see metacrunch's
-[Files](https://github.com/ubpb/metacrunch/blob/metacrunch-ng/metacrunch/docs/files.md)): one target or an Array
-of them — paths, `"-"` for stdin, or IOs, which it does not close. gzip (all members, as `zcat` reads them) and tar
-archives (every regular member, but not those whose names start with `.`) are detected by their content, whatever
-their names.
+[Files](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/files.md)): one target or an Array of them —
+paths, `"-"` for stdin, or IOs, which it does not close. gzip (all members, as `zcat` reads them) and tar archives
+(every regular member, but not those whose names start with `.`) are detected by their content, whatever their names.
 
 The format of each document (a file, the content of a gzip file, a tar member) is told by its first bytes, after a
 byte order mark and whitespace: `<` is MARCXML, `{` MARC-in-JSON, a record length and a base address (five digits at

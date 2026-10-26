@@ -32,7 +32,7 @@ class GeneratorsSkeletonTest < Minitest::Test
   end
 
   def test_a_prerelease_comes_from_git
-    assert_equal %(gem "metacrunch", github: "ubpb/metacrunch", branch: "metacrunch-ng"), Skeleton.gem_line("5.0.0.pre")
+    assert_equal %(gem "metacrunch", github: "ubpb/metacrunch"), Skeleton.gem_line("5.0.0.pre")
     assert_includes Skeleton.plan("/x", version: "5.2.0").entries[1].content, %(\ngem "metacrunch", "~> 5.2"\n)
   end
 
