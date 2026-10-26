@@ -1,0 +1,20 @@
+inherit_gem:
+  rubocop-ubpb: ruby.yml
+
+inherit_mode:
+  merge:
+    - Exclude
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+# Tests and the benchmark load what they have just dumped.
+Security/MarshalLoad:
+  Exclude:
+    - "test/**/*"
+    - "bench/**/*"
+
+# Tests leave loops on purpose (`each { break }`).
+Lint/UnreachableLoop:
+  Exclude:
+    - "test/**/*"
