@@ -4,9 +4,8 @@ source "https://rubygems.org"
 
 gemspec
 
-# metacrunch 5 is not released yet. METACRUNCH_PATH points to a checkout of
-# its metacrunch-ng branch; by default it lies next to this repository.
-gem "metacrunch", path: ENV.fetch("METACRUNCH_PATH", "../metacrunch")
+# The core gem lives next to this one in the monorepo.
+gem "metacrunch", path: "../metacrunch"
 
 group :development do
   # The tests write BigDecimals, as databases return them.
