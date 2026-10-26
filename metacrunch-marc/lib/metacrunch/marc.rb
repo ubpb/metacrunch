@@ -2,6 +2,7 @@
 
 require_relative "marc/version"
 require_relative "marc/errors"
+require_relative "marc/values"
 require_relative "marc/codes"
 require_relative "marc/tags"
 require_relative "marc/subfield"
