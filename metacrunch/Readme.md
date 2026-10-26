@@ -68,9 +68,10 @@ end
 ```
 
 `metacrunch-csv` and `metacrunch-xlsx`, together with `Metacrunch::Input` and `Metacrunch::Output`, replace the 4.x
-gem `metacrunch-file`; `metacrunch-db` and `metacrunch-redis` do not work with metacrunch 5 yet. Any other source or sink is a small class of your own (see [Sources](docs/jobs.md#sources) and
-[Sinks](docs/jobs.md#sinks)), built on `Metacrunch::Input` and `Metacrunch::Output`, which read gzip and tar and take
-care of stdin, stdout and pipes (see [Files](docs/files.md)).
+gem `metacrunch-file`; `metacrunch-db` and `metacrunch-redis` do not work with metacrunch 5 yet. Any other source or
+sink is a small class of your own (see [Sources](docs/jobs.md#sources) and [Sinks](docs/jobs.md#sinks)), built on
+`Metacrunch::Input` and `Metacrunch::Output`, which read gzip and tar and take care of stdin, stdout and pipes (see
+[Files](docs/files.md)).
 
 ## Quickstart: a job
 

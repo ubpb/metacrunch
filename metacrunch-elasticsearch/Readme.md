@@ -110,7 +110,8 @@ source Metacrunch::Elasticsearch::Reader.new(es, index: "books", hits: true)    
 
 Records are the documents' `_source`, Hashes with String keys. The reader opens a point in time and pages through it
 with `search_after`, as Elastic recommends; a job that stops early (`--limit`, an abort) closes it. The progress
-display counts the hits. A missing index stops the job with `Metacrunch::InputError`.
+display counts the hits. A missing index or alias stops the job with `Metacrunch::InputError`; a pattern
+(`books-*`) that matches no index yet gives no records, which suits a job that may run before the first load.
 
 To re-index into another index with a change, read hits and keep the id:
 
@@ -178,7 +179,8 @@ fault.
 Documents refused for good (a value the mappings do not take, a conflict, a missing document for `:update`) and
 records that cannot be sent (no Hash, no id where the action needs one, an id longer than 512 bytes, NaN) are failed
 records: the job stops by default; with `on_failure :skip` they go to the `failures` sink, with the reason in
-`ctx.failure.error` (a `Metacrunch::Elasticsearch::BulkItemError` with `status`, `type` and `reason`):
+`ctx.failure.error`: a `Metacrunch::Elasticsearch::BulkItemError` with `status`, `type` and `reason` for a document
+Elasticsearch refused, a `Metacrunch::Elasticsearch::Error` for a record that could not be sent:
 
 ```ruby
 sink Metacrunch::Elasticsearch::Writer.new(es, index: "books", id: "isbn"), batch: 1000

@@ -166,7 +166,8 @@ on_failure :skip, max_failures: 0      # stop at the first failure, but after it
 Errors in sources, sinks, hooks, `open` and `close` are no failures of a record: they always stop the job. The
 exceptions are records the source yields as `Metacrunch::InvalidRecord` (step `source`) and records the sink reports
 with `Metacrunch::SinkFailures` (step `sink`, see [Reporting failed records](#reporting-failed-records)), which are
-failures. Components are closed in any case. `NotImplementedError` and other script errors are handled like any other error.
+failures. Components are closed in any case. `NotImplementedError` and other script errors are handled like any other
+error.
 
 ## Hooks
 

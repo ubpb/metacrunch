@@ -54,6 +54,9 @@ module Metacrunch
       # Without the client, whose options hold the credentials.
       def inspect = "#<#{self.class.name} index=#{@index} connection=#{@connection.inspect}>"
 
+      # A request of the batch that stops the run (OutputError) leaves the
+      # earlier requests of the batch written, but not counted, and their
+      # failures not reported: the run aborts anyway.
       def write_batch(records)
         items, failed = Bulk.items(records, index: @index, id: @id, action: @action)
         Bulk.requests(items, @max_bytes).each { deliver(it, failed) }

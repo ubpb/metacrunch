@@ -69,6 +69,7 @@ jobs:
           ELASTIC_PASSWORD: metacrunch
           xpack.security.enabled: "true"
           xpack.security.http.ssl.enabled: "false"
+          cluster.routing.allocation.disk.threshold_enabled: "false"
           ES_JAVA_OPTS: -Xms512m -Xmx512m
         ports: ["9200:9200"]
         options: >-

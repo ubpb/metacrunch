@@ -7,7 +7,7 @@ gemspec
 # The core gem lives next to this one in the monorepo.
 gem "metacrunch", path: "../metacrunch"
 
-# Development and CI use the client for Elasticsearch 9; gemfiles/elasticsearch-8.gemfile the one for 8.
+# Development and CI use the client for Elasticsearch 9; gemfiles/elasticsearch_8.gemfile the one for 8.
 gem "elasticsearch", "~> 9.0"
 
 group :development do
