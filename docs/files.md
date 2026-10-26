@@ -2,7 +2,8 @@
 
 Sources and sinks that read or write files can leave opening, decompressing and the details of stdin, stdout and pipes
 to two building blocks: `Metacrunch::Input` and `Metacrunch::Output`. `JsonLines::Reader` and `JsonLines::Writer` are
-built on them, and so are the sources and sinks that `metacrunch generate` creates.
+built on them, and so are the sources and sinks that `metacrunch generate` creates and those of the extension gems
+`metacrunch-marcxml`, `metacrunch-csv` and `metacrunch-xlsx`.
 
 ## Reading: `Metacrunch::Input`
 
