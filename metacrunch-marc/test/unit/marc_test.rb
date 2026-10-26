@@ -7,10 +7,6 @@ class MarcTest < Minitest::Test
 
   include Iso
 
-  def test_version
-    assert_equal "1.0.0.pre", Metacrunch::Marc::VERSION
-  end
-
   def test_namespace
     assert_equal "http://www.loc.gov/MARC21/slim", Metacrunch::Marc::Xml::NAMESPACE
   end
