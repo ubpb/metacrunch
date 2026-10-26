@@ -38,6 +38,18 @@ class ReadingTest < Minitest::Test
     assert_equal [@index], hits.map { it["_index"] }.uniq
   end
 
+  def test_an_index_deleted_while_reading_stops_the_run
+    other = create_index("#{@index}-other")
+    index_documents((1..3).map { {"id" => "o#{it}", "year" => 2000 + it} }, index: other)
+    reader = Reader.new(connection, index: [@index, other], size: 10)
+    reader.open(context)
+    error = assert_raises(Metacrunch::InputError) do
+      reader.each.with_index { |_, position| client.indices.delete(index: other) if position.zero? }
+    end
+
+    assert_match "elasticsearch #{@index},#{other}: ", error.message
+  end
+
   def test_a_pattern_without_indices_gives_no_records
     reader = Reader.new(connection, index: "#{@index}-none-*")
 

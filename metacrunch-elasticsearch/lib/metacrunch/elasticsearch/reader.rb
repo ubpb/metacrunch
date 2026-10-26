@@ -66,7 +66,7 @@ module Metacrunch
         pit = request { @client.open_point_in_time(index: @index, keep_alive: @keep_alive).body["id"] }
         after = nil
         loop do
-          response = request { @client.search(body: search_body(pit, after)).body }
+          response = request { @client.search(body: search_body(pit, after), allow_partial_search_results: false).body }
           pit = response["pit_id"] || pit
           hits = response.dig("hits", "hits")
           @total ||= response.dig("hits", "total", "value")
@@ -78,8 +78,17 @@ module Metacrunch
 
           after = hits.last["sort"]
         end
+        check_complete
       ensure
         close_point_in_time(pit) if pit
+      end
+
+      # A point in time does not change, so a read that ends short of the
+      # total lost the hits of shards that failed.
+      def check_complete
+        return unless @total && @read < @total
+
+        raise InputError, "elasticsearch #{@index}: got #{@read} of #{@total} documents; shards failed while reading"
       end
 
       # The first page counts the hits for progress.

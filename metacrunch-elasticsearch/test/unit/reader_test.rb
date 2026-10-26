@@ -101,6 +101,26 @@ class ReaderTest < Minitest::Test
     assert_equal 2, Reader.new(@fake.connection, index: "books").each.count
   end
 
+  def test_searches_refuse_partial_results
+    serve_pages(@fake, documents(3))
+    open_reader(size: 2).each.to_a
+    params = @fake.calls.select { it.path == "/_search" }.map { it.params["allow_partial_search_results"] }
+
+    assert_equal ["false", "false"], params
+  end
+
+  def test_a_read_that_ends_short_of_the_total_is_an_input_error
+    serve_pages(@fake, documents(3))
+    @fake.on("POST", "/_search") do |request|
+      start = request.json["search_after"]&.first || 0
+      hits = documents(3)[start, 2].each_with_index.map { |hit, offset| hit.merge("sort" => [start + offset + 1]) }
+      [200, {"pit_id" => "pit-1", "hits" => {"total" => {"value" => 6, "relation" => "eq"}, "hits" => hits}}]
+    end
+    error = assert_raises(Metacrunch::InputError) { open_reader(size: 2).each.to_a }
+
+    assert_equal "elasticsearch books: got 3 of 6 documents; shards failed while reading", error.message
+  end
+
   def test_a_pattern_without_indices_gives_no_records
     serve_pages(@fake, [], index: "books-*")
 

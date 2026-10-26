@@ -18,6 +18,12 @@ class SearchTest < Minitest::Test
                  @fake.calls.last.json)
   end
 
+  def test_lookups_refuse_partial_results
+    @search.ids({match_all: {}})
+
+    assert_equal "false", @fake.calls.last.params["allow_partial_search_results"]
+  end
+
   def test_hits_of_the_matching_documents
     assert_equal [{"_index" => "books", "_id" => "7", "_source" => {"isbn" => "0306406152"}}],
                  @search.hits({match_all: {}})

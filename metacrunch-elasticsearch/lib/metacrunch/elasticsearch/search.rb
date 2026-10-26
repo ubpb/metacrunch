@@ -28,7 +28,8 @@ module Metacrunch
           raise ArgumentError, "size must be an Integer from 1 to #{Reader::MAX_SIZE}, got #{size.inspect}"
         end
 
-        client.search(index: @index, body: {query:, size:, **body}).body.dig("hits", "hits")
+        response = client.search(index: @index, body: {query:, size:, **body}, allow_partial_search_results: false)
+        response.body.dig("hits", "hits")
       rescue Elastic::Transport::Transport::Error => e
         raise Error, "elasticsearch #{@index}: #{@connection.describe(e)}"
       end
