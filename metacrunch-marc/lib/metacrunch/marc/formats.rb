@@ -16,6 +16,7 @@ module Metacrunch
       CONTENT = /[^ \t\r\n\0]/n
       ISO2709 = /\A\d{5}.{7}\d{5}/mn
       ISO2709_START = 17
+      RECORD_TERMINATOR = 0x1D
       EXCERPT = 16
 
       module_function
@@ -58,6 +59,18 @@ module Metacrunch
         when :iso2709 then Iso2709
         else Json
         end
+      end
+
+      # Whether string, one record, is ISO 2709 by its ends: content that
+      # starts with a digit and ends with the record terminator. A document
+      # needs the record length and the base address; one record, as
+      # Iso2709.parse reads it, does not.
+      def iso2709_record?(string)
+        bytes = string.b
+        first = start(bytes)
+        return false unless first && bytes.getbyte(first).between?(0x30, 0x39)
+
+        bytes.getbyte(bytes.rindex(CONTENT)) == RECORD_TERMINATOR
       end
 
       # The message for a document of format :unknown.
