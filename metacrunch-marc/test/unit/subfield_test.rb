@@ -4,7 +4,7 @@ require "test_helper"
 
 class SubfieldTest < Minitest::Test
 
-  Subfield = Metacrunch::Marcxml::Subfield
+  Subfield = Metacrunch::Marc::Subfield
 
   def test_has_a_code_and_a_value
     subfield = Subfield.new("a", "Title")

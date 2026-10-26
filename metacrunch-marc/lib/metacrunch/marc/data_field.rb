@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  module Marcxml
+  module Marc
     # A data field: a tag, two indicators and an ordered Array of Subfields.
     # A blank indicator is " ". The tag is fixed (see Record); indicators and
     # subfields can be changed.

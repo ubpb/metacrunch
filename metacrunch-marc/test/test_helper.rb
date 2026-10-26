@@ -18,6 +18,6 @@ require "stringio"
 require "tmpdir"
 require "fileutils"
 require "zlib"
-require "metacrunch/marcxml"
+require "metacrunch/marc"
 
 Dir[File.join(__dir__, "support", "*.rb")].each { |file| require file }

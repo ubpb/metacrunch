@@ -1,13 +1,14 @@
 # frozen_string_literal: true
 
-require_relative "lib/metacrunch/marcxml/version"
+require_relative "lib/metacrunch/marc/version"
 
 Gem::Specification.new do |spec|
-  spec.name     = "metacrunch-marcxml"
-  spec.version  = Metacrunch::Marcxml::VERSION
+  spec.name     = "metacrunch-marc"
+  spec.version  = Metacrunch::Marc::VERSION
   spec.authors  = ["René Sprotte"]
-  spec.summary  = "MARCXML for metacrunch: an ordered record model, a fast parser, a source and a sink"
-  spec.homepage = "https://github.com/ubpb/metacrunch-marcxml"
+  spec.summary  = "MARC for metacrunch: MARCXML, ISO 2709 and MARC-in-JSON on one ordered record model, with a " \
+                  "source and a sink"
+  spec.homepage = "https://github.com/ubpb/metacrunch-marc"
   spec.license  = "MIT"
 
   spec.required_ruby_version = ">= 4.0"

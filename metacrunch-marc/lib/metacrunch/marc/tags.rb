@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  module Marcxml
+  module Marc
     # The tag of a field is fixed: frozen and deduplicated, so the tag index
     # of a Record stays right and equal tags share one String. Internal.
     module Tags

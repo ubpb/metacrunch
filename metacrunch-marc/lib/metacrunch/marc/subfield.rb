@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  module Marcxml
+  module Marc
     # A subfield of a data field: a code and a value, both Strings.
     class Subfield
 

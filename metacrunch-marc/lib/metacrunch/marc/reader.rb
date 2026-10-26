@@ -3,7 +3,7 @@
 require "metacrunch"
 
 module Metacrunch
-  module Marcxml
+  module Marc
     # A metacrunch source: reads MARCXML from what Metacrunch::Input reads
     # (paths, "-" for stdin, IOs or an Array of them; gzip and tar are
     # unpacked whatever their names) and yields a Record per record, or
@@ -17,10 +17,10 @@ module Metacrunch
       # targets: what Metacrunch::Input takes. IOs are never closed.
       def initialize(targets, parse: true, normalize: nil)
         @input = Metacrunch::Input.new(targets)
-        Marcxml.check_normalize(normalize)
+        Marc.check_normalize(normalize)
         if normalize && !parse
           raise ArgumentError, "normalize: needs parse: true; with parse: false normalize in the step that parses: " \
-                               "Marcxml.parse(xml, normalize: :nfc)"
+                               "Metacrunch::Marc::Xml.parse(xml, normalize: :nfc)"
         end
         @parse = parse
         @normalize = normalize
@@ -32,7 +32,7 @@ module Metacrunch
 
         @input.each_document do |stream, name|
           check_xml(stream, name)
-          Marcxml.each_xml(stream) { |xml| yield(@parse ? record(xml) : xml) }
+          Xml.each_raw(stream) { |xml| yield(@parse ? record(xml) : xml) }
         end
       end
 
@@ -51,7 +51,7 @@ module Metacrunch
       end
 
       def record(xml)
-        Marcxml.parse(xml, normalize: @normalize)
+        Xml.parse(xml, normalize: @normalize)
       rescue ParseError => e
         Metacrunch::InvalidRecord.new(raw: xml, error: e)
       end

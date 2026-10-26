@@ -6,10 +6,10 @@ class ToXmlTest < Minitest::Test
 
   include Fixtures
 
-  Marcxml = Metacrunch::Marcxml
-  Record = Metacrunch::Marcxml::Record
-  ControlField = Metacrunch::Marcxml::ControlField
-  DataField = Metacrunch::Marcxml::DataField
+  Marc = Metacrunch::Marc
+  Record = Metacrunch::Marc::Record
+  ControlField = Metacrunch::Marc::ControlField
+  DataField = Metacrunch::Marc::DataField
 
   def sample
     Record.new(leader: "00000nam a2200000 c 4500", type: "Bibliographic",
@@ -60,7 +60,7 @@ class ToXmlTest < Minitest::Test
     record = Record.new(fields: [DataField.new("500", " ", " ", [["a", "a\r\nb"]])])
 
     assert_includes record.to_xml, "a&#13;\nb"
-    assert_equal record, Marcxml.parse(record.to_xml)
+    assert_equal record, Marc::Xml.parse(record.to_xml)
   end
 
   def test_nil_values_are_written_empty
@@ -72,7 +72,7 @@ class ToXmlTest < Minitest::Test
   def test_rejects_characters_xml_cannot_represent
     ["\u0001", "\u000B", "\u001F", "\uFFFE", "\uFFFF"].each do |char|
       record = Record.new(fields: [DataField.new("245", "1", "0", [["a", "x#{char}y"]])])
-      error = assert_raises(Marcxml::SerializeError) { record.to_xml }
+      error = assert_raises(Marc::SerializeError) { record.to_xml }
 
       assert_match(/\Afield 245 \$a: /, error.message)
     end
@@ -80,7 +80,7 @@ class ToXmlTest < Minitest::Test
 
   def test_rejects_invalid_utf8
     record = Record.new(fields: [ControlField.new("001", "M\xFCller")])
-    error = assert_raises(Marcxml::SerializeError) { record.to_xml }
+    error = assert_raises(Marc::SerializeError) { record.to_xml }
 
     assert_match(/\Afield 001: invalid UTF-8/, error.message)
   end
@@ -88,18 +88,18 @@ class ToXmlTest < Minitest::Test
   def test_transcodes_strings_in_other_encodings
     record = Record.new(fields: [ControlField.new("001", "Müller".encode("ISO-8859-1"))])
 
-    assert_equal "Müller", Marcxml.parse(record.to_xml)["001"].value
+    assert_equal "Müller", Marc::Xml.parse(record.to_xml)["001"].value
   end
 
   def test_rejects_strings_that_cannot_be_transcoded
     record = Record.new(fields: [ControlField.new("001", "\x82".dup.force_encoding("Shift_JIS"))])
 
-    assert_raises(Marcxml::SerializeError) { record.to_xml }
+    assert_raises(Marc::SerializeError) { record.to_xml }
   end
 
   def test_messages_show_invalid_bytes_as_escapes
     record = Record.new(fields: [DataField.new("245", " ", " ", [["\xE4".b, "\u0001"]])])
-    error = assert_raises(Marcxml::SerializeError) { record.to_xml }
+    error = assert_raises(Marc::SerializeError) { record.to_xml }
 
     assert_predicate error.message, :valid_encoding?
     assert_match(/\Afield 245 \$\\xE4: /, error.message)
@@ -107,8 +107,8 @@ class ToXmlTest < Minitest::Test
 
   def test_round_trip_of_every_fixture
     ["collection.xml", "prefixed.xml", "local.xml", "edge.xml"].each do |name|
-      Marcxml.each(fixture(name)) do |record|
-        assert_equal record, Marcxml.parse(record.to_xml), name
+      Marc::Xml.each(fixture(name)) do |record|
+        assert_equal record, Marc::Xml.parse(record.to_xml), name
       end
     end
   end
@@ -123,7 +123,7 @@ class ToXmlTest < Minitest::Test
       ]
     )
 
-    assert_equal record, Marcxml.parse(record.to_xml)
+    assert_equal record, Marc::Xml.parse(record.to_xml)
   end
 
 end

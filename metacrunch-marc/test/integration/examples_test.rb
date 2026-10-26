@@ -25,7 +25,7 @@ class ExamplesTest < Minitest::Test
       output = File.join(dir, "clean.xml")
       _stdout, stderr, status = metacrunch("run", example("cleanup.rb"), "--target", output,
                                            example("data/catalog.xml"))
-      records = Metacrunch::Marcxml.each(File.read(output)).to_a
+      records = Metacrunch::Marc::Xml.each(File.read(output)).to_a
 
       assert_predicate status, :success?, stderr
       assert(records.all? { it.value("883", "a") == "metacrunch cleanup example" })

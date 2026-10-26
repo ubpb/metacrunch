@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "metacrunch/marcxml"
+require "metacrunch/marc"
 
 # Reads MARCXML and writes one JSON object per record (id, title, authors,
 # subjects, links) to stdout as JSON Lines.
@@ -11,7 +11,7 @@ Metacrunch.job do
     args :files, min: 1
   end
 
-  source Metacrunch::Marcxml::Reader.new(params.files), id: ->(record) { record["001"]&.value }
+  source Metacrunch::Marc::Reader.new(params.files), id: ->(record) { record["001"]&.value }
 
   map do |record|
     {
