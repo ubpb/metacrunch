@@ -32,7 +32,7 @@ class RoundTripTest < Minitest::Test
 
   private
 
-  def read(string, format) = {xml: Marc::Xml, iso2709: Marc::Iso2709, json: Marc::Json}.fetch(format).each(string).to_a
+  def read(string, format) = Marc::Formats.library(format).each(string).to_a
 
   def write(records, format)
     case format
