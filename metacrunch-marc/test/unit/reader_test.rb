@@ -3,6 +3,7 @@
 require "test_helper"
 require "json"
 require "rubygems/package"
+require "timeout"
 
 class ReaderTest < Minitest::Test
 
@@ -14,6 +15,25 @@ class ReaderTest < Minitest::Test
   Reader = Metacrunch::Marc::Reader
   IDS = ["book-1", "article-1", "holding-1"].freeze
   NOT_MARC = "is neither MARCXML, ISO 2709 nor MARC-in-JSON"
+
+  # Hands out its first chunk, then waits until the test lets it go on, as
+  # a pipe whose writer pauses.
+  class Paused
+
+    def initialize(first, rest)
+      @chunks = Thread::Queue.new
+      @chunks << first
+      @rest = rest
+    end
+
+    def go_on
+      @chunks << @rest
+      @chunks << nil
+    end
+
+    def readpartial(_length) = @chunks.pop || raise(EOFError)
+
+  end
 
   def setup
     @dir = Dir.mktmpdir
@@ -300,6 +320,17 @@ class ReaderTest < Minitest::Test
     ["collection.xml", "collection.mrc", "collection.jsonl"].each do |name|
       assert_equal IDS, ids(read(Reader.new(Trickle.new(File.binread(fixture_path(name)))))), name
     end
+  end
+
+  def test_a_pausing_pipe_gives_its_first_record_at_once
+    pipe = Paused.new(%({"fields":[{"001":"1"}]}\n), %({"fields":[{"001":"2"}]}\n))
+    ids = Thread::Queue.new
+    reading = Thread.new { Reader.new(pipe).each { ids << it["001"].value } }
+
+    assert_equal "1", Timeout.timeout(5) { ids.pop }
+  ensure
+    pipe.go_on
+    reading.join
   end
 
   def test_reads_gzip_iso2709_files

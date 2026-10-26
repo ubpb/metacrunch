@@ -9,8 +9,8 @@ module Metacrunch
     # file that starts with a number from being taken for ISO 2709. Internal.
     module Formats
 
-      # Detection looks at the first WINDOW bytes, and at twice as many
-      # while it sees only bytes it skips.
+      # Detection looks at the first WINDOW bytes of a String, and at twice
+      # as many while it cannot tell.
       WINDOW = 64
       BOM = "\xEF\xBB\xBF".b
       CONTENT = /[^ \t\r\n\0]/n
@@ -24,9 +24,8 @@ module Metacrunch
       # The format of a document and the bytes seen, [format, head]: format
       # is :xml, :iso2709, :json, :array, :none (nothing but skipped bytes)
       # or :unknown. The block gives the first length bytes of the document,
-      # fewer at its end.
-      def detect
-        window = WINDOW
+      # fewer at its end; window is the first length asked for.
+      def detect(window = WINDOW)
         loop do
           head = yield(window).b
           format = format(head, complete: head.bytesize < window)
@@ -39,6 +38,8 @@ module Metacrunch
       # The format of head; nil if more bytes follow (complete: false) and
       # head does not tell yet.
       def format(head, complete:)
+        return if !complete && head.bytesize < BOM.bytesize && BOM.start_with?(head)
+
         start = start(head)
         return complete ? :none : nil unless start
 
