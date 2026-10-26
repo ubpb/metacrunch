@@ -29,10 +29,11 @@ module Metacrunch
           new(normalize).record(json(text))
         end
 
-        # The Hash of text. Duplicate keys raise (json 3). A line that is not
+        # The Hash of text. Duplicate keys raise, also with the json 2 that comes
+        # with Ruby 4.0, which keeps the last one by default. A line that is not
         # a whole object, as in a pretty-printed file, gets a hint.
         def self.json(text)
-          value = JSON.parse(text)
+          value = JSON.parse(text, allow_duplicate_key: false)
           return value if value.is_a?(Hash)
 
           raise ParseError, "a record must be a JSON object, got #{short(value)}"
