@@ -49,8 +49,12 @@ module Metacrunch
         @output.write(serialize(record, ctx))
       end
 
+      # Joins the batch as bytes, so Strings in other encodings (binary ISO
+      # 2709 records) can be mixed with UTF-8 ones.
       def write_batch(records, ctxs)
-        @output.write(records.zip(ctxs).map { |record, ctx| serialize(record, ctx) }.join)
+        batch = String.new(encoding: Encoding::BINARY)
+        records.zip(ctxs) { |record, ctx| batch << serialize(record, ctx).b }
+        @output.write(batch)
       end
 
       # Writes the end of a MARCXML collection, also after an aborted run,

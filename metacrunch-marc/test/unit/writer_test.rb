@@ -244,6 +244,16 @@ class WriterTest < Minitest::Test
     end
   end
 
+  def test_write_batch_takes_strings_in_any_encoding
+    record = Marc::Record.new(fields: [Marc::ControlField.new("001", "ä")])
+    io = StringIO.new
+    writer = open_writer(io, format: :iso2709)
+    writer.write_batch([record.to_iso2709, record.to_iso2709.b, record], [@ctx, @ctx, @ctx])
+    writer.close
+
+    assert_equal record.to_iso2709.b * 3, io.string.b
+  end
+
   def test_refuses_strings_of_another_format
     {xml: [record.to_iso2709, "a <record> element"], iso2709: [record.to_xml, "an ISO 2709 record"],
      json: [record.to_xml, "one line of MARC-in-JSON"]}.each do |format, (string, what)|
