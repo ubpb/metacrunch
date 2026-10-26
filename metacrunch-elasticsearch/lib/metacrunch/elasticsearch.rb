@@ -7,6 +7,8 @@ require "metacrunch"
 require_relative "elasticsearch/version"
 require_relative "elasticsearch/errors"
 require_relative "elasticsearch/names"
+require_relative "elasticsearch/connection"
+require_relative "elasticsearch/definition"
 
 module Metacrunch
   # Elasticsearch for metacrunch: a source (Reader), a bulk sink (Writer),
