@@ -1,0 +1,35 @@
+# Elasticsearch 8 and 9 for the integration tests, with security on (user
+# elastic, password metacrunch) and HTTP without TLS:
+#
+#   docker compose -f test/compose.yml up -d --wait
+#   export ELASTICSEARCH_USER=elastic ELASTICSEARCH_PASSWORD=metacrunch
+#   ELASTICSEARCH_URL=http://localhost:9208 bundle exec rake test   # Elasticsearch 8
+#   ELASTICSEARCH_URL=http://localhost:9209 bundle exec rake test   # Elasticsearch 9
+#   docker compose -f test/compose.yml down
+#
+# The client for Elasticsearch 8: BUNDLE_GEMFILE=gemfiles/elasticsearch_8.gemfile.
+name: metacrunch-elasticsearch
+
+x-elasticsearch: &elasticsearch
+  environment:
+    discovery.type: single-node
+    ELASTIC_PASSWORD: metacrunch
+    xpack.security.enabled: "true"
+    xpack.security.http.ssl.enabled: "false"
+    cluster.routing.allocation.disk.threshold_enabled: "false"
+    ES_JAVA_OPTS: -Xms512m -Xmx512m
+  healthcheck:
+    test: curl -fs -u elastic:metacrunch "localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s"
+    interval: 5s
+    timeout: 5s
+    retries: 30
+
+services:
+  elasticsearch-8:
+    <<: *elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.23
+    ports: ["9208:9200"]
+  elasticsearch-9:
+    <<: *elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
+    ports: ["9209:9200"]
