@@ -58,7 +58,7 @@ es = Metacrunch::Elasticsearch::Connection.new(url: "https://search.example.org:
 
 | Option | Default | |
 |---|---|---|
-| `url` | the client's: `ELASTICSEARCH_URL`, else `http://localhost:9200` | a URL, several comma-separated, or an Array |
+| `url` | the client's: `ELASTICSEARCH_URL`, else `http://localhost:9200` | a URL, several comma-separated, or an Array; `user:password@` in it counts as `user` and `password` |
 | `api_key` | | the API key as Elasticsearch issues it (Base64 `id:key`) |
 | `user`, `password` | | basic authentication; not together with `api_key` |
 | `ca_file` | | the CA certificate for TLS (Elasticsearch 8 and later: `http_ca.crt`) |

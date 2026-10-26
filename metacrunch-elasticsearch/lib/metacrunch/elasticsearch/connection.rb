@@ -61,14 +61,21 @@ module Metacrunch
 
       # url: a String (several URLs comma-separated), an Array, or nil for
       # the client's default (ELASTICSEARCH_URL, else http://localhost:9200).
+      # User info in the URL (user:password@) counts as user and password.
       # client_options go to ::Elasticsearch::Client.new and win over the
       # other options.
       def initialize(url: nil, api_key: nil, user: nil, password: nil, ca_file: nil, request_timeout: 60, retries: 3,
                      **client_options)
-        @urls = parse_urls(url)
+        @urls, url_user, url_password = user_info(parse_urls(url))
         @api_key = optional_string(api_key, :api_key)
         @user = optional_string(user, :user)
         @password = optional_string(password, :password)
+        if url_user
+          raise ArgumentError, "give user and password in url or as options, not both" if @user || @password
+
+          @user = url_user
+          @password = url_password
+        end
         @ca_file = ca_file.nil? ? nil : path(ca_file)
         @request_timeout = timeout(request_timeout)
         @retries = count(retries)
@@ -160,6 +167,18 @@ module Metacrunch
         when 403 then "#{Elasticsearch.reason(error)}; #{AUTH_HINT}"
         else Elasticsearch.reason(error)
         end
+      end
+
+      # [the URLs without user info, user, password]: the user info goes into
+      # a header (see client_arguments), the same for every URL.
+      def user_info(urls)
+        return [nil, nil, nil] unless urls
+
+        infos = urls.map { URI.parse(it).userinfo }
+        raise ArgumentError, "the URLs name different users" if infos.compact.uniq.size > 1
+
+        plain = urls.zip(infos).map { |url, info| info ? url.sub("//#{info}@", "//") : url }
+        [plain, *infos.compact.first&.split(":", 2)&.map { URI.decode_uri_component(it) }]
       end
 
       def parse_urls(value)

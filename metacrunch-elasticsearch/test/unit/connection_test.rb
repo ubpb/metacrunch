@@ -156,12 +156,33 @@ class ConnectionTest < Minitest::Test
     end
   end
 
-  def test_url_and_inspect_filter_secrets
-    connection = Connection.new(url: "https://elastic:secret@es.test:9200, https://es2.test:9200", api_key: "k3y")
+  def test_user_info_in_the_url_is_basic_authentication_for_every_url
+    connection = Connection.new(url: "https://elastic:secret@es.test:9200, https://es2.test:9200")
 
-    assert_equal "https://[FILTERED]@es.test:9200", connection.url
-    assert_equal "#<Metacrunch::Elasticsearch::Connection url=https://[FILTERED]@es.test:9200,https://es2.test:9200 " \
-                 "api_key=[FILTERED]>", connection.inspect
+    assert_equal "https://es.test:9200", connection.url
+    assert_equal "#<Metacrunch::Elasticsearch::Connection url=https://es.test:9200,https://es2.test:9200 " \
+                 "user=elastic password=[FILTERED]>", connection.inspect
+  end
+
+  def test_user_info_goes_into_a_header_not_into_the_url
+    fake = FakeElasticsearch.new
+    Connection.new(url: "http://elastic:se%2Fcret@es.test:9200", adapter: fake.adapter).connect
+    request = fake.requests.first
+    basic = "Basic #{["elastic:se/cret"].pack("m0")}"
+
+    assert_equal [basic, "es.test"], [request.headers["authorization"], request.host]
+  end
+
+  def test_user_info_must_be_given_once
+    both = "give user and password in url or as options, not both"
+
+    {
+      {url: "http://a:1@es.test:9200,http://b:2@es2.test:9200"} => "the URLs name different users",
+      {url: "http://a:1@es.test:9200", user: "b", password: "2"} => both,
+      {url: "http://a:1@es.test:9200", api_key: "k3y"} => "use api_key or user and password, not both"
+    }.each do |options, message|
+      assert_equal message, assert_raises(ArgumentError) { Connection.new(**options) }.message
+    end
   end
 
   def test_inspect_shows_the_user_but_not_the_password
