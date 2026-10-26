@@ -41,8 +41,9 @@ module Metacrunch
         new(**PARAMS.select { params.respond_to?(it) }.to_h { [it, params.public_send(it)] })
       end
 
-      # A URL for messages: user info (user:password@) as [FILTERED].
-      def self.filter(url) = url.to_s.sub(%r{//[^/@]*@}, "//[FILTERED]@")
+      # A URL for messages: user info (user:password@) as [FILTERED], up to the
+      # last @, since a password may hold an unencoded / or @.
+      def self.filter(url) = url.to_s.sub(%r{//.*@}, "//[FILTERED]@")
 
       # Raises Error unless a client of version client can talk to a server
       # of version server.

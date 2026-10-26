@@ -139,6 +139,8 @@ class ConnectionTest < Minitest::Test
     {
       {url: "ftp://es.test"} => 'url must be an http or https URL, got "ftp://es.test"',
       {url: "http://u:p@"} => 'url must be an http or https URL, got "http://[FILTERED]@"',
+      {url: "http://elastic:pa/ss@es.test:9200"} => 'url must be an http or https URL, got "http://[FILTERED]@es.test:9200"',
+      {url: "http://elastic:p@ss@es.test:9200"} => 'url must be an http or https URL, got "http://[FILTERED]@es.test:9200"',
       {url: 9200} => "url must be a String or an Array, got Integer",
       {url: [9200]} => 'url must be an http or https URL, got "9200"',
       {url: "http://es test:9200"} => 'url must be an http or https URL, got "http://es test:9200"',
