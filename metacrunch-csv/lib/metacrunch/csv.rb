@@ -4,7 +4,10 @@ require "csv"
 require "stringio"
 require "metacrunch"
 require_relative "csv/version"
+require_relative "csv/errors"
 require_relative "csv/columns"
+require_relative "csv/lines"
+require_relative "csv/reader"
 
 module Metacrunch
   # CSV for metacrunch: a source (Reader) and a sink (Writer) on Ruby's csv.
