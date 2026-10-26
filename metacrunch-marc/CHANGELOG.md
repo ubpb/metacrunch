@@ -33,7 +33,8 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
   MARC-8 records fail with a hint to convert them.
 - MARC-in-JSON, one record per line: `Metacrunch::Marc::Json.parse`, `.each` and `.each_raw`, `Record#to_json` and
   `Record.from_h`.
-- `Metacrunch::Marc.parse` reads one record in any of the three formats.
+- `Metacrunch::Marc.parse` reads one record in any of the three formats, and `Metacrunch::Marc.each` streams a document
+  in any of them.
 - `Metacrunch::Marc::Reader`, a source on `Metacrunch::Input`: all three formats, told by the content of each
   document; files, gzip files (also with several members) and tar archives recognized by their content, stdin and
   IOs. A record that cannot be read becomes a `Metacrunch::InvalidRecord`; a document in another format or a

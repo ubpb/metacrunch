@@ -24,6 +24,7 @@ require_relative "marc/json"
 require_relative "marc/json/parser"
 require_relative "marc/json/serializer"
 require_relative "marc/formats"
+require_relative "marc/lookahead"
 
 module Metacrunch
   # MARC for metacrunch: an ordered record model (Record, ControlField,
@@ -61,6 +62,23 @@ module Metacrunch
         Formats.library(format).parse(string, normalize:)
       end
 
+      # Yields every record of input (a String, or an object with
+      # readpartial or read: a File, a Zlib::GzipReader, a pipe) in the
+      # format its first bytes show (see Formats). Raises ParseError for
+      # another format, and at the first record that cannot be read. Without
+      # a block an Enumerator. Unlike the Reader it reads one document, takes
+      # no paths and unpacks no gzip or tar.
+      def each(input, normalize: nil, &block)
+        check_input(input)
+        check_normalize(normalize)
+        return enum_for(:each, input, normalize:) unless block
+
+        input = Lookahead.new(input) unless input.is_a?(String)
+        format = stream_format(input)
+        Formats.library(format).each(input, normalize:, &block) unless format == :none
+        nil
+      end
+
       # Raises ArgumentError unless normalize is nil or :nfc.
       def check_normalize(normalize)
         return if NORMALIZATIONS.include?(normalize)
@@ -74,6 +92,22 @@ module Metacrunch
         return if input.is_a?(String) || input.respond_to?(:readpartial) || input.respond_to?(:read)
 
         raise ArgumentError, "input must be a String or respond to #readpartial or #read, got #{input.class}"
+      end
+
+      private
+
+      # The format of input (a String or a Lookahead) for each. Peeks from
+      # one byte on, as the Reader does: a pipe that pauses after a short
+      # first record must not hold it back.
+      def stream_format(input)
+        peek = input.is_a?(String) ? ->(length) { input.byteslice(0, length) } : input.method(:peek)
+        format, = Formats.detect(1, &peek)
+        case format
+        when :array then raise ParseError, Formats::ARRAY
+        # Detection may have looked at one byte only; the message shows more.
+        when :unknown then raise ParseError, Formats.unknown(peek.call(Formats::WINDOW))
+        else format
+        end
       end
 
     end

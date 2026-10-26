@@ -16,6 +16,10 @@ module Metacrunch
       ISO2709_START = 17
       EXCERPT = 16
 
+      # The message for a document of format :array.
+      ARRAY = "a JSON array of records; convert it to one record per line first, e.g. " \
+              "jq -c '.[]' in.json > out.jsonl"
+
       module_function
 
       # The format of a document and the bytes seen, [format, head]: format

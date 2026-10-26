@@ -127,6 +127,7 @@ record.remove { it.equal?(field) }
 
 ```ruby
 Metacrunch::Marc.parse(string)                            # one record in any format, told by its first bytes
+Metacrunch::Marc.each(io_or_string) { ... }               # every record in any format, streaming
 
 Metacrunch::Marc::Iso2709.parse(string)                   # one record, ISO 2709 only
 Metacrunch::Marc::Iso2709.each(io_or_string) { ... }      # every record, streaming
@@ -135,7 +136,10 @@ Metacrunch::Marc::Iso2709.each_raw(io_or_string) { ... }  # every record as a St
 ```
 
 `Metacrunch::Marc.parse` reads a record whatever its format, e.g. the Strings the [Reader](#reader) yields with
-`parse: false`. The format modules read their format only, so input in another format fails, and they also stream.
+`parse: false`. `Metacrunch::Marc.each` streams a document whatever its format, for code outside a job: unlike the
+[Reader](#reader) it reads one String or IO-like object, takes no paths, unpacks no gzip or tar and raises at the
+first record it cannot read. The format modules read their format only, so input in another format fails, and they
+also stream.
 
 `each` and `each_raw` read Strings and IO-like objects (files, `StringIO`, `Zlib::GzipReader`, pipes); without a block
 they return an Enumerator. They read in chunks, so the time grows in proportion to the input. `parse` raises

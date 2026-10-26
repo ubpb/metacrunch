@@ -14,9 +14,6 @@ module Metacrunch
     # document in another format raises Metacrunch::InputError.
     class Reader
 
-      ARRAY = "is a JSON array of records; convert it to one record per line first, e.g. " \
-              "jq -c '.[]' in.json > out.jsonl"
-
       # targets: what Metacrunch::Input takes. IOs are never closed.
       def initialize(targets, parse: true, normalize: nil)
         @input = Metacrunch::Input.new(targets)
@@ -51,7 +48,7 @@ module Metacrunch
         format, = Formats.detect(1) { stream.peek(it) }
         case format
         when :none then nil
-        when :array then raise Metacrunch::InputError, "#{name}: #{ARRAY}"
+        when :array then raise Metacrunch::InputError, "#{name}: is #{Formats::ARRAY}"
         # Detection may have looked at one byte only; the message shows more.
         when :unknown then raise Metacrunch::InputError, "#{name}: is #{Formats.unknown(stream.peek(Formats::WINDOW))}"
         else format

@@ -38,6 +38,27 @@ module Inputs
 
   end
 
+  # Fails when read again after its end, where a terminal would wait for
+  # more input.
+  class EndOnce
+
+    def initialize(string)
+      @io = StringIO.new(string)
+      @ended = false
+    end
+
+    def readpartial(length)
+      raise "read again after the end" if @ended
+
+      chunk = @io.read(length)
+      return chunk if chunk
+
+      @ended = true
+      raise EOFError
+    end
+
+  end
+
   # Has only read, as some IO-like objects do.
   class ReadOnly
 
