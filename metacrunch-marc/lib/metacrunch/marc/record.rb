@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  module Marcxml
-    # A MARC record: a leader (a String or nil), the type attribute of
-    # <record> (e.g. "Bibliographic") or nil, and an ordered, frozen Array of
-    # ControlFields and DataFields.
+  module Marc
+    # A MARC record: a leader (a String or nil), the type attribute of a
+    # MARCXML <record> (e.g. "Bibliographic") or nil, and an ordered, frozen
+    # Array of ControlFields and DataFields.
     #
     # The fields change only through add, append, remove and clear, which
     # put a new Array in place, and the tags of fields are fixed. So queries
@@ -135,7 +135,7 @@ module Metacrunch
 
       # The record as MARCXML; namespace: false leaves out xmlns (a
       # <collection> declares it).
-      def to_xml(namespace: true) = Serializer.record(self, namespace:)
+      def to_xml(namespace: true) = Xml::Serializer.record(self, namespace:)
 
       # One line per field in the mnemonic form of MarcEdit, the leader as
       # "=LDR".

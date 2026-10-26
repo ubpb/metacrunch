@@ -3,15 +3,12 @@
 require "metacrunch"
 
 module Metacrunch
-  module Marcxml
+  module Marc
     # A metacrunch sink: writes Records as one MARCXML <collection> to what
     # Metacrunch::Output takes: a file (.gz compressed), stdout ("-") or an
     # IO. close writes the end of the collection, also after an aborted run,
     # so the output stays well-formed.
     class Writer
-
-      HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<collection xmlns=\"#{NAMESPACE}\">\n".freeze
-      FOOTER = "</collection>\n"
 
       # A String record must start with a record element, e.g. from
       # Record#to_xml(namespace: false) in a worker.
@@ -25,7 +22,7 @@ module Metacrunch
       def open(_context)
         @output.open
         @open = true
-        @output.write(HEADER)
+        @output.write(Xml::HEADER)
       end
 
       def write(record, ctx)
@@ -42,7 +39,7 @@ module Metacrunch
         return unless @open
 
         @open = false
-        @output.write(FOOTER)
+        @output.write(Xml::FOOTER)
       ensure
         @output.close
       end
@@ -53,11 +50,11 @@ module Metacrunch
       # XML serialized in a worker, cheaper to send) is written as it is.
       def xml(record, ctx)
         case record
-        when Record then Serializer.record(record, namespace: false, indent: "  ")
+        when Record then Xml::Serializer.record(record, namespace: false, indent: "  ")
         when String then record_xml(record, ctx)
         else
           raise Metacrunch::Error,
-                "record at position #{ctx.position} is not a Metacrunch::Marcxml::Record (#{record.class})"
+                "record at position #{ctx.position} is not a Metacrunch::Marc::Record (#{record.class})"
         end
       rescue SerializeError => e
         raise Metacrunch::Error, "record at position #{ctx.position} cannot be written as MARCXML: #{e.message}"

@@ -7,8 +7,8 @@ class ReaderTest < Minitest::Test
 
   include Fixtures
 
-  Marcxml = Metacrunch::Marcxml
-  Reader = Metacrunch::Marcxml::Reader
+  Marc = Metacrunch::Marc
+  Reader = Metacrunch::Marc::Reader
   IDS = ["book-1", "article-1", "holding-1"].freeze
 
   def setup
@@ -116,7 +116,7 @@ class ReaderTest < Minitest::Test
     items = read(Reader.new(fixture_path("collection.xml"), parse: false))
 
     assert(items.all? { it.is_a?(String) && it.start_with?("<record") })
-    assert_equal(Marcxml.each(fixture("collection.xml")).to_a, items.map { Marcxml.parse(it) })
+    assert_equal(Marc::Xml.each(fixture("collection.xml")).to_a, items.map { Marc::Xml.parse(it) })
   end
 
   def test_a_broken_record_is_an_invalid_record
@@ -125,16 +125,16 @@ class ReaderTest < Minitest::Test
            %(<record><controlfield tag="001">3</controlfield></record>), "</collection>"].join
     items = read(Reader.new(write("broken.xml", xml)))
 
-    assert_equal [Marcxml::Record, Metacrunch::InvalidRecord, Marcxml::Record], items.map(&:class)
+    assert_equal [Marc::Record, Metacrunch::InvalidRecord, Marc::Record], items.map(&:class)
     assert_equal %(<record><controlfield tag="001">2</record>), items[1].raw
-    assert_instance_of Marcxml::ParseError, items[1].error
+    assert_instance_of Marc::ParseError, items[1].error
   end
 
   def test_a_truncated_file_ends_with_an_invalid_record
     xml = fixture("collection.xml")
     items = read(Reader.new(write("cut.xml", xml[0, xml.index("holding-1")])))
 
-    assert_equal [Marcxml::Record, Marcxml::Record, Metacrunch::InvalidRecord], items.map(&:class)
+    assert_equal [Marc::Record, Marc::Record, Metacrunch::InvalidRecord], items.map(&:class)
   end
 
   def test_a_control_character_makes_an_invalid_record
@@ -143,7 +143,7 @@ class ReaderTest < Minitest::Test
            %(<record><controlfield tag="001">3</controlfield></record>), "</collection>"].join
     items = read(Reader.new(write("control.xml", xml)))
 
-    assert_equal [Marcxml::Record, Metacrunch::InvalidRecord, Marcxml::Record], items.map(&:class)
+    assert_equal [Marc::Record, Metacrunch::InvalidRecord, Marc::Record], items.map(&:class)
   end
 
   def test_values_that_are_not_utf8_make_an_invalid_record
@@ -170,7 +170,7 @@ class ReaderTest < Minitest::Test
   def test_normalize_needs_parse
     error = assert_raises(ArgumentError) { Reader.new("a.xml", parse: false, normalize: :nfc) }
 
-    assert_match(/Marcxml\.parse\(xml, normalize: :nfc\)/, error.message)
+    assert_match(/Metacrunch::Marc::Xml\.parse\(xml, normalize: :nfc\)/, error.message)
   end
 
   def test_rejects_invalid_arguments

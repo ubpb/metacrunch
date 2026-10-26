@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  module Marcxml
+  module Marc
     # A control field (001-009 in MARC 21): a tag and a value. The tag is
     # fixed (see Record); the value can be changed.
     class ControlField

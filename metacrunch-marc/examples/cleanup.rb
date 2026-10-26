@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "metacrunch/marcxml"
+require "metacrunch/marc"
 
 # Cleans MARCXML records and writes them as MARCXML again: collapses runs of
 # spaces in titles, drops links to cover images (856 with second indicator
@@ -16,7 +16,7 @@ Metacrunch.job do
     args :files, min: 1
   end
 
-  source Metacrunch::Marcxml::Reader.new(params.files), id: ->(record) { record["001"]&.value }
+  source Metacrunch::Marc::Reader.new(params.files), id: ->(record) { record["001"]&.value }
 
   map(name: "titles") do |record|
     record.fields("245").each do |field|
@@ -31,8 +31,8 @@ Metacrunch.job do
   end
 
   map(name: "provenance") do |record|
-    record.add(Metacrunch::Marcxml::DataField.new("883", " ", " ", [["a", "metacrunch cleanup example"]]))
+    record.add(Metacrunch::Marc::DataField.new("883", " ", " ", [["a", "metacrunch cleanup example"]]))
   end
 
-  sink Metacrunch::Marcxml::Writer.new(params.target)
+  sink Metacrunch::Marc::Writer.new(params.target)
 end

@@ -8,7 +8,7 @@ class JobsTest < Minitest::Test
 
   include Fixtures
 
-  Marcxml = Metacrunch::Marcxml
+  Marc = Metacrunch::Marc
 
   def setup
     @dir = Dir.mktmpdir
@@ -22,22 +22,22 @@ class JobsTest < Minitest::Test
     outputs = [nil, 2].product([true, false]).map { |workers, parse| run_marking_job(workers:, parse:) }
 
     assert_equal 1, outputs.uniq.size
-    assert_equal(["processed"] * 3, Marcxml.each(outputs.first).map { it.value("999", "a") })
+    assert_equal(["processed"] * 3, Marc::Xml.each(outputs.first).map { it.value("999", "a") })
   end
 
   def test_records_parsed_and_serialized_in_the_workers
     input = fixture_path("collection.xml")
     output = File.join(@dir, "serialized.xml")
     job = Metacrunch.job do
-      source Marcxml::Reader.new(input, parse: false)
-      map(name: "parse") { Marcxml.parse(it) }
-      map(name: "mark") { it.add(Marcxml::DataField.new("999", " ", " ", [["a", "processed"]])) }
+      source Marc::Reader.new(input, parse: false)
+      map(name: "parse") { Marc::Xml.parse(it) }
+      map(name: "mark") { it.add(Marc::DataField.new("999", " ", " ", [["a", "processed"]])) }
       map(name: "serialize") { it.to_xml(namespace: false) }
-      sink Marcxml::Writer.new(output)
+      sink Marc::Writer.new(output)
     end
 
     assert_equal :ok, job.run(workers: 2, logger: Logger.new(nil)).status
-    assert_equal Marcxml.each(run_marking_job(workers: nil, parse: true)).to_a, Marcxml.each(File.read(output)).to_a
+    assert_equal Marc::Xml.each(run_marking_job(workers: nil, parse: true)).to_a, Marc::Xml.each(File.read(output)).to_a
   end
 
   def test_a_broken_record_fails_alone
@@ -45,7 +45,7 @@ class JobsTest < Minitest::Test
     File.write(path, %(<collection><record><controlfield tag="001">1</controlfield></record>) +
                      %(<record><controlfield tag="001">2</record></collection>))
     job = Metacrunch.job do
-      source Marcxml::Reader.new(path)
+      source Marc::Reader.new(path)
       on_failure :skip
     end
     result = Metacrunch::Testing.run(job)
@@ -59,7 +59,7 @@ class JobsTest < Minitest::Test
     job = Metacrunch.job do
       map { {"id" => it["001"].value, "title" => it.value("245", "a")} }
     end
-    source = Marcxml.each(fixture("collection.xml")).to_a
+    source = Marc::Xml.each(fixture("collection.xml")).to_a
 
     [nil, 2].each do |workers|
       result = Metacrunch::Testing.run(job, source:, workers:)
@@ -72,14 +72,14 @@ class JobsTest < Minitest::Test
     input = fixture_path("collection.xml")
     output = File.join(@dir, "out.xml")
     job = Metacrunch.job do
-      source Marcxml::Reader.new(input)
+      source Marc::Reader.new(input)
       map { it["001"].value == "article-1" ? raise("broken") : it }
-      sink Marcxml::Writer.new(output)
+      sink Marc::Writer.new(output)
     end
     result = job.run(logger: Logger.new(nil))
 
     assert_equal :aborted, result.status
-    assert_equal(["book-1"], Marcxml.each(File.read(output)).map { it["001"].value })
+    assert_equal(["book-1"], Marc::Xml.each(File.read(output)).map { it["001"].value })
   end
 
   private
@@ -88,10 +88,10 @@ class JobsTest < Minitest::Test
     input = fixture_path("collection.xml")
     output = File.join(@dir, "out-#{workers}-#{parse}.xml")
     job = Metacrunch.job do
-      source Marcxml::Reader.new(input, parse:)
-      map(name: "parse") { it.is_a?(String) ? Marcxml.parse(it) : it }
-      map(name: "mark") { it.add(Marcxml::DataField.new("999", " ", " ", [["a", "processed"]])) }
-      sink Marcxml::Writer.new(output)
+      source Marc::Reader.new(input, parse:)
+      map(name: "parse") { it.is_a?(String) ? Marc::Xml.parse(it) : it }
+      map(name: "mark") { it.add(Marc::DataField.new("999", " ", " ", [["a", "processed"]])) }
+      sink Marc::Writer.new(output)
     end
     result = job.run(workers:, logger: Logger.new(nil))
 

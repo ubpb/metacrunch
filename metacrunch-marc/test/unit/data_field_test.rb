@@ -4,8 +4,8 @@ require "test_helper"
 
 class DataFieldTest < Minitest::Test
 
-  DataField = Metacrunch::Marcxml::DataField
-  Subfield = Metacrunch::Marcxml::Subfield
+  DataField = Metacrunch::Marc::DataField
+  Subfield = Metacrunch::Marc::Subfield
 
   def title
     DataField.new("245", "1", "0", [["a", "Title"], ["b", "Subtitle"], ["c", "Jane Doe"], ["a", "Second"]])

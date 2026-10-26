@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  module Marcxml
+  module Marc
 
     # Base class of the errors of this library.
     class Error < StandardError; end

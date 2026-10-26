@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  module Marcxml
+  module Marc
     # Checks subfield code arguments: Strings, also in Arrays. Internal.
     module Codes
 

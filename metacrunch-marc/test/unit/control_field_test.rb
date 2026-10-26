@@ -4,7 +4,7 @@ require "test_helper"
 
 class ControlFieldTest < Minitest::Test
 
-  ControlField = Metacrunch::Marcxml::ControlField
+  ControlField = Metacrunch::Marc::ControlField
 
   def test_has_a_tag_and_a_value
     field = ControlField.new("001", "123")

@@ -6,8 +6,8 @@ class WriterTest < Minitest::Test
 
   include Fixtures
 
-  Marcxml = Metacrunch::Marcxml
-  Writer = Metacrunch::Marcxml::Writer
+  Marc = Metacrunch::Marc
+  Writer = Metacrunch::Marc::Writer
   HEADER = %(<?xml version="1.0" encoding="UTF-8"?>\n<collection xmlns="http://www.loc.gov/MARC21/slim">\n)
 
   # stdout whose reader went away.
@@ -58,7 +58,7 @@ class WriterTest < Minitest::Test
     writer.write_batch([record, record], [@ctx, @ctx])
     writer.close
 
-    assert_equal 2, Marcxml.each(io.string).count
+    assert_equal 2, Marc::Xml.each(io.string).count
   end
 
   def test_an_empty_run_gives_an_empty_collection
@@ -71,24 +71,24 @@ class WriterTest < Minitest::Test
   def test_writes_empty_records
     io = StringIO.new
     writer = open_writer(io)
-    writer.write(Marcxml::Record.new, @ctx)
+    writer.write(Marc::Record.new, @ctx)
     writer.close
 
-    assert_equal [Marcxml::Record.new], Marcxml.each(io.string).to_a
+    assert_equal [Marc::Record.new], Marc::Xml.each(io.string).to_a
   end
 
   def test_keeps_values_with_line_breaks
-    records = Marcxml.each(fixture("edge.xml")).to_a
+    records = Marc::Xml.each(fixture("edge.xml")).to_a
     io = StringIO.new
     writer = open_writer(io)
     records.each { writer.write(it, @ctx) }
     writer.close
 
-    assert_equal records, Marcxml.each(io.string).to_a
+    assert_equal records, Marc::Xml.each(io.string).to_a
   end
 
   def test_writes_files_and_gzip_files
-    records = Marcxml.each(fixture("collection.xml")).to_a
+    records = Marc::Xml.each(fixture("collection.xml")).to_a
     ["out.xml", "out.xml.gz"].each do |name|
       path = File.join(@dir, name)
       writer = open_writer(path)
@@ -96,7 +96,7 @@ class WriterTest < Minitest::Test
       writer.close
       content = name.end_with?(".gz") ? Zlib.gunzip(File.binread(path)) : File.read(path)
 
-      assert_equal records, Marcxml.each(content).to_a
+      assert_equal records, Marc::Xml.each(content).to_a
     end
   end
 
@@ -122,15 +122,15 @@ class WriterTest < Minitest::Test
   end
 
   def test_writes_record_xml_strings_as_they_are
-    record = Marcxml.each(fixture("edge.xml")).first
+    record = Marc::Xml.each(fixture("edge.xml")).first
     io = StringIO.new
     writer = open_writer(io)
     writer.write(record.to_xml(namespace: false), @ctx)
     writer.write_batch([%(<record><controlfield tag="001">2</controlfield></record>)], [@ctx])
     writer.close
 
-    assert_equal [record, Marcxml.parse(%(<record><controlfield tag="001">2</controlfield></record>))],
-                 Marcxml.each(io.string).to_a
+    assert_equal [record, Marc::Xml.parse(%(<record><controlfield tag="001">2</controlfield></record>))],
+                 Marc::Xml.each(io.string).to_a
   end
 
   def test_rejects_strings_that_are_not_records
@@ -144,12 +144,12 @@ class WriterTest < Minitest::Test
     writer = open_writer(StringIO.new)
     error = assert_raises(Metacrunch::Error) { writer.write({"001" => "1"}, @ctx) }
 
-    assert_equal "record at position 3 is not a Metacrunch::Marcxml::Record (Hash)", error.message
+    assert_equal "record at position 3 is not a Metacrunch::Marc::Record (Hash)", error.message
   end
 
   def test_records_that_cannot_be_written
     writer = open_writer(StringIO.new)
-    bad = Marcxml::Record.new(fields: [Marcxml::ControlField.new("001", "\u0001")])
+    bad = Marc::Record.new(fields: [Marc::ControlField.new("001", "\u0001")])
     error = assert_raises(Metacrunch::Error) { writer.write(bad, @ctx) }
 
     assert_match(/\Arecord at position 3 cannot be written as MARCXML: field 001: /, error.message)
@@ -192,7 +192,7 @@ class WriterTest < Minitest::Test
 
   private
 
-  def record = Marcxml::Record.new(fields: [Marcxml::ControlField.new("001", "1")])
+  def record = Marc::Record.new(fields: [Marc::ControlField.new("001", "1")])
 
   def open_writer(target)
     writer = Writer.new(target)

@@ -4,9 +4,9 @@ require "test_helper"
 
 class RecordTest < Minitest::Test
 
-  Record = Metacrunch::Marcxml::Record
-  ControlField = Metacrunch::Marcxml::ControlField
-  DataField = Metacrunch::Marcxml::DataField
+  Record = Metacrunch::Marc::Record
+  ControlField = Metacrunch::Marc::ControlField
+  DataField = Metacrunch::Marc::DataField
 
   def sample
     Record.new(
@@ -284,7 +284,7 @@ class RecordTest < Minitest::Test
     record = Record.new(leader: "L", fields:)
 
     assert_equal "=LDR  L\n=001  1\n=245  1\\$aT", record.to_s
-    assert_equal "#<Metacrunch::Marcxml::Record\n=LDR  L\n=001  1\n=245  1\\$aT>", record.inspect
+    assert_equal "#<Metacrunch::Marc::Record\n=LDR  L\n=001  1\n=245  1\\$aT>", record.inspect
   end
 
 end

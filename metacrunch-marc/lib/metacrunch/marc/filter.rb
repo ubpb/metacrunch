@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  module Marcxml
+  module Marc
     # Selects fields by tag matchers and indicator filters (see Record).
     # The class methods check indicators without an instance, for the
     # indexed queries of Record. Internal.
