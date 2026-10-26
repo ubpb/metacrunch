@@ -61,8 +61,9 @@ metacrunch's version.
   Ruby.
 - Commands: `Metacrunch.command "name" do params { ... }; run { ... } end`, with the parameters, credentials, `-e`,
   `--help` and logging of jobs. `invoke NAME, params: {...}` chains jobs, transforms and commands and returns a
-  `Result` or a `CommandResult`; the exit status reports the worst result.
-  `Metacrunch::Testing.invoke` tests a command without running what it invokes. `Metacrunch.load_command` loads a
+  `Result` or a `CommandResult`; the exit status reports the worst result. An exception that ends a command is logged
+  as a job's error is, in one line with the command's name and one for its cause; `-v` adds the backtrace, for jobs
+  too. `Metacrunch::Testing.invoke` tests a command without running what it invokes. `Metacrunch.load_command` loads a
   command file, and `Testing.invoke` takes such a command, too.
 - Names and descriptions for jobs: `Metacrunch.job "a2c", desc: "..."`. Names are parts of `a-z`, `0-9`, `_` and
   `-`, separated by `:`; `Metacrunch.job` raises for other names, and `metacrunch generate` for names and file

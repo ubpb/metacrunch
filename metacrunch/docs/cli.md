@@ -37,7 +37,7 @@ file. The CLI does not change the working directory: relative paths are relative
 | `-w`, `--workers N\|auto` | Run the steps in N worker processes (see [Workers](workers.md)) |
 | `--stats PATH` | Write status and stats as JSON at the end (`-` for stdout) |
 | `--[no-]progress` | Progress on stderr; shown by default if stderr is a terminal and records do not go to the same terminal |
-| `-q`, `-v` | Log warnings only, or debug messages too |
+| `-q`, `-v` | Log warnings only, or debug messages too, among them the backtrace of the error that ended the run |
 
 The options from `-i` to `--stats` apply to jobs and transforms only; for a command (see
 [Commands](projects.md#commands)) they are a usage error.
@@ -76,7 +76,7 @@ nothing: all sinks are replaced, and `before` and `after` hooks do not run. `--f
 | Code | Job or transform | Command |
 |---|---|---|
 | 0 | ok | every job it invoked ended `:ok` |
-| 1 | aborted | an exception left the body; an `InvokeError` is logged as its message |
+| 1 | aborted | an exception left the body, logged as `NAME: Class: message` (backtrace with `-v`); an `InvokeError` is logged as its message |
 | 2 | usage error: command, options, file or name, parameters, `Metacrunchfile`; `check` found the job invalid | the same, for the command itself: its parameters, an unknown or duplicate name, the `Metacrunchfile` |
 | 3 | finished, but records failed (`on_failure :skip`) | an invoked job ended `:ok_with_failures`, or `:aborted` and the command went on |
 | 130 | interrupted by Ctrl-C (SIGINT) | the same |

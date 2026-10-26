@@ -86,9 +86,10 @@ module Metacrunch
       end
 
       # 0, or 3 if an invoked job ended with failed records, or aborted and
-      # the body went on; 1 if an exception left the body. An InvokeError is
-      # logged as its message, since the job logged its error already.
-      # Signals pass on to Command#run.
+      # the body went on; 1 if an exception left the body, logged as a job's
+      # error is, with the command's name. An InvokeError is logged as its
+      # message, since the job logged its error already. Signals pass on to
+      # Command#run.
       def finish(prepared)
         invoker.call(prepared)
         EXIT_CODES.fetch(invoker.finished_status)
@@ -96,7 +97,7 @@ module Metacrunch
         logger.error(e.message)
         EXIT_CODES[:aborted]
       rescue *Engine::RECOVERABLE => e
-        logger.error(e.full_message(highlight: false))
+        invoker.log_error(e, label: @target)
         EXIT_CODES[:aborted]
       end
 

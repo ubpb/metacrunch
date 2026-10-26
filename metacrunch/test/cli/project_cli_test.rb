@@ -141,12 +141,41 @@ class ProjectCliTest < Minitest::Test
     end
   end
 
-  def test_an_exception_in_the_body_exits_with_1_and_its_backtrace
+  def test_an_exception_in_the_body_exits_with_1_and_one_line_without_backtrace
     in_project do |root|
       code, _stdout, stderr = cli_in(root, "fail")
 
       assert_equal 1, code
-      assert_match(/disk full \(IOError\)/, stderr)
+      assert_match(/ERROR fail: IOError: disk full$/, stderr)
+      refute_match(/fail\.rb:\d+:in/, stderr)
+    end
+  end
+
+  def test_the_cause_of_an_exception_in_the_body_gets_a_line_of_its_own
+    broken = "Metacrunch.command(\"broken\") { run { begin; raise IOError, \"disk full\"; " \
+             "rescue IOError; raise Metacrunch::Error, \"release failed\"; end } }\n"
+    in_project("commands/broken.rb" => broken) do |root|
+      _code, _stdout, stderr = cli_in(root, "broken")
+
+      assert_match(/ERROR broken: Metacrunch::Error: release failed\n.*ERROR broken: caused by IOError: disk full$/,
+                   stderr)
+    end
+  end
+
+  def test_verbose_logs_the_backtrace_of_an_exception_in_the_body
+    in_project do |root|
+      _code, _stdout, stderr = cli_in(root, "run", "-v", "fail")
+
+      assert_match(/DEBUG fail: \S*fail\.rb:\d+:in .*: disk full \(IOError\)$/, stderr)
+    end
+  end
+
+  def test_verbose_logs_the_backtrace_of_a_job_that_aborted
+    in_project do |root|
+      _code, _stdout, stderr = cli_in(root, "run", "-v", "numbers", "0")
+
+      assert_match(/DEBUG .*\(Metacrunch::StepError\)/, stderr)
+      assert_match(/numbers\.rb:\d+:in /, stderr)
     end
   end
 
