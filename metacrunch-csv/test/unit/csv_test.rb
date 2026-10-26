@@ -22,6 +22,12 @@ class CsvTest < Minitest::Test
     assert_equal "encoding UTF-16 has no byte order; use UTF-16LE, UTF-16BE or another encoding", error.message
   end
 
+  def test_other_dummy_encodings_are_argument_errors
+    error = assert_raises(ArgumentError) { Csv.encoding(",", '"', "ISO-2022-JP") }
+
+    assert_equal "encoding ISO-2022-JP cannot be read or written: Ruby knows only its name", error.message
+  end
+
   def test_col_sep_is_a_non_empty_string
     [nil, "", 1].each do |col_sep|
       assert_raises(ArgumentError) { Csv.encoding(col_sep, '"', "UTF-8") }

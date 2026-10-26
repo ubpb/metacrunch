@@ -43,7 +43,7 @@ source Metacrunch::Csv::Reader.new(params.file, headers: false)                 
 | Option | Default | |
 |---|---|---|
 | `col_sep` | `","` | the field separator, any non-empty String |
-| `quote_char` | `'"'` | one character, not the separator |
+| `quote_char` | `'"'` | one character, not the separator; one byte in UTF-8 and single-byte encodings |
 | `encoding` | `"UTF-8"` | the encoding of the files; values are always UTF-8 |
 | `headers` | `true` | `true`: the first row names the columns; an Array of names; `false`: Array records |
 
@@ -70,8 +70,8 @@ after it are read:
 | Row | `error` |
 |---|---|
 | `2,"bad"quote` | `CSV::MalformedCSVError` |
-| bytes that are not valid UTF-8, Windows-1252, ... | `CSV::InvalidEncodingError` |
-| a character without a UTF-8 form | `Encoding::UndefinedConversionError` |
+| bytes that are not valid in the encoding (in UTF-8, for example) | `CSV::InvalidEncodingError` |
+| a character without a UTF-8 form (byte 0x81 in Windows-1252, for example) | `Encoding::UndefinedConversionError` |
 | more fields than the header names | `Metacrunch::Csv::ParseError` (`row has 4 fields, the header 3`) |
 
 `raw` is the row as it stands in the file. A quote that is never closed takes the rest of the file into one
@@ -83,6 +83,12 @@ the header row has an empty column name (column 3)`, often from separators at th
 with `headers:`, and the header row comes as the first record) or cannot be read; invalid bytes in UTF-16 (`data.csv:
 the data is not valid UTF-16LE`), after which Ruby's csv cannot go on; and errors of the input itself (a missing file,
 broken gzip).
+
+### Line ends
+
+Rows end with `"\r\n"`, `"\n"` or `"\r"`, whichever comes first outside quotes in the first 64 KiB of a file; line
+breaks inside quoted values are kept. A row that ends differently, such as a single `"\n"` in a file of `"\r\n"`, is an
+`InvalidRecord`; its `raw` can then repeat the start of the row, which comes from Ruby's csv (3.3.6).
 
 ## Writing
 
@@ -112,8 +118,9 @@ The target is what `Metacrunch::Output` takes: a path (`.gz` compresses), `"-"` 
 
 | Value | Field |
 |---|---|
-| `String` | as it is (`""` is written as `""`) |
+| `String` | as it is (`""` is written as `""`); Strings in other encodings are converted |
 | `Integer`, `Float` | `to_s` |
+| `BigDecimal` (from a database's NUMERIC columns) | as a decimal: `123.45` |
 | `true`, `false` | `true`, `false` |
 | `nil` | empty |
 
@@ -141,6 +148,7 @@ The CSV source and sink of the 4.x gem metacrunch-file are replaced by this gem;
 | `"00123"` read as `123` | `"00123"` |
 | empty fields left out of the record | `""` |
 | `File::CSVDestination.new(path, override_existing_file: true)` | `Csv::Writer.new(path)` (files are always overwritten) |
+| any value is written with `to_s` | a `Date` or `Time` stops the run: turn it into a String in a step |
 
 ## License
 

@@ -97,10 +97,25 @@ class WriterTest < Minitest::Test
     assert_equal "record at position 1: column 2 is an Array; turn it into a String in a step", error.message
   end
 
+  # As from a database's NUMERIC column; to_s would give "0.12345e3".
+  def test_big_decimals_are_written_as_decimals
+    assert_equal "123.45,100000000000000000000.0\n", written([[BigDecimal("123.45"), BigDecimal("1e20")]])
+  end
+
   def test_invalid_strings_are_errors
     error = write_error([{"t" => "a\xFFb".dup.force_encoding(Encoding::UTF_8)}])
 
     assert_equal 'record at position 1: column "t" is not valid UTF-8', error.message
+  end
+
+  def test_binary_strings_without_utf8_form_are_errors
+    error = write_error([{"t" => "M\xFCller".b}])
+
+    assert_equal 'record at position 1: column "t" has no UTF-8 form (it is ASCII-8BIT)', error.message
+  end
+
+  def test_strings_in_other_encodings_are_converted
+    assert_equal "t\nMüller\n".b, written([{"t" => "Müller".encode(Encoding::ISO_8859_1)}])
   end
 
   def test_fields_are_quoted_only_where_needed
@@ -180,6 +195,16 @@ class WriterTest < Minitest::Test
     writer.close
 
     assert_equal "id\n1\n2\n", io.string
+  end
+
+  def test_an_error_in_a_batch_names_its_record
+    writer = Writer.new(StringIO.new("".b), encoding: "ISO-8859-1")
+    writer.open(nil)
+    error = assert_raises(Metacrunch::Error) do
+      writer.write_batch([{"n" => "a"}, {"n" => "b"}, {"n" => "€"}], [ctx(1), ctx(2), ctx(3)])
+    end
+
+    assert_match(/\Arecord at position 3 has a character ISO-8859-1 cannot represent/, error.message)
   end
 
 end

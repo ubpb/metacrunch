@@ -12,10 +12,13 @@ built on smarter_csv.
   `""` for empty and `nil` for missing fields; the byte order mark is removed and values are UTF-8; a row that cannot
   be read becomes a `Metacrunch::InvalidRecord`.
 - `Metacrunch::Csv::Writer`, a sink on `Metacrunch::Output`: `columns:` (an Array of keys or a Hash of header name =>
-  key) or the keys of the first record, `header:`, `col_sep:`, `quote_char:`, `encoding:` and `bom:`.
+  key) or the keys of the first record, `header:`, `col_sep:`, `quote_char:`, `encoding:` and `bom:`. Strings,
+  Integers, Floats, BigDecimals, `true`, `false` and `nil` are written; other values stop the run.
 
 ### Changes from metacrunch-file
 
 - Values stay Strings: `"00123"` is no longer read as `123`. Keys are the column names as Strings, not downcased
   Symbols. Empty fields are `""` instead of being left out.
 - The options are the gem's own, not those of smarter_csv.
+- The writer no longer writes any value with `to_s`: a `Date` or a `Time` stops the run and is turned into a String in
+  a step.

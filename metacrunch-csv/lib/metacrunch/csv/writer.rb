@@ -40,7 +40,7 @@ module Metacrunch
 
       # Builds the rows of a batch and writes them in one piece.
       def write_batch(records, ctxs)
-        @output.write(encode(records.zip(ctxs).map { |record, ctx| line(record, ctx) }.join, ctxs.first))
+        @output.write(records.zip(ctxs).map { |record, ctx| encode(line(record, ctx), ctx) }.join)
       end
 
       def close = @output.close
@@ -79,16 +79,27 @@ module Metacrunch
 
       def field(value, index, ctx)
         case value
-        when String
-          return value if value.valid_encoding?
-
-          raise Metacrunch::Error, "#{column(index, ctx)} is not valid #{value.encoding}"
+        when String then text(value, index, ctx)
         when nil then nil
         when Integer, Float, true, false then value.to_s
         else
+          # A BigDecimal, as from a database's NUMERIC column; its to_s would
+          # give "0.12345e3".
+          return value.to_s("F") if defined?(::BigDecimal) && value.is_a?(::BigDecimal)
+
           raise Metacrunch::Error, "#{column(index, ctx)} is #{Columns.described(value)}; turn it into a String in " \
                                    "a step"
         end
+      end
+
+      # A String in UTF-8, the encoding the rows are built in.
+      def text(value, index, ctx)
+        raise Metacrunch::Error, "#{column(index, ctx)} is not valid #{value.encoding}" unless value.valid_encoding?
+        return value if value.encoding == Encoding::UTF_8 || value.ascii_only?
+
+        value.encode(Encoding::UTF_8)
+      rescue EncodingError
+        raise Metacrunch::Error, "#{column(index, ctx)} has no UTF-8 form (it is #{value.encoding})"
       end
 
       def column(index, ctx)

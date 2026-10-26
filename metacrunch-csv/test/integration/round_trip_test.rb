@@ -39,4 +39,10 @@ class RoundTripTest < Minitest::Test
     assert_equal(["a", "", "", "b"], read(written(records)).map { it["note"] })
   end
 
+  def test_line_breaks_in_the_first_row_of_a_file_without_header
+    rows = [["a\r\nb", "1"], ["c\rd", "2"], ["e", "3"]]
+
+    assert_equal rows, read(written(rows), headers: false)
+  end
+
 end

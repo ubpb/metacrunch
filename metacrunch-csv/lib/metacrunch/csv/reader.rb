@@ -9,6 +9,9 @@ module Metacrunch
     # A row that cannot be read is yielded as Metacrunch::InvalidRecord.
     class Reader
 
+      # Bytes of a document in which the row separator is looked for.
+      SAMPLE = 65_536
+
       def initialize(targets, col_sep: ",", quote_char: '"', encoding: "UTF-8", headers: true)
         @input = Metacrunch::Input.new(targets)
         @encoding = Csv.encoding(col_sep, quote_char, encoding)
@@ -19,7 +22,12 @@ module Metacrunch
         # are parsed in the encoding, and invalid bytes stop the document.
         @bytewise = Csv.bytewise?(@encoding)
         @parse_encoding = @bytewise ? Encoding::BINARY : @encoding
-        @options = {col_sep: syntax(col_sep), quote_char: syntax(quote_char), skip_blanks: true}
+        @quote = syntax(quote_char)
+        if @bytewise && @quote.bytesize != 1
+          raise ArgumentError, "quote_char must be one byte in #{@encoding} for reading, got #{quote_char.inspect}"
+        end
+
+        @options = {col_sep: syntax(col_sep), quote_char: @quote, skip_blanks: true}
       end
 
       # Without a block an Enumerator.
@@ -50,7 +58,9 @@ module Metacrunch
 
       def read_document(stream, name, &)
         skip_bom(stream)
-        csv = ::CSV.new(Lines.new(stream, @parse_encoding), **@options)
+        separator = row_sep(stream)
+        options = separator ? @options.merge(row_sep: separator) : @options
+        csv = ::CSV.new(Lines.new(stream, @parse_encoding), **options)
         names = @headers == true ? header(csv, name) : @headers
         while (fields = next_fields(csv, name, &))
           next if fields == :invalid
@@ -62,6 +72,27 @@ module Metacrunch
       def skip_bom(stream)
         bom = BOMS[@encoding]
         stream.read(bom.bytesize) if bom && stream.peek(bom.bytesize) == bom
+      end
+
+      # The first line break outside quotes ("\r\n", "\n" or "\r") in the
+      # encoding csv parses in; nil to let csv decide when the sample shows
+      # none. Ruby's csv would take the first one, also inside quotes.
+      def row_sep(stream)
+        sample = stream.peek(SAMPLE).force_encoding(@parse_encoding)
+        sample = sample.scrub("".encode(@encoding)) unless @bytewise
+        cr = syntax("\r")
+        lf = syntax("\n")
+        quoted = false
+        after_cr = false
+        sample.each_char do |char|
+          return char == lf ? cr + lf : cr if after_cr
+
+          if char == @quote then quoted = !quoted
+          elsif !quoted then after_cr = char == cr
+          end
+          return lf if !quoted && char == lf
+        end
+        nil
       end
 
       # The column names from the first row; nil for an empty document.

@@ -58,7 +58,12 @@ module Metacrunch
         end
         return encoding unless encoding.dummy?
 
-        raise ArgumentError, "encoding #{encoding} has no byte order; use UTF-16LE, UTF-16BE or another encoding"
+        name = encoding.name
+        if ["UTF-16", "UTF-32"].include?(name)
+          raise ArgumentError, "encoding #{name} has no byte order; use #{name}LE, #{name}BE or another encoding"
+        end
+
+        raise ArgumentError, "encoding #{name} cannot be read or written: Ruby knows only its name"
       end
 
       def encodable(text, encoding)

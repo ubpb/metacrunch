@@ -33,6 +33,19 @@ class ReaderTest < Minitest::Test
     assert_raises(ArgumentError) { Reader.new("data.csv", col_sep: "") }
   end
 
+  # UTF-8 and single-byte encodings are parsed as bytes.
+  def test_quote_char_must_be_one_byte_for_reading
+    error = assert_raises(ArgumentError) { Reader.new("data.csv", quote_char: "„") }
+
+    assert_equal 'quote_char must be one byte in UTF-8 for reading, got "„"', error.message
+  end
+
+  def test_a_quote_char_of_several_bytes_in_utf16
+    bytes = "id,t\n1,„a,b„\n".encode(Encoding::UTF_16LE)
+
+    assert_equal [{"id" => "1", "t" => "a,b"}], read(bytes, quote_char: "„", encoding: "UTF-16LE")
+  end
+
   # Records
 
   def test_records_are_hashes_with_string_keys_and_values
@@ -81,6 +94,24 @@ class ReaderTest < Minitest::Test
 
   def test_cr_line_ends
     assert_equal [{"id" => "1", "t" => "a"}, {"id" => "2", "t" => "b"}], read("id,t\r1,a\r2,b\r")
+  end
+
+  # Ruby's csv would take the first line break, also one inside quotes.
+  def test_the_row_separator_is_the_first_line_break_outside_quotes
+    assert_equal [{"a\nb" => "1", "c" => "2"}], read(%("a\nb",c\r\n1,2\r\n))
+  end
+
+  def test_the_row_separator_in_utf16
+    bytes = %("a\nb",1\r\nc,2\r\n).encode(Encoding::UTF_16LE)
+
+    assert_equal [["a\nb", "1"], ["c", "2"]], read(bytes, headers: false, encoding: "UTF-16LE")
+  end
+
+  # Without a line break in its first 64 KiB, Ruby's csv decides.
+  def test_a_first_row_longer_than_the_sample
+    long = "x" * 70_000
+
+    assert_equal [[long, "1"], ["c", "2"]], read("#{long},1\r\nc,2\r\n", headers: false)
   end
 
   def test_a_quoted_value_longer_than_a_block
