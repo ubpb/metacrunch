@@ -44,6 +44,11 @@ module Metacrunch
         @sheet.row(values)
       rescue Cells::Unwritable => e
         raise Metacrunch::Error, message(e, "record at position #{ctx.position}")
+      rescue SignalException => e
+        # The reader of a pipe went away (Output raises SIGPIPE once and
+        # writes nothing after it): there is no file to finish.
+        @broken = true if e.signm == "SIGPIPE"
+        raise
       end
 
       # Writes the rows one by one into the compressed stream, which buffers
@@ -55,7 +60,7 @@ module Metacrunch
       # Finishes the file, also after an aborted run, with the rows so far;
       # an interrupt waits until the file is complete.
       def close
-        Xlsx.uninterrupted { finish if @zip && @sheet }
+        Xlsx.uninterrupted { finish if @zip && @sheet && !@broken }
       ensure
         @zip = nil
         @output.close
@@ -69,13 +74,23 @@ module Metacrunch
         raise ArgumentError, "header: must be true or false, got #{header.inspect}"
       end
 
+      # The name in UTF-8, as the workbook needs it.
       def check_sheet(name)
-        valid = name.is_a?(String) && name.length.between?(1, 31) && !name.match?(FORBIDDEN) &&
-                !name.start_with?("'") && !name.end_with?("'")
-        return name if valid
+        utf8 = sheet_utf8(name)
+        valid = utf8&.length&.between?(1, 31) && !utf8.match?(FORBIDDEN) && !utf8.match?(Cells::INVALID_XML) &&
+                !utf8.start_with?("'") && !utf8.end_with?("'")
+        return utf8 if valid
 
-        raise ArgumentError, "sheet: must be 1 to 31 characters without [ ] : * ? / \\ and not start or end with ', " \
-                             "got #{name.inspect}"
+        raise ArgumentError, "sheet: must be 1 to 31 characters without [ ] : * ? / \\ or control characters and not " \
+                             "start or end with ', got #{name.inspect}"
+      end
+
+      def sheet_utf8(name)
+        return unless name.is_a?(String) && name.valid_encoding?
+
+        name.encode(Encoding::UTF_8)
+      rescue EncodingError
+        nil
       end
 
       def check_widths(widths)
@@ -86,7 +101,11 @@ module Metacrunch
                              "(numbers above 0 and up to #{MAX_WIDTH}, or nil), got #{widths.inspect}"
       end
 
-      def width?(value) = value.nil? || (value.is_a?(Numeric) && value.positive? && value <= MAX_WIDTH)
+      # Integers and finite Floats: XML has no form for a Rational (3/2).
+      def width?(value)
+        value.nil? || ((value.is_a?(Integer) || (value.is_a?(Float) && value.finite?)) && value.positive? &&
+                       value <= MAX_WIDTH)
+      end
 
       def start
         names = @columns.names

@@ -7,8 +7,3 @@ inherit_mode:
 
 Style/FrozenStringLiteralComment:
   Enabled: true
-
-# Tests leave loops on purpose (`each_document { return ... }`).
-Lint/UnreachableLoop:
-  Exclude:
-    - "test/**/*"

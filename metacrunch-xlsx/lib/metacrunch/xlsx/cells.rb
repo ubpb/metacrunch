@@ -10,8 +10,9 @@ module Metacrunch
       MAX_TEXT = 32_767
       # Characters XML 1.0 does not allow (tab, LF and CR are allowed).
       INVALID_XML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/
-      # Text Excel would read as a character code (_x0041_ for "A").
-      CHARACTER_CODE = /_(x[0-9A-Fa-f]{4}_)/
+      # The "_" of text Excel would read as a character code (_x0041_ for
+      # "A"), also in a chain (_x0041_x0042_).
+      CHARACTER_CODE = /_(?=x\h{4}_)/
       ESCAPES = {"&" => "&amp;", "<" => "&lt;", ">" => "&gt;", '"' => "&quot;"}.freeze
 
       # A value or row that cannot be written; index: the column's index, or
@@ -49,7 +50,11 @@ module Metacrunch
         when true, false then %(<c r="#{ref}"#{style_attribute(style)} t="b"><v>#{value ? 1 : 0}</v></c>)
         when Integer then number(integer(value), ref, style)
         when Float then number(float(value), ref, style)
-        else raise Unwritable, "is #{Columns.described(value)}; turn it into a String or a number in a step"
+        else
+          # A BigDecimal, as from a database's NUMERIC column.
+          return number(big_decimal(value), ref, style) if defined?(::BigDecimal) && value.is_a?(::BigDecimal)
+
+          raise Unwritable, "is #{Columns.described(value)}; turn it into a String or a number in a step"
         end
       end
 
@@ -63,7 +68,9 @@ module Metacrunch
         raise Unwritable, "has a character that XML does not allow" if text.match?(INVALID_XML)
 
         preserve = text.match?(/\A\s|\s\z/) ? ' xml:space="preserve"' : ""
-        "<t#{preserve}>#{escape(text.gsub(CHARACTER_CODE, "_x005F_\\1"))}</t>"
+        # XML would read "\r\n" and "\r" as "\n"; Excel writes a carriage
+        # return as a character code.
+        "<t#{preserve}>#{escape(text.gsub(CHARACTER_CODE, "_x005F_").gsub("\r", "_x000D_"))}</t>"
       end
 
       def utf8(value)
@@ -87,6 +94,14 @@ module Metacrunch
         return value.to_s if value.finite?
 
         raise Unwritable, "is #{value}, which Excel cannot store"
+      end
+
+      def big_decimal(value)
+        raise Unwritable, "is #{value}, which Excel cannot store" unless value.finite?
+        return value.to_s("F") if value.n_significant_digits <= MAX_DIGITS
+
+        raise Unwritable, "has more than #{MAX_DIGITS} significant digits, which Excel cannot keep; turn it into a " \
+                          "String in a step"
       end
 
       def number(text, ref, style) = %(<c r="#{ref}"#{style_attribute(style)}><v>#{text}</v></c>)

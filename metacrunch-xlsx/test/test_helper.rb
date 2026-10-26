@@ -14,6 +14,7 @@ if ENV.key?("COVERAGE")
 end
 
 require "minitest/autorun"
+require "bigdecimal"
 require "logger"
 require "stringio"
 require "tmpdir"

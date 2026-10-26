@@ -26,13 +26,14 @@ class WriterTest < Minitest::Test
   end
 
   def test_invalid_sheet_names
-    ["", "a" * 32, "a/b", "a[1]", "a:b", "a*", "a?", "a\\b", "'a", "a'", :Sheet1].each do |sheet|
+    ["", "a" * 32, "a/b", "a[1]", "a:b", "a*", "a?", "a\\b", "'a", "a'", :Sheet1, "a\u0001b", "B\xFCcher".b,
+     "a\xFF".dup.force_encoding(Encoding::UTF_8)].each do |sheet|
       assert_raises(ArgumentError) { Writer.new("out.xlsx", sheet:) }
     end
   end
 
   def test_invalid_widths
-    [{"a" => 0}, {"a" => -1}, {"a" => 256}, {"a" => "10"}, [0], "10", 10].each do |widths|
+    [{"a" => 0}, {"a" => -1}, {"a" => 256}, {"a" => "10"}, [0], "10", 10, [Rational(3, 2)]].each do |widths|
       assert_raises(ArgumentError) { Writer.new("out.xlsx", widths:) }
     end
   end
@@ -79,6 +80,12 @@ class WriterTest < Minitest::Test
 
   def test_the_sheet_name
     assert_equal ["Bestand"], Roo::Excelx.new(xlsx([{"id" => "1"}], sheet: "Bestand")).sheets
+  end
+
+  def test_a_sheet_name_in_another_encoding_is_written_as_utf8
+    path = xlsx([{"id" => "1"}], sheet: "Bücher".encode(Encoding::ISO_8859_1))
+
+    assert_equal ["Bücher"], Roo::Excelx.new(path).sheets
   end
 
   # Header, widths and parts
@@ -184,6 +191,49 @@ class WriterTest < Minitest::Test
       data.bytesize
     end
 
+  end
+
+  # An IO whose reader goes away once it is broken.
+  class PipeIO
+
+    attr_writer :broken
+
+    def write(data)
+      raise Errno::EPIPE if @broken
+
+      data.bytesize
+    end
+
+  end
+
+  # metacrunch run job.rb | head: after SIGPIPE, close finishes nothing and
+  # raises nothing.
+  def test_close_after_a_broken_pipe
+    io = PipeIO.new
+    writer = Writer.new(io)
+    writer.open(nil)
+    io.broken = true
+    assert_raises(SignalException) { 10_000.times { writer.write({"t" => "row #{it} " * 20}, ctx) } }
+
+    assert_nil writer.close
+  end
+
+  # A record whose lookup is interrupted, as by Ctrl-C.
+  class InterruptedRecord < Hash
+
+    def fetch(*) = raise(Interrupt)
+
+  end
+
+  def test_an_interrupt_in_write_still_finishes_the_file
+    path = File.join(@dir, "interrupt.xlsx")
+    writer = Writer.new(path, columns: ["a"])
+    writer.open(nil)
+    writer.write({"a" => 1}, ctx)
+    assert_raises(Interrupt) { writer.write(InterruptedRecord.new, ctx(2)) }
+    writer.close
+
+    assert_equal [["a"], [1]], rows(path)
   end
 
   # See EntryTest: a signal that wakes the thread inside zlib.

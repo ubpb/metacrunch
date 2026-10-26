@@ -9,6 +9,14 @@ class ColumnsTest < Minitest::Test
 
   include Helpers
 
+  def test_described_names_the_class_with_its_article
+    assert_equal(["an Array", "a Time"], [[], Time.at(0)].map { Columns.described(it) })
+  end
+
+  def test_described_names_the_nearest_named_class_of_an_anonymous_one
+    assert_equal "a Data", Columns.described(Data.define(:x).new(x: 1))
+  end
+
   def test_without_columns_nothing_is_known
     columns = Columns.new(nil)
 

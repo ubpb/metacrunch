@@ -9,6 +9,8 @@ gemspec
 gem "metacrunch", path: ENV.fetch("METACRUNCH_PATH", "../metacrunch")
 
 group :development do
+  # The tests write BigDecimals, as databases return them.
+  gem "bigdecimal", ">= 3.1", require: false
   gem "minitest", ">= 5.25"
   gem "rake", ">= 13.0"
   # The tests read the written files back.

@@ -42,8 +42,8 @@ writes the ZIP container.
 |---|---|---|
 | `columns` | `nil` | `nil`: the keys of the first record; an Array of keys; a Hash of header name => key |
 | `header` | `true` | write a header row: bold, frozen (the rows scroll below it) and with an autofilter |
-| `sheet` | `"Sheet1"` | the worksheet's name: 1 to 31 characters, none of `[ ] : * ? / \`, not starting or ending with `'` |
-| `widths` | `nil` | column widths in characters, up to 255: a Hash of header name => width, or an Array by position |
+| `sheet` | `"Sheet1"` | the worksheet's name: 1 to 31 characters, none of `[ ] : * ? / \` and no control characters, not starting or ending with `'` |
+| `widths` | `nil` | column widths in characters (Integers or Floats up to 255): a Hash of header name => width, or an Array by position |
 
 The target is what `Metacrunch::Output` takes: a path, `"-"` for stdout, or an IO. Without `widths:` Excel's default
 width applies; a streaming writer cannot fit widths to the content.
@@ -61,8 +61,8 @@ width applies; a streaming writer cannot fit widths to the content.
 
 | Value | Cell |
 |---|---|
-| `String` | text; `"00123"` stays text |
-| `Integer` (up to 15 digits), `Float` | number |
+| `String` | text; `"00123"` stays text; line breaks are kept |
+| `Integer` (up to 15 digits), `Float`, `BigDecimal` (up to 15 significant digits, as from a database's NUMERIC columns) | number |
 | `true`, `false` | boolean |
 | `nil` | empty |
 
@@ -70,8 +70,8 @@ These stop the run with the record's position, e.g. `record at position 7: colum
 String or a number in a step`:
 
 - other values: a `Time`, a `Date`, an Array, `NaN`, `Infinity`;
-- an Integer with more than 15 digits, which Excel would change (it keeps 15 significant digits): write it as a
-  String;
+- an Integer with more than 15 digits or a BigDecimal with more than 15 significant digits, which Excel would change
+  (it keeps 15 significant digits): write it as a String;
 - text with a control character other than tab and line breaks, which XML cannot hold;
 - text longer than 32,767 characters, row 1,048,577 (the header counts), more than 16,384 columns: Excel's limits.
 
@@ -86,6 +86,7 @@ The XLSX sink of the 4.x gem metacrunch-file is replaced by this gem.
 |---|---|
 | `File::XLSXDestination.new(path, ["ID", "Titel"], worksheet_title: "Bestand")` | `Xlsx::Writer.new(path, columns: ["ID", "Titel"], sheet: "Bestand")` with Array records |
 | every cell is text | cells by Ruby type: turn numbers into Strings in a step to keep them as text |
+| `Date` and `Time` become text with `to_s` | they stop the run: turn them into Strings in a step, e.g. `it.strftime("%Y-%m-%d")` |
 | `write` takes a row or an Array of rows | one record is one row |
 | the workbook is kept in memory until `close` | rows are streamed |
 

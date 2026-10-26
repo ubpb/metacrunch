@@ -14,6 +14,7 @@ caxlsx.
 
 ### Changes from metacrunch-file
 
-- Cells are no longer all text: Integers and Floats are numbers, `true` and `false` booleans.
+- Cells are no longer all text: Integers, Floats and BigDecimals are numbers, `true` and `false` booleans. A `Date` or
+  a `Time` is no longer written with `to_s`: it stops the run and is turned into a String in a step.
 - One record is one row; the writer streams instead of keeping the workbook in memory (100,000 rows × 10 cells: about
   40 MB instead of about 300 MB).

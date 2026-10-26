@@ -8,9 +8,12 @@ module Metacrunch
 
       PLURALS = {Hash => "Hashes", Array => "Arrays"}.freeze
 
-      # "a Time", "an Array": the class of object with its article.
+      # "a Time", "an Array": the class of object with its article; for an
+      # anonymous class its nearest named superclass ("a Data").
       def self.described(object)
-        name = object.class.name
+        named = object.class
+        named = named.superclass until named.name
+        name = named.name
         "#{name.match?(/\A[AEIOU]/) ? "an" : "a"} #{name}"
       end
 
@@ -81,6 +84,7 @@ module Metacrunch
         unless @keys
           @keys = record.keys
           @names = @keys.map(&:to_s)
+          @known = @keys.to_h { [it, true] }
         end
         check_new_keys(record, ctx) unless @given
         # A column is found by its key, else by the key as a Symbol, as in
@@ -89,9 +93,9 @@ module Metacrunch
       end
 
       def check_new_keys(record, ctx)
-        return if record.size <= @keys.size && record.each_key.all? { @keys.include?(it) }
+        return if record.each_key.all? { @known.key?(it) }
 
-        key = record.each_key.find { !@keys.include?(it) }
+        key = record.each_key.find { !@known.key?(it) }
         raise Metacrunch::Error, "record at position #{ctx.position} has the key #{key.inspect}, which the first " \
                                  "record does not have; name the columns with columns:"
       end
