@@ -206,15 +206,25 @@ Metacrunch.command "books:rebuild", desc: "Load the books into a new index and s
     indices = Metacrunch::Elasticsearch::Indices.new(Metacrunch::Elasticsearch::Connection.from_params(params), logger:)
     settings = root.join("config/books.settings.jsonc")
     index = indices.create_for("books", settings:, mappings: root.join("config/books.mappings.jsonc"), bulk_load: true)
-    result = invoke "books:load", params: {**params.to_h, index:}
-    next logger.warn("books:rebuild: #{result.status}; #{index} not switched") unless result.ok?
+    switched = false
+    begin
+      result = invoke "books:load", params: {**params.to_h, index:}
+      next logger.warn("books:rebuild: #{result.status}; books not switched") unless result.ok?
 
-    indices.finish_load(index, settings:)
-    indices.switch_alias("books", index)
+      indices.finish_load(index, settings:)
+      indices.switch_alias("books", index)
+      switched = true
+    ensure
+      indices.delete(index) unless switched
+    end
     indices.prune("books", keep: 1)
   end
 end
 ```
+
+A load that refused records or aborted leaves the alias where it is, and the command deletes its index (in `ensure`,
+so also after an abort): `prune` keeps indices by their names and would otherwise keep the half-loaded one as the index
+to go back to.
 
 - `create_for("books", ...)` creates `books-20261026-153000` (UTC) and returns the name; `create(name, ...)` takes a
   name of your own. Both refuse an existing index.
@@ -224,8 +234,8 @@ end
 - `switch_alias("books", index)` points the alias to the new index alone in one atomic request, and adds the alias the
   first time. It returns the indices the alias pointed to before.
 - `prune("books", keep: 1)` deletes the indices named `books-YYYYMMDD-HHMMSS` that are older than the one the alias
-  points to, but the newest `keep` of them, for going back. Newer ones without the alias (a load that runs or failed)
-  stay; `dry_run: true` only logs.
+  points to, but the newest `keep` of them, for going back. Newer ones without the alias (a load that runs) stay;
+  `dry_run: true` only logs.
 - `update_settings(name, settings, reopen: true)` changes settings; `reopen:` closes the index first and opens it
   again, as analyzers need. `number_of_shards` is left out, so the settings file of `create` works here, too.
 - `delete(name)` refuses an index an alias points to, unless `force: true`. `list("books*")` describes indices.

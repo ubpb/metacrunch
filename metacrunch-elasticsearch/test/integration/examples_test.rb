@@ -48,6 +48,18 @@ class ExamplesTest < Minitest::Test
     assert_match(/\A#{books}-\d{8}-\d{6}  #{books}  5 /, stdout.lines[1].to_s, stderr)
   end
 
+  def test_a_rebuild_that_fails_deletes_its_index_and_leaves_the_alias
+    books = "#{@index}-books"
+    Dir.mktmpdir do |dir|
+      input = File.join(dir, "bad.jsonl").tap { File.write(it, %({"isbn":"1","title":"A","year":"unknown"}\n)) }
+      _, stderr, status = metacrunch("books:rebuild", "--alias", books, "--input", input, chdir: example("project"))
+
+      assert_equal 1, status.exitstatus, stderr
+    end
+
+    assert_empty client.cat.indices(index: "#{books}-*", format: "json").body
+  end
+
   private
 
   def example(name) = File.join(ROOT, "examples", name)
