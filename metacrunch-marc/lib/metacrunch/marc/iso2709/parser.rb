@@ -166,9 +166,14 @@ module Metacrunch
           problem = Values.problem(text)
           return unless problem
 
-          problem = "#{problem}; #{MARC8}" if problem == "invalid UTF-8" && @leader[9] == " "
+          problem = "#{problem}; #{MARC8}" if @leader[9] == " " && marc8?(problem, text)
           raise ParseError, "#{yield}: #{problem}"
         end
+
+        # Signs of MARC-8: bytes that are not UTF-8 (its diacritics), or the
+        # escape that switches to another script (Cyrillic, Greek, Hebrew,
+        # Arabic, CJK).
+        def marc8?(problem, text) = problem == "invalid UTF-8" || text.include?("\e")
 
       end
     end
