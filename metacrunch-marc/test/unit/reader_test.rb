@@ -1,15 +1,19 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "json"
 require "rubygems/package"
 
 class ReaderTest < Minitest::Test
 
   include Fixtures
+  include Inputs
+  include Iso
 
   Marc = Metacrunch::Marc
   Reader = Metacrunch::Marc::Reader
   IDS = ["book-1", "article-1", "holding-1"].freeze
+  NOT_MARC = "is neither MARCXML, ISO 2709 nor MARC-in-JSON"
 
   def setup
     @dir = Dir.mktmpdir
@@ -72,13 +76,6 @@ class ReaderTest < Minitest::Test
     assert_equal IDS, ids(read(Reader.new(path)))
   end
 
-  def test_a_file_that_is_not_xml_raises
-    path = write("data.json", %({"id": 1}\n))
-    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
-
-    assert_equal %(#{path}: is not XML: it starts with "{\\"id\\": 1}\\n"), error.message
-  end
-
   def test_xml_after_a_byte_order_mark_and_whitespace
     path = write("bom.xml", "\xEF\xBB\xBF\n  #{fixture("local.xml")}".b)
 
@@ -89,12 +86,6 @@ class ReaderTest < Minitest::Test
     path = write("broken.tar.gz", Zlib.gzip(tar("a.xml" => fixture("collection.xml"))).byteslice(0, 40))
 
     assert_match(/broken gzip data/, assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }.message)
-  end
-
-  def test_a_file_named_gz_that_is_not_gzip_is_checked_as_xml
-    path = write("plain.gz", "not gzip")
-
-    assert_match(/: is not XML/, assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }.message)
   end
 
   def test_stopping_inside_a_gzip_file
@@ -165,12 +156,6 @@ class ReaderTest < Minitest::Test
 
   def test_each_without_a_block_is_an_enumerator
     assert_equal ["book-1", "article-1"], ids(Reader.new(fixture_path("collection.xml")).each.first(2))
-  end
-
-  def test_normalize_needs_parse
-    error = assert_raises(ArgumentError) { Reader.new("a.xml", parse: false, normalize: :nfc) }
-
-    assert_match(/Metacrunch::Marc::Xml\.parse\(xml, normalize: :nfc\)/, error.message)
   end
 
   def test_rejects_invalid_arguments
@@ -260,14 +245,144 @@ class ReaderTest < Minitest::Test
     assert_match(/broken tar archive \(ends inside the member's data\)/, error.message)
   end
 
-  def test_checks_xml_on_stdin_too
+  def test_a_file_that_is_not_marc_raises
+    path = write("data.csv", "id;title\n1;x\n")
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
+
+    assert_equal %(#{path}: #{NOT_MARC}: it starts with "id;title\\n1;x\\n"), error.message
+  end
+
+  def test_a_file_named_gz_that_is_not_gzip_is_detected
+    path = write("plain.gz", "not gzip")
+
+    assert_includes assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }.message, NOT_MARC
+  end
+
+  def test_detects_on_stdin_too
     stdin = $stdin
-    $stdin = StringIO.new(%({"id": 1}\n))
+    $stdin = StringIO.new("id;title\n")
     error = assert_raises(Metacrunch::InputError) { read(Reader.new("-")) }
 
-    assert_match(/\A-: is not XML/, error.message)
+    assert_equal %(-: #{NOT_MARC}: it starts with "id;title\\n"), error.message
   ensure
     $stdin = stdin
+  end
+
+  def test_normalize_needs_parse
+    error = assert_raises(ArgumentError) { Reader.new("a.xml", parse: false, normalize: :nfc) }
+
+    assert_match(/Metacrunch::Marc\.parse\(raw, normalize: :nfc\)/, error.message)
+  end
+
+  def test_reads_iso2709_and_marc_in_json
+    assert_equal IDS, ids(read(Reader.new(fixture_path("collection.mrc"))))
+    assert_equal IDS, ids(read(Reader.new(fixture_path("collection.jsonl"))))
+  end
+
+  def test_reads_targets_in_different_formats
+    targets = [fixture_path("collection.mrc"), fixture_path("local.xml"), fixture_path("collection.jsonl")]
+
+    assert_equal [*IDS, "local-1", *IDS], ids(read(Reader.new(targets)))
+  end
+
+  def test_reads_iso2709_on_stdin
+    stdin = $stdin
+    File.open(fixture_path("collection.mrc")) do |file|
+      $stdin = file
+
+      assert_equal IDS, ids(read(Reader.new("-")))
+    end
+  ensure
+    $stdin = stdin
+  end
+
+  def test_reads_a_slow_pipe_in_every_format
+    ["collection.xml", "collection.mrc", "collection.jsonl"].each do |name|
+      assert_equal IDS, ids(read(Reader.new(Trickle.new(File.binread(fixture_path(name)))))), name
+    end
+  end
+
+  def test_reads_gzip_iso2709_files
+    path = write("records.mrc.gz", Zlib.gzip(File.binread(fixture_path("collection.mrc"))))
+
+    assert_equal IDS, ids(read(Reader.new(path)))
+  end
+
+  def test_reads_a_tar_archive_with_all_three_formats
+    archive = tar("a.xml" => fixture("collection.xml"), "b.mrc" => File.binread(fixture_path("collection.mrc")),
+                  "c.jsonl" => fixture("collection.jsonl"))
+
+    assert_equal IDS * 3, ids(read(Reader.new(write("all.tar", archive))))
+  end
+
+  def test_a_json_array_raises
+    path = write("records.json", %([{"fields": []}]))
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
+
+    assert_equal "#{path}: is a JSON array of records; convert it to one record per line first, e.g. " \
+                 "jq -c '.[]' in.json > out.jsonl", error.message
+  end
+
+  def test_json_that_is_not_marc_is_an_invalid_record
+    item = read(Reader.new(write("data.jsonl", %({"id": 1}\n)))).first
+
+    assert_instance_of Metacrunch::InvalidRecord, item
+    assert_equal %(unknown key "id"; a record has "leader" and "fields"), item.error.message
+  end
+
+  def test_iso2709_after_a_byte_order_mark
+    path = write("bom.mrc", "\xEF\xBB\xBF".b + File.binread(fixture_path("collection.mrc")))
+
+    assert_equal IDS, ids(read(Reader.new(path)))
+  end
+
+  def test_parse_false_yields_iso2709_and_json_strings
+    expected = Marc::Xml.each(fixture("collection.xml")).map(&:fields)
+
+    ["collection.mrc", "collection.jsonl"].each do |name|
+      items = read(Reader.new(fixture_path(name), parse: false))
+
+      assert_equal(expected, items.map { Marc.parse(it).fields }, name)
+    end
+  end
+
+  def test_a_broken_iso2709_record_is_an_invalid_record
+    broken = book("2").sub("Title", "Ti\x1Etle")
+    items = read(Reader.new(write("broken.mrc", book("1") + broken + book("3"))))
+
+    assert_equal [Marc::Record, Metacrunch::InvalidRecord, Marc::Record], items.map(&:class)
+    assert_equal broken, items[1].raw.b
+    assert_equal "the directory has 2 entries, the data 3 fields", items[1].error.message
+  end
+
+  def test_bytes_after_the_last_iso2709_record
+    items = read(Reader.new(write("eof.mrc", "#{File.binread(fixture_path("collection.mrc"))}\x1A".b)))
+
+    assert_equal [Marc::Record, Marc::Record, Marc::Record, Metacrunch::InvalidRecord], items.map(&:class)
+    assert_equal "the input ended inside a record", items.last.error.message
+  end
+
+  def test_a_broken_json_line_is_an_invalid_record
+    lines = [%({"fields": [{"001": "1"}]}), %({"fields": [{"001": 2}]}), %({"fields": [{"001": "3"}]})]
+    items = read(Reader.new(write("broken.jsonl", lines.join("\n"))))
+
+    assert_equal [Marc::Record, Metacrunch::InvalidRecord, Marc::Record], items.map(&:class)
+    assert_equal lines[1], items[1].raw
+  end
+
+  def test_a_pretty_printed_json_file
+    items = read(Reader.new(write("pretty.json", JSON.pretty_generate({"fields" => [{"001" => "1"}]}))))
+
+    assert(items.all?(Metacrunch::InvalidRecord))
+    assert_includes items.first.error.message, "MARC-in-JSON has one record per line"
+  end
+
+  def test_normalize_iso2709_and_json
+    nfd = Marc::Record.new(fields: [Marc::ControlField.new("001", "Mu\u0308ller")])
+
+    [write("nfd.mrc", nfd.to_iso2709), write("nfd.jsonl", JSON.generate(nfd.to_h))].each do |path|
+      assert_equal "Müller", read(Reader.new(path, normalize: :nfc)).first["001"].value
+    end
   end
 
   private
