@@ -69,6 +69,21 @@ class MarcTest < Minitest::Test
     end
   end
 
+  # Pathname#read(length) gives the first bytes of the file on every call,
+  # so a Pathname read as an IO would repeat them without end.
+  def test_streams_reject_a_pathname
+    path = Pathname(File.join(Fixtures::DIR, "collection.mrc"))
+    modules = [Metacrunch::Marc::Xml, Metacrunch::Marc::Iso2709, Metacrunch::Marc::Json]
+    calls = [-> { Metacrunch::Marc.each(path) }] +
+            modules.flat_map { |mod| [-> { mod.each(path) }, -> { mod.each_raw(path) }] }
+
+    calls.each do |call|
+      error = assert_raises(ArgumentError, &call)
+
+      assert_equal %(input is a Pathname; pass an open File instead: File.open(path, "rb")), error.message
+    end
+  end
+
   def test_parse_rejects_invalid_arguments
     assert_raises(ArgumentError) { Metacrunch::Marc.parse(nil) }
     assert_raises(ArgumentError) { Metacrunch::Marc.parse(" ", normalize: :nfd) }

@@ -87,8 +87,12 @@ module Metacrunch
       end
 
       # Raises ArgumentError unless input is a String or responds to
-      # readpartial or read. Internal.
+      # readpartial or read. A Pathname has read, but gives the first bytes
+      # on every call. Internal.
       def check_input(input)
+        if input.is_a?(Pathname)
+          raise ArgumentError, %(input is a Pathname; pass an open File instead: File.open(path, "rb"))
+        end
         return if input.is_a?(String) || input.respond_to?(:readpartial) || input.respond_to?(:read)
 
         raise ArgumentError, "input must be a String or respond to #readpartial or #read, got #{input.class}"

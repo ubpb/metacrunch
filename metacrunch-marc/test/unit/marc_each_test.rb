@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "timeout"
 
 class MarcEachTest < Minitest::Test
 
@@ -41,6 +42,34 @@ class MarcEachTest < Minitest::Test
         assert_equal IDS, ids(Metacrunch::Marc.each(input)), "#{name}, #{input.class}"
       end
     end
+  end
+
+  # Detection must not wait for more bytes than the first record has.
+  def test_each_gives_the_first_record_of_a_pausing_pipe_at_once
+    reader, writer = IO.pipe
+    writer.write(%({"fields":[{"001":"1"}]}\n))
+
+    assert_equal "1", Timeout.timeout(5) { Metacrunch::Marc.each(reader).first["001"].value }
+  ensure
+    writer&.close
+    reader&.close
+  end
+
+  # Some IO-like objects return "" instead of nil at their end.
+  def test_each_ends_at_an_empty_read
+    input = Object.new
+    io = StringIO.new(" \n")
+    input.define_singleton_method(:read) { |length| io.read(length) || "" }
+
+    assert_empty Timeout.timeout(5) { Metacrunch::Marc.each(input).to_a }
+  end
+
+  def test_each_raises_at_the_first_record_that_cannot_be_read
+    records = []
+    input = StringIO.new("#{fixture("collection.jsonl")}{\"fields\": 3}\n")
+
+    assert_raises(Metacrunch::Marc::ParseError) { Metacrunch::Marc.each(input) { records << it } }
+    assert_equal IDS, ids(records)
   end
 
   # The record is shorter than the bytes detection asks for, so detection

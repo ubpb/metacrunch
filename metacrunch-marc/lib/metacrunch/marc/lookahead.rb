@@ -4,7 +4,9 @@ module Metacrunch
   module Marc
     # Wraps an object with readpartial or read so that Marc.each can look at
     # its first bytes before a format module reads it: peek keeps the bytes
-    # it reads, and readpartial hands them out before reading on. Internal.
+    # it reads, and readpartial hands them out before reading on. The input
+    # is not read again after its end, where a terminal would wait for more.
+    # Internal.
     class Lookahead
 
       def initialize(io)
@@ -31,7 +33,7 @@ module Metacrunch
 
       private
 
-      # A chunk of at most length bytes; nil at the end.
+      # The input's next chunk, asking for length bytes; nil at the end.
       def read(length)
         return if @eof
 
