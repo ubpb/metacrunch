@@ -166,7 +166,7 @@ What each format can hold:
 ### MARCXML
 
 Parsing takes about 29 µs per record of 3 KB in [`bench/parse.rb`](bench/parse.rb) (Ruby 4.0 with YJIT on an arm64
-Mac); the time grows with the size of the records, by about 9 µs per KB. The parser keeps what the data says:
+Mac); the time grows with the size of the records, by about 10 µs per KB. The parser keeps what the data says:
 
 - whitespace at the start, at the end and inside values, and line breaks (XML itself turns `\r\n` into `\n`);
 - the order of fields and subfields, repeated control fields, empty subfields;
