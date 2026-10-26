@@ -49,6 +49,9 @@ module Metacrunch
         read_pages(&)
       end
 
+      # Without the client, whose options hold the credentials.
+      def inspect = "#<#{self.class.name} index=#{@index} connection=#{@connection.inspect}>"
+
       # The share of the hits read so far, 0.0 to 1.0; nil before the first
       # page.
       def progress

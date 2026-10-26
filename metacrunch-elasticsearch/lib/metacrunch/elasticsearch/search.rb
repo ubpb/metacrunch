@@ -20,6 +20,9 @@ module Metacrunch
       # The hits query matches, at most size, as the reader's hits: true.
       def hits(query, size: 10) = search(query, size).map { Reader.hit(it) }
 
+      # Without the client, whose options hold the credentials.
+      def inspect = "#<#{self.class.name} index=#{@index} connection=#{@connection.inspect}>"
+
       private
 
       def search(query, size, **body)

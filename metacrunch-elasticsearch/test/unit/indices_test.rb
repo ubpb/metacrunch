@@ -213,6 +213,15 @@ class IndicesTest < Minitest::Test
     assert_equal(["", "512 B", "2.0 KB", "1.5 GB"], [nil, 512, 2048, 1_610_612_736].map { Indices.size(it) })
   end
 
+  def test_inspect_shows_no_credentials
+    @fake.on("HEAD", "/books") { [200, nil] }
+    indices = Indices.new(@fake.connection(api_key: "k3y"))
+    indices.exists?("books")
+
+    assert_equal "#<Metacrunch::Elasticsearch::Indices connection=#<Metacrunch::Elasticsearch::Connection " \
+                 "url=#{FakeElasticsearch::URL} api_key=[FILTERED]>>", indices.inspect
+  end
+
   def test_failures_name_elasticsearch
     @fake.on("GET", "/") { raise Faraday::ConnectionFailed, "Connection refused" }
     indices = Indices.new(@fake.connection(retries: 0))

@@ -179,6 +179,15 @@ class WriterTest < Minitest::Test
     assert_equal 1, @log.string.scan("use `sink ..., batch: 1000`").size
   end
 
+  def test_inspect_shows_no_credentials
+    serve_bulk(@fake)
+    writer = Writer.new(@fake.connection(user: "elastic", password: "secret"), index: "books")
+    writer.open(Metacrunch::OpenContext.new(params: nil, logger: Logger.new(nil)))
+
+    assert_equal "#<Metacrunch::Elasticsearch::Writer index=books connection=#<Metacrunch::Elasticsearch::Connection " \
+                 "url=#{FakeElasticsearch::URL} user=elastic password=[FILTERED]>>", writer.inspect
+  end
+
   def test_validates_its_options
     {
       {index: "Books"} => 'index "Books" is not a valid name: it has uppercase letters',

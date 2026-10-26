@@ -49,6 +49,9 @@ module Metacrunch
         write_batch([record])
       end
 
+      # Without the client, whose options hold the credentials.
+      def inspect = "#<#{self.class.name} index=#{@index} connection=#{@connection.inspect}>"
+
       def write_batch(records)
         items, failed = Bulk.items(records, index: @index, id: @id, action: @action)
         Bulk.requests(items, @max_bytes).each { deliver(it, failed) }

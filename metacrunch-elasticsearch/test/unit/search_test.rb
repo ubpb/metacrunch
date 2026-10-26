@@ -61,6 +61,14 @@ class SearchTest < Minitest::Test
     assert_equal "elasticsearch books: request to #{FakeElasticsearch::URL} failed: Connection refused", error.message
   end
 
+  def test_inspect_shows_no_credentials
+    search = Search.new(@fake.connection(api_key: "k3y"), index: "books")
+    search.ids({match_all: {}})
+
+    assert_equal "#<Metacrunch::Elasticsearch::Search index=books connection=#<Metacrunch::Elasticsearch::Connection " \
+                 "url=#{FakeElasticsearch::URL} api_key=[FILTERED]>>", search.inspect
+  end
+
   def test_validates_query_and_size
     query = assert_raises(ArgumentError) { @search.ids("isbn:1") }
     size = assert_raises(ArgumentError) { @search.hits({match_all: {}}, size: 0) }

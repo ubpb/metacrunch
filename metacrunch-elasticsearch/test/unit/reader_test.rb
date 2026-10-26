@@ -163,6 +163,14 @@ class ReaderTest < Minitest::Test
     assert_match "WARN -- : elasticsearch books: could not close the point in time: 500 x: y", @log.string
   end
 
+  def test_inspect_shows_no_credentials
+    serve_pages(@fake, documents(1))
+    reader = Reader.new(@fake.connection(api_key: "k3y"), index: "books").tap { it.open(context) }
+
+    assert_equal "#<Metacrunch::Elasticsearch::Reader index=books connection=#<Metacrunch::Elasticsearch::Connection " \
+                 "url=#{FakeElasticsearch::URL} api_key=[FILTERED]>>", reader.inspect
+  end
+
   def test_validates_its_options
     {
       {index: ""} => 'index must be a name, alias or pattern, or an Array of them, got ""',

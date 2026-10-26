@@ -146,6 +146,9 @@ module Metacrunch
 
       def refresh(name) = request { client.indices.refresh(index: name) }
 
+      # Without the client, whose options hold the credentials.
+      def inspect = "#<#{self.class.name} connection=#{@connection.inspect}>"
+
       # The open and closed indices that match pattern, sorted by name, as
       # {name:, aliases:, docs:, size: (bytes), health:, created: (Time)}.
       def list(pattern = "*")
