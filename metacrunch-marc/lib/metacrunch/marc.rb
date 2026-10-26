@@ -10,12 +10,15 @@ require_relative "marc/control_field"
 require_relative "marc/data_field"
 require_relative "marc/filter"
 require_relative "marc/record"
+require_relative "marc/delimited"
 require_relative "marc/xml"
 require_relative "marc/xml/serializer"
 require_relative "marc/xml/string_source"
 require_relative "marc/xml/io_source"
 require_relative "marc/xml/parser"
 require_relative "marc/xml/splitter"
+require_relative "marc/iso2709"
+require_relative "marc/iso2709/parser"
 
 module Metacrunch
   # MARC for metacrunch: an ordered record model (Record, ControlField,
