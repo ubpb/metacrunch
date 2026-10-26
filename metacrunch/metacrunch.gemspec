@@ -5,7 +5,7 @@ require_relative "lib/metacrunch/version"
 Gem::Specification.new do |spec|
   spec.name     = "metacrunch"
   spec.version  = Metacrunch::VERSION
-  spec.authors  = ["René Sprotte", "Michael Sievers", "Marcel Otto"]
+  spec.authors  = ["René Sprotte"]
   spec.summary  = "Data processing and ETL toolkit for Ruby"
   spec.homepage = "https://github.com/ubpb/metacrunch"
   spec.license  = "MIT"
