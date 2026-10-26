@@ -64,6 +64,13 @@ class JsonTest < Minitest::Test
     assert_equal %(duplicate key "fields" at line 1 column 1), error.message
   end
 
+  # Ruby's own json 2.x keeps the last of duplicate keys unless told not to.
+  def test_duplicate_codes_inside_a_field
+    error = assert_raises(Marc::ParseError) { Json.parse(%({"fields":[{"245":{"subfields":[{"a":"x","a":"y"}]}}]})) }
+
+    assert_equal %(duplicate key "a" at line 1 column 33), error.message
+  end
+
   def test_invalid_utf8
     error = assert_raises(Marc::ParseError) { Json.parse(%({"fields": [{"001": "\xFF"}]}).b) }
 
