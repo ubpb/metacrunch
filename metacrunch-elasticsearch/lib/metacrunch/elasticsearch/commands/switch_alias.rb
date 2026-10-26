@@ -8,6 +8,8 @@ Metacrunch.command "es:switch-alias", desc: "Point an Elasticsearch alias to an 
 
   run do
     alias_name, index = params.names
+    Metacrunch::Elasticsearch::Names.check(alias_name, "alias", error: Metacrunch::ParamError)
+    Metacrunch::Elasticsearch::Names.check(index, "index", error: Metacrunch::ParamError)
     indices = Metacrunch::Elasticsearch::Indices.new(Metacrunch::Elasticsearch::Connection.from_params(params), logger:)
     indices.switch_alias(alias_name, index)
   end

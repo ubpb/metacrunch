@@ -9,7 +9,8 @@ Metacrunch.command "es:update-settings", desc: "Change the settings of an Elasti
   end
 
   run do
+    index = Metacrunch::Elasticsearch::Names.check(params.index.first, "index", error: Metacrunch::ParamError)
     indices = Metacrunch::Elasticsearch::Indices.new(Metacrunch::Elasticsearch::Connection.from_params(params), logger:)
-    indices.update_settings(params.index.first, params.settings, reopen: params.reopen)
+    indices.update_settings(index, params.settings, reopen: params.reopen)
   end
 end

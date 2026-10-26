@@ -11,13 +11,14 @@ module Metacrunch
 
       module_function
 
-      # Returns name, or raises ArgumentError saying what is wrong with it.
-      # what: "index", "alias".
-      def check(name, what)
+      # Returns name, or raises error (ArgumentError; the commands take
+      # Metacrunch::ParamError) saying what is wrong with it. what: "index",
+      # "alias".
+      def check(name, what, error: ArgumentError)
         problem = problem(name)
         return name unless problem
 
-        raise ArgumentError, "#{what} #{name.inspect} is not a valid name: #{problem}"
+        raise error, "#{what} #{name.inspect} is not a valid name: #{problem}"
       end
 
       # What a reader or a search reads: a name, alias or pattern, or an

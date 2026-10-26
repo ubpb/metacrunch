@@ -59,6 +59,17 @@ class CommandsTest < Minitest::Test
     assert_equal [Metacrunch::ParamError], errors.map(&:class).uniq
   end
 
+  def test_invalid_names_and_keep_are_param_errors
+    runs = [invoke("es:create-index", name: ["Books"]), invoke("es:finish-load", index: ["books*"]),
+            invoke("es:switch-alias", names: ["books", "_books"]), invoke("es:prune", alias: ["books"], keep: -1),
+            invoke("es:delete-index", name: ["a b"]), invoke("es:update-settings", index: ["Books"], settings: "s")]
+    errors = runs.map(&:error)
+
+    assert_equal [Metacrunch::ParamError], errors.map(&:class).uniq
+    assert_equal ['index "Books" is not a valid name: it has uppercase letters', "--keep must be 0 or more, got -1"],
+                 errors.values_at(0, 3).map(&:message)
+  end
+
   def test_finish_load
     @fake.on("PUT", "/books/_settings") { [200, {"acknowledged" => true}] }
     @fake.on("POST", "/books/_refresh") { [200, {}] }

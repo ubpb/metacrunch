@@ -46,6 +46,14 @@ class WriterTest < Minitest::Test
     assert_equal "elasticsearch books: books (index.blocks.write) refuses writes", error.message
   end
 
+  def test_behind_an_alias_of_one_index_that_index_is_checked
+    serve_bulk(@fake)
+    @fake.on("GET", "/_alias/books") { [200, {"books-1" => {"aliases" => {"books" => {}}}}] }
+    open_writer
+
+    assert_equal ["/_cat/indices/books-1", "/books-1/_settings"], @fake.calls.map(&:path).last(2)
+  end
+
   def test_behind_an_alias_with_a_write_index_only_that_index_is_checked
     serve_bulk(@fake)
     aliases = {"books-1" => {"aliases" => {"books" => {}}},

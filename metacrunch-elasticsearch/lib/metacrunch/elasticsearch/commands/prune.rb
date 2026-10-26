@@ -9,7 +9,10 @@ Metacrunch.command "es:prune", desc: "Delete the indices of an alias older than 
   end
 
   run do
+    alias_name = Metacrunch::Elasticsearch::Names.check(params.alias.first, "alias", error: Metacrunch::ParamError)
+    raise Metacrunch::ParamError, "--keep must be 0 or more, got #{params.keep}" if params.keep.negative?
+
     indices = Metacrunch::Elasticsearch::Indices.new(Metacrunch::Elasticsearch::Connection.from_params(params), logger:)
-    indices.prune(params.alias.first, keep: params.keep, dry_run: params.dry_run)
+    indices.prune(alias_name, keep: params.keep, dry_run: params.dry_run)
   end
 end

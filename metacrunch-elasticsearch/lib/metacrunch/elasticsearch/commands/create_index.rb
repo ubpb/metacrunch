@@ -16,6 +16,7 @@ Metacrunch.command "es:create-index", desc: "Create an Elasticsearch index, by n
     raise Metacrunch::ParamError, "es:create-index needs NAME or --alias, not both" if name.nil? == params.alias.nil?
     raise Metacrunch::ParamError, "--skip-existing works with NAME only" if params.skip_existing && params.alias
 
+    Metacrunch::Elasticsearch::Names.check(name || params.alias, name ? "index" : "alias", error: Metacrunch::ParamError)
     indices = Metacrunch::Elasticsearch::Indices.new(Metacrunch::Elasticsearch::Connection.from_params(params), logger:)
     definition = {settings: params.settings, mappings: params.mappings, bulk_load: params.bulk_load}
     next indices.create_for(params.alias, **definition) if params.alias

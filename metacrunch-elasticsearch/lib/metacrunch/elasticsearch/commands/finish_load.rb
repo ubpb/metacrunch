@@ -8,7 +8,8 @@ Metacrunch.command "es:finish-load", desc: "Restore refresh interval and replica
   end
 
   run do
+    index = Metacrunch::Elasticsearch::Names.check(params.index.first, "index", error: Metacrunch::ParamError)
     indices = Metacrunch::Elasticsearch::Indices.new(Metacrunch::Elasticsearch::Connection.from_params(params), logger:)
-    indices.finish_load(params.index.first, settings: params.settings)
+    indices.finish_load(index, settings: params.settings)
   end
 end

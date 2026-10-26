@@ -8,7 +8,8 @@ Metacrunch.command "es:delete-index", desc: "Delete an Elasticsearch index that 
   end
 
   run do
+    name = Metacrunch::Elasticsearch::Names.check(params.name.first, "index", error: Metacrunch::ParamError)
     indices = Metacrunch::Elasticsearch::Indices.new(Metacrunch::Elasticsearch::Connection.from_params(params), logger:)
-    indices.delete(params.name.first, force: params.force)
+    indices.delete(name, force: params.force)
   end
 end
