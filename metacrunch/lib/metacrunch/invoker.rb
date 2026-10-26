@@ -18,10 +18,12 @@ module Metacrunch
 
     # project: the Project that names resolve in, nil, or a Proc that
     # returns one of these when a name is first needed. environment and
-    # credentials: -e and --credentials. progress: called with whether a
-    # job's records go to stdout; returns a monitor for Engine or nil.
+    # credentials: -e and --credentials. params_file: --params, the path of
+    # a ParamsFile for the parameters bound from the command line only.
+    # progress: called with whether a job's records go to stdout; returns a
+    # monitor for Engine or nil.
     def initialize(project: nil, logger: Metacrunch.logger, env: ENV, stdin: $stdin, stdout: $stdout,
-                   environment: nil, credentials: nil, progress: nil)
+                   environment: nil, credentials: nil, params_file: nil, progress: nil)
       @project = project
       @logger = logger
       @env = env
@@ -29,6 +31,7 @@ module Metacrunch
       @stdout = stdout
       @environment = environment
       @credentials = credentials
+      @params_file = params_file
       @progress = progress
       @status = :ok
     end
@@ -194,13 +197,25 @@ module Metacrunch
                         directory: @credentials)
     end
 
-    # argv: the command line, with a warning for a secret given there.
-    # params: values from code (see Params#bind_values).
+    # argv: the command line, with a warning for a secret given there, and
+    # the params file. params: values from code (see Params#bind_values).
     def binder(credentials, argv:, params:)
       return ->(schema) { bind_params(schema, params, credentials) } if params
 
       warn = ->(message) { @logger.warn(message) }
-      ->(schema) { schema.bind_argv(argv, env: @env, credentials:, warn:) }
+      ->(schema) { bind_argv(schema, argv, credentials, warn) }
+    end
+
+    # Reads the params file for each binding, so a check sees it as the run
+    # will, and logs the sections it took values from.
+    def bind_argv(schema, argv, credentials, warn)
+      return schema.bind_argv(argv, env: @env, credentials:, warn:) unless @params_file
+
+      file = ParamsFile.load(@params_file)
+      environment = Credentials.environment(@environment, @env)
+      values = schema.bind_argv(argv, env: @env, credentials:, warn:, file:, environment:)
+      @logger.debug("params: #{file.path} (#{file.select(environment).sections.join(", ")})")
+      values
     end
 
     # An unknown key is a wrong argument of invoke, as an invalid value is:

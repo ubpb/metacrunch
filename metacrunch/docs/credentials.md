@@ -36,10 +36,13 @@ environment never falls back to the file without one.
   looks above the working directory and uses `~/.metacrunch/` only with `--credentials ~/.metacrunch`.
 - **Key:** `METACRUNCH_MASTER_KEY`, else the key file. In containers and CI, set `METACRUNCH_MASTER_KEY`; with Kamal,
   list it under `env: secret:` and provide it in `.kamal/secrets`.
-- **Order:** a parameter's value comes from the command line, its `env:` variable, the credentials, then the default,
-  so an environment variable overrides a credential. Credentials are decrypted only if a value is needed: a container
-  that sets every variable needs neither key nor file. Leave out `env:` to make sure that no inherited variable
-  overrides a secret.
+- **Order:** a parameter's value comes from the command line, a params file, its `env:` variable, the credentials,
+  then the default, so an environment variable overrides a credential. Credentials are decrypted only if a value is
+  needed: a container that sets every variable needs neither key nor file. Leave out `env:` to make sure that no
+  inherited variable overrides a secret.
+- **Params files:** a value `{credential: PATH}` in a params file (see
+  [Parameter files](jobs.md#parameter-files)) takes the value from these credentials, for any parameter; the value is
+  then hidden like a secret. `-e` selects the credentials and the section of the params file alike.
 - **Secrets:** a parameter with `credential:` is secret. `--help`, error messages and `params.inspect` hide its value,
   and a value on the command line, where `ps` and the shell history show it, gives a warning. What a job does with the
   value, such as logging it or putting it into an exception, is not hidden. `Metacrunch::Testing.run` never reads

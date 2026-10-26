@@ -59,11 +59,14 @@ module Metacrunch
       # -e and --credentials, for the commands that read credentials.
       # directory_help: the description lines of --credentials.
       def credentials_options(parser, *directory_help)
-        parser.on("-e", "--environment NAME", "Credentials environment (default: METACRUNCH_ENV)") do |name|
+        parser.on("-e", "--environment NAME", environment_help) do |name|
           @environment = name
         end
         parser.on("--credentials DIR", *directory_help) { @credentials = it }
       end
+
+      # The description of -e; commands that take a params file name it.
+      def environment_help = "Credentials environment (default: METACRUNCH_ENV)"
 
       def logger
         @logger ||= Metacrunch.build_logger(log_output).tap { it.level = @log_level }

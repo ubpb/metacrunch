@@ -52,6 +52,9 @@ metacrunch's version.
 - Encrypted credentials: parameters read secrets with `credential:` from `.metacrunch/credentials[.ENV].yml.enc`,
   after the command line and `env:`, and hide them in help texts, errors and `inspect`. `metacrunch credentials
   edit|show|rotate` manages the files; `run`, `check` and `trace` take `-e`/`--environment` and `--credentials`.
+- Parameter files: `run`, `check` and `trace` take `--params FILE`, a YAML file with a `default:` section and one
+  section per environment (selected by `-e`) whose keys are the parameters; `{credential: PATH}` takes a value from
+  the credentials and hides it. Its values come after the command line and before `env:`.
 - Projects: a `Metacrunchfile` names a project's jobs and commands (`Metacrunch.load_files`); `metacrunch NAME` runs
   them from any directory of the project, and `metacrunch --help` lists them. A file that fails to load costs only
   its own names. A name declared twice is unusable, every call that loads the project warns about it, and

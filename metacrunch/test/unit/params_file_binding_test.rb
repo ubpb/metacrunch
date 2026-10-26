@@ -72,6 +72,13 @@ class ParamsFileBindingTest < Minitest::Test
     assert_equal "#{file.path}: default.api-key: unknown parameter (known: api_key)", error.message
   end
 
+  def test_a_job_without_parameters_takes_no_keys
+    file = params_file("default: {index: x}\n")
+    error = assert_raises(Metacrunch::ParamError) { Metacrunch::Params.new.bind_argv([], env: {}, file:) }
+
+    assert_equal "#{file.path}: default.index: unknown parameter (known: none)", error.message
+  end
+
   def test_positional_arguments_cannot_come_from_the_file
     params = schema { args :files }
     file = params_file("default: {files: [a.json]}\n")

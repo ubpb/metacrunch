@@ -25,7 +25,12 @@ module Metacrunch
         credentials_options(parser, "Credentials directory (default: METACRUNCH_CREDENTIALS,",
                             "then .metacrunch/ above the Metacrunchfile for a name or above the file,",
                             "then ~/.metacrunch/)")
+        parser.on("--params FILE", "Parameter values from FILE: default: and the section of the environment") do |path|
+          @params_file = path
+        end
       end
+
+      def environment_help = "Environment of the credentials and the params file (default: METACRUNCH_ENV)"
 
       def execute(argv)
         @target = argv.shift
@@ -69,12 +74,13 @@ module Metacrunch
       end
 
       # Runs jobs, transforms and commands with this call's environment,
-      # credentials options, logger and streams. Names resolve in the project
-      # of the working directory, which is loaded when a name first needs it.
+      # credentials options, params file, logger and streams. Names resolve
+      # in the project of the working directory, which is loaded when a name
+      # first needs it.
       def invoker
         @invoker ||= Invoker.new(
           project: -> { @lookup.project(logger) }, logger:, env: @env, stdin: @stdin, stdout: @stdout,
-          environment: @environment, credentials: @credentials, progress: progress_factory
+          environment: @environment, credentials: @credentials, params_file: @params_file, progress: progress_factory
         )
       end
 
