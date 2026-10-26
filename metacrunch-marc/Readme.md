@@ -185,7 +185,8 @@ Reading trusts the terminators, not the numbers, as yaz-marcdump and MARC4J's pe
 
 - A record runs to its record terminator. The record length, the base address and the field lengths are not used, so
   records with wrong lengths, with lengths counted in characters, and records over 99,999 bytes with `99999` or
-  `00000` as their length are read. Line breaks, spaces, tabs and NUL between records are skipped.
+  `00000` as their length are read. Line breaks, spaces, tabs and NUL between records are skipped, and so are the byte
+  order marks of concatenated files.
 - The directory runs to the first field terminator; the data is split on field terminators, and the nth field belongs
   to the nth directory entry. Another number of fields than of entries, starts that are not five digits or that
   decrease (data in another order than the directory), a leader or a tag that is not ASCII, and indicators other than
