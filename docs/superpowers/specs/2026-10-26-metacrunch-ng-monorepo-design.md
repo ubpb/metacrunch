@@ -59,7 +59,7 @@ gems.
 - `git log -- metacrunch-marc/lib` reaches the metacrunch-marcxml 1.x commits; `git log --follow
   metacrunch/lib/metacrunch.rb` reaches commits before the move; the 11 tags of metacrunch-marcxml are present as
   `metacrunch-marcxml-v*`.
-- The CI workflow is valid YAML. It runs green once the user pushes the branch.
+- The CI workflow is valid YAML. It runs green in a pull request from the branch (see 8.2).
 
 ### 1.4 Decisions
 
@@ -362,8 +362,10 @@ branch, so it applies once `metacrunch-ng` is merged into `master`, as core's co
    metacrunch-csv in the block, and one with the line `metacrunch new` writes (`gem "metacrunch", git: …, branch: …`).
    This shows that Bundler finds gemspecs in subdirectories.
 5. **History:** the checks in 1.3.
-6. **CI:** a YAML syntax check locally (actionlint is not installed). The real run needs a push; the user pushes
-   `metacrunch-ng-monorepo` before the fast-forward to see the 21 jobs.
+6. **CI:** a YAML syntax check locally (actionlint is not installed). The real run needs GitHub: the workflow runs on
+   pushes to `master` and `metacrunch-ng` and on pull requests, so a push of `metacrunch-ng-monorepo` alone runs
+   nothing. The user opens a draft pull request from `metacrunch-ng-monorepo` into `metacrunch-ng` to see the 21 jobs
+   before the fast-forward (found in the final review).
 
 ## 9. Order of commits
 
@@ -381,7 +383,8 @@ branch, so it applies once `metacrunch-ng` is merged into `master`, as core's co
 
 ## 10. After the merge (the user)
 
-- Push `metacrunch-ng-monorepo` to see CI, then fast-forward `metacrunch-ng` and push it.
+- Push `metacrunch-ng-monorepo` and open a draft pull request into `metacrunch-ng` to see CI (pushes to other
+  branches do not run it), then fast-forward `metacrunch-ng` and push it.
 - Push the imported tags: `git push origin 'refs/tags/metacrunch-marcxml-*'`.
 - Push metacrunch-marcxml's local `metacrunch-ng` (27 commits ahead of its origin) to its old repository before
   archiving it, so the commit IDs in specs and notes stay resolvable there.
