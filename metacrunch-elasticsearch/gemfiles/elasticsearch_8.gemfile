@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+# The bundle with the client for Elasticsearch 8. CI runs the tests with it against Elasticsearch 8 and 9:
+#   BUNDLE_GEMFILE=gemfiles/elasticsearch_8.gemfile bundle exec rake
+source "https://rubygems.org"
+
+gemspec path: ".."
+
+gem "elasticsearch", "~> 8.19"
+
+# The core gem lives next to this one in the monorepo.
+gem "metacrunch", path: "../../metacrunch"
+
+group :development do
+  gem "minitest", ">= 5.25"
+  gem "rake", ">= 13.0"
+  gem "rubocop-ubpb", github: "ubpb/rubocop-ubpb", require: false
+  gem "simplecov", ">= 0.22", require: false
+end
