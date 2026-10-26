@@ -196,6 +196,21 @@ class Iso2709ParseTest < Minitest::Test
                  "yaz-marcdump -f MARC-8 -t UTF-8 -o marc -l 9=97 in.mrc > out.mrc", error.message
   end
 
+  # MARC-8 switches to Cyrillic, Greek, Hebrew, Arabic or CJK with ESC
+  # sequences over ASCII bytes, so those fields are valid UTF-8.
+  def test_marc8_script_escapes_get_the_hint
+    record = raw(["880", "10\x1Fa\e(NTOLSTOJ\e(B"], leader: MARC8)
+    error = assert_raises(Marc::ParseError) { Iso2709.parse(record) }
+
+    assert_equal %(field 880 $a: "\\e" cannot be represented in XML 1.0; #{Marc::Iso2709::Parser::MARC8}), error.message
+  end
+
+  def test_escapes_with_a_utf8_leader_get_no_hint
+    error = assert_raises(Marc::ParseError) { Iso2709.parse(raw(["880", "10\x1Fa\e(N"])) }
+
+    assert_equal %(field 880 $a: "\\e" cannot be represented in XML 1.0), error.message
+  end
+
   def test_invalid_utf8_with_a_utf8_leader
     error = assert_raises(Marc::ParseError) { Iso2709.parse(raw(["245", "10\x1FaM\xE8uller"])) }
 

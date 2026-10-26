@@ -380,8 +380,10 @@ Why these rules:
 - Indicators and codes are read as characters, so nothing is lost; the
   serializer requires ASCII (3.2).
 
-Invalid UTF-8 raises `ParseError` naming the field. When leader/09 is blank,
-the message adds:
+Invalid UTF-8 raises `ParseError` naming the field, and so does an ESC, with
+which MARC-8 switches to Cyrillic, Greek, Hebrew, Arabic or CJK (common in 880
+fields; the bytes are ASCII). When leader/09 is blank, the message of both
+adds (ESC amended after the review):
 
 ```
 leader/09 says MARC-8; convert the file to UTF-8 first, e.g. yaz-marcdump -f MARC-8 -t UTF-8 -o marc -l 9=97 in.mrc > out.mrc
