@@ -44,13 +44,15 @@ module Metacrunch
       private
 
       # json accepts invalid UTF-8 inside strings, so the encoding is
-      # checked first; a writer would refuse such a record later.
+      # checked first; a writer would refuse such a record later. Duplicate
+      # keys are refused also by the json 2 that comes with Ruby 4.0, which
+      # keeps the last one by default.
       def parse(line)
         unless line.valid_encoding?
           return InvalidRecord.new(raw: line.chomp, error: JSON::ParserError.new("invalid UTF-8"))
         end
 
-        JSON.parse(line)
+        JSON.parse(line, allow_duplicate_key: false)
       rescue JSON::ParserError => e
         line.b.strip.empty? ? BLANK : InvalidRecord.new(raw: line.chomp, error: e)
       end
