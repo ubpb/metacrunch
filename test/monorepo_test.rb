@@ -57,10 +57,12 @@ class MonorepoTest < Minitest::Test
   end
 
   def test_set_version_locks_every_gem_in_order_after_writing
-    lock = ->(dir) { @locked << [File.basename(dir), version_of("metacrunch")] }
+    # The first and the last gem: every file is written before the first lock.
+    lock = ->(dir) { @locked << [File.basename(dir), version_of("metacrunch"), version_of("metacrunch-xlsx")] }
     Monorepo.set_version("5.1.0", root: @root, lock:)
 
-    assert_equal [["metacrunch", "5.1.0"], ["metacrunch-csv", "5.1.0"], ["metacrunch-xlsx", "5.1.0"]], @locked
+    assert_equal [["metacrunch", "5.1.0", "5.1.0"], ["metacrunch-csv", "5.1.0", "5.1.0"],
+                  ["metacrunch-xlsx", "5.1.0", "5.1.0"]], @locked
   end
 
   def test_a_version_that_is_not_canonical_is_refused_and_nothing_is_written

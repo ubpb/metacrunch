@@ -58,6 +58,10 @@ $ bundle exec rake                    # its tests and RuboCop
 Run RuboCop through these tasks: `bundle exec rubocop` in the root would check the gems with the root's bundle instead
 of their own.
 
+The lockfiles are committed, and CI installs them frozen. Every gem's lockfile records metacrunch as a path gem, so a
+changed dependency in a gemspec, above all in metacrunch's, changes the lockfiles of the gems that load it: run
+`bundle exec rake bundle` and commit every changed `Gemfile.lock`.
+
 ## License
 
 MIT. Each gem has its own `License.txt`; the root's [License.txt](License.txt) is metacrunch's.
