@@ -104,7 +104,8 @@ The target is what `Metacrunch::Output` takes: a path (`.gz` compresses), `"-"` 
 `"\n"`; fields are quoted only where needed.
 
 - With `columns:`, other keys of a record are not written and missing keys are empty fields; the header row is written
-  when the run starts, so an empty run gives a file with the header only.
+  when the run starts, so an empty run gives a file with the header only. A column `"id"` is also found under the key
+  `:id`, as in Hashes from a database.
 - Without `columns:`, the first record's keys are the columns; a later record with another key stops the run (name the
   columns with `columns:`). An empty run gives an empty file.
 - Array records are written as they are; with `columns:` the header comes from it.
@@ -118,7 +119,8 @@ The target is what `Metacrunch::Output` takes: a path (`.gz` compresses), `"-"` 
 
 Anything else (a `Time`, a `Date`, an Array) stops the run: `record at position 7: column "date" is a Time; turn it
 into a String in a step`. So do a character the target encoding cannot represent and a String that is not valid in
-its encoding. `nil` and `""` are both read back as `""`.
+its encoding. `nil` and `""` are both read back as `""`; a row of one empty field is written as `""`, since an empty
+line would be skipped when reading.
 
 ## Testing jobs
 

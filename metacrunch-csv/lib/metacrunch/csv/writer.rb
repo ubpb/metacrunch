@@ -23,10 +23,15 @@ module Metacrunch
         @header_written = false
       end
 
+      # The engine closes no sink whose open raised, so open closes the output
+      # itself then.
       def open(_context)
         @output.open
         @output.write(BOMS[@encoding]) if @bom
         @output.write(encode(header_line, nil)) if @header && @columns.known?
+      rescue StandardError
+        close
+        raise
       end
 
       def write(record, ctx)
@@ -56,6 +61,8 @@ module Metacrunch
       def line(record, ctx)
         values = @columns.row(record, ctx).dup
         values.each_index { |index| values[index] = field(values[index], index, ctx) }
+        # A row of one empty field would be a blank line, which readers skip.
+        values = [""] if values.empty? || values == [nil]
         return generate(values) unless @header && !@header_written && @columns.known?
 
         header_line << generate(values)

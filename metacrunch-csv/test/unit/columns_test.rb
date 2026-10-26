@@ -70,6 +70,14 @@ class ColumnsTest < Minitest::Test
                  "name the columns with columns:", error.message
   end
 
+  def test_with_columns_symbol_keys_are_found_by_name
+    assert_equal ["1", "Moby"], Columns.new({"ID" => "id", "Titel" => "title"}).row({id: "1", title: "Moby"}, ctx)
+  end
+
+  def test_a_string_key_comes_before_its_symbol
+    assert_equal ["1"], Columns.new(["id"]).row({id: "2"}.merge("id" => "1"), ctx)
+  end
+
   def test_with_columns_other_keys_are_ignored
     assert_equal ["1"], Columns.new(["id"]).row({"id" => "1", "isbn" => "x"}, ctx)
   end

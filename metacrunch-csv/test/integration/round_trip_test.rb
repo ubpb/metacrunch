@@ -33,4 +33,10 @@ class RoundTripTest < Minitest::Test
     assert_equal [{"id" => "1", "note" => ""}], read(written([{"id" => "1", "note" => nil}]))
   end
 
+  def test_one_column_keeps_every_record
+    records = [{"note" => "a"}, {"note" => nil}, {"note" => ""}, {"note" => "b"}]
+
+    assert_equal(["a", "", "", "b"], read(written(records)).map { it["note"] })
+  end
+
 end

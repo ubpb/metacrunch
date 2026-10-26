@@ -83,7 +83,9 @@ module Metacrunch
           @names = @keys.map(&:to_s)
         end
         check_new_keys(record, ctx) unless @given
-        @keys.map { record[it] }
+        # A column is found by its key, else by the key as a Symbol, as in
+        # Hashes from a database.
+        @keys.map { |key| record.fetch(key) { record[key.to_sym] } }
       end
 
       def check_new_keys(record, ctx)

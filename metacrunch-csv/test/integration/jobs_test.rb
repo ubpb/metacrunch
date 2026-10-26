@@ -57,6 +57,20 @@ class JobsTest < Minitest::Test
     assert_equal "id,title,year\n1,Moby,1851\n", File.read(output)
   end
 
+  # The engine does not close a sink whose open raised; the writer closes
+  # its output itself, so the gzip file is complete.
+  def test_a_header_that_fails_in_open_still_finishes_the_file
+    output = File.join(@dir, "out.csv.gz")
+    input = @input
+    job = Metacrunch.job do
+      source Csv::Reader.new(input)
+      sink Csv::Writer.new(output, columns: ["€"], encoding: "ISO-8859-1")
+    end
+
+    assert_equal :aborted, job.run(logger: Logger.new(nil)).status
+    assert_empty Zlib.gunzip(File.binread(output))
+  end
+
   private
 
   def copy_job(output)

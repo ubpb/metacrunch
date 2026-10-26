@@ -107,6 +107,14 @@ class WriterTest < Minitest::Test
     assert_equal %(plain,"a,b","say ""hi""","two\nlines"\n), written([["plain", "a,b", %(say "hi"), "two\nlines"]])
   end
 
+  # A blank line would be skipped by readers.
+  def test_a_row_of_one_empty_field_is_not_a_blank_line
+    records = [{"note" => "a"}, {"note" => nil}, {}, {"note" => "b"}]
+
+    assert_equal %(note\na\n""\n""\nb\n), written(records, columns: ["note"])
+    assert_equal %(""\n""\n), written([[], [nil]])
+  end
+
   # Encodings and BOM
 
   def test_windows1252_for_excel
