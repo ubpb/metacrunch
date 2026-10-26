@@ -319,7 +319,7 @@ All" 2016, part 1: 241 MB as ISO 2709, 700 MB as MARCXML). Time per record, Ruby
 | Read MARCXML | 32 µs | 56 µs with Nokogiri, 213 µs with REXML (its default) |
 | Write ISO 2709 | 11 µs | 20 µs |
 | Write MARCXML | 24 µs | 131 µs with REXML, 21 µs with `fast_but_unsafe: true` |
-| Write MARC-in-JSON | 14 µs | 12 µs (`JSON.generate(record.to_hash)`) |
+| Write MARC-in-JSON | 9 µs | 12 µs (`JSON.generate(record.to_hash)`) |
 | Query 245 $a, 100 $a, 008 and $a of every 020 and 650 | 2.1 µs | 4.7 µs |
 | Memory per record held | 9.0 KB | 10.0 KB |
 
