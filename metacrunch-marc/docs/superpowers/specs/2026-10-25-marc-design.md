@@ -55,7 +55,9 @@ compatibility.
    round trips of 11.4 and the interop tests against ruby-marc (11.5).
 2. Jobs `Reader -> steps -> Writer` give byte-identical output with and
    without `workers: 2`, with `parse: true` and `parse: false`, for every
-   output format.
+   output format. Serializing in a step (10) gives the same bytes for ISO 2709
+   and MARC-in-JSON and the same records for MARCXML, whose record Strings
+   are not indented as the Writer indents them.
 3. `bench/parse.rb` (records of about 3 KB as MARCXML, Ruby 4.0 with YJIT)
    shows at most 15 µs per record for `Marc::Iso2709.parse` of one record
    String, at most 10 µs for `to_iso2709`, and at most 30 µs for
@@ -150,6 +152,7 @@ lib/metacrunch/marc/version.rb         # VERSION = "1.0.0.pre"
 lib/metacrunch/marc/errors.rb          # Error, ParseError, SerializeError
 lib/metacrunch/marc/values.rb          # the common rule of 3.1 (internal)
 lib/metacrunch/marc/formats.rb         # detection (internal)
+lib/metacrunch/marc/delimited.rb       # cuts input after a byte: ISO 2709 records, JSON lines (internal)
 lib/metacrunch/marc/subfield.rb
 lib/metacrunch/marc/control_field.rb
 lib/metacrunch/marc/data_field.rb
@@ -158,7 +161,7 @@ lib/metacrunch/marc/filter.rb, codes.rb, tags.rb
 lib/metacrunch/marc/xml.rb             # Marc::Xml.parse, .each, .each_raw
 lib/metacrunch/marc/xml/parser.rb, splitter.rb, serializer.rb, string_source.rb, io_source.rb
 lib/metacrunch/marc/iso2709.rb         # Marc::Iso2709.parse, .each, .each_raw
-lib/metacrunch/marc/iso2709/parser.rb, splitter.rb, serializer.rb
+lib/metacrunch/marc/iso2709/parser.rb, serializer.rb
 lib/metacrunch/marc/json.rb            # Marc::Json.parse, .each, .each_raw
 lib/metacrunch/marc/json/parser.rb, serializer.rb
 lib/metacrunch/marc/reader.rb          # metacrunch source
@@ -282,11 +285,13 @@ Builds a record from MARC-in-JSON as `Record#to_h` returns it:
   `"leader"` (a String or nil); other keys raise.
 - Each field is a Hash with exactly one key, its tag. A String value makes a
   `ControlField`; a Hash makes a `DataField`, with the keys `"ind1"`,
-  `"ind2"` (Strings; missing or nil becomes `" "`) and `"subfields"` (an Array,
-  possibly empty, of Hashes with exactly one key, the code, and a String
-  value); other keys raise.
+  `"ind2"` (Strings; missing or nil becomes `" "`) and `"subfields"` (required;
+  an Array, possibly empty, of Hashes with exactly one key, the code, and a
+  String value); other keys raise.
 - Values that are not Strings raise, e.g. `{"001" => 123}`.
 - The common rule applies; `normalize:` is accepted as by the parsers.
+  Strings in other encodings are transcoded and binary Strings taken as
+  UTF-8, as the serializers do.
 - Errors raise `ParseError` with a path: `fields[3] (245) subfields[0]: a
   value must be a String, got 12`.
 
@@ -324,13 +329,14 @@ record.to_iso2709(oversize: :allow)
 Constants: `Marc::Iso2709::RECORD_TERMINATOR = "\x1D"`, `FIELD_TERMINATOR =
 "\x1E"`, `SUBFIELD_DELIMITER = "\x1F"`.
 
-### 5.2 Framing (`each_raw`, `Iso2709::Splitter`)
+### 5.2 Framing (`each_raw`, `Marc::Delimited`)
 
 - A record runs from its first byte up to and including the next `0x1D`. The
   record length in the leader is not used, so wrong lengths and records over
   99,999 bytes with `99999` or `00000` in the leader are read.
 - Space, tab, carriage return, line feed and NUL between records are skipped
-  (line breaks after each record, padded blocks).
+  (line breaks after each record, padded blocks), and so is a UTF-8 byte order
+  mark at the start of the input, which detection skips too (7).
 - Bytes left at the end without a `0x1D` are a record cut off by the end of
   the input; they are yielded as they are and fail when parsed (`ParseError`:
   the input ended inside a record), as in MARCXML.
@@ -422,7 +428,7 @@ check fails), indicator counts other than 2 and code lengths other than 1.
 ### 6.1 API
 
 ```ruby
-Metacrunch::Marc::Json.parse(line)            # one record
+Metacrunch::Marc::Json.parse(string)          # one record: one JSON object, also over several lines
 Metacrunch::Marc::Json.each(io) { |record| }  # every line, streaming
 Metacrunch::Marc::Json.each_raw(io) { |line| }
 Metacrunch::Marc::Record.from_h(hash)         # from a Hash already parsed
@@ -434,7 +440,10 @@ record.to_h                                   # unchanged
 One record per line (JSON Lines), as ruby-marc's `JSONLReader` and Catmandu
 read MARC-in-JSON. Blank lines and a byte order mark at the start of a line
 are skipped, as in `Metacrunch::JsonLines::Reader`. `each_raw` yields the
-lines without their line break. JSON arrays are not read: the Reader refuses a
+lines without their line break (`\n` or `\r\n`). A line that fails to parse
+and is not a whole object (it does not start with `{` and end with `}`), as
+in a pretty-printed file, gets the hint `MARC-in-JSON has one record per
+line; jq -c . in.json > out.jsonl converts pretty-printed JSON`. JSON arrays are not read: the Reader refuses a
 document that starts with `[` (7), and `Json.parse` of an array raises
 `ParseError` (`a record must be a JSON object`).
 
@@ -488,8 +497,8 @@ Metacrunch::Marc::Reader.new(targets, parse: true, normalize: nil)
 - A document that is not MARC raises `Metacrunch::InputError` with its name:
   `dump.dat: is neither MARCXML, ISO 2709 nor MARC-in-JSON: it starts with
   "id;title;..."`; a JSON array: `records.json: is a JSON array of records;
-  convert it to one record per line first, e.g. jq -c '.[]' records.json >
-  records.jsonl`. This replaces the "is not XML" check of metacrunch-marcxml.
+  convert it to one record per line first, e.g. jq -c '.[]' in.json >
+  out.jsonl`. This replaces the "is not XML" check of metacrunch-marcxml.
 - `parse: true` yields `Record`s; a record that fails to parse is yielded as
   `Metacrunch::InvalidRecord` (raw: the record String, error: the
   `ParseError`), and the records after it are read. `parse: false` yields the
@@ -573,6 +582,8 @@ Reader test for a document that is not XML becomes a detection test.
 
 Each XML fixture gets an `.mrc` and a `.jsonl` twin with the same records,
 written once by the new serializers and checked against ruby-marc (11.5).
+`local.xml` (tag `852H`, codes `as` and `dl`) cannot be written as ISO 2709
+and gets only a `.jsonl` twin; it is the fixture for that refusal.
 Broken ISO 2709 inputs are built in the tests from valid records, so each
 test shows its defect.
 
@@ -604,8 +615,8 @@ test shows its defect.
 
 ### 11.4 Round trips
 
-Every fixture through all nine pairs of input and output format: the fields
-are equal, and so is the leader except the positions of 3.3 when ISO 2709 is
+Every fixture through all nine pairs of input and output format (`local.xml`
+through the four without ISO 2709): the fields are equal, and so is the leader except the positions of 3.3 when ISO 2709 is
 written; `type` is equal only from MARCXML to MARCXML.
 
 ### 11.5 Interop with ruby-marc 1.4
@@ -620,8 +631,11 @@ written; `type` is equal only from MARCXML to MARCXML.
 
 Jobs MARCXML to ISO 2709, ISO 2709 to MARCXML and MARC-in-JSON to ISO 2709,
 each with and without `workers: 2` and with `parse: true` and `parse: false`
-(with the parse and serialize steps of 10), give byte-identical output. An
-invalid record in each input format fails alone under the failure policy.
+(with the parse step of 10), give byte-identical output. With the serialize
+step of 10 in the workers, ISO 2709 and MARC-in-JSON output is byte-identical
+too and MARCXML output has the same records. An invalid record in each input
+format fails alone under the failure policy, and so does a record that ISO
+2709 cannot hold when it is serialized in a step.
 
 ## 12. Benchmarks
 
