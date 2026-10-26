@@ -2,7 +2,8 @@
 
 - Date: 2026-10-26
 - Branch: `metacrunch-ng-monorepo` of metacrunch (from `metacrunch-ng` 8af5d48)
-- Status: approved design, not implemented
+- Status: approved design, not implemented; amended while planning after a prototype (4.1, 4.4, 5.1, 5.2, 5.3, 6, 7,
+  8.1, 8.2)
 - Builds on: [sub-project 12 spec](2026-10-25-metacrunch-ng-csv-xlsx-design.md) (metacrunch-csv, metacrunch-xlsx) and
   the metacrunch-marc spec (`2026-10-25-marc-design.md`, which this sub-project moves into this directory)
 
@@ -161,7 +162,8 @@ git merge --allow-unrelated-histories --no-ff FETCH_HEAD -m "Import metacrunch-c
 ### 4.1 One version
 
 - All four gems have the version `5.0.0.pre`. metacrunch-marc moves from `1.0.0.pre`; its CHANGELOG heading becomes
-  `## 5.0.0 (unreleased)`, and `marc_test.rb` expects the new version.
+  `## 5.0.0 (unreleased)`. Its test of the literal version (`assert_equal "1.0.0.pre", Metacrunch::Marc::VERSION` in
+  `marc_test.rb`) goes: a literal would break at every version change, and the gemspec test (8.1) checks the version.
 - Each gem keeps a `version.rb` with a literal `VERSION`, at the path its name gives: `metacrunch` →
   `lib/metacrunch/version.rb`, `metacrunch-csv` → `lib/metacrunch/csv/version.rb`.
 - One release tag for all gems, `vX.Y.Z`, continuing core's `v2.x` … `v4.x`.
@@ -201,11 +203,14 @@ directory, where `gem build` runs and where Bundler evaluates a gemspec.
 
 `rake "version[5.1.0]"` in the root sets the version of all gems:
 
-1. It refuses a string that is not a valid `Gem::Version` (also an empty one) with an `ArgumentError`.
-2. It rewrites `VERSION = "…"` in every gem's `version.rb`; a file without exactly one such line is an error, and no
-   file is written before all are checked.
+1. It refuses anything but a version in canonical form with an `ArgumentError`. `Gem::Version.correct?` alone accepts
+   `nil`, `""`, surrounding whitespace and `"5.1.0-pre"` (which becomes `5.1.0.pre.pre`), so the task also demands
+   a String with `Gem::Version.new(version).to_s == version`.
+2. It rewrites `VERSION = "…"` in every gem's `version.rb`; a missing file or one without exactly one such line is a
+   `Monorepo::Error`, and no file is written before all are checked.
 3. It runs `bundle lock` in every gem directory, because each lockfile records the version of core (a path gem) and
-   of the gem itself.
+   of the gem itself. If `bundle lock` fails in a gem, the task stops with a `Monorepo::Error` that names the gem;
+   the version files are written by then, and running the task again after the fix completes it.
 
 The gems are not listed by hand: `Monorepo.gems` finds every directory `<name>/<name>.gemspec` in the root, core
 first, the others sorted by name. The logic is a small module in `rakelib/monorepo.rb` that the `Rakefile` requires;
@@ -224,8 +229,9 @@ first, the others sorted by name. The logic is a small module in `rakelib/monore
 
   `METACRUNCH_PATH` and the second checkout in CI go away.
 - Every `Gemfile.lock` is committed, as core does already (Bundler recommends this for gems, too). The gems'
-  `.gitignore` files lose the line `Gemfile.lock`. The lockfiles list the platforms of core's: `ruby`,
-  `x86_64-linux` and the local Darwin.
+  `.gitignore` files lose the line `Gemfile.lock`. Each lockfile must list a Linux platform for CI: metacrunch-csv
+  and the root get `x86_64-linux` with `bundle lock --add-platform`, as core has; in metacrunch-xlsx and
+  metacrunch-marc, whose development bundles hold nokogiri, Bundler lists all of nokogiri's platforms by itself.
 - The root `Gemfile` holds the tooling: `rake`, `minitest`, `rubocop-ubpb` (from GitHub, as in the gems).
 
 ### 5.2 Root Rakefile
@@ -235,7 +241,8 @@ first, the others sorted by name. The logic is a small module in `rakelib/monore
 | `rake bundle` | `bundle install` in every gem |
 | `rake test:tooling` | the test of `rakelib/monorepo.rb` |
 | `rake test` | `test:tooling`, then `bundle exec rake test` in every gem |
-| `rake rubocop` | RuboCop on the root files, then `bundle exec rubocop` in every gem |
+| `rake rubocop:root` | RuboCop on `Gemfile`, `Rakefile`, `rakelib/` and `test/` |
+| `rake rubocop` | `rubocop:root`, then `bundle exec rubocop` in every gem |
 | `rake` | `test` and `rubocop` |
 | `rake "version[X]"` | see 4.4 |
 
@@ -244,10 +251,18 @@ comes first. The first failing gem stops the task.
 
 ### 5.3 RuboCop
 
-Every gem keeps its `.rubocop.yml` as it is. The root's `.rubocop.yml` inherits rubocop-ubpb's `ruby.yml`, enables
-`Style/FrozenStringLiteralComment` like the gems, and excludes `metacrunch/**/*` and `metacrunch-*/**/*`. RuboCop in a
-gem directory finds the gem's file (the gem's `Gemfile` marks its project root); RuboCop in the root inspects only
-`Rakefile`, `rakelib/` and `test/`. The plan checks both counts of inspected files.
+Every gem keeps its `.rubocop.yml` as it is. The root's `.rubocop.yml` inherits rubocop-ubpb's `ruby.yml` and enables
+`Style/FrozenStringLiteralComment` like the gems, without `AllCops: Exclude`.
+
+RuboCop adds the `AllCops: Exclude` of a `.rubocop.yml` in a parent directory to every configuration below it, up to
+its project root, which is the topmost directory with a `Gemfile`: here the root. In the prototype, an `Exclude` of
+the gem directories in the root made RuboCop inspect 0 files in every gem. So the root task names its files instead
+(`Gemfile`, `Rakefile`, `rakelib`, `test`), and RuboCop in a gem directory uses the gem's configuration; the plan
+checks the counts of inspected files.
+
+`bundle exec rubocop` in the root is no entry point: it would check the gems with the root's bundle and RuboCop
+version, and with the root as base directory it misses core's `AllCops: Exclude`. The root Readme says to use the
+tasks.
 
 ### 5.4 Ignored files
 
@@ -274,9 +289,11 @@ jobs:
         ruby: ["4.0", head]
     continue-on-error: ${{ matrix.ruby == 'head' }}
     # checkout → setup-ruby (working-directory: the gem, bundler-cache) → bundle exec rake test in the gem
-  lint:      # 5 jobs: the root and the four gems → bundle exec rubocop
-  tooling:   # 1 job: bundle exec rake test:tooling in the root
+  lint:      # 4 jobs: bundle exec rubocop in each gem
+  tooling:   # 1 job: bundle exec rake test:tooling rubocop:root in the root
 ```
+
+The root is linted in the tooling job, because RuboCop in the root needs the task (see 5.3): 21 jobs in all.
 
 The actions stay pinned to the commit IDs core uses; `permissions: contents: read` stays.
 
@@ -305,7 +322,8 @@ branch, so it applies once `metacrunch-ng` is merged into `master`, as core's co
   `metacrunch-marc` (MARCXML, ISO 2709, MARC-in-JSON); the Readme adds that the gems live in the same repository and
   come from the same Git source. Relative links keep working; the badge link does not change.
 - **Gem Readmes:** the installation shows the Git block until the release (today `gem "metacrunch-csv"`, which fails
-  because nothing is released). Absolute links to core's docs gain the directory:
+  because nothing is released). The block names only the gem: a Git source serves every gem of its repository, also
+  as a dependency, so metacrunch comes from the same source (tested in the prototype). Absolute links to core's docs gain the directory:
   `…/blob/metacrunch-ng/metacrunch/docs/files.md`. They stay absolute because the Readme is packed into the gem.
 - **CHANGELOGs:** csv, xlsx and marc get one line each: the gem lives in the metacrunch repository, shares its version
   and requires metacrunch in exactly that version. Core's gets one line: the extension gems live in this repository
@@ -320,11 +338,14 @@ branch, so it applies once `metacrunch-ng` is merged into `master`, as core's co
   - its dependency on metacrunch is `= VERSION` (core: no dependency on another metacrunch gem);
   - `source_code_uri` and `changelog_uri` point to `v#{version}` and the gem's directory, `bug_tracker_uri` to the
     repository's issues.
-- **metacrunch-marc:** `marc_test.rb` expects `5.0.0.pre`; the test goes red before the version changes.
+- **metacrunch-marc:** its gemspec test fails on the version until the version changes; the literal version test
+  goes (see 4.1).
 - **The tooling test** (`test/monorepo_test.rb`, Minitest) works on a temporary directory with fake gems:
   - `Monorepo.gems` finds the gem directories, core first, and ignores directories without a gemspec of their name;
   - the version task rewrites every `version.rb` and calls the lock step once per gem, in order;
-  - it refuses invalid versions and a `version.rb` without exactly one `VERSION` line, and then writes nothing.
+  - it refuses versions that are not canonical, a missing `version.rb` and one without exactly one `VERSION` line,
+    and then writes nothing;
+  - a failing `bundle lock` raises an error that names the gem.
 
 ### 8.2 Verification
 
@@ -332,12 +353,13 @@ branch, so it applies once `metacrunch-ng` is merged into `master`, as core's co
    file list of `gem build`.
 2. **After:** `bundle exec rake` in every gem and in the root passes (see 1.3).
 3. **Packages:** `gem build` in every gem directory; the file lists equal the baseline.
-4. **Git source:** a throwaway project with
-   `git "file://<worktree>", branch: "metacrunch-ng-monorepo" do … end` and all four gems: `bundle install`,
-   `require` of all four, a small job. This shows that Bundler finds gemspecs in subdirectories.
+4. **Git source:** throwaway projects on `git "file://<repository>", branch: "metacrunch-ng-monorepo"`: one with all
+   four gems (`bundle install`, `require` of all four, the examples of csv, xlsx and marc run), one that names only
+   metacrunch-csv in the block, and one with the line `metacrunch new` writes (`gem "metacrunch", git: …, branch: …`).
+   This shows that Bundler finds gemspecs in subdirectories.
 5. **History:** the checks in 1.3.
 6. **CI:** a YAML syntax check locally (actionlint is not installed). The real run needs a push; the user pushes
-   `metacrunch-ng-monorepo` before the fast-forward to see the 22 jobs.
+   `metacrunch-ng-monorepo` before the fast-forward to see the 21 jobs.
 
 ## 9. Order of commits
 
