@@ -78,7 +78,7 @@ module Metacrunch
         code ? "#{where} $#{readable(code)}" : where
       end
 
-      # value for a message: invalid bytes and control characters as \\x..
+      # value for a message: invalid bytes and control characters as \x..
       # escapes, so no terminal escape sequence of the data reaches a log.
       def readable(value)
         string = value.to_s.dup.force_encoding(Encoding::UTF_8).scrub { escaped(it) }

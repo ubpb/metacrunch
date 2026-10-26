@@ -6,8 +6,10 @@ module Metacrunch
     # Base class of the errors of this library.
     class Error < StandardError; end
 
-    # Input that is not well-formed MARCXML. line and column are positions
-    # in the input as Ox reports them, or nil.
+    # Input that a parser cannot read as MARCXML, ISO 2709 or MARC-in-JSON,
+    # or whose values break the rule of all formats (see Values). line and
+    # column are positions in MARCXML as Ox reports them, else nil; the
+    # messages of the other formats say where instead.
     class ParseError < Error
 
       attr_reader :line, :column
@@ -20,7 +22,7 @@ module Metacrunch
 
     end
 
-    # A record that cannot be written as MARCXML.
+    # A record that a serializer cannot write in its format.
     class SerializeError < Error; end
 
   end
