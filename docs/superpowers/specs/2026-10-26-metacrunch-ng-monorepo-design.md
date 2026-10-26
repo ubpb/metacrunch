@@ -232,6 +232,10 @@ first, the others sorted by name. The logic is a small module in `rakelib/monore
   `.gitignore` files lose the line `Gemfile.lock`. Each lockfile must list a Linux platform for CI: metacrunch-csv
   and the root get `x86_64-linux` with `bundle lock --add-platform`, as core has; in metacrunch-xlsx and
   metacrunch-marc, whose development bundles hold nokogiri, Bundler lists all of nokogiri's platforms by itself.
+  Each lockfile must also list `ruby`: on Ruby head the precompiled nokogiri does not fit (it requires `< 4.1.dev`),
+  and a frozen install can compile it only from the source gem that `ruby` brings into the lockfile. Bundler did not
+  add `ruby` in metacrunch-xlsx and metacrunch-marc, so they get it with `bundle lock --add-platform ruby` (found in
+  the final review). A tooling test checks the platforms of every lockfile.
 - The root `Gemfile` holds the tooling: `rake`, `minitest`, `rubocop-ubpb` (from GitHub, as in the gems).
 
 ### 5.2 Root Rakefile
