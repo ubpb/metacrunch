@@ -9,6 +9,7 @@ gemspec
 gem "metacrunch", path: ENV.fetch("METACRUNCH_PATH", "../metacrunch")
 
 group :development do
+  gem "marc", "~> 1.4", require: false
   gem "minitest", ">= 5.25"
   gem "rake", ">= 13.0"
   gem "rubocop-ubpb", github: "ubpb/rubocop-ubpb", require: false
