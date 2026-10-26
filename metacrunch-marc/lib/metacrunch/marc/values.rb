@@ -71,16 +71,21 @@ module Metacrunch
         string.dup.force_encoding(Encoding::UTF_8)
       end
 
-      # "field 245 $a", with invalid bytes shown as escapes.
+      # "field 245 $a", with invalid bytes and control characters shown as
+      # escapes.
       def location(tag, code = nil)
         where = "field #{readable(tag)}"
         code ? "#{where} $#{readable(code)}" : where
       end
 
+      # value for a message: invalid bytes and control characters as \\x..
+      # escapes, so no terminal escape sequence of the data reaches a log.
       def readable(value)
-        string = value.to_s.dup.force_encoding(Encoding::UTF_8)
-        string.scrub { |bytes| bytes.unpack("C*").map { format("\\x%02X", it) }.join }
+        string = value.to_s.dup.force_encoding(Encoding::UTF_8).scrub { escaped(it) }
+        string.match?(CONTROL) ? string.gsub(CONTROL) { escaped(it) } : string
       end
+
+      def escaped(bytes) = bytes.unpack("C*").map { format("\\x%02X", it) }.join
 
     end
   end

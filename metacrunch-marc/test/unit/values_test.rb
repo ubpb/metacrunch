@@ -52,9 +52,11 @@ class ValuesTest < Minitest::Test
     assert_equal "ok", Values.parsed("ok", nil) { raise "the block ran" }
   end
 
-  def test_locations_show_invalid_bytes
+  # So no terminal escape sequence of the data reaches a log.
+  def test_locations_escape_invalid_bytes_and_control_characters
     assert_equal "field 245 $a", Values.location("245", "a")
     assert_equal "field 24\\xFF", Values.location("24\xFF".b)
+    assert_equal "field 0\\x1B[31m1 $\\x01", Values.location("0\e[31m1", "\x01")
   end
 
 end
