@@ -38,7 +38,7 @@ class StatsCollectorTest < Minitest::Test
 
   def test_source_failures_are_counted_without_a_step
     collector = Metacrunch::StatsCollector.new(["map#1"])
-    collector.source_failed(ArgumentError.new("unreadable"))
+    collector.record_failed(ArgumentError.new("unreadable"))
     stats = collector.snapshot
 
     assert_equal 1, collector.failed_total

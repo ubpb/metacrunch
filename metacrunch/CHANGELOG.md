@@ -28,6 +28,8 @@ metacrunch's version.
 - Per-record context with `reject!` (ends the step), `mark`, `store` and a record logger.
 - `rejects` and `failures` sinks.
 - Failure policy `on_failure :abort | :skip` with `max_failures`.
+- Sinks report records they could not write with `Metacrunch::SinkFailures`; those records fail under the pseudo-step
+  `sink` and follow the failure policy. `sink` and `source` are reserved step names.
 - Run results with stats per step and reason; `profile` for step timing.
 - `flat_map` streams its children; batched sinks are flushed after an abort, on Ctrl-C and on SIGTERM.
 - The CLI ends by the signal that stopped a job (exit status 130 for SIGINT, 143 for SIGTERM).

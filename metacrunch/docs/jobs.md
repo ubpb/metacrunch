@@ -128,6 +128,30 @@ when the job aborts or is interrupted, so `batch:` never changes which records a
 IO, and refuses values that are not JSON types. `Metacrunch::JsonLines::ContextWriter` writes every record with its
 context (id, position, marks, rejection, failure), which suits the `rejects` and `failures` roles.
 
+### Reporting failed records
+
+A sink that writes some records of a batch but not others (a database refuses a row, a search index a document)
+raises `Metacrunch::SinkFailures` after writing the rest. It takes a Hash of indices in the batch to errors; `write`
+reports index 0:
+
+```ruby
+def write_batch(records)
+  failed = {}
+  records.each_with_index do |record, index|
+    store(record)
+  rescue Store::Refused => e
+    failed[index] = e
+  end
+  raise Metacrunch::SinkFailures, failed unless failed.empty?
+end
+```
+
+These records fail under the pseudo-step `sink` and follow the failure policy like records a step failed for: the job
+aborts by default, and with `on_failure :skip` they go to the `failures` sink and count toward `max_failures`.
+`stats.written` counts only the records the sink wrote. With `batch:` the failures arrive when the batch is written,
+after later records went through the steps. Only the job's sink may report failed records; from the `rejects` or
+`failures` sink `SinkFailures` stops the job.
+
 ## Failures
 
 A record fails when a step raises for it, which is a failure; an error is an exception. A failure holds its error
@@ -139,8 +163,10 @@ on_failure :skip, max_failures: 100    # log, send to the failures sink, continu
 on_failure :skip, max_failures: 0      # stop at the first failure, but after it reached the failures sink
 ```
 
-Errors in sources, sinks, hooks, `open` and `close` are no failures of a record: they always stop the job.
-Components are closed in any case. `NotImplementedError` and other script errors are handled like any other error.
+Errors in sources, sinks, hooks, `open` and `close` are no failures of a record: they always stop the job. The
+exceptions are records the source yields as `Metacrunch::InvalidRecord` (step `source`) and records the sink reports
+with `Metacrunch::SinkFailures` (step `sink`, see [Reporting failed records](#reporting-failed-records)), which are
+failures. Components are closed in any case. `NotImplementedError` and other script errors are handled like any other error.
 
 ## Hooks
 

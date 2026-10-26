@@ -48,12 +48,14 @@ module Metacrunch
 
     def step_failed(name, error)
       @steps.fetch(name).failed += 1
-      source_failed(error)
+      record_failed(error)
     end
 
-    # A record the source could not read (InvalidRecord). It has no step,
-    # so only the job-level counts change.
-    def source_failed(error)
+    # A failed record. Alone for those that fail outside the steps, i.e.
+    # the source could not read them (InvalidRecord) or the sink did not
+    # write them (SinkFailures): they have no step, so only the job-level
+    # counts change.
+    def record_failed(error)
       @failed[error.class.name] += 1
       @failed_total += 1
     end
