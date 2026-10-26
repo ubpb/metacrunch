@@ -145,6 +145,72 @@ class JsonTest < Minitest::Test
     assert_equal %(field 245: "\\u0001" cannot be represented in XML 1.0), error.message
   end
 
+  def test_serializing_rejects_every_character_xml_cannot_represent
+    [*0x00..0x08, 0x0B, 0x0C, *0x0E..0x1F, 0xFFFE, 0xFFFF].each do |code_point|
+      character = code_point.chr(Encoding::UTF_8)
+      record = Marc::Record.new(fields: [Marc::DataField.new("245", "1", "0", [["a", "x#{character}y"]])])
+      error = assert_raises(Marc::SerializeError, format("U+%04X", code_point)) { record.to_json }
+
+      assert_equal %(field 245 $a: #{character.inspect} cannot be represented in XML 1.0), error.message
+    end
+  end
+
+  def test_serializing_writes_tabs_line_breaks_and_delete
+    record = Marc::Record.new(fields: [Marc::ControlField.new("001", "a\tb\nc\rd#{0x7F.chr}e")])
+
+    assert_equal %({"fields":[{"001":"a\\tb\\nc\\rd#{0x7F.chr}e"}]}), record.to_json
+  end
+
+  def test_serializing_checks_the_leader
+    noncharacter = 0xFFFF.chr(Encoding::UTF_8)
+    record = Marc::Record.new(leader: "00000nam a2200000 c 450#{noncharacter}")
+    error = assert_raises(Marc::SerializeError) { record.to_json }
+
+    assert_equal %(leader: #{noncharacter.inspect} cannot be represented in XML 1.0), error.message
+  end
+
+  def test_serializing_checks_the_codes
+    record = Marc::Record.new(fields: [Marc::DataField.new("245", "1", "0", [[0x01.chr, "x"]])])
+    error = assert_raises(Marc::SerializeError) { record.to_json }
+
+    assert_equal %(field 245 $#{92.chr}x01: #{0x01.chr(Encoding::UTF_8).inspect} cannot be represented in XML 1.0),
+                 error.message
+  end
+
+  def test_serializing_rejects_invalid_utf8
+    value = "a\xFFb".dup.force_encoding(Encoding::UTF_8)
+    record = Marc::Record.new(fields: [Marc::ControlField.new("001", value)])
+    error = assert_raises(Marc::SerializeError) { record.to_json }
+
+    assert_equal "field 001: invalid UTF-8 #{value.inspect}", error.message
+  end
+
+  def test_serializing_takes_binary_strings_as_utf8
+    record = Marc::Record.new(fields: [Marc::ControlField.new("001", "Müller".b)])
+
+    assert_equal %({"fields":[{"001":"Müller"}]}), record.to_json
+  end
+
+  # JSON escapes the backslash, so the line shows them like escapes of
+  # control characters.
+  def test_serializing_writes_backslashes_before_escape_letters
+    value = ["C:", "b", "f", "u0001", "u001F"].join(92.chr)
+    line = Marc::Record.new(fields: [Marc::ControlField.new("001", value)]).to_json
+
+    assert_equal value, Json.parse(line)["001"].value
+  end
+
+  # Objects that JSON would write otherwise, such as Integers as numbers.
+  def test_serializing_writes_other_objects_by_their_to_s
+    indicators = Marc::Record.new(fields: [Marc::DataField.new("500", 1, 2, [["a", "x"]])])
+    control = Marc::Record.new(fields: [Marc::ControlField.new("001", 2026)])
+    leader = Marc::Record.new(leader: 0)
+
+    assert_equal %({"fields":[{"500":{"ind1":"1","ind2":"2","subfields":[{"a":"x"}]}}]}), indicators.to_json
+    assert_equal %({"fields":[{"001":"2026"}]}), control.to_json
+    assert_equal %({"leader":"0","fields":[]}), leader.to_json
+  end
+
   def test_serializing_transcodes_and_drops_the_type
     field = Marc::ControlField.new("001", "Müller".encode("ISO-8859-1"))
     record = Marc::Record.new(type: "Bibliographic", fields: [field])
