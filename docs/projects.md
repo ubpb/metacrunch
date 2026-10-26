@@ -162,25 +162,25 @@ relative to where `metacrunch` was started, and `root.join(...)` reaches the pro
 A gem ships job, transform and command files like a project's, and a constant with their glob for each kind:
 
 ```
-metacrunch-csv/
+metacrunch-example/
 └── lib/metacrunch/
-    ├── csv.rb                            # the constants; requires the helpers
-    └── csv/
+    ├── example.rb                        # the constants; requires the helpers
+    └── example/
         ├── reader.rb                     # helpers: classes and constants go here
-        ├── commands/check.rb             # Metacrunch.command "csv:check" do ... end
-        ├── transforms/to_records.rb      # Metacrunch.transform "csv:to-records" do ... end
-        └── jobs/import.rb                # Metacrunch.job "csv:import" do ... end
+        ├── commands/check.rb             # Metacrunch.command "example:check" do ... end
+        ├── transforms/to_records.rb      # Metacrunch.transform "example:to-records" do ... end
+        └── jobs/import.rb                # Metacrunch.job "example:import" do ... end
 ```
 
 ```ruby
-# lib/metacrunch/csv.rb
-require_relative "csv/reader"
+# lib/metacrunch/example.rb
+require_relative "example/reader"
 
 module Metacrunch
-  module Csv
-    COMMANDS = File.expand_path("csv/commands/*.rb", __dir__)
-    TRANSFORMS = File.expand_path("csv/transforms/*.rb", __dir__)
-    JOBS = File.expand_path("csv/jobs/*.rb", __dir__)
+  module Example
+    COMMANDS = File.expand_path("example/commands/*.rb", __dir__)
+    TRANSFORMS = File.expand_path("example/transforms/*.rb", __dir__)
+    JOBS = File.expand_path("example/jobs/*.rb", __dir__)
   end
 end
 ```
@@ -189,20 +189,20 @@ A project adds the gem to its `Gemfile` and opts in, next to its own files:
 
 ```ruby
 # Metacrunchfile
-require "metacrunch/csv"
+require "metacrunch/example"
 
-Metacrunch.load_files Metacrunch::Csv::COMMANDS, Metacrunch::Csv::TRANSFORMS, Metacrunch::Csv::JOBS,
+Metacrunch.load_files Metacrunch::Example::COMMANDS, Metacrunch::Example::TRANSFORMS, Metacrunch::Example::JOBS,
                       "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 ```
 
-`bundle exec metacrunch csv:check data/titles.csv` then runs a command of the gem, and `bundle exec metacrunch --help`
-lists the gem's jobs, transforms and commands with the project's.
+`bundle exec metacrunch example:check data/titles.csv` then runs a command of the gem, and
+`bundle exec metacrunch --help` lists the gem's jobs, transforms and commands with the project's.
 
 - The job, transform and command files define no constants, since every `Metacrunch.load_project` loads them
   again; classes and helpers belong in files that the gem's main file requires.
 - The gem does not `require` its job, transform and command files: only `load_files` registers them with the project,
   while a `require` would load them once per process, and a second project in the same process would lack them.
-- Names with a prefix (`csv:check`) keep clear of the project's: a name that the gem and the project both
+- Names with a prefix (`example:check`) keep clear of the project's: a name that the gem and the project both
   declare cannot be used. A reserved name makes the gem's file a load error.
 - Credentials are searched from the project root, also for jobs and commands of a gem, so `-e production` works as
   for the project's files. In a job, transform or command, `root.join(...)` reaches the project's files and
@@ -212,8 +212,8 @@ lists the gem's jobs, transforms and commands with the project's.
 For a gem without such a constant, the glob can start at the gem's directory:
 
 ```ruby
-gem_dir = Gem::Specification.find_by_name("metacrunch-csv").gem_dir
-Metacrunch.load_files File.join(gem_dir, "lib/metacrunch/csv/commands/*.rb")
+gem_dir = Gem::Specification.find_by_name("metacrunch-example").gem_dir
+Metacrunch.load_files File.join(gem_dir, "lib/metacrunch/example/commands/*.rb")
 ```
 
 The constant is still the better way: the gem can then move its files without breaking projects.
