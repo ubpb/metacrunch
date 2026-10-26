@@ -124,16 +124,24 @@ module Metacrunch
       private
 
       # Basic authentication goes in a header of its own: as user and password
-      # the client would put it into the URL, which Faraday warns about.
+      # the client would put it into the URL, which Faraday warns about. The
+      # timeout goes into transport_options too: the client's request_timeout
+      # would replace the request options given there. client_options are
+      # merged in deeply, so transport_options of their own keep these.
       def client_arguments
-        arguments = {request_timeout: @request_timeout, retry_on_failure: @retries.zero? ? false : @retries}
+        arguments = {retry_on_failure: @retries.zero? ? false : @retries}
         arguments[:hosts] = @urls if @urls
         arguments[:api_key] = @api_key if @api_key
-        transport = {}
+        transport = {request: {timeout: @request_timeout}}
         transport[:headers] = {"authorization" => "Basic #{["#{@user}:#{@password}"].pack("m0")}"} if @user
         transport[:ssl] = {ca_file: @ca_file} if @ca_file
-        arguments[:transport_options] = transport unless transport.empty?
-        arguments.merge(copy(@client_options))
+        arguments[:transport_options] = transport
+        merge(arguments, copy(@client_options))
+      end
+
+      # Hashes merged key by key; the values of theirs win.
+      def merge(ours, theirs)
+        ours.merge(theirs) { |_key, mine, other| mine.is_a?(Hash) && other.is_a?(Hash) ? merge(mine, other) : other }
       end
 
       # The client changes the Hashes it gets (headers, user and password).

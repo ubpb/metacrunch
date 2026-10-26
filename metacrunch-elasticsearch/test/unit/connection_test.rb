@@ -49,6 +49,24 @@ class ConnectionTest < Minitest::Test
     assert_equal({"x-test" => "1"}, headers)
   end
 
+  def test_transport_options_add_to_authentication_timeout_and_ca_file
+    fake = FakeElasticsearch.new
+    connection = fake.connection(user: "elastic", password: "secret", ca_file: "/etc/ca.crt", request_timeout: 30,
+                                 transport_options: {request: {open_timeout: 5}, ssl: {verify: false}})
+    options = connection.client.transport.options[:transport_options]
+    connection.connect
+
+    assert_equal "Basic #{["elastic:secret"].pack("m0")}", fake.requests.first.headers["authorization"]
+    assert_equal [{ca_file: "/etc/ca.crt", verify: false}, {timeout: 30, open_timeout: 5}],
+                 [options[:ssl], options[:request]]
+  end
+
+  def test_a_client_option_wins_over_the_value_of_the_connection
+    options = Connection.new(retries: 2, retry_on_failure: 7).client.transport.options
+
+    assert_equal 7, options[:retry_on_failure]
+  end
+
   def test_refuses_a_server_of_an_older_major_than_the_client
     error = assert_raises(Error) { Connection.check_version("8.19.3", "9.5.0", URL) }
 
