@@ -1,7 +1,12 @@
 version: 2
 updates:
   - package-ecosystem: bundler
-    directory: "/"
+    directories:
+      - "/"
+      - "/metacrunch"
+      - "/metacrunch-csv"
+      - "/metacrunch-xlsx"
+      - "/metacrunch-marc"
     schedule:
       interval: weekly
   - package-ecosystem: github-actions
