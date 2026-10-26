@@ -2,8 +2,9 @@
 
 - Date: 2026-10-26
 - Branch: `metacrunch-ng-monorepo` of metacrunch (from `metacrunch-ng` 8af5d48)
-- Status: approved design, not implemented; amended while planning after a prototype (4.1, 4.4, 5.1, 5.2, 5.3, 6, 7,
-  8.1, 8.2)
+- Status: implemented; amended while planning after a prototype (4.1, 4.4, 5.1, 5.2, 5.3, 6, 7, 8.1, 8.2) and after
+  the final review (5.1, 5.4, 8.2, 10). On 2026-10-26 the user chose to merge into `master` instead of `metacrunch-ng`
+  (the 4.x code is kept in the branch `4.x`): CI runs on `master`, and the Git install lines name no branch.
 - Builds on: [sub-project 12 spec](2026-10-25-metacrunch-ng-csv-xlsx-design.md) (metacrunch-csv, metacrunch-xlsx) and
   the metacrunch-marc spec (`2026-10-25-marc-design.md`, which this sub-project moves into this directory)
 

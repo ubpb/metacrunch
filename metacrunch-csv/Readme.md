@@ -28,7 +28,7 @@ same source:
 
 ```ruby
 # Gemfile
-git "https://github.com/ubpb/metacrunch.git", branch: "metacrunch-ng" do
+git "https://github.com/ubpb/metacrunch.git" do
   gem "metacrunch-csv"
 end
 ```
@@ -54,10 +54,10 @@ source Metacrunch::Csv::Reader.new(params.file, headers: false)                 
 | `headers` | `true` | `true`: the first row names the columns; an Array of names; `false`: Array records |
 
 The reader reads what `Metacrunch::Input` reads (see metacrunch's
-[Files](https://github.com/ubpb/metacrunch/blob/metacrunch-ng/metacrunch/docs/files.md)): one target or an Array
-of them — paths, `"-"` for stdin, or IOs. gzip and tar archives are unpacked; every file in a tar archive has its
-own header row. A byte order mark of the encoding (UTF-8, UTF-16LE, UTF-16BE) is removed. The progress display shows
-how much of the files has been read.
+[Files](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/files.md)): one target or an Array of them —
+paths, `"-"` for stdin, or IOs. gzip and tar archives are unpacked; every file in a tar archive has its own header
+row. A byte order mark of the encoding (UTF-8, UTF-16LE, UTF-16BE) is removed. The progress display shows how much of
+the files has been read.
 
 ### Records
 

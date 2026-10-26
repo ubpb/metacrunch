@@ -3,6 +3,10 @@ metacrunch
 
 [![CI](https://github.com/ubpb/metacrunch/actions/workflows/ci.yml/badge.svg)](https://github.com/ubpb/metacrunch/actions/workflows/ci.yml)
 
+> **metacrunch 5 is not released yet.** This Readme describes the 5.x line on `master`. The released version on
+> RubyGems is metacrunch 4.2.1; its code and Readme are in the branch
+> [`4.x`](https://github.com/ubpb/metacrunch/tree/4.x).
+
 metacrunch is a small toolkit for data processing and ETL (extract, transform, load) in Ruby. It grew out of metadata
 work in a library, but nothing in it is specific to library data: a record is any Ruby object, usually a Hash.
 
@@ -36,12 +40,11 @@ Everything is plain Ruby. There are three kinds of recipes, and `metacrunch run`
 
 ## Installation
 
-metacrunch 5 is not released yet; the latest version on RubyGems is 4.2.1. Until 5.0 is released, use it from Git
-with Bundler:
+Until 5.0 is released, use metacrunch 5 from Git with Bundler:
 
 ```ruby
 # Gemfile
-gem "metacrunch", github: "ubpb/metacrunch", branch: "metacrunch-ng"
+gem "metacrunch", github: "ubpb/metacrunch"
 ```
 
 ```
@@ -57,7 +60,7 @@ metacrunch's version and come from the same Git source:
 
 ```ruby
 # Gemfile
-git "https://github.com/ubpb/metacrunch.git", branch: "metacrunch-ng" do
+git "https://github.com/ubpb/metacrunch.git" do
   gem "metacrunch"
   gem "metacrunch-csv"
 end
