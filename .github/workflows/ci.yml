@@ -10,24 +10,48 @@ permissions:
 
 jobs:
   test:
-    name: Test (Ruby ${{ matrix.ruby }}, ${{ matrix.os }})
+    name: Test (${{ matrix.gem }}, Ruby ${{ matrix.ruby }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.ruby == 'head' }}
     strategy:
       fail-fast: false
       matrix:
+        gem: [metacrunch, metacrunch-csv, metacrunch-xlsx, metacrunch-marc]
         os: [ubuntu-latest, macos-latest]
         ruby: ["4.0", head]
+    defaults:
+      run:
+        working-directory: ${{ matrix.gem }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ruby/setup-ruby@e81a8fa391b11a595c1b7ed84177cc0fe02faf83 # v1.328.0
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
+          working-directory: ${{ matrix.gem }}
       - run: bundle exec rake test
 
   lint:
-    name: Lint
+    name: Lint (${{ matrix.gem }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gem: [metacrunch, metacrunch-csv, metacrunch-xlsx, metacrunch-marc]
+    defaults:
+      run:
+        working-directory: ${{ matrix.gem }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@e81a8fa391b11a595c1b7ed84177cc0fe02faf83 # v1.328.0
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: ${{ matrix.gem }}
+      - run: bundle exec rubocop
+
+  tooling:
+    name: Tooling
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,4 +59,4 @@ jobs:
         with:
           ruby-version: "4.0"
           bundler-cache: true
-      - run: bundle exec rubocop
+      - run: bundle exec rake test:tooling rubocop:root
