@@ -1,0 +1,5 @@
+inherit_gem:
+  rubocop-ubpb: ruby.yml
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
