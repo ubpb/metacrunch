@@ -13,9 +13,9 @@ module Metacrunch
     # A value that refers to the credentials.
     Reference = Data.define(:path)
 
-    # The values of one environment, name => [value, section], and the
-    # sections they came from.
-    Selection = Data.define(:values, :sections) do
+    # The values of one environment, name => [value, section], the sections
+    # they came from and the path of the file.
+    Selection = Data.define(:path, :values, :sections) do
       # [value, section], or nil if no section has the name.
       def fetch(name) = values[name]
     end
@@ -58,7 +58,7 @@ module Metacrunch
       names &= @sections.keys
       values = {}
       names.each { |name| @sections.fetch(name).each { |key, value| values[key] = [value, name] } }
-      Selection.new(values:, sections: names)
+      Selection.new(path: @path, values:, sections: names)
     end
 
     private

@@ -123,14 +123,18 @@ module Metacrunch
     end
 
     # Binds CLI arguments. A parameter without a value on the command line
-    # is read from its env: variable (empty counts as unset), then from the
-    # credentials (a Credentials::Store, asked only now), then the default.
-    # warn is called with a message for a secret given on the command line.
-    def bind_argv(argv, env: ENV, credentials: nil, warn: nil)
+    # is read from the params file (a ParamsFile, its default: section with
+    # that of environment merged over it), then from its env: variable
+    # (empty counts as unset), then from the credentials (a
+    # Credentials::Store, asked only now), then the default. warn is called
+    # with a message for a secret given on the command line.
+    def bind_argv(argv, env: ENV, credentials: nil, warn: nil, file: nil, environment: nil)
       given = {}
       positional = option_parser(given).parse(argv)
+      check_file!(file) if file
+      selection = file&.select(environment)
       values = @definitions.to_h do |name, definition|
-        [name, bind(definition, given, env, credentials, warn)]
+        [name, bind(definition, given, env, credentials, warn, file: selection)]
       end
       build(values, positional)
     rescue OptionParser::ParseError => e
@@ -253,11 +257,29 @@ module Metacrunch
       value unless value.nil? || value.empty?
     end
 
-    def bind(definition, given, env, credentials, warn, keyword: false)
+    # Every key of every section of the params file must name a parameter;
+    # the arguments come from the command line only.
+    def check_file!(file)
+      known = @definitions.keys.map(&:to_s)
+      file.each_key do |section, key|
+        where = "#{file.path}: #{section}.#{key}"
+        raise ParamError, "#{where}: arguments cannot be given in a params file" if key == @args_definition&.name&.to_s
+        next if known.include?(key)
+
+        raise ParamError, "#{where}: unknown parameter (known: #{known.empty? ? "none" : known.join(", ")})"
+      end
+    end
+
+    # file: the ParamsFile::Selection of the run, or nil. A null value in it
+    # counts as not given.
+    def bind(definition, given, env, credentials, warn, keyword: false, file: nil)
       if given.key?(definition.name)
         warn&.call(secret_warning(definition)) if definition.secret?
         return resolve(definition, given[definition.name], keyword:)
       end
+
+      value, section = file&.fetch(definition.name.to_s)
+      return resolve(definition, value, origin: "#{file.path} (#{section})", keyword: true) unless value.nil?
 
       raw = env_value(definition, env)
       return resolve(definition, raw, origin: "environment variable #{definition.env}", keyword:) unless raw.nil?
