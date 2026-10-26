@@ -1,9 +1,11 @@
 # Changelog
 
-## 1.0.0 (unreleased)
+## 5.0.0 (unreleased)
 
 The successor of metacrunch-marcxml, rewritten for metacrunch 5: MARCXML, ISO 2709 and MARC-in-JSON on one record
 model. Code written for metacrunch-marcxml 4.x must be adapted; see the Readme.
+
+It lives in the metacrunch repository, shares metacrunch's version and requires metacrunch in exactly that version.
 
 ### Breaking changes (from metacrunch-marcxml 4.x)
 

@@ -28,13 +28,18 @@ More in [`examples/`](examples): a report of books.
 
 ## Installation
 
+metacrunch 5 and this gem are not released yet; until then they come from Git with Bundler, metacrunch from the
+same source:
+
 ```ruby
 # Gemfile
-gem "metacrunch-xlsx"
+git "https://github.com/ubpb/metacrunch.git", branch: "metacrunch-ng" do
+  gem "metacrunch-xlsx"
+end
 ```
 
-Requires Ruby 4.0 and metacrunch 5. The only other dependency is [zip_kit](https://github.com/julik/zip_kit), which
-writes the ZIP container.
+Requires Ruby 4.0 and metacrunch in the same version as this gem. The only other dependency is
+[zip_kit](https://github.com/julik/zip_kit), which writes the ZIP container.
 
 ## The writer
 

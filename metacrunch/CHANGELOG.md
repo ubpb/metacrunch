@@ -4,6 +4,9 @@
 
 A redesign. Jobs written for 4.x must be rewritten; see the Readme and docs/.
 
+The extension gems metacrunch-csv, metacrunch-xlsx and metacrunch-marc live in this repository and share
+metacrunch's version.
+
 ### Breaking changes
 
 - Jobs are defined with `Metacrunch.job do ... end`. A job file is plain Ruby; `.rb` is the recommended extension.

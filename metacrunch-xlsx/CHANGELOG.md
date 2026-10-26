@@ -5,6 +5,8 @@
 The first version, for metacrunch 5. It replaces the XLSX sink of the 4.x gem metacrunch-file, which was built on
 caxlsx.
 
+It lives in the metacrunch repository, shares metacrunch's version and requires metacrunch in exactly that version.
+
 ### Added
 
 - `Metacrunch::Xlsx::Writer`, a sink on `Metacrunch::Output` that streams one worksheet: `columns:` (an Array of keys

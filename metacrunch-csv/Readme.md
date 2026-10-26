@@ -23,12 +23,18 @@ More in [`examples/`](examples): CSV to JSON Lines, and CSV for Excel.
 
 ## Installation
 
+metacrunch 5 and this gem are not released yet; until then they come from Git with Bundler, metacrunch from the
+same source:
+
 ```ruby
 # Gemfile
-gem "metacrunch-csv"
+git "https://github.com/ubpb/metacrunch.git", branch: "metacrunch-ng" do
+  gem "metacrunch-csv"
+end
 ```
 
-Requires Ruby 4.0 and metacrunch 5. The only other dependency is Ruby's [csv](https://github.com/ruby/csv) gem.
+Requires Ruby 4.0 and metacrunch in the same version as this gem. The only other dependency is Ruby's
+[csv](https://github.com/ruby/csv) gem.
 
 ## Reading
 
@@ -48,10 +54,10 @@ source Metacrunch::Csv::Reader.new(params.file, headers: false)                 
 | `headers` | `true` | `true`: the first row names the columns; an Array of names; `false`: Array records |
 
 The reader reads what `Metacrunch::Input` reads (see metacrunch's
-[Files](https://github.com/ubpb/metacrunch/blob/metacrunch-ng/docs/files.md)): one target or an Array of them —
-paths, `"-"` for stdin, or IOs. gzip and tar archives are unpacked; every file in a tar archive has its own header
-row. A byte order mark of the encoding (UTF-8, UTF-16LE, UTF-16BE) is removed. The progress display shows how much of
-the files has been read.
+[Files](https://github.com/ubpb/metacrunch/blob/metacrunch-ng/metacrunch/docs/files.md)): one target or an Array
+of them — paths, `"-"` for stdin, or IOs. gzip and tar archives are unpacked; every file in a tar archive has its
+own header row. A byte order mark of the encoding (UTF-8, UTF-16LE, UTF-16BE) is removed. The progress display shows
+how much of the files has been read.
 
 ### Records
 

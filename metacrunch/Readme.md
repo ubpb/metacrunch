@@ -51,12 +51,23 @@ $ bundle exec metacrunch --help
 
 Requires Ruby 4.0. The commands in this Readme call `metacrunch`; with Bundler, prefix them with `bundle exec`.
 
-JSON Lines is built in. Extension gems for metacrunch 5, not released yet either, read and write other formats:
-`metacrunch-marcxml` (MARCXML), `metacrunch-csv` (CSV) and `metacrunch-xlsx` (Excel files). The last two, together
-with `Metacrunch::Input` and `Metacrunch::Output`, replace the 4.x gem `metacrunch-file`; `metacrunch-elasticsearch`,
-`metacrunch-db` and `metacrunch-redis` do not work with metacrunch 5 yet. Any other source or sink is a small class of
-your own (see [Sources](docs/jobs.md#sources) and [Sinks](docs/jobs.md#sinks)), built on `Metacrunch::Input` and
-`Metacrunch::Output`, which read gzip and tar and take care of stdin, stdout and pipes (see [Files](docs/files.md)).
+JSON Lines is built in. Extension gems read and write other formats: `metacrunch-marc` (MARCXML, ISO 2709 and
+MARC-in-JSON), `metacrunch-csv` (CSV) and `metacrunch-xlsx` (Excel files). They live in the same repository, share
+metacrunch's version and come from the same Git source:
+
+```ruby
+# Gemfile
+git "https://github.com/ubpb/metacrunch.git", branch: "metacrunch-ng" do
+  gem "metacrunch"
+  gem "metacrunch-csv"
+end
+```
+
+`metacrunch-csv` and `metacrunch-xlsx`, together with `Metacrunch::Input` and `Metacrunch::Output`, replace the 4.x
+gem `metacrunch-file`; `metacrunch-elasticsearch`, `metacrunch-db` and `metacrunch-redis` do not work with
+metacrunch 5 yet. Any other source or sink is a small class of your own (see [Sources](docs/jobs.md#sources) and
+[Sinks](docs/jobs.md#sinks)), built on `Metacrunch::Input` and `Metacrunch::Output`, which read gzip and tar and take
+care of stdin, stdout and pipes (see [Files](docs/files.md)).
 
 ## Quickstart: a job
 
