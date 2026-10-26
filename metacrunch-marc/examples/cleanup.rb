@@ -34,5 +34,5 @@ Metacrunch.job do
     record.add(Metacrunch::Marc::DataField.new("883", " ", " ", [["a", "metacrunch cleanup example"]]))
   end
 
-  sink Metacrunch::Marc::Writer.new(params.target)
+  sink Metacrunch::Marc::Writer.new(params.target, format: :xml)
 end

@@ -33,7 +33,7 @@ class JobsTest < Minitest::Test
       map(name: "parse") { Marc::Xml.parse(it) }
       map(name: "mark") { it.add(Marc::DataField.new("999", " ", " ", [["a", "processed"]])) }
       map(name: "serialize") { it.to_xml(namespace: false) }
-      sink Marc::Writer.new(output)
+      sink Marc::Writer.new(output, format: :xml)
     end
 
     assert_equal :ok, job.run(workers: 2, logger: Logger.new(nil)).status
@@ -74,7 +74,7 @@ class JobsTest < Minitest::Test
     job = Metacrunch.job do
       source Marc::Reader.new(input)
       map { it["001"].value == "article-1" ? raise("broken") : it }
-      sink Marc::Writer.new(output)
+      sink Marc::Writer.new(output, format: :xml)
     end
     result = job.run(logger: Logger.new(nil))
 
@@ -91,7 +91,7 @@ class JobsTest < Minitest::Test
       source Marc::Reader.new(input, parse:)
       map(name: "parse") { it.is_a?(String) ? Marc::Xml.parse(it) : it }
       map(name: "mark") { it.add(Marc::DataField.new("999", " ", " ", [["a", "processed"]])) }
-      sink Marc::Writer.new(output)
+      sink Marc::Writer.new(output, format: :xml)
     end
     result = job.run(workers:, logger: Logger.new(nil))
 
