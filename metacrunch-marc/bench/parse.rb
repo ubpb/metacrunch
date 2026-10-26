@@ -9,22 +9,11 @@ require "metacrunch/marc"
 require "stringio"
 require "tmpdir"
 require "zlib"
+require_relative "records"
 
 Marc = Metacrunch::Marc
 COUNT = Integer(ARGV.fetch(0, "10000"))
 LIBRARIES = {"MARCXML" => Marc::Xml, "ISO 2709" => Marc::Iso2709, "MARC-in-JSON" => Marc::Json}.freeze
-
-def record(number)
-  fields = [Marc::ControlField.new("001", "record-#{number}"),
-            Marc::ControlField.new("005", "20240101120000.0"),
-            Marc::ControlField.new("008", "240101s2024    gw            000 0 eng d")]
-  12.times do |index|
-    subfields = [["a", "Value #{index} of record #{number} with a few words"], ["b", "Second value"],
-                 ["0", "(DE-000)#{number}-#{index}"]]
-    fields << Marc::DataField.new((100 + (index * 60)).to_s, "1", " ", subfields)
-  end
-  Marc::Record.new(leader: "00000nam a2200000 c 4500", type: "Bibliographic", fields:)
-end
 
 # The best of three runs.
 def measure(label)

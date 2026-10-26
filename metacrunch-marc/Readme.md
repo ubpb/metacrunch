@@ -292,9 +292,10 @@ sink Metacrunch::Marc::Writer.new(params.target, format: :iso2709)
 ```
 
 `Metacrunch::Marc.parse` reads every format, so the job does not depend on its input. `id:` then gets the String. A
-job that ends in Hashes needs no serialize step. In a MARC to MARC job with cheap steps and records of 3 KB as MARCXML,
-4 workers handled about 21,000 records/s when they sent records back (as many as without workers) and about 64,000
-records/s when they sent MARCXML back.
+job that ends in Hashes needs no serialize step. In a MARC to MARC job with a cheap step and records of 3 KB as
+MARCXML ([`bench/workers.rb`](bench/workers.rb)), 4 workers handled about 23,000 records/s when they sent records back
+(about as many as the 20,000 without workers) and about 67,000 records/s when they sent MARCXML back; when the reader
+parsed the records before they went to the workers, only about 9,500.
 
 ### Testing jobs
 
