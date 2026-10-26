@@ -18,6 +18,15 @@ module Metacrunch
 
       attr_accessor :leader, :type
 
+      # A Record from MARC-in-JSON as to_h returns it, e.g. a line of JSON
+      # the caller parsed. Raises ParseError, with the path to the problem,
+      # for other shapes and for values that break the rule of all formats
+      # (see Values). normalize: nil or :nfc.
+      def self.from_h(hash, normalize: nil)
+        Marc.check_normalize(normalize)
+        Json::Parser.new(normalize).record(hash)
+      end
+
       def initialize(leader: nil, fields: [], type: nil)
         @leader = leader
         @type = type
