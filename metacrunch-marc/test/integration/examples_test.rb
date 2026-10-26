@@ -8,32 +8,69 @@ require "rbconfig"
 # Runs every example as a user would, through metacrunch's executable.
 class ExamplesTest < Minitest::Test
 
+  Marc = Metacrunch::Marc
   ROOT = File.expand_path("../..", __dir__)
   BIN = Gem.loaded_specs.fetch("metacrunch").bin_file("metacrunch")
 
-  def test_marcxml2jsonl
-    stdout, stderr, status = metacrunch("run", example("marcxml2jsonl.rb"), example("data/catalog.xml"))
-    records = stdout.lines.map { JSON.parse(it) }
-
-    assert_predicate status, :success?, stderr
-    assert_equal(["book-1", "article-1", "holding-1"], records.map { it["id"] })
-    assert_equal "Metadata in practice : a handbook", records.first["title"]
-  end
-
-  def test_cleanup_writes_marcxml
-    Dir.mktmpdir do |dir|
-      output = File.join(dir, "clean.xml")
-      _stdout, stderr, status = metacrunch("run", example("cleanup.rb"), "--target", output,
-                                           example("data/catalog.xml"))
-      records = Metacrunch::Marc::Xml.each(File.read(output)).to_a
+  def test_marc2jsonl_reads_every_format
+    outputs = ["catalog.xml", "catalog.mrc", "catalog.jsonl"].map do |name|
+      stdout, stderr, status = metacrunch("run", example("marc2jsonl.rb"), example("data/#{name}"))
 
       assert_predicate status, :success?, stderr
-      assert(records.all? { it.value("883", "a") == "metacrunch cleanup example" })
-      assert_empty(records.flat_map { it.fields("856", ind2: "2") })
+      stdout
+    end
+
+    assert_equal 1, outputs.uniq.size
+    assert_equal("Metadata in practice : a handbook", JSON.parse(outputs.first.lines.first)["title"])
+  end
+
+  def test_cleanup_writes_every_format
+    Dir.mktmpdir do |dir|
+      ["xml", "iso2709", "json"].each do |to|
+        output = File.join(dir, "clean.#{to}")
+        _stdout, stderr, status = metacrunch("run", example("cleanup.rb"), "--to", to, "--target", output,
+                                             example("data/catalog.xml"))
+        records = Marc::Reader.new(output).each.to_a
+
+        assert_predicate status, :success?, stderr
+        assert(records.all? { it.value("883", "a") == "metacrunch cleanup example" }, "--to #{to}")
+        assert_empty(records.flat_map { it.fields("856", ind2: "2") }, "--to #{to}")
+      end
     end
   end
 
+  def test_convert_through_every_format
+    Dir.mktmpdir do |dir|
+      mrc, jsonl, xml = ["catalog.mrc", "catalog.jsonl", "catalog.xml"].map { File.join(dir, it) }
+      steps = [["iso2709", example("data/catalog.xml"), mrc], ["json", mrc, jsonl], ["xml", jsonl, xml]]
+      steps.each do |to, from, target|
+        _stdout, stderr, status = metacrunch("run", example("convert.rb"), "--to", to, "--target", target, from)
+
+        assert_predicate status, :success?, stderr
+      end
+
+      assert_equal catalog, Marc::Xml.each(File.read(xml)).map(&:fields)
+    end
+  end
+
+  def test_convert_with_workers
+    stdout, stderr, status = metacrunch("run", "--workers", "2", example("convert.rb"), "--to", "json",
+                                        example("data/catalog.mrc"))
+
+    assert_predicate status, :success?, stderr
+    assert_equal catalog, Marc::Json.each(stdout).map(&:fields)
+  end
+
+  def test_convert_refuses_other_formats
+    stdout, stderr, status = metacrunch("run", example("convert.rb"), "--to", "marc", example("data/catalog.xml"))
+
+    refute_predicate status, :success?
+    assert_includes stdout + stderr, "format must be :xml, :iso2709 or :json, got :marc"
+  end
+
   private
+
+  def catalog = Marc::Xml.each(File.read(example("data/catalog.xml"))).map(&:fields)
 
   def example(name) = File.join(ROOT, "examples", name)
 

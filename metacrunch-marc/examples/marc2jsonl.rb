@@ -2,10 +2,11 @@
 
 require "metacrunch/marc"
 
-# Reads MARCXML and writes one JSON object per record (id, title, authors,
+# Reads MARC records (MARCXML, ISO 2709 or MARC-in-JSON, told by the content
+# of each file) and writes one JSON object per record (id, title, authors,
 # subjects, links) to stdout as JSON Lines.
 #
-#   bundle exec metacrunch run examples/marcxml2jsonl.rb examples/data/catalog.xml
+#   bundle exec metacrunch run examples/marc2jsonl.rb examples/data/catalog.mrc
 Metacrunch.job do
   params do
     args :files, min: 1
