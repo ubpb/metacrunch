@@ -35,6 +35,13 @@ module Metacrunch
     # The values of normalize:.
     NORMALIZATIONS = [nil, :nfc].freeze
 
+    # Internal: a UTF-8 byte order mark, and the bytes that are not skipped
+    # before a record (all but space, tab, line breaks and NUL), for the
+    # format modules and detection.
+    BOM = "\xEF\xBB\xBF".b
+    CONTENT = /[^ \t\r\n\0]/n
+    private_constant :BOM, :CONTENT
+
     class << self
 
       # The one record in string, in the format its first bytes show (see

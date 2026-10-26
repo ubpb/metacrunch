@@ -17,12 +17,8 @@ module Metacrunch
       LEADER_LENGTH = 24
       FORBIDDEN = /[\x00-\x08\x0B\x0C\x0E-\x1D]/
 
-      BOM = "\xEF\xBB\xBF".b
-      RECORD_END = RECORD_TERMINATOR.ord
-      # Bytes that are not skipped between records: all but space, tab, line
-      # breaks and NUL.
-      CONTENT = /[^ \t\r\n\0]/n
-      private_constant :BOM, :CONTENT
+      RECORD_END_BYTE = RECORD_TERMINATOR.ord
+      private_constant :RECORD_END_BYTE
 
       class << self
 
@@ -76,7 +72,7 @@ module Metacrunch
         # Raises for more than one record, or for bytes after the record that
         # are not a record (they have no terminator).
         def check_one(raws)
-          if raws.size == 2 && raws.last.getbyte(-1) != RECORD_END
+          if raws.size == 2 && raws.last.getbyte(-1) != RECORD_END_BYTE
             raise ParseError, "bytes after the record that are not a record: #{raws.last.b.byteslice(0, 16).inspect}"
           end
 
@@ -84,7 +80,7 @@ module Metacrunch
         end
 
         # A record terminator alone is no record and holds no data.
-        def terminator_only?(piece, start) = start == piece.bytesize - 1 && piece.getbyte(start) == RECORD_END
+        def terminator_only?(piece, start) = start == piece.bytesize - 1 && piece.getbyte(start) == RECORD_END_BYTE
 
         # Where the record in piece starts: after space, tab, line breaks,
         # NUL and byte order marks (one starts each concatenated file); nil
