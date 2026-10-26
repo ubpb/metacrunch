@@ -10,8 +10,7 @@ module Metacrunch
     module Json
 
       NEWLINE = "\n".b
-      BOM = "\xEF\xBB\xBF".b
-      private_constant :NEWLINE, :BOM
+      private_constant :NEWLINE
 
       class << self
 

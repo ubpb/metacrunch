@@ -12,11 +12,8 @@ module Metacrunch
       # Detection looks at the first WINDOW bytes of a String, and at twice
       # as many while it cannot tell.
       WINDOW = 64
-      BOM = "\xEF\xBB\xBF".b
-      CONTENT = /[^ \t\r\n\0]/n
       ISO2709 = /\A\d{5}.{7}\d{5}/mn
       ISO2709_START = 17
-      RECORD_TERMINATOR = 0x1D
       EXCERPT = 16
 
       module_function
@@ -71,7 +68,7 @@ module Metacrunch
         first = start(bytes)
         return false unless first && bytes.getbyte(first).between?(0x30, 0x39)
 
-        bytes.getbyte(bytes.rindex(CONTENT)) == RECORD_TERMINATOR
+        bytes.getbyte(bytes.rindex(CONTENT)) == Iso2709::RECORD_TERMINATOR.ord
       end
 
       # The message for a document of format :unknown.
