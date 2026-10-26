@@ -18,6 +18,7 @@ module Metacrunch
       FORBIDDEN = /[\x00-\x08\x0B\x0C\x0E-\x1D]/
 
       BOM = "\xEF\xBB\xBF".b
+      RECORD_END = RECORD_TERMINATOR.ord
       # Bytes that are not skipped between records: all but space, tab, line
       # breaks and NUL.
       CONTENT = /[^ \t\r\n\0]/n
@@ -25,17 +26,16 @@ module Metacrunch
 
       class << self
 
-        # The one record in string. Raises ParseError for none or more than
-        # one.
+        # The one record in string. Raises ParseError for none, more than one,
+        # or bytes after it that are not a record.
         def parse(string, normalize: nil)
           raise ArgumentError, "string must be a String, got #{string.class}" unless string.is_a?(String)
 
           Marc.check_normalize(normalize)
           raws = each_raw(string).to_a
           raise ParseError, "no record found" if raws.empty?
-          if raws.size > 1
-            raise ParseError, "#{raws.size} records found where one was expected (use Marc::Iso2709.each)"
-          end
+
+          check_one(raws) if raws.size > 1
 
           Parser.parse(raws.first, normalize:)
         end
@@ -63,7 +63,7 @@ module Metacrunch
 
           Delimited.new(input, RECORD_TERMINATOR.b).each do |piece|
             start = start(piece)
-            next unless start
+            next if start.nil? || terminator_only?(piece, start)
 
             piece = piece.byteslice(start, piece.bytesize - start) if start.positive?
             yield piece.force_encoding(Encoding::UTF_8)
@@ -72,6 +72,19 @@ module Metacrunch
         end
 
         private
+
+        # Raises for more than one record, or for bytes after the record that
+        # are not a record (they have no terminator).
+        def check_one(raws)
+          if raws.size == 2 && raws.last.getbyte(-1) != RECORD_END
+            raise ParseError, "bytes after the record that are not a record: #{raws.last.b.byteslice(0, 16).inspect}"
+          end
+
+          raise ParseError, "#{raws.size} records found where one was expected (use Marc::Iso2709.each)"
+        end
+
+        # A record terminator alone is no record and holds no data.
+        def terminator_only?(piece, start) = start == piece.bytesize - 1 && piece.getbyte(start) == RECORD_END
 
         # Where the record in piece starts: after space, tab, line breaks,
         # NUL and byte order marks (one starts each concatenated file); nil

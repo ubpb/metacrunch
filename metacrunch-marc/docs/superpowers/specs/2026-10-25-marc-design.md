@@ -339,6 +339,8 @@ Constants: `Marc::Iso2709::RECORD_TERMINATOR = "\x1D"`, `FIELD_TERMINATOR =
   (line breaks after each record, padded blocks), and so are UTF-8 byte order
   marks: at the start of the input, which detection skips too (7), and at the
   start of each concatenated file (amended after the review).
+- A `0x1D` with nothing but skipped bytes before it is no record and is
+  skipped (amended after the review).
 - Bytes left at the end without a `0x1D` are a record cut off by the end of
   the input; they are yielded as they are and fail when parsed (`ParseError`:
   the input ended inside a record), as in MARCXML.

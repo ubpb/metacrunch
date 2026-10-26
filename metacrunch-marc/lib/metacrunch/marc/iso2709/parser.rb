@@ -45,9 +45,7 @@ module Metacrunch
         private
 
         def leader
-          if @raw.bytesize <= LEADER_LENGTH
-            raise ParseError, "the record has #{@raw.bytesize} bytes, fewer than its leader of 24 and the terminator"
-          end
+          raise ParseError, "the record ends inside its leader of 24 bytes" if @raw.bytesize <= LEADER_LENGTH
 
           leader = @raw.byteslice(0, LEADER_LENGTH)
           unless leader.ascii_only?
