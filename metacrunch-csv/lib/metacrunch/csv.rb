@@ -8,6 +8,7 @@ require_relative "csv/errors"
 require_relative "csv/columns"
 require_relative "csv/lines"
 require_relative "csv/reader"
+require_relative "csv/writer"
 
 module Metacrunch
   # CSV for metacrunch: a source (Reader) and a sink (Writer) on Ruby's csv.
