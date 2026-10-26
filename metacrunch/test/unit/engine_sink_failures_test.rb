@@ -48,6 +48,32 @@ class EngineSinkFailuresTest < Minitest::Test
     assert_equal [1, {"ArgumentError" => 2}, {}], [stats.written, stats.failed, stats.steps]
   end
 
+  def test_a_flush_after_an_abort_logs_the_sink_s_failure_and_keeps_the_run_s_error
+    log = StringIO.new
+    target = FailingSink.new(1)
+    result = run_pipeline(logger: Logger.new(log)) do
+      source [1, 2, 3]
+      map { it == 3 ? raise(ArgumentError, "step") : it }
+      sink target, batch: 10
+    end
+
+    assert_equal [:aborted, "map#1", [2]], [result.status, result.error.step, target.records]
+    assert_match "flushing FailingSink after abort failed: Metacrunch::StepError: step sink failed", log.string
+  end
+
+  def test_a_flush_after_an_abort_sends_the_sink_s_failures_to_the_failures_sink
+    failures = CollectingSink.new
+    result = run_pipeline do
+      source [1, 2, 3]
+      map { it == 3 ? raise(ArgumentError, "step") : it }
+      sink FailingSink.new(1), batch: 10
+      failures failures
+      on_failure :skip, max_failures: 0
+    end
+
+    assert_equal [:aborted, [3, 1]], [result.status, failures.records]
+  end
+
   def test_the_failures_sink_cannot_report_failed_records
     result = run_pipeline do
       source [1, 2]

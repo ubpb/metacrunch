@@ -130,12 +130,14 @@ class ReaderTest < Minitest::Test
   def test_an_expired_point_in_time_asks_for_a_longer_keep_alive
     serve_pages(@fake, documents(3))
     first_page = {"pit_id" => "pit-2", "hits" => {"hits" => documents(2).map { it.merge("sort" => [1]) }}}
-    expired = {"error" => {"type" => "search_context_missing_exception",
-                           "reason" => "No search context found for id [7]"}}
+    # As Elasticsearch 8 and 9 answer: the cause is in root_cause.
+    expired = {"error" => {"root_cause" => [{"type" => "search_context_missing_exception",
+                                             "reason" => "No search context found for id [7]"}],
+                           "type" => "search_phase_execution_exception", "reason" => "all shards failed"}}
     @fake.on("POST", "/_search") { |request| request.json["search_after"] ? [404, expired] : [200, first_page] }
     error = assert_raises(Metacrunch::InputError) { open_reader(size: 2).each.to_a }
 
-    assert_equal "elasticsearch books: 404 search_context_missing_exception: No search context found for id [7]; " \
+    assert_equal "elasticsearch books: 404 search_phase_execution_exception: all shards failed; " \
                  "the point in time expired between two pages: give the reader a longer keep_alive", error.message
   end
 
