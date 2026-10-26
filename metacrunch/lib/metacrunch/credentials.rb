@@ -49,25 +49,31 @@ module Metacrunch
       Store.new(Location.for_job(job_file:, env:, environment:, directory:), logger:)
     end
 
-    # The Hash in decrypted YAML, with texts for all scalars (TextScanner).
-    # Anchors, aliases and merge keys work; tags of Ruby classes do not.
-    # Errors name the position, never the content, and keep no cause,
-    # because Psych messages can quote it.
+    # The Hash in decrypted YAML (see parse_yaml).
     def load_yaml(text, path)
-      document = Psych.parse(text) or return {}
-      loader = Psych::ClassLoader::Restricted.new([], [])
-      data = Psych::Visitors::ToRuby.new(TextScanner.new(loader), loader).accept(document)
+      data = parse_yaml(text, path, error: CredentialsError)
       return {} if data.nil?
       return data if data.is_a?(Hash)
 
       raise CredentialsError, "#{path} must contain a mapping at the top level"
+    end
+
+    # The data in YAML text, nil for none, with texts for all scalars
+    # (TextScanner); also for params files. Anchors, aliases and merge keys
+    # work; tags of Ruby classes do not. Errors are of class error, name the
+    # position, never the content, and keep no cause, because Psych messages
+    # can quote it.
+    def parse_yaml(text, path, error:)
+      document = Psych.parse(text) or return
+      loader = Psych::ClassLoader::Restricted.new([], [])
+      Psych::Visitors::ToRuby.new(TextScanner.new(loader), loader).accept(document)
     rescue Psych::DisallowedClass => e
       type = e.message[/unspecified class: (\S+)/, 1]
-      raise CredentialsError, "unsupported value in #{path}: #{type} (quote it)", cause: nil
+      raise error, "unsupported value in #{path}: #{type} (quote it)", cause: nil
     rescue Psych::SyntaxError => e
-      raise CredentialsError, "invalid YAML in #{path} at line #{e.line}, column #{e.column}", cause: nil
+      raise error, "invalid YAML in #{path} at line #{e.line}, column #{e.column}", cause: nil
     rescue Psych::Exception
-      raise CredentialsError, "invalid YAML in #{path}", cause: nil
+      raise error, "invalid YAML in #{path}", cause: nil
     end
 
     # The bytes of a credentials or key file. Errors name the file and the
