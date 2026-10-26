@@ -13,8 +13,9 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = ">= 4.0"
 
   spec.metadata = {
-    "source_code_uri" => spec.homepage,
-    "changelog_uri" => "#{spec.homepage}/blob/master/CHANGELOG.md",
+    "source_code_uri" => "#{spec.homepage}/tree/v#{spec.version}/metacrunch",
+    "changelog_uri" => "#{spec.homepage}/blob/v#{spec.version}/metacrunch/CHANGELOG.md",
+    "bug_tracker_uri" => "#{spec.homepage}/issues",
     "rubygems_mfa_required" => "true"
   }
 
