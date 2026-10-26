@@ -223,7 +223,7 @@ between records, and a file whose first record has no record length is not recog
 
 ### MARC-in-JSON
 
-[MARC-in-JSON](https://github.com/marc-in-json/marc-in-json) is `record.to_h` as JSON, which `record.to_json` writes
+[MARC-in-JSON](https://github.com/marc4j/marc4j/wiki/MARC-in-JSON-Description) is `record.to_h` as JSON, which `record.to_json` writes
 after the rule above (values that are not Strings as their `to_s`, nil as `""`). `each` and `each_raw` read one record
 per line (JSON Lines), as ruby-marc and Catmandu do; blank lines and byte order marks are skipped. `parse` reads
 one JSON object, also over several lines. Parsing takes about 33 µs per record in `bench/parse.rb`, most of it for

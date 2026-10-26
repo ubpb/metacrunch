@@ -4,9 +4,9 @@ require "json"
 
 module Metacrunch
   module Marc
-    # MARC-in-JSON (https://github.com/marc-in-json/marc-in-json): Record#to_h
-    # as JSON, one record per line (JSON Lines). Read by Json::Parser,
-    # written by Json::Serializer.
+    # MARC-in-JSON (https://github.com/marc4j/marc4j/wiki/MARC-in-JSON-Description):
+    # Record#to_h as JSON, one record per line (JSON Lines). Read by
+    # Json::Parser, written by Json::Serializer.
     module Json
 
       NEWLINE = "\n".b
