@@ -17,7 +17,7 @@ class JobsTest < Minitest::Test
   SERIALIZE = {
     xml: ->(record) { record.to_xml(namespace: false) },
     iso2709: lambda(&:to_iso2709),
-    json: ->(record) { JSON.generate(record.to_h) }
+    json: lambda(&:to_json)
   }.freeze
 
   def setup

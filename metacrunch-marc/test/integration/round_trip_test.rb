@@ -38,7 +38,7 @@ class RoundTripTest < Minitest::Test
     case format
     when :xml then Marc::Xml::HEADER + records.map { it.to_xml(namespace: false) }.join + Marc::Xml::FOOTER
     when :iso2709 then records.map(&:to_iso2709).join
-    else records.map { Marc::Json::Serializer.record(it) }.join
+    else records.map { "#{it.to_json}\n" }.join
     end
   end
 

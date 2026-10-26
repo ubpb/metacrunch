@@ -380,7 +380,7 @@ class ReaderTest < Minitest::Test
   def test_normalize_iso2709_and_json
     nfd = Marc::Record.new(fields: [Marc::ControlField.new("001", "Mu\u0308ller")])
 
-    [write("nfd.mrc", nfd.to_iso2709), write("nfd.jsonl", JSON.generate(nfd.to_h))].each do |path|
+    [write("nfd.mrc", nfd.to_iso2709), write("nfd.jsonl", nfd.to_json)].each do |path|
       assert_equal "Müller", read(Reader.new(path, normalize: :nfc)).first["001"].value
     end
   end

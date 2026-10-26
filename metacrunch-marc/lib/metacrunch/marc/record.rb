@@ -154,6 +154,12 @@ module Metacrunch
       # all nines instead, which tolerant readers read.
       def to_iso2709(oversize: :error) = Iso2709::Serializer.record(self, oversize:)
 
+      # The record as one line of MARC-in-JSON, without a line break: to_h as
+      # JSON, with values that are not Strings as their to_s and nil as "".
+      # Raises SerializeError for values that break the rule of all formats
+      # (see Values). JSON.generate calls it for records inside other values.
+      def to_json(*) = Json::Serializer.record(self)
+
       # One line per field in the mnemonic form of MarcEdit, the leader as
       # "=LDR".
       def to_s

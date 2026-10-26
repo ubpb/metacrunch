@@ -85,7 +85,7 @@ module Metacrunch
         case @format
         when :xml then Xml::Serializer.record(record, namespace: false, indent: "  ")
         when :iso2709 then Iso2709::Serializer.record(record, oversize: @oversize)
-        else Json::Serializer.record(record)
+        else "#{Json::Serializer.record(record)}\n"
         end
       end
 

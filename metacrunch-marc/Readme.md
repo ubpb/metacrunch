@@ -108,6 +108,8 @@ record.remove { it.equal?(field) }
 
 - `record.to_xml` returns the record as MARCXML; `namespace: false` leaves out `xmlns`.
 - `record.to_iso2709` returns it as ISO 2709, a String in UTF-8 (see [ISO 2709](#iso-2709)).
+- `record.to_json` returns it as one line of MARC-in-JSON (see [MARC-in-JSON](#marc-in-json)); `JSON.generate` uses it
+  for records inside other values.
 - `record.to_h` returns MARC-in-JSON: `{"leader" => "...", "fields" => [{"001" => "..."}, {"245" => {"ind1" => "1",
   "ind2" => "0", "subfields" => [{"a" => "..."}]}}]}`; `Metacrunch::Marc::Record.from_h(hash)` builds a record from
   such a Hash.
@@ -203,8 +205,9 @@ code lengths other than 1.
 
 ### MARC-in-JSON
 
-[MARC-in-JSON](https://github.com/marc-in-json/marc-in-json) is `record.to_h` as JSON. `each` and `each_raw` read one
-record per line (JSON Lines), as ruby-marc and Catmandu do; blank lines and byte order marks are skipped. `parse` reads
+[MARC-in-JSON](https://github.com/marc-in-json/marc-in-json) is `record.to_h` as JSON, which `record.to_json` writes
+after the rule above (values that are not Strings as their `to_s`, nil as `""`). `each` and `each_raw` read one record
+per line (JSON Lines), as ruby-marc and Catmandu do; blank lines and byte order marks are skipped. `parse` reads
 one JSON object, also over several lines. Parsing takes about 33 µs per record in `bench/parse.rb`, most of it for
 checking the shape and the values. JSON arrays of records are not read: convert them with
 `jq -c '.[]' in.json > out.jsonl`, and pretty-printed files with `jq -c . in.json > out.jsonl`.
@@ -266,7 +269,7 @@ let the reader yield Strings, parse them in the first step and serialize in the 
 source Metacrunch::Marc::Reader.new(params.files, parse: false)
 map(name: "parse") { Metacrunch::Marc.parse(it) }
 # ... steps ...
-map(name: "serialize") { it.to_iso2709 }   # or it.to_xml(namespace: false), JSON.generate(it.to_h)
+map(name: "serialize") { it.to_iso2709 }   # or it.to_xml(namespace: false), it.to_json
 sink Metacrunch::Marc::Writer.new(params.target, format: :iso2709)
 ```
 

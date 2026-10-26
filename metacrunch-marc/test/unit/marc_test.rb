@@ -37,7 +37,7 @@ class MarcTest < Minitest::Test
   def test_parse_detects_the_format
     record = Metacrunch::Marc::Xml.parse(%(<record><controlfield tag="001">1</controlfield></record>))
 
-    [record.to_xml, record.to_iso2709, JSON.generate(record.to_h)].each do |string|
+    [record.to_xml, record.to_iso2709, record.to_json].each do |string|
       assert_equal record.fields, Metacrunch::Marc.parse(string).fields
     end
   end
