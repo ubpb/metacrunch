@@ -2,17 +2,19 @@
 
 require "metacrunch/marc"
 
-# Cleans MARCXML records and writes them as MARCXML again: collapses runs of
-# spaces in titles, drops links to cover images (856 with second indicator
-# 2) and records the cleanup in field 883.
+# Cleans MARC records and writes them again: collapses runs of spaces in
+# titles, drops links to cover images (856 with second indicator 2) and
+# records the cleanup in field 883. Reads MARCXML, ISO 2709 and
+# MARC-in-JSON; --to sets the output format.
 #
-#   bundle exec metacrunch run examples/cleanup.rb --target tmp/clean.xml examples/data/catalog.xml
+#   bundle exec metacrunch run examples/cleanup.rb --to iso2709 --target tmp/clean.mrc examples/data/catalog.xml
 #
 # The parameter is not called output: metacrunch's own -o/--output, given
-# before the job file, would replace the MARCXML sink with JSON Lines.
+# before the job file, would replace the sink with JSON Lines.
 Metacrunch.job do
   params do
-    param :target, String, default: "-", desc: "MARCXML file for the cleaned records (- for stdout)"
+    param :target, String, default: "-", desc: "file for the cleaned records (- for stdout)"
+    param :to, String, default: "xml", desc: "output format: xml, iso2709 or json"
     args :files, min: 1
   end
 
@@ -34,5 +36,5 @@ Metacrunch.job do
     record.add(Metacrunch::Marc::DataField.new("883", " ", " ", [["a", "metacrunch cleanup example"]]))
   end
 
-  sink Metacrunch::Marc::Writer.new(params.target, format: :xml)
+  sink Metacrunch::Marc::Writer.new(params.target, format: params.to.to_sym)
 end
