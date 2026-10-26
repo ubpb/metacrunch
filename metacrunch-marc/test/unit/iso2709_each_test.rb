@@ -27,6 +27,13 @@ class Iso2709EachTest < Minitest::Test
     assert_equal(["1"], Iso2709.each("\xEF\xBB\xBF#{book}".b).map { it["001"].value })
   end
 
+  # cat a.mrc b.mrc, where both files start with one.
+  def test_skips_byte_order_marks_of_concatenated_files
+    input = "\xEF\xBB\xBF#{book("1")}\n\xEF\xBB\xBF#{book("2")}".b
+
+    assert_equal(["1", "2"], Iso2709.each(input).map { it["001"].value })
+  end
+
   def test_a_record_cut_off_by_the_end_of_the_input
     input = book("1") + book("2").byteslice(0, 30)
 

@@ -336,8 +336,9 @@ Constants: `Marc::Iso2709::RECORD_TERMINATOR = "\x1D"`, `FIELD_TERMINATOR =
   record length in the leader is not used, so wrong lengths and records over
   99,999 bytes with `99999` or `00000` in the leader are read.
 - Space, tab, carriage return, line feed and NUL between records are skipped
-  (line breaks after each record, padded blocks), and so is a UTF-8 byte order
-  mark at the start of the input, which detection skips too (7).
+  (line breaks after each record, padded blocks), and so are UTF-8 byte order
+  marks: at the start of the input, which detection skips too (7), and at the
+  start of each concatenated file (amended after the review).
 - Bytes left at the end without a `0x1D` are a record cut off by the end of
   the input; they are yielded as they are and fail when parsed (`ParseError`:
   the input ended inside a record), as in MARCXML.

@@ -53,25 +53,33 @@ module Metacrunch
 
         # Yields every record of input as a String in UTF-8 (possibly
         # invalid) up to and including its record terminator, without
-        # parsing it. Space, tab, line breaks and NUL between records and a
-        # byte order mark at the start are skipped; bytes at the end without
-        # a terminator are yielded as they are and fail when parsed. Without
-        # a block an Enumerator.
+        # parsing it. Space, tab, line breaks and NUL between records and the
+        # byte order marks of concatenated files are skipped; bytes at the
+        # end without a terminator are yielded as they are and fail when
+        # parsed. Without a block an Enumerator.
         def each_raw(input)
           Marc.check_input(input)
           return enum_for(:each_raw, input) unless block_given?
 
-          first = true
           Delimited.new(input, RECORD_TERMINATOR.b).each do |piece|
-            piece = piece.delete_prefix(BOM) if first
-            first = false
-            start = piece.index(CONTENT)
+            start = start(piece)
             next unless start
 
             piece = piece.byteslice(start, piece.bytesize - start) if start.positive?
             yield piece.force_encoding(Encoding::UTF_8)
           end
           nil
+        end
+
+        private
+
+        # Where the record in piece starts: after space, tab, line breaks,
+        # NUL and byte order marks (one starts each concatenated file); nil
+        # if it has nothing else.
+        def start(piece)
+          start = piece.index(CONTENT)
+          start = piece.index(CONTENT, start + BOM.bytesize) while start && piece.byteslice(start, BOM.bytesize) == BOM
+          start
         end
 
       end
