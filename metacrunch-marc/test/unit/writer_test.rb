@@ -234,7 +234,7 @@ class WriterTest < Minitest::Test
   end
 
   def test_writes_strings_of_its_format_as_they_are
-    {iso2709: record.to_iso2709, json: JSON.generate(record.to_h)}.each do |format, string|
+    {iso2709: record.to_iso2709, json: record.to_json}.each do |format, string|
       io = StringIO.new
       writer = open_writer(io, format:)
       writer.write(string, @ctx)

@@ -97,10 +97,38 @@ class JsonTest < Minitest::Test
     assert_equal "Müller", Json.parse(%({"fields": [{"001": "Mu\u0308ller"}]}), normalize: :nfc)["001"].value
   end
 
+  def test_to_json_is_one_line_of_marc_in_json
+    record = Json.parse(LINE)
+
+    assert_equal JSON.generate(record.to_h), record.to_json
+  end
+
+  # As the Writer writes them: values that are not Strings by their to_s,
+  # nil as "".
+  def test_to_json_writes_values_that_read_back
+    field = Marc::DataField.new("500", " ", " ", [["a", 2026], ["b", nil]])
+    line = Marc::Record.new(fields: [field]).to_json
+
+    assert_equal %({"fields":[{"500":{"ind1":" ","ind2":" ","subfields":[{"a":"2026"},{"b":""}]}}]}), line
+    assert_equal([["a", "2026"], ["b", ""]], Json.parse(line)["500"].subfields.map { [it.code, it.value] })
+  end
+
+  def test_to_json_keeps_to_the_common_rule
+    record = Marc::Record.new(fields: [Marc::ControlField.new("001", "a\u0001")])
+
+    assert_raises(Marc::SerializeError) { record.to_json }
+  end
+
+  def test_json_generate_takes_records
+    record = Json.parse(LINE)
+
+    assert_equal JSON.generate([record.to_h]), JSON.generate([record])
+  end
+
   def test_serializes_as_json_generate_of_to_h
     record = Json.parse(LINE)
 
-    assert_equal "#{JSON.generate(record.to_h)}\n", Json::Serializer.record(record)
+    assert_equal JSON.generate(record.to_h), Json::Serializer.record(record)
   end
 
   def test_serializing_keeps_to_the_common_rule
@@ -121,7 +149,7 @@ class JsonTest < Minitest::Test
     field = Marc::ControlField.new("001", "Müller".encode("ISO-8859-1"))
     record = Marc::Record.new(type: "Bibliographic", fields: [field])
 
-    assert_equal %({"fields":[{"001":"Müller"}]}\n), Json::Serializer.record(record)
+    assert_equal %({"fields":[{"001":"Müller"}]}), Json::Serializer.record(record)
   end
 
   def test_rejects_invalid_arguments

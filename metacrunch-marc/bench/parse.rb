@@ -55,7 +55,7 @@ Dir.mktmpdir do |dir|
     "MARCXML" => write(File.join(dir, "records.xml"),
                        Marc::Xml::HEADER + records.map { it.to_xml(namespace: false) }.join + Marc::Xml::FOOTER),
     "ISO 2709" => write(File.join(dir, "records.mrc"), records.map(&:to_iso2709).join),
-    "MARC-in-JSON" => write(File.join(dir, "records.jsonl"), records.map { "#{JSON.generate(it.to_h)}\n" }.join)
+    "MARC-in-JSON" => write(File.join(dir, "records.jsonl"), records.map { "#{it.to_json}\n" }.join)
   }
   yjit = defined?(RubyVM::YJIT) && RubyVM::YJIT.enabled? ? " with YJIT" : ""
   sizes = paths.map { |name, path| "#{name} #{File.size(path) / COUNT} bytes" }.join(", ")
@@ -77,7 +77,7 @@ Dir.mktmpdir do |dir|
   measure("Marc.parse (an ISO 2709 record string)") { isos.each { Marc.parse(it) } }
   measure("to_xml") { records.each(&:to_xml) }
   measure("to_iso2709") { records.each(&:to_iso2709) }
-  measure("JSON.generate(to_h)") { records.each { JSON.generate(it.to_h) } }
+  measure("to_json") { records.each(&:to_json) }
   measure("8 queries") do
     records.each do |r|
       r["001"]&.value

@@ -3,10 +3,10 @@
 module Metacrunch
   module Marc
     module Json
-      # Writes a Record as one line of MARC-in-JSON: JSON.generate of to_h
-      # and "\n", with every String checked by the common rule first, so a
-      # character that XML cannot represent raises although JSON could
-      # escape it. The type is dropped. Internal.
+      # Writes a Record as one line of MARC-in-JSON (Record#to_json), without
+      # its line break: JSON.generate of to_h, with every String checked by
+      # the common rule first, so a character that XML cannot represent
+      # raises although JSON could escape it. The type is dropped. Internal.
       module Serializer
 
         module_function
@@ -15,7 +15,7 @@ module Metacrunch
           hash = {}
           hash["leader"] = Values.serializable(record.leader) { "leader" } if record.leader
           hash["fields"] = record.fields.map { field(it) }
-          "#{JSON.generate(hash)}\n"
+          JSON.generate(hash)
         end
 
         def field(field)

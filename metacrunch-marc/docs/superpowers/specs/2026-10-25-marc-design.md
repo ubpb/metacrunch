@@ -296,7 +296,8 @@ Builds a record from MARC-in-JSON as `Record#to_h` returns it:
   value must be a String, got 12`.
 
 `Record.from_h(record.to_h) == record` holds for every record without a
-`type`.
+`type` whose values are Strings that keep to the common rule, so for every
+record a parser read.
 
 ### 3.5 Errors
 
@@ -433,6 +434,7 @@ Metacrunch::Marc::Json.each(io) { |record| }  # every line, streaming
 Metacrunch::Marc::Json.each_raw(io) { |line| }
 Metacrunch::Marc::Record.from_h(hash)         # from a Hash already parsed
 record.to_h                                   # unchanged
+record.to_json                                # one line, without its line break
 ```
 
 ### 6.2 Framing
@@ -455,9 +457,12 @@ raises `ParseError`; a `JSON::ParserError` is wrapped with its message.
 
 ### 6.4 Serializing
 
-`JSON.generate(record.to_h)` and `"\n"`, after the common rule (3.1), so a
-character that XML cannot represent raises `SerializeError` although JSON
-could escape it. `type` is dropped.
+`record.to_json` is `JSON.generate(record.to_h)` after the common rule (3.1),
+so a character that XML cannot represent raises `SerializeError` although JSON
+could escape it; values that are not Strings are written as their `to_s` and
+nil as `""`, as the other serializers do. `type` is dropped. The Writer adds
+`"\n"`. (Amended after the review: `JSON.generate(record.to_h)` in a worker
+step skipped the rule and could write lines the parser refuses.)
 
 ## 7. Detection and `Marc.parse`
 
@@ -547,7 +552,7 @@ fraction of parsed records. The fast path works for every format:
 source Metacrunch::Marc::Reader.new(params.files, parse: false)
 map(name: "parse") { Metacrunch::Marc.parse(it) }
 # ... steps ...
-map(name: "serialize") { it.to_iso2709 }   # or it.to_xml(namespace: false), JSON.generate(it.to_h)
+map(name: "serialize") { it.to_iso2709 }   # or it.to_xml(namespace: false), it.to_json
 sink Metacrunch::Marc::Writer.new(params.target, format: :iso2709)
 ```
 

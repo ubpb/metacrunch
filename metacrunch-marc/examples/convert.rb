@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "json"
 require "metacrunch/marc"
 
 # Converts MARC records from MARCXML, ISO 2709 or MARC-in-JSON (told by the
@@ -24,7 +23,7 @@ Metacrunch.job do
   map(name: "serialize") do |record|
     case to
     when :iso2709 then record.to_iso2709
-    when :json then JSON.generate(record.to_h)
+    when :json then record.to_json
     else record.to_xml(namespace: false)
     end
   end
