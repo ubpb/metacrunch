@@ -307,6 +307,26 @@ XML
 result = Metacrunch::Testing.run(job, source: records)
 ```
 
+## Compared with ruby-marc
+
+[ruby-marc](https://github.com/ruby-marc/ruby-marc) 1.4 is the MARC library most used with Ruby.
+[`bench/ruby_marc.rb`](bench/ruby_marc.rb) compares the two on 250,000 records of the Library of Congress ("Books
+All" 2016, part 1: 241 MB as ISO 2709, 700 MB as MARCXML). Time per record, Ruby 4.0 with YJIT on an arm64 Mac:
+
+| | metacrunch-marc | ruby-marc |
+|---|---|---|
+| Read ISO 2709 | 19 µs | 33 µs |
+| Read MARCXML | 32 µs | 56 µs with Nokogiri, 213 µs with REXML (its default) |
+| Write ISO 2709 | 11 µs | 20 µs |
+| Write MARCXML | 24 µs | 131 µs with REXML, 21 µs with `fast_but_unsafe: true` |
+| Write MARC-in-JSON | 14 µs | 12 µs (`JSON.generate(record.to_hash)`) |
+| Query 245 $a, 100 $a, 008 and $a of every 020 and 650 | 2.1 µs | 4.7 µs |
+| Memory per record held | 9.0 KB | 10.0 KB |
+
+Both read the same records: `to_h` equals ruby-marc's `to_hash` for every record but 8, whose 001 in the ISO 2709 file
+ends with a stray subfield delimiter that metacrunch-marc rejects (see [ISO 2709](#iso-2709)). metacrunch-marc checks
+while it parses and writes that values are valid UTF-8 that XML 1.0 can represent; ruby-marc does not check either.
+
 ## Upgrading from metacrunch-marcxml 4.x
 
 metacrunch-marc is the successor of metacrunch-marcxml. See the [changelog](CHANGELOG.md) for all changes. The most
