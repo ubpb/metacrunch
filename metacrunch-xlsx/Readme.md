@@ -51,7 +51,8 @@ width applies; a streaming writer cannot fit widths to the content.
 ### Columns
 
 - With `columns:`, other keys of a record are not written and missing keys are empty cells; the header row is written
-  when the run starts, so an empty run gives a file with the header only.
+  when the run starts, so an empty run gives a file with the header only. A column `"id"` is also found under the key
+  `:id`, as in Hashes from a database.
 - Without `columns:`, the first record's keys are the columns; a later record with another key stops the run (name the
   columns with `columns:`). An empty run gives an empty sheet.
 - Array records are written as they are; with `columns:` the header comes from it, without it there is no header.
@@ -74,7 +75,8 @@ String or a number in a step`:
 - text with a control character other than tab and line breaks, which XML cannot hold;
 - text longer than 32,767 characters, row 1,048,577 (the header counts), more than 16,384 columns: Excel's limits.
 
-When a run aborts, the writer still finishes the file, with the rows written so far, so it opens in Excel.
+When a run aborts, also by Ctrl-C or because the header cannot be written, the writer still finishes the file, with the
+rows written so far, so it opens in Excel.
 
 ## Upgrading from metacrunch-file
 

@@ -47,6 +47,20 @@ class JobsTest < Minitest::Test
     assert_equal [["id", "title"], ["00123", "Metadata in practice"]], rows(path)
   end
 
+  # The engine does not close a sink whose open raised; the writer finishes
+  # the file itself.
+  def test_an_open_that_fails_still_finishes_the_file
+    [{columns: ["a\u0001"]}, {columns: ["id"], widths: {"Titel" => 60}}].each_with_index do |options, index|
+      path = File.join(@dir, "open-#{index}.xlsx")
+      job = Metacrunch.job do
+        source RECORDS
+        sink Metacrunch::Xlsx::Writer.new(path, **options)
+      end
+
+      assert_equal [:aborted, []], [job.run(logger: Logger.new(nil)).status, rows(path)]
+    end
+  end
+
   private
 
   def report_job(path)

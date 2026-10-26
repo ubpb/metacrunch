@@ -19,15 +19,23 @@ module Metacrunch
         @sheet_name = check_sheet(sheet)
         @widths = check_widths(widths)
         @zip = nil
+        @sheet = nil
       end
 
+      # The engine closes no sink whose open raised, so open finishes the
+      # file itself then.
       def open(_context)
         @output.open
-        @zip = ZipKit::Streamer.new(@output)
-        Package::STATIC.each { |name, xml| @zip.write_deflated_file(name) { it << xml } }
-        @sink = @zip.write_deflated_file("xl/worksheets/sheet1.xml")
-        @sheet = Sheet.new(@sink)
+        Xlsx.uninterrupted do
+          @zip = ZipKit::Streamer.new(@output)
+          Package::STATIC.each { |name, xml| part(name, xml) }
+          @sink = Entry.new(@zip, "xl/worksheets/sheet1.xml")
+          @sheet = Sheet.new(@sink)
+        end
         start if @columns.known?
+      rescue StandardError
+        close
+        raise
       end
 
       def write(record, ctx)
@@ -44,9 +52,10 @@ module Metacrunch
         records.zip(ctxs).each { |record, ctx| write(record, ctx) }
       end
 
-      # Finishes the file, also after an aborted run, with the rows so far.
+      # Finishes the file, also after an aborted run, with the rows so far;
+      # an interrupt waits until the file is complete.
       def close
-        finish if @zip
+        Xlsx.uninterrupted { finish if @zip && @sheet }
       ensure
         @zip = nil
         @output.close
@@ -101,8 +110,14 @@ module Metacrunch
         @sheet.start(nil, nil) unless @sheet.started?
         @sheet.finish
         @sink.close
-        @zip.write_deflated_file("xl/workbook.xml") { it << Package.workbook(@sheet_name, @sheet.absolute_range) }
+        part("xl/workbook.xml", Package.workbook(@sheet_name, @sheet.absolute_range))
         @zip.close
+      end
+
+      def part(name, xml)
+        entry = Entry.new(@zip, name)
+        entry << xml
+        entry.close
       end
 
       def message(error, subject)

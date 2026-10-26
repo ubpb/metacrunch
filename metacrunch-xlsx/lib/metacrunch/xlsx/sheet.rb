@@ -43,24 +43,29 @@ module Metacrunch
         xml << cols(widths) if widths&.any?
         xml << "<sheetData>"
         xml << first if first
-        @sink << xml
-        @started = true
-        count(header) if header
-        @header = !header.nil?
+        Xlsx.uninterrupted do
+          @sink << xml
+          @started = true
+          count(header) if header
+          @header = !header.nil?
+        end
       end
 
       # Writes a row of values. Raises Cells::Unwritable (with the column's
       # index for a value) for a row that cannot be written, and then writes
       # nothing.
       def row(values)
-        @sink << row_xml(values, @rows + 1, nil)
-        count(values)
+        xml = row_xml(values, @rows + 1, nil)
+        Xlsx.uninterrupted do
+          @sink << xml
+          count(values)
+        end
       end
 
       # Ends the worksheet: the autofilter covers the header and all rows.
       def finish
         filter = %(<autoFilter ref="#{range}"/>) if @header
-        @sink << "</sheetData>#{filter}</worksheet>"
+        Xlsx.uninterrupted { @sink << "</sheetData>#{filter}</worksheet>" }
       end
 
       # The range of the header and all rows ("A1:C10"); nil without a

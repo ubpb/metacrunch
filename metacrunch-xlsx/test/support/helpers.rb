@@ -45,4 +45,19 @@ module Helpers
     sheet.const_set(name, original)
   end
 
+  # Runs the block in a thread, raises Interrupt in it while gate holds it,
+  # then lets it go on; the thread must end with that Interrupt.
+  def interrupted(gate, &)
+    thread = Thread.new(&)
+    thread.report_on_exception = false
+    unless gate.held?
+      thread.join(1) # raises what the thread ended with, if it ended
+
+      flunk("the thread did not reach the gate")
+    end
+    thread.raise(Interrupt)
+    gate.open
+    assert_raises(Interrupt) { thread.join }
+  end
+
 end

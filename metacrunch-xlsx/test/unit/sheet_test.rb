@@ -8,6 +8,24 @@ class SheetTest < Minitest::Test
 
   Sheet = Metacrunch::Xlsx::Sheet
 
+  # A sink that holds the writing thread at a gate.
+  class GatedSink
+
+    attr_reader :xml
+
+    def initialize(gate)
+      @gate = gate
+      @xml = +""
+    end
+
+    def <<(text)
+      @gate.hold
+      @xml << text
+      self
+    end
+
+  end
+
   def setup
     @xml = +""
     @sheet = Sheet.new(@xml)
@@ -99,6 +117,17 @@ class SheetTest < Minitest::Test
       assert_equal "has 3 values; Excel has 2 columns", error.message
       assert_nil error.index
     end
+  end
+
+  # An interrupt (Ctrl-C) inside zip_kit between deflating and the CRC would
+  # break the ZIP entry, so it waits until the row is written.
+  def test_an_interrupt_waits_until_the_row_is_written
+    gate = Gate.new
+    sink = GatedSink.new(gate)
+    sheet = Sheet.new(sink)
+    interrupted(gate) { sheet.row(["a"]) }
+
+    assert_equal ['<row r="1"><c r="A1" t="inlineStr"><is><t>a</t></is></c></row>', 1], [sink.xml, sheet.rows]
   end
 
 end

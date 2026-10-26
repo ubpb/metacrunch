@@ -166,6 +166,49 @@ class WriterTest < Minitest::Test
     refute_path_exists File.join(@dir, "never.xlsx")
   end
 
+  # An IO whose next write holds the writing thread at a gate.
+  class GatedIO
+
+    attr_reader :bytes
+    attr_writer :gate
+
+    def initialize
+      @bytes = "".b
+    end
+
+    def write(data)
+      gate = @gate
+      @gate = nil
+      gate&.hold
+      @bytes << data.b
+      data.bytesize
+    end
+
+  end
+
+  # See EntryTest: a signal that wakes the thread inside zlib.
+  def test_wakeups_inside_zlib_do_not_break_the_file
+    waker = Thread.new { loop { Thread.main.wakeup && Thread.pass } }
+    path = xlsx(Array.new(20_000) { {"n" => it, "t" => "row #{it}"} })
+    waker.kill.join
+    entry = Zip::File.open(path) { it.find_entry("xl/worksheets/sheet1.xml") }
+
+    assert_equal Zlib.crc32(sheet_xml(path)), entry.crc
+  end
+
+  def test_an_interrupt_in_close_still_finishes_the_file
+    io = GatedIO.new
+    writer = Writer.new(io)
+    writer.open(nil)
+    writer.write({"a" => 1}, ctx)
+    io.gate = gate = Gate.new
+    interrupted(gate) { writer.close }
+    path = File.join(@dir, "interrupted.xlsx")
+    File.binwrite(path, io.bytes)
+
+    assert_equal [["a"], [1]], rows(path)
+  end
+
   # Errors
 
   def test_value_errors_name_the_position_and_the_column
