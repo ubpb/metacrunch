@@ -1,0 +1,3 @@
+# .ruby-version stays the single source of the Ruby version; mise reads it.
+[settings]
+idiomatic_version_file_enable_tools = ["ruby"]
