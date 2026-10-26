@@ -13,6 +13,7 @@ require_relative "elasticsearch/reader"
 require_relative "elasticsearch/search"
 require_relative "elasticsearch/bulk"
 require_relative "elasticsearch/writer"
+require_relative "elasticsearch/indices"
 
 module Metacrunch
   # Elasticsearch for metacrunch: a source (Reader), a bulk sink (Writer),
