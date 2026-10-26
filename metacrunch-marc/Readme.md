@@ -204,8 +204,9 @@ a record over 99,999 bytes raises `SerializeError`; with `oversize: :allow` the 
 all nines, which tolerant readers (this one, MARC4J's permissive reader, yaz, Perl's MARC::Record) read and strict
 readers do not.
 
-Not supported: MARC-8 beyond ASCII, fields continued over several directory entries, indicator counts other than 2 and
-code lengths other than 1.
+Not supported: MARC-8 beyond ASCII, fields continued over several directory entries, indicator counts other than 2,
+code lengths other than 1, and leaders that start with spaces (a blank record length): the spaces are taken for those
+between records, and a file whose first record has no record length is not recognized as ISO 2709.
 
 ### MARC-in-JSON
 
