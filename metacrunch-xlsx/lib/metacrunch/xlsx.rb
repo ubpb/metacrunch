@@ -5,6 +5,8 @@ require "zip_kit"
 require_relative "xlsx/version"
 require_relative "xlsx/columns"
 require_relative "xlsx/cells"
+require_relative "xlsx/sheet"
+require_relative "xlsx/package"
 
 module Metacrunch
   # XLSX for metacrunch: a sink (Writer) that streams one worksheet.
