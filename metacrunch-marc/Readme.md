@@ -174,9 +174,10 @@ Mac); the time grows with the size of the records, by about 9 µs per KB. The pa
 - elements with a namespace prefix (`<marc:record>`), the `type` attribute, and a leader anywhere in the record.
 
 A missing or empty indicator becomes `" "`. `ParseError` reports input that is not well-formed (with `line` and
-`column`), input that ends inside a record, names and attributes that are not valid UTF-8 (MARCXML is UTF-8), and
-values that break the rule above, also as references such as `&#31;`. Several records without a `<collection>` around
-them are not well-formed XML for `each`; `each_raw` and the Reader read them. Ox, the XML parser underneath, does not
+`column`), input that ends inside a record, NUL bytes (with their offset; Ox would take one for the end of the input),
+names and attributes that are not valid UTF-8 (MARCXML is UTF-8), and values that break the rule above, also as
+references such as `&#31;`. Several records without a `<collection>` around them, and NUL bytes outside records, are
+not well-formed XML for `each`; `each_raw` and the Reader read them. Ox, the XML parser underneath, does not
 validate and accepts some input that is not well-formed; a reference `&#0;`, which XML does not allow, cuts the value
 off there.
 

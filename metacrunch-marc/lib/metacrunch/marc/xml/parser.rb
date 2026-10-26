@@ -14,11 +14,14 @@ module Metacrunch
 
         OPTIONS = {skip: :skip_none, convert_special: true, smart: false}.freeze
 
-        # Parses input (an object with readpartial or read) and passes each
-        # Record to block. normalize: nil or :nfc.
+        # Parses input (a StringSource, or an object with readpartial or read)
+        # and passes each Record to block. normalize: nil or :nfc.
         def self.run(input, normalize:, &block)
+          source = UntilNul.new(input)
           parser = new(normalize, block)
-          Ox.sax_parse(parser, input, **OPTIONS)
+          parse(parser, source)
+          raise ParseError, "a NUL byte at offset #{source.nul}, which XML does not allow" if source.nul
+
           parser.finish
         rescue EncodingError => e
           # Ox makes Symbols of names; invalid bytes in a name raise here.
@@ -27,6 +30,16 @@ module Metacrunch
 
           raise ParseError, "invalid UTF-8 in markup (#{e.message})"
         end
+
+        # Runs Ox. What Ox reports once the input ends at a NUL byte, such as
+        # an element not closed, gives way to the NUL; errors of the block
+        # are passed on as they are.
+        def self.parse(parser, source)
+          Ox.sax_parse(parser, source, **OPTIONS)
+        rescue ParseError
+          raise if parser.in_block? || source.nul.nil?
+        end
+        private_class_method :parse
 
         def initialize(normalize, block)
           super()

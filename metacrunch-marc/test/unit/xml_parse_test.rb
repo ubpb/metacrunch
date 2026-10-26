@@ -92,6 +92,12 @@ class XmlParseTest < Minitest::Test
     inputs&.each(&:close)
   end
 
+  def test_reads_inputs_with_only_read
+    xml = fixture("collection.xml")
+
+    assert_equal Marc::Xml.each(xml).to_a, Marc::Xml.each(Inputs::ReadOnly.new(xml)).to_a
+  end
+
   # Ox reads a StringIO's string directly, which is superlinear in its size.
   def test_a_stringio_reaches_ox_through_readpartial
     received = nil
@@ -234,6 +240,47 @@ class XmlParseTest < Minitest::Test
     error = assert_raises(Marc::ParseError) { Marc::Xml.parse(xml) }
 
     assert_equal %(attribute tag: "\\u0001" cannot be represented in XML 1.0), error.message
+  end
+
+  # XML does not allow NUL, and Ox takes it for the end of the input: before
+  # the root element it yielded nothing, inside it gave errors that did not
+  # name the NUL, after it nothing at all.
+  def test_nul_bytes_raise_with_their_offset
+    xml = fixture("collection.xml")
+    {
+      "\x00#{xml}" => 0,
+      xml.sub("?>\n", "?>\n\x00") => xml.byteindex("?>\n") + 3,
+      xml.sub("book-1", "bo\x00ok-1") => xml.byteindex("book-1") + 2,
+      "#{xml}\x00\x00" => xml.bytesize
+    }.each do |input, offset|
+      [input, StringIO.new(input), Inputs::Trickle.new(input), Inputs::Chunked.new(input, 7)].each do |source|
+        error = assert_raises(Marc::ParseError) { Marc::Xml.each(source).to_a }
+
+        assert_equal "a NUL byte at offset #{offset}, which XML does not allow", error.message
+      end
+    end
+  end
+
+  def test_parse_names_a_nul_byte
+    error = assert_raises(Marc::ParseError) { Marc::Xml.parse("\x00<record/>") }
+
+    assert_equal "a NUL byte at offset 0, which XML does not allow", error.message
+  end
+
+  def test_yields_the_records_before_a_nul_byte
+    xml = fixture("collection.xml")
+    records = []
+
+    assert_raises(Marc::ParseError) { Marc::Xml.each(xml.sub("</record>", "</record>\x00")) { records << it } }
+    assert_equal ["book-1"], ids(records)
+  end
+
+  def test_parse_errors_of_the_block_pass_a_nul_byte
+    error = assert_raises(Marc::ParseError) do
+      Marc::Xml.each("<record/>\x00") { raise Marc::ParseError, "from the block" }
+    end
+
+    assert_equal "from the block", error.message
   end
 
   def test_encoding_errors_of_the_block_are_not_parse_errors

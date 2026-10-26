@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "stringio"
-
 module Metacrunch
   module Marc
     # MARCXML, MARC 21 in XML: parsed with Ox (Xml::Parser), cut into record
@@ -56,15 +54,9 @@ module Metacrunch
 
         private
 
-        # Ox is superlinear on a String and a StringIO; both reach it through
-        # readpartial.
-        def source(input)
-          case input
-          when String then StringSource.new(input)
-          when StringIO then IoSource.new(input)
-          else input
-          end
-        end
+        # Ox is superlinear on a String; it reaches Ox through readpartial, as
+        # all input does (see UntilNul).
+        def source(input) = input.is_a?(String) ? StringSource.new(input) : input
 
       end
 

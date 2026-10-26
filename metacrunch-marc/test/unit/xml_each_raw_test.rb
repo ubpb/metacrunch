@@ -37,6 +37,15 @@ class XmlEachRawTest < Minitest::Test
     assert_equal ["<record>1</record>", "<record>2</record>"], Marc::Xml.each_raw(xml).to_a
   end
 
+  # each raises at a NUL byte; each_raw, and so the Reader, skip it between
+  # records.
+  def test_skips_nul_bytes_between_records
+    xml = "\x00<collection>\x00<record>1</record>\x00<record>2</record></collection>\x00"
+
+    assert_equal ["<record>1</record>", "<record>2</record>"], Marc::Xml.each_raw(xml).to_a
+    assert_equal ["<record>1</record>", "<record>2</record>"], Marc::Xml.each_raw(StringIO.new(xml)).to_a
+  end
+
   def test_input_without_records
     assert_empty Marc::Xml.each_raw("").to_a
     assert_empty Marc::Xml.each_raw("<collection/>").to_a
