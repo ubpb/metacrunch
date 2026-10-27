@@ -92,6 +92,61 @@ jobs:
           working-directory: metacrunch-elasticsearch
       - run: bundle exec rake test
 
+  # metacrunch-db against PostgreSQL, MySQL and MariaDB: service containers exist on Linux only. The Gemfile has pg for
+  # PostgreSQL, gemfiles/mysql.gemfile mysql2 and trilogy for MySQL and MariaDB; both run SQLite too.
+  db:
+    name: Databases (${{ matrix.gemfile }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gemfile: [Gemfile, gemfiles/mysql.gemfile]
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: metacrunch
+          POSTGRES_DB: metacrunch
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 5s --health-retries 30
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: metacrunch
+          MYSQL_DATABASE: metacrunch
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pmetacrunch" --health-interval 2s --health-timeout 5s
+          --health-retries 60
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: metacrunch
+          MARIADB_DATABASE: metacrunch
+        ports: ["3307:3306"]
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 2s --health-timeout 5s
+          --health-retries 60
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/metacrunch-db/${{ matrix.gemfile }}
+      TEST_POSTGRES_URL: postgres://postgres:metacrunch@127.0.0.1:5432/metacrunch
+      TEST_MYSQL_URL: mysql://root:metacrunch@127.0.0.1:3306/metacrunch
+      TEST_MARIADB_URL: mysql://root:metacrunch@127.0.0.1:3307/metacrunch
+    defaults:
+      run:
+        working-directory: metacrunch-db
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: sudo apt-get update && sudo apt-get install -y libmysqlclient-dev
+        if: matrix.gemfile == 'gemfiles/mysql.gemfile'
+      - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: metacrunch-db
+      - run: bundle exec rake test
+
   tooling:
     name: Tooling
     runs-on: ubuntu-latest

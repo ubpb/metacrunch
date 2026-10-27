@@ -7,11 +7,10 @@ gemspec
 # The core gem lives next to this one in the monorepo.
 gem "metacrunch", path: "../metacrunch"
 
-# The drivers of the tests: SQLite for every test job, pg and trilogy against the servers (see test/compose.yml).
-# gemfiles/mysql2.gemfile adds the tests with mysql2, which needs the MySQL client library.
+# The drivers of the tests: SQLite for every test, pg against PostgreSQL (see test/compose.yml); both come
+# precompiled. gemfiles/mysql.gemfile has the drivers for MySQL and MariaDB, which are compiled.
 gem "pg", ">= 1.5"
 gem "sqlite3", ">= 2.0"
-gem "trilogy", ">= 2.9"
 
 group :development do
   gem "minitest", ">= 5.25"

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# The bundle with mysql2, which needs the MySQL client library (libmysqlclient-dev, or MariaDB Connector/C). It has
-# SQLite for the unit tests and no other driver, so a run with it adds only the tests against MySQL and MariaDB with
-# mysql2:
-#   BUNDLE_GEMFILE=gemfiles/mysql2.gemfile bundle exec rake test
+# The bundle with the drivers for MySQL and MariaDB: mysql2, which needs the MySQL client library (libmysqlclient-dev,
+# or MariaDB Connector/C), and trilogy, which needs OpenSSL. With SQLite for the unit tests and no other driver, a run
+# with it adds only the tests against MySQL and MariaDB (see test/compose.yml):
+#   BUNDLE_GEMFILE=gemfiles/mysql.gemfile bundle exec rake test
 source "https://rubygems.org"
 
 gemspec path: ".."
@@ -13,6 +13,7 @@ gem "metacrunch", path: "../../metacrunch"
 
 gem "mysql2", ">= 0.5.6"
 gem "sqlite3", ">= 2.0"
+gem "trilogy", ">= 2.9"
 
 group :development do
   gem "minitest", ">= 5.25"

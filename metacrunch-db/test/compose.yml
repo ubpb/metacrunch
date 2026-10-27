@@ -1,0 +1,39 @@
+# The servers of the integration tests (see the Readme):
+#
+#   docker compose -f test/compose.yml up -d --wait
+#   export TEST_POSTGRES_URL=postgres://postgres:metacrunch@127.0.0.1:5433/metacrunch
+#   export TEST_MYSQL_URL=mysql://root:metacrunch@127.0.0.1:3307/metacrunch
+#   export TEST_MARIADB_URL=mysql://root:metacrunch@127.0.0.1:3308/metacrunch
+#   bundle exec rake
+#   docker compose -f test/compose.yml down
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: metacrunch
+      POSTGRES_DB: metacrunch
+    ports: ["5433:5432"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 30
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: metacrunch
+      MYSQL_DATABASE: metacrunch
+    ports: ["3307:3306"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pmetacrunch"]
+      interval: 2s
+      retries: 60
+  mariadb:
+    image: mariadb:11.8
+    environment:
+      MARIADB_ROOT_PASSWORD: metacrunch
+      MARIADB_DATABASE: metacrunch
+    ports: ["3308:3306"]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      retries: 60
