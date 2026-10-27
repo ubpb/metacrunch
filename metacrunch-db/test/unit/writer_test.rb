@@ -302,6 +302,15 @@ class WriterTest < Minitest::Test
     assert_equal "no row with isbn = \"x\", year = 1 in books", error.failed[0].message
   end
 
+  def test_update_without_a_row_shows_decimals_and_dates_plainly
+    error = assert_raises(Metacrunch::SinkFailures) do
+      writer(action: :update, key: ["price", "published"])
+        .write_batch([{"price" => BigDecimal("125"), "published" => Date.new(2026, 1, 2), "title" => "A"}])
+    end
+
+    assert_equal "no row with price = 125.0, published = 2026-01-02 in books", error.failed[0].message
+  end
+
   def test_an_upsert_retried_alone_keeps_the_order_of_its_key
     @books[:books].insert(isbn: "9", title: "Taken")
     error = assert_raises(Metacrunch::SinkFailures) do

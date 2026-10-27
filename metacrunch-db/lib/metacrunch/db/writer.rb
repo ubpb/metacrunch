@@ -161,8 +161,18 @@ module Metacrunch
 
       def unmatched(items, failed)
         items.each do |item|
-          where = @key.map { "#{it} = #{item.row[it].inspect}" }.join(", ")
+          where = @key.map { "#{it} = #{shown(item.row[it])}" }.join(", ")
           failed[item.position] = Error.new("no row with #{where} in #{@table}")
+        end
+      end
+
+      # A key value for messages: Strings quoted, decimals and dates as
+      # written.
+      def shown(value)
+        case value
+        when BigDecimal then value.to_s("F")
+        when Date, Time then value.iso8601
+        else value.inspect
         end
       end
 
