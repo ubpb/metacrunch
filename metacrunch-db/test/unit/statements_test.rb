@@ -49,6 +49,11 @@ class StatementsTest < Minitest::Test
     assert_equal (3 + 3) + (2 + 3) + 24 + 24, Statements.size({a: "abc", b: "ä", c: 1, d: nil})
   end
 
+  # Blobs go into SQL as hex, two characters per byte.
+  def test_size_counts_a_blob_twice
+    assert_equal (2 * 3) + 3, Statements.size({a: Sequel.blob("abc")})
+  end
+
   def test_pieces_stay_under_max_bytes
     items = (0...6).map { item(it, :insert, title: "x" * 97) }
     pieces = Statements.pieces(items, 250)

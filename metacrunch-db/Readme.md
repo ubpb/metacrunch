@@ -191,7 +191,7 @@ sink Metacrunch::Db::Writer.new(db, table: "books", key: "isbn",
 | `table` | | the table, as for the reader |
 | `action` | `:insert` | `:insert`, `:upsert`, `:update`, `:delete`, or a callable that returns one per record |
 | `key` | | the column, or an Array of columns, that identifies a row; needed for every action but `:insert` |
-| `max_bytes` | 1 MB | the upper limit of the values of one statement |
+| `max_bytes` | 1 MB | about the most bytes of values in one statement (a blob counts twice, as hex; quotes in a text once) |
 
 | Action | SQL | |
 |---|---|---|
@@ -214,8 +214,9 @@ and the database can upsert. The table must exist: create it with a migration, o
 
 Use the writer with `batch:`: without it, every record is a transaction of its own. A batch is one transaction, and
 its records go into as few statements as they can: a multi-row `INSERT` for inserts and upserts, a `DELETE ... IN`
-for deletes, one `UPDATE` per row, each of at most `max_bytes`, so a batch of large texts stays under MySQL's
-`max_allowed_packet` (16 MB on MariaDB). The order of the actions holds. With a `key:`, inserts and upserts share
+for deletes, one `UPDATE` per row, each of about `max_bytes` at most, so a batch of large texts stays under MySQL's
+`max_allowed_packet` (16 MB on MariaDB); a single record larger than that is a failed record, since the server would
+close the connection. The order of the actions holds. With a `key:`, inserts and upserts share
 statements by their columns, so records that leave out absent fields cost nothing extra; the records of one key keep
 their order, and the last one wins. Without a key only neighbouring records with the same columns share a statement,
 so generated ids follow the order of the records; the writer logs a hint when that leaves few records per statement.

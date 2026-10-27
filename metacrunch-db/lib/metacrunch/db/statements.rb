@@ -55,7 +55,16 @@ module Metacrunch
         end
       end
 
-      def size(row) = row.sum { |_, value| value.is_a?(String) ? value.bytesize + QUOTES : OTHER }
+      # About what the values of row take in SQL: a String its bytes, a blob
+      # twice its bytes (as hex), other values OTHER. Quotes and backslashes
+      # in a String count once, so a piece may take up to twice max_bytes.
+      def size(row)
+        row.sum do |_, value|
+          next OTHER unless value.is_a?(String)
+
+          (value.is_a?(Sequel::SQL::Blob) ? value.bytesize * 2 : value.bytesize) + QUOTES
+        end
+      end
 
       # Items in pieces whose rows add up to at most max_bytes; an item
       # larger than that goes alone.

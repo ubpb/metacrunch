@@ -272,6 +272,20 @@ class WriterTest < Minitest::Test
     assert_equal [0], error.failed.keys
   end
 
+  # MySQL closes the connection on a statement larger than max_allowed_packet, which would stop the run.
+  def test_a_record_larger_than_the_packet_of_mysql_is_a_failure
+    sink = mocked("mysql", fetch: ->(sql) { sql.include?("max_allowed_packet") ? {v: 10_000} : {v: "8.4.0"} })
+    sink.open(context)
+    error = assert_raises(Metacrunch::SinkFailures) do
+      sink.write_batch([{"isbn" => "1", "title" => "x" * 9000}, {"isbn" => "2", "title" => "x" * 5500},
+                        {"isbn" => "3", "title" => "x"}])
+    end
+
+    assert_equal [0], error.failed.keys
+    assert_match(/\Arecord has \d+ bytes of SQL, more than MySQL takes in one statement \(max_allowed_packet 10000\)/,
+                 error.failed[0].message)
+  end
+
   def test_a_bad_action_of_a_callable_is_a_failure
     error = assert_raises(Metacrunch::SinkFailures) do
       writer(action: ->(_) { :index }, key: "isbn").write_batch([{"isbn" => "1"}])
@@ -401,8 +415,8 @@ class WriterTest < Minitest::Test
   def writer(connection: sqlite_connection, table: "books", **) = Metacrunch::Db::Writer.new(connection, table:, **)
 
   # A writer to a mock database of host with the columns isbn and title; the block may change the database.
-  def mocked(host, **)
-    database = Sequel.mock(host:)
+  def mocked(host, fetch: nil, **)
+    database = Sequel.mock(host:, fetch:)
     database.define_singleton_method(:schema) { |*| [[:isbn, {primary_key: true}], [:title, {}]] }
     yield database if block_given?
     Metacrunch::Db::Writer.new(Databases::FakeConnection.new(database), table: "books", **)

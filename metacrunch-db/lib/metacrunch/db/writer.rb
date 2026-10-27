@@ -20,6 +20,8 @@ module Metacrunch
       # A batch of at least SPARSE² records whose statements hold fewer than
       # SPARSE records on average gets the hint of hint_columns.
       SPARSE = 4
+      # What a statement takes besides the values of its records.
+      PACKET_SPARE = 4096
 
       # table: a name (Table). action: one of ACTIONS or a callable(record)
       # returning one. key: the column or columns (an Array) that identify a
@@ -34,6 +36,7 @@ module Metacrunch
         @max_bytes = positive(max_bytes, :max_bytes)
         @database = nil
         @schema = nil
+        @packet = nil
         @columns = nil
         @upsert_checked = false
         @columns_hinted = false
@@ -82,6 +85,7 @@ module Metacrunch
         records.each_with_index.filter_map do |record, position|
           action = action_for(record)
           row = Values.row(record, table: @table, columns: @columns, key: @key, action:)
+          check_packet(row)
           Statements::Item.new(position:, action:, row:)
         rescue Error => e
           failed[position] = e
@@ -99,6 +103,20 @@ module Metacrunch
 
       # sqlite3 is loaded only for SQLite.
       def locked?(error) = defined?(::SQLite3::BusyException) && error.wrapped_exception.is_a?(::SQLite3::BusyException)
+
+      # MySQL and MariaDB close the connection on a statement larger than
+      # max_allowed_packet (16 MB on MariaDB), which would stop the run: such
+      # a record fails alone. Only a record that may come near the limit has
+      # its SQL counted.
+      def check_packet(row)
+        return unless @packet && Statements.size(row) > @packet / 2
+
+        bytes = row.sum { |column, value| column.to_s.bytesize + database.literal(value).bytesize + 4 }
+        return if bytes < @packet - PACKET_SPARE
+
+        raise Error, "record has #{bytes} bytes of SQL, more than MySQL takes in one statement " \
+                     "(max_allowed_packet #{@packet})"
+      end
 
       # Without a key, only neighbours with the same columns share a
       # statement (Statements.runs), which records that leave out absent
@@ -173,6 +191,7 @@ module Metacrunch
         raise OutputError, "#{label}: no such table" unless table?(database)
 
         @schema = database.supports_schema_parsing? ? database.schema(@table.identifier) : nil
+        @packet = database.get(Sequel.lit("@@max_allowed_packet")).to_i if database.database_type == :mysql
         check_columns if @schema
         check_upsert(database) if @action == :upsert
       rescue Sequel::Error => e

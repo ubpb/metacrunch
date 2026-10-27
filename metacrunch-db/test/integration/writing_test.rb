@@ -57,6 +57,21 @@ module WritingTests
     assert_equal 20, database[name.to_sym].count
   end
 
+  # MySQL and MariaDB close the connection on a larger statement: the record fails alone, the others are written.
+  def test_a_record_larger_than_a_packet_is_a_failure
+    skip "only MySQL and MariaDB have max_allowed_packet" unless type == :mysql
+
+    name = table("texts")
+    database.create_table(name.to_sym) { Integer :id, primary_key: true; column :body, "longtext" }
+    packet = database.get(Sequel.lit("@@max_allowed_packet")).to_i
+    error = assert_raises(Metacrunch::SinkFailures) do
+      write([{"id" => 1, "body" => "x"}, {"id" => 2, "body" => "x" * packet}, {"id" => 3, "body" => "y"}], table: name)
+    end
+
+    assert_equal [[1], [Metacrunch::Db::Error]], [error.failed.keys, error.failed.values.map(&:class)]
+    assert_equal [1, 3], database[name.to_sym].order(:id).select_map(:id)
+  end
+
   def test_max_bytes_splits_a_batch
     name = create_books
     write((1..30).map { {"isbn" => it.to_s, "title" => "t" * 90} }, table: name, max_bytes: 1000)
