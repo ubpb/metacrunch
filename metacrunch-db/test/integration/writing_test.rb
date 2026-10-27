@@ -74,6 +74,17 @@ module WritingTests
     assert_equal "db #{name}: key year is neither the primary key nor a unique index of #{name}", error.message
   end
 
+  # MySQL and MariaDB would insert a second row for the key: ON DUPLICATE KEY UPDATE takes any unique index.
+  def test_a_callable_upsert_by_a_key_that_is_not_unique_stops_the_run
+    name = create_books([{isbn: "1", title: "Old", year: 2000}])
+    error = assert_raises(Metacrunch::OutputError) do
+      write([{"isbn" => "2", "title" => "New", "year" => 2000}], table: name, action: ->(_) { :upsert }, key: "year")
+    end
+
+    assert_equal "db #{name}: key year is neither the primary key nor a unique index of #{name}", error.message
+    assert_equal [["1", "Old", 2000]], stored(name)
+  end
+
   def test_upserts_by_a_unique_index
     name = create_books([{isbn: "1", title: "A", year: 1}])
     database.add_index(name.to_sym, :title, unique: true)

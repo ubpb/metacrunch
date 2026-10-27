@@ -28,7 +28,9 @@ module Metacrunch
         check_key_needed
         @max_bytes = positive(max_bytes, :max_bytes)
         @database = nil
+        @schema = nil
         @columns = nil
+        @upsert_checked = false
         @logger = nil
         @hinted = false
       end
@@ -100,7 +102,7 @@ module Metacrunch
       end
 
       def write_upserts(dataset, items, failed)
-        raise OutputError, "#{label}: #{NO_UPSERT}; this is #{database.database_type}" unless upsert?(dataset)
+        check_upsert(database)
 
         by_key = items.group_by { it.row.values_at(*@key) }
         Statements.pieces(Statements.dedupe(items, @key), @max_bytes).each do |piece|
@@ -139,7 +141,7 @@ module Metacrunch
 
       def refused?(error) = FATAL.none? { error.is_a?(it) }
 
-      def upsert?(dataset) = !Statements.upsert_dataset(dataset, @key, @key).nil?
+      def upsert?(database) = !Statements.upsert_dataset(database[@table.identifier], @key, @key).nil?
 
       # The database, connected and the table checked; a failed check
       # disconnects it again.
@@ -162,26 +164,37 @@ module Metacrunch
 
       def check_table(database)
         raise OutputError, "#{label}: no such table" unless database.table_exists?(@table.identifier)
-        if @action == :upsert && !upsert?(database[@table.identifier])
-          raise OutputError, "#{label}: #{NO_UPSERT}; this is #{database.database_type}"
-        end
-        return unless database.supports_schema_parsing?
 
-        schema = database.schema(@table.identifier)
-        @columns = schema.to_set(&:first)
-        missing = @key.to_a.reject { @columns.include?(it) }
-        raise OutputError, "#{label}: key #{missing.join(", ")} is no column of #{@table}" unless missing.empty?
-
-        check_unique(database, schema) if @action == :upsert
+        @schema = database.supports_schema_parsing? ? database.schema(@table.identifier) : nil
+        check_columns if @schema
+        check_upsert(database) if @action == :upsert
       rescue Sequel::Error => e
         raise OutputError, "#{label}: #{e.message}"
       end
 
+      def check_columns
+        @columns = @schema.to_set(&:first)
+        missing = @key.to_a.reject { @columns.include?(it) }
+        raise OutputError, "#{label}: key #{missing.join(", ")} is no column of #{@table}" unless missing.empty?
+      end
+
+      # The database can upsert, by a unique key: checked when the writer
+      # opens for action: :upsert, and at the first upsert of a callable
+      # action. ON DUPLICATE KEY UPDATE would insert a second row for a key
+      # that is not unique.
+      def check_upsert(database)
+        return if @upsert_checked
+        raise OutputError, "#{label}: #{NO_UPSERT}; this is #{database.database_type}" unless upsert?(database)
+
+        check_unique(database) if @schema
+        @upsert_checked = true
+      end
+
       # ON CONFLICT needs a unique index of exactly the key; ON DUPLICATE KEY
       # UPDATE would take any.
-      def check_unique(database, schema)
+      def check_unique(database)
         key = @key.sort
-        return if schema.select { |_, info| info[:primary_key] }.map(&:first).sort == key
+        return if @schema.select { |_, info| info[:primary_key] }.map(&:first).sort == key
         return unless database.supports_index_parsing?
         return if database.indexes(@table.identifier).each_value.any? { it[:unique] && it[:columns].sort == key }
 

@@ -85,6 +85,14 @@ class WriterTest < Minitest::Test
     assert_kind_of Sequel::Database, sink.open(context)
   end
 
+  def test_open_takes_upsert_when_the_adapter_cannot_read_the_schema
+    sink = mocked("postgres", action: :upsert, key: "isbn") do |database|
+      database.define_singleton_method(:supports_schema_parsing?) { false }
+    end
+
+    assert_kind_of Sequel::Database, sink.open(context)
+  end
+
   def test_open_turns_sequel_errors_into_output_errors
     sink = mocked("postgres") { |database| database.define_singleton_method(:schema) { |*| raise Sequel::Error, "x" } }
     error = assert_raises(Metacrunch::OutputError) { sink.open(context) }
@@ -240,6 +248,26 @@ class WriterTest < Minitest::Test
 
     assert_equal [1], error.failed.keys
     assert_equal [["1", "A"], ["9", "Taken"]], stored(:isbn, :title)
+  end
+
+  # ON DUPLICATE KEY UPDATE of MySQL would insert a duplicate for a key that is not unique; ON CONFLICT would refuse
+  # every record.
+  def test_a_callable_upsert_by_a_key_that_is_not_unique_stops_the_run
+    @books[:books].insert(isbn: "1", title: "Old", year: 2000)
+    sink = writer(action: ->(_) { :upsert }, key: "year")
+    sink.open(context)
+    error = assert_raises(Metacrunch::OutputError) { sink.write_batch([{"isbn" => "2", "title" => "New", "year" => 2000}]) }
+
+    assert_equal "db books: key year is neither the primary key nor a unique index of books", error.message
+    assert_equal [["1"]], stored(:isbn)
+  end
+
+  def test_a_callable_upsert_by_a_unique_key_writes
+    sink = writer(action: ->(_) { :upsert }, key: "isbn")
+    sink.open(context)
+    2.times { |i| sink.write_batch([{"isbn" => i.to_s, "title" => "T#{i}"}]) }
+
+    assert_equal [["0"], ["1"]], stored(:isbn)
   end
 
   def test_a_callable_upsert_without_support_stops_the_run
