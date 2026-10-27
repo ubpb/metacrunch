@@ -84,7 +84,7 @@ module Integration
     def stored(name = table("books")) = @database[name.to_sym].order(:isbn).select_map([:isbn, :title, :year])
 
     # Writes records with a writer of options, opened and closed as in a job.
-    def write(records, **)
+    def write(records, connection: self.connection, **)
       writer = Metacrunch::Db::Writer.new(connection, **)
       writer.open(context)
       writer.write_batch(records)

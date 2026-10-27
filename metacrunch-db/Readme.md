@@ -236,8 +236,10 @@ $ metacrunch run --params params.yml books:load     # in examples/
 20:17:13 INFO  ok_with_failures: read 6, written 5, failed 1 (Sequel::NotNullConstraintViolation: 1) in 0.01s (452 records/s)
 ```
 
-The run then ends with `ok_with_failures` (exit status 3), and `stats.written` counts the records written. A broken
-connection, a deadlock or a lock timeout stops the run, and the batch's transaction is rolled back. A batch that has
+The run then ends with `ok_with_failures` (exit status 3), and `stats.written` counts the records written. Errors
+that are not about a record would refuse every one of them and stop the run instead, with the batch's transaction
+rolled back: a broken connection, a deadlock, a lock timeout, no right to write, a read-only or full database. A
+batch that has
 failed records is committed before the failure policy acts: a load that must be all or nothing writes into a table
 of its own and swaps it in a command afterwards.
 

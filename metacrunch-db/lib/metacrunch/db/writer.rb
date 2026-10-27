@@ -4,16 +4,13 @@ module Metacrunch
   module Db
     # A sink: writes records into a table, one transaction per batch. The
     # action (insert, upsert, update, delete) is fixed or chosen per record.
-    # Rows the database refuses (constraints, values a column does not take)
-    # and records the writer cannot write are reported in
-    # Metacrunch::SinkFailures, so the job's failure policy decides; errors
-    # of the connection stop the run with the batch rolled back. Use it with
+    # Rows the database refuses (constraints, values a column does not take,
+    # see Refusals) and records the writer cannot write are reported in
+    # Metacrunch::SinkFailures, so the job's failure policy decides; other
+    # errors stop the run with the batch rolled back. Use it with
     # batch: (sink Writer.new(...), batch: 1000).
     class Writer
 
-      # Errors that do not belong to a record: they stop the run.
-      FATAL = [Sequel::DatabaseConnectionError, Sequel::DatabaseDisconnectError, Sequel::SerializationFailure,
-               Sequel::DatabaseLockTimeout].freeze
       NO_UPSERT = "upsert needs PostgreSQL, SQLite, MySQL or MariaDB"
 
       # table: a name (Table). action: one of ACTIONS or a callable(record)
@@ -117,12 +114,12 @@ module Metacrunch
       def attempt(dataset, action, items, alone, failed)
         unmatched(execute(dataset, action, items), failed)
       rescue Sequel::DatabaseError => e
-        raise unless refused?(e)
+        raise unless Refusals.record?(e)
 
         alone.each do |item|
           unmatched(execute(dataset, action, [item]), failed)
         rescue Sequel::DatabaseError => refusal
-          raise unless refused?(refusal)
+          raise unless Refusals.record?(refusal)
 
           failed[item.position] = refusal
         end
@@ -138,8 +135,6 @@ module Metacrunch
           failed[item.position] = Error.new("no row with #{where} in #{@table}")
         end
       end
-
-      def refused?(error) = FATAL.none? { error.is_a?(it) }
 
       def upsert?(database) = !Statements.upsert_dataset(database[@table.identifier], @key, @key).nil?
 

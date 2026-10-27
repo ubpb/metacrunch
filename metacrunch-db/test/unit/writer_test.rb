@@ -300,6 +300,17 @@ class WriterTest < Minitest::Test
     assert_equal "db books: deadlock", error.message
   end
 
+  # A database that refuses every statement (no right to write, read-only, full) is no refusal of the records.
+  def test_an_error_that_is_not_about_a_record_stops_the_run
+    connection = sqlite_connection(readonly: true)
+    error = assert_raises(Metacrunch::OutputError) do
+      writer(connection:).write_batch([{"isbn" => "1", "title" => "A"}, {"isbn" => "2", "title" => "B"}])
+    end
+
+    assert_match(/\Adb books: .*readonly database/, error.message)
+    assert_empty stored(:isbn)
+  end
+
   def test_a_sequel_error_that_is_no_database_error_stops_the_run
     fail_on_import(1, Sequel::Error, "invalid")
     error = assert_raises(Metacrunch::OutputError) do
