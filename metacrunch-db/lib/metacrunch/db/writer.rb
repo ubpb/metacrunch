@@ -12,6 +12,9 @@ module Metacrunch
     class Writer
 
       NO_UPSERT = "upsert needs PostgreSQL, SQLite, MySQL or MariaDB"
+      # A batch of at least SPARSE² records whose statements hold fewer than
+      # SPARSE records on average gets the hint of hint_columns.
+      SPARSE = 4
 
       # table: a name (Table). action: one of ACTIONS or a callable(record)
       # returning one. key: the column or columns (an Array) that identify a
@@ -28,6 +31,7 @@ module Metacrunch
         @schema = nil
         @columns = nil
         @upsert_checked = false
+        @columns_hinted = false
         @logger = nil
         @hinted = false
       end
@@ -81,42 +85,42 @@ module Metacrunch
       end
 
       def write_items(items, failed)
-        database.transaction { Statements.runs(items).each { write_run(it, failed) } }
+        runs = Statements.runs(items, @key)
+        hint_columns(items, runs)
+        database.transaction { runs.each { write_run(it, failed) } }
       rescue Sequel::Error => e
         raise OutputError, "#{label}: #{e.message}"
       end
 
-      # Updates are one statement per row, so a run of them is one piece. An
-      # upsert piece has one item per key; retried alone, it takes all the
-      # items of its keys, in order, as if none had been left out.
-      def write_run(run, failed)
-        dataset = database[@table.identifier]
-        case run.action
-        when :update then attempt(dataset, run.action, run.items, run.items, failed)
-        when :upsert then write_upserts(dataset, run.items, failed)
-        else Statements.pieces(run.items, @max_bytes).each { attempt(dataset, run.action, it, it, failed) }
-        end
+      # Without a key, only neighbours with the same columns share a
+      # statement (Statements.runs), which records that leave out absent
+      # fields rarely are.
+      def hint_columns(items, runs)
+        return if @key || @columns_hinted || items.size < SPARSE * SPARSE || runs.size * SPARSE <= items.size
+
+        @columns_hinted = true
+        logger.info("db #{@table}: records with different columns share no statement; give the writer key: or every " \
+                    "record the same columns")
       end
 
-      def write_upserts(dataset, items, failed)
-        check_upsert(database)
-
-        by_key = items.group_by { it.row.values_at(*@key) }
-        Statements.pieces(Statements.dedupe(items, @key), @max_bytes).each do |piece|
-          alone = piece.flat_map { by_key[it.row.values_at(*@key)] }.sort_by(&:position)
-          attempt(dataset, :upsert, piece, alone, failed)
-        end
+      # Updates are one statement per row, so a run of them is one piece. The
+      # items of an upsert run have keys of their own (Statements.runs).
+      def write_run(run, failed)
+        dataset = database[@table.identifier]
+        check_upsert(database) if run.action == :upsert
+        pieces = run.action == :update ? [run.items] : Statements.pieces(run.items, @max_bytes)
+        pieces.each { attempt(dataset, run.action, it, failed) }
       end
 
       # Runs items in a savepoint. When the database refuses a record, each
-      # of alone runs in a savepoint of its own; the records it still refuses
-      # are failures.
-      def attempt(dataset, action, items, alone, failed)
+      # item runs in a savepoint of its own; the records it still refuses are
+      # failures.
+      def attempt(dataset, action, items, failed)
         unmatched(execute(dataset, action, items), failed)
       rescue Sequel::DatabaseError => e
         raise unless Refusals.record?(e)
 
-        alone.each do |item|
+        items.each do |item|
           unmatched(execute(dataset, action, [item]), failed)
         rescue Sequel::DatabaseError => refusal
           raise unless Refusals.record?(refusal)

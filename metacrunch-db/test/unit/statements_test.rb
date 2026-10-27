@@ -8,13 +8,41 @@ class StatementsTest < Minitest::Test
 
   Statements = Metacrunch::Db::Statements
 
-  def test_runs_split_on_action_and_columns_and_keep_order
+  # Without a key, the writer cannot tell which records must keep their order, so only neighbours share a statement.
+  def test_runs_without_a_key_split_on_action_and_columns_and_keep_order
     items = [item(0, :insert, isbn: "1"), item(1, :insert, isbn: "2"), item(2, :insert, isbn: "3", title: "C"),
-             item(3, :insert, title: "D", isbn: "4"), item(4, :delete, isbn: "1"), item(5, :insert, isbn: "5")]
-    runs = Statements.runs(items)
+             item(3, :insert, title: "D", isbn: "4"), item(4, :insert, isbn: "5"), item(5, :delete, isbn: "1"),
+             item(6, :insert, isbn: "6")]
 
-    assert_equal([[:insert, [0, 1]], [:insert, [2, 3]], [:delete, [4]], [:insert, [5]]],
-                 runs.map { [it.action, it.items.map(&:position)] })
+    assert_equal [[:insert, [0, 1]], [:insert, [2, 3]], [:insert, [4]], [:delete, [5]], [:insert, [6]]],
+                 positions(Statements.runs(items, nil))
+  end
+
+  # Records that leave out absent fields: with a key, those of the same columns share a statement.
+  def test_runs_with_a_key_group_inserts_and_upserts_by_columns
+    items = [item(0, :upsert, isbn: "1", title: "A"), item(1, :upsert, isbn: "2"),
+             item(2, :upsert, isbn: "3", title: "C"), item(3, :upsert, isbn: "4"), item(4, :delete, isbn: "1"),
+             item(5, :insert, isbn: "5", year: 1),
+             item(6, :insert, isbn: "6"), item(7, :insert, isbn: "7", year: 2)]
+
+    assert_equal [[:upsert, [0, 2]], [:upsert, [1, 3]], [:delete, [4]], [:insert, [5, 7]], [:insert, [6]]],
+                 positions(Statements.runs(items, [:isbn]))
+  end
+
+  # A key again starts a new segment, so the records of one key stay in their order; the last one wins.
+  def test_a_key_again_keeps_the_order_of_its_records
+    items = [item(0, :upsert, isbn: "1"), item(1, :upsert, isbn: "1", title: "B"), item(2, :upsert, isbn: "2"),
+             item(3, :upsert, isbn: "1")]
+
+    assert_equal [[:upsert, [0]], [:upsert, [1]], [:upsert, [2]], [:upsert, [3]]],
+                 positions(Statements.runs(items, [:isbn]))
+  end
+
+  # An insert may leave out its key, e.g. one the database generates.
+  def test_inserts_without_a_key_value_never_repeat_it
+    items = [item(0, :insert, title: "A"), item(1, :insert, title: "B"), item(2, :insert, title: "C", year: 1)]
+
+    assert_equal [[:insert, [0, 1]], [:insert, [2]]], positions(Statements.runs(items, [:isbn]))
   end
 
   def test_size_counts_strings_by_bytes_and_other_values_flat
@@ -32,13 +60,6 @@ class StatementsTest < Minitest::Test
     items = [item(0, :insert, title: "x"), item(1, :insert, title: "x" * 500), item(2, :insert, title: "y")]
 
     assert_equal([[0], [1], [2]], Statements.pieces(items, 100).map { it.map(&:position) })
-  end
-
-  def test_dedupe_keeps_the_last_of_each_key
-    items = [item(0, :upsert, isbn: "1", title: "A"), item(1, :upsert, isbn: "2", title: "B"),
-             item(2, :upsert, isbn: "1", title: "C")]
-
-    assert_equal [1, 2], Statements.dedupe(items, [:isbn]).map(&:position)
   end
 
   def test_insert_is_one_multi_row_insert
@@ -120,6 +141,8 @@ class StatementsTest < Minitest::Test
   private
 
   def item(position, action, **row) = Statements::Item.new(position:, action:, row:)
+
+  def positions(runs) = runs.map { [it.action, it.items.map(&:position)] }
 
   def upsert_sql(host, **row)
     database = Sequel.mock(host:)

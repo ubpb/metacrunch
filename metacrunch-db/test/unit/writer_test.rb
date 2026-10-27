@@ -147,6 +147,37 @@ class WriterTest < Minitest::Test
     assert_equal [["1", "New", 1999], ["2", "B", nil]], stored(:isbn, :title, :year)
   end
 
+  # Records from JSON leave out absent fields: one statement per set of columns, not per record.
+  def test_records_with_and_without_a_column_share_statements_by_key
+    log = StringIO.new
+    sink = writer(connection: sqlite_connection(loggers: [Logger.new(log)]), action: :upsert, key: "isbn")
+    sink.write_batch((1..10).map { {"isbn" => it.to_s, "title" => "T#{it}"}.merge(it.even? ? {"year" => it} : {}) })
+
+    assert_equal [2, 10], [log.string.scan("INSERT INTO").size, @books[:books].count]
+  end
+
+  def test_inserts_without_a_key_that_share_few_statements_log_a_hint_once
+    log = StringIO.new
+    sink = writer
+    sink.open(context(log))
+    2.times do |batch|
+      books = (1..20).map { {"isbn" => "#{batch}-#{it}", "title" => "T#{batch}-#{it}"} }
+      sink.write_batch(books.each_with_index.map { |book, i| i.even? ? book.merge("year" => i) : book })
+    end
+
+    assert_equal 1, log.string.scan("db books: records with different columns share no statement; give the writer " \
+                                    "key: or every record the same columns").size
+  end
+
+  def test_inserts_of_the_same_columns_log_no_hint
+    log = StringIO.new
+    sink = writer
+    sink.open(context(log))
+    sink.write_batch((1..20).map { {"isbn" => it.to_s, "title" => "T#{it}"} })
+
+    refute_includes log.string, "share no statement"
+  end
+
   def test_upsert_keeps_the_last_record_of_a_key
     writer(action: :upsert, key: "isbn").write_batch([{"isbn" => "1", "title" => "A"}, {"isbn" => "1", "title" => "B"}])
 
@@ -191,6 +222,7 @@ class WriterTest < Minitest::Test
     sink.write({"isbn" => "2", "title" => "B"})
 
     assert_equal 1, log.string.scan("db books: writing one record per transaction; use `sink ..., batch: 1000`").size
+    refute_includes log.string, "share no statement"
     assert_equal 2, @books[:books].count
   end
 

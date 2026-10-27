@@ -17,11 +17,42 @@ module Metacrunch
 
       module_function
 
-      # Consecutive items with the same action and the same columns, so the
-      # order of the batch holds.
-      def runs(items)
-        items.chunk_while { |a, b| a.action == b.action && a.row.keys.sort == b.row.keys.sort }
-             .map { Run.new(action: it.first.action, items: it) }
+      # Actions that write several rows with one statement.
+      GROUPED = [:insert, :upsert].freeze
+
+      # The items in runs of one action and one set of columns, each run one
+      # or more statements. The order of the actions holds. With a key, the
+      # inserts and upserts between two changes of the action are grouped by
+      # their columns, so records that leave out absent fields still share
+      # statements; a key that comes again starts a new group, so the records
+      # of one key keep their order and the last one wins. Without a key,
+      # only neighbours with the same columns share a run.
+      def runs(items, key)
+        items.chunk_while { |a, b| a.action == b.action }.flat_map do |same|
+          action = same.first.action
+          groups(same, key && GROUPED.include?(action) ? key : nil).map { Run.new(action:, items: it) }
+        end
+      end
+
+      def groups(items, key)
+        return items.chunk_while { |a, b| a.row.keys.sort == b.row.keys.sort }.to_a unless key
+
+        segments(items, key).flat_map { |segment| segment.group_by { it.row.keys.sort }.values }
+      end
+
+      # Consecutive items without a key twice; an item without a value for
+      # the key (an insert of a key the database generates) repeats none.
+      def segments(items, key)
+        seen = Set.new
+        items.slice_before do |item|
+          value = item.row.values_at(*key)
+          next false if value.include?(nil)
+
+          again = seen.include?(value)
+          seen.clear if again
+          seen << value
+          again
+        end
       end
 
       def size(row) = row.sum { |_, value| value.is_a?(String) ? value.bytesize + QUOTES : OTHER }
@@ -40,10 +71,6 @@ module Metacrunch
           bytes += item_bytes
         end
       end
-
-      # The last item of each key, in their order. PostgreSQL refuses a key
-      # twice in one upsert; applied in order, the last one wins anyway.
-      def dedupe(items, key) = items.reverse.uniq { it.row.values_at(*key) }.reverse
 
       # Runs the SQL of items of one action and returns the items an update
       # found no row for ([] for the other actions).

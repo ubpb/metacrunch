@@ -212,11 +212,13 @@ and the database can upsert. The table must exist: create it with a migration, o
 
 ### Batches, transactions and failures
 
-Use the writer with `batch:`: without it, every record is a transaction of its own. A batch is one transaction. Within
-it, consecutive records with the same action and columns go into one statement each (a multi-row `INSERT`, a `DELETE
-... IN`; updates one per row) of at most `max_bytes`, so a batch of large texts stays under MySQL's
-`max_allowed_packet` (16 MB on MariaDB). The order of the batch holds; an upsert batch with a key twice keeps the last
-record.
+Use the writer with `batch:`: without it, every record is a transaction of its own. A batch is one transaction, and
+its records go into as few statements as they can: a multi-row `INSERT` for inserts and upserts, a `DELETE ... IN`
+for deletes, one `UPDATE` per row, each of at most `max_bytes`, so a batch of large texts stays under MySQL's
+`max_allowed_packet` (16 MB on MariaDB). The order of the actions holds. With a `key:`, inserts and upserts share
+statements by their columns, so records that leave out absent fields cost nothing extra; the records of one key keep
+their order, and the last one wins. Without a key only neighbouring records with the same columns share a statement,
+so generated ids follow the order of the records; the writer logs a hint when that leaves few records per statement.
 
 A row the database refuses (a duplicate key, a NULL for a NOT NULL column, a text too long, a value the column does
 not take) does not stop the batch: the writer runs each statement in a savepoint, and when one fails, its records
