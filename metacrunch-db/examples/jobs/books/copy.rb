@@ -2,8 +2,8 @@
 
 Metacrunch.job "books:copy", desc: "Copy the table books into another database" do
   params do
-    instance_exec(&Metacrunch::Db.connection_params("source"))
-    instance_exec(&Metacrunch::Db.connection_params("target"))
+    use Metacrunch::Db.connection_params("source")
+    use Metacrunch::Db.connection_params("target")
   end
 
   source Metacrunch::Db::Reader.new(Metacrunch::Db::Connection.from_params(params, prefix: "source"),

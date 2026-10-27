@@ -11,8 +11,9 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
 
 - `Metacrunch::Db::Connection`: a Sequel URL, user and password, and any option of `Sequel.connect`; a database of
   its own for every reader and writer, checked when it opens; the gem to add when a driver is missing;
-  `CONNECTION_PARAMS` (the password as a secret), `Metacrunch::Db.connection_params(prefix)` for jobs with two
-  databases, and `Connection.from_params` for jobs and commands.
+  `CONNECTION_PARAMS`, a group of parameters (`params { use ... }`; the password as a secret),
+  `Metacrunch::Db.connection_params(prefix)` for jobs with two databases, and `Connection.from_params` for jobs and
+  commands.
 - `Metacrunch::Db::Reader`, a source: a table, SQL with placeholders or a Sequel dataset, read with one query and
   streamed (a cursor on PostgreSQL, a stream on mysql2); records with String keys; `count:` for progress; the
   session's idle limit raised, so a pause in the job does not end the stream; a result with a column name twice is

@@ -2,7 +2,7 @@
 
 Metacrunch.job "books:export", desc: "Write the books as JSON Lines to stdout" do
   params do
-    instance_exec(&Metacrunch::Db::CONNECTION_PARAMS)
+    use Metacrunch::Db::CONNECTION_PARAMS
     param :since, Integer, default: 0, desc: "only books first published in or after this year"
   end
 

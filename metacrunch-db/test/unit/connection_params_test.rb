@@ -44,8 +44,8 @@ class ConnectionParamsTest < Minitest::Test
 
   def test_from_params_with_a_prefix
     declarations = proc do
-      instance_exec(&Metacrunch::Db.connection_params("source"))
-      instance_exec(&Metacrunch::Db.connection_params("target"))
+      use Metacrunch::Db.connection_params("source")
+      use Metacrunch::Db.connection_params("target")
     end
     params = bound(declarations, {source_url: "postgres://a/x", target_url: "mysql2://b/y", target_user: "u",
                                   target_password: "pw"})
@@ -57,10 +57,10 @@ class ConnectionParamsTest < Minitest::Test
 
   private
 
-  def declared(declarations) = Metacrunch::Params.new.tap { it.instance_exec(&declarations) }.definitions
+  def declared(declarations) = Metacrunch::Params.new.tap { it.use(declarations) }.definitions
 
   def bound(declarations, values)
-    Metacrunch::Params.new.tap { it.instance_exec(&declarations) }.bind_values(values)
+    Metacrunch::Params.new.tap { it.use(declarations) }.bind_values(values)
   end
 
 end

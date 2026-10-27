@@ -9,7 +9,7 @@ require "metacrunch/db"
 
 Metacrunch.job do
   params do
-    instance_exec(&Metacrunch::Db::CONNECTION_PARAMS)
+    use Metacrunch::Db::CONNECTION_PARAMS
     args :files, min: 1
   end
 
@@ -81,7 +81,9 @@ Metacrunch::Db::Connection.from_params(params).connect do |db|
 end
 ```
 
-The same parameters for jobs and commands: `--url`, `--user` and `--password`. The password is a
+The same parameters for jobs and commands, as a
+[group of parameters](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#groups-of-parameters)
+(`params { use Metacrunch::Db::CONNECTION_PARAMS }`): `--url`, `--user` and `--password`. The password is a
 [secret](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#secrets), hidden in `--help`, messages
 and `inspect`. A [params file](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#parameter-files)
 gives them per [environment](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/environments.md), the
@@ -108,8 +110,8 @@ A job with two databases declares the parameters with a prefix each:
 
 ```ruby
 params do
-  instance_exec(&Metacrunch::Db.connection_params("source"))   # --source-url, --source-user, --source-password
-  instance_exec(&Metacrunch::Db.connection_params("target"))   # --target-url, ...
+  use Metacrunch::Db.connection_params("source")   # --source-url, --source-user, --source-password
+  use Metacrunch::Db.connection_params("target")   # --target-url, ...
 end
 
 source Metacrunch::Db::Reader.new(Metacrunch::Db::Connection.from_params(params, prefix: "source"), table: "books")

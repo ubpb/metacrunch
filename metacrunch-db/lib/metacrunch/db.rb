@@ -18,9 +18,9 @@ module Metacrunch
 
     PREFIX = /\A[a-z][a-z0-9_]*\z/
 
-    # The connection params for jobs and commands, as a proc for
-    # params { instance_exec(&Metacrunch::Db.connection_params) }, read by
-    # Connection.from_params(params). With a prefix ("source") the names are
+    # The connection params for jobs and commands, a group of parameters:
+    # params { use Metacrunch::Db.connection_params("source") }, read by
+    # Connection.from_params(params, prefix: "source"). With a prefix the names are
     # source_url, source_user and source_password, for a job with two
     # databases. The password is a secret; values from environment variables
     # or the credentials come from a params file.
@@ -39,7 +39,7 @@ module Metacrunch
       end
     end
 
-    # url, user and password: params { instance_exec(&Metacrunch::Db::CONNECTION_PARAMS) }.
+    # url, user and password: params { use Metacrunch::Db::CONNECTION_PARAMS }.
     CONNECTION_PARAMS = connection_params
 
   end

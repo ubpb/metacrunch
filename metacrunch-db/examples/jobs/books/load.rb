@@ -2,7 +2,7 @@
 
 Metacrunch.job "books:load", desc: "Load books from JSON Lines into the table books" do
   params do
-    instance_exec(&Metacrunch::Db::CONNECTION_PARAMS)
+    use Metacrunch::Db::CONNECTION_PARAMS
     param :input, String, desc: "JSON Lines with books (default: data/books.jsonl)"
     param :failures, String, default: "failures.jsonl", desc: "JSON Lines for the books the database refuses"
   end

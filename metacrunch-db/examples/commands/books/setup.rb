@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 Metacrunch.command "books:setup", desc: "Create the table books unless it exists" do
-  params { instance_exec(&Metacrunch::Db::CONNECTION_PARAMS) }
+  params { use Metacrunch::Db::CONNECTION_PARAMS }
 
   run do
     Metacrunch::Db::Connection.from_params(params).connect do |db|
