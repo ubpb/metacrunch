@@ -1,0 +1,16 @@
+# The databases of the project's jobs and commands. Without -e: SQLite files in the directory the commands run in.
+# With -e production: PostgreSQL, the password from the production credentials
+# (metacrunch credentials edit -e production).
+default:
+  url: sqlite://books.db
+  source_url: sqlite://books.db
+  target_url: sqlite://books-copy.db
+
+production:
+  url: postgres://db.example.org/catalog
+  user: etl
+  password: {credential: db.password}
+  source_url: postgres://db.example.org/catalog
+  source_user: etl
+  source_password: {credential: db.password}
+  target_url: sqlite://books-copy.db

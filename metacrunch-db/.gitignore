@@ -4,3 +4,6 @@
 /tmp/
 /vendor/
 .DS_Store
+# What the examples write when they run in examples/.
+/examples/*.db
+/examples/failures.jsonl

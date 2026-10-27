@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+# A project with a table of books, connected by params.yml. In this directory:
+#
+#   bundle exec metacrunch run --params params.yml books:setup     # creates the table in books.db
+#   bundle exec metacrunch run --params params.yml books:load      # loads data/books.jsonl
+#   bundle exec metacrunch run --params params.yml books:export --since 1850
+#   bundle exec metacrunch run --params params.yml books:setup --url sqlite://books-copy.db
+#   bundle exec metacrunch run --params params.yml books:copy      # books.db into books-copy.db
+require "metacrunch/db"
+
+Metacrunch.load_files "jobs/**/*.rb", "commands/**/*.rb"
