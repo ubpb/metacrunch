@@ -141,7 +141,7 @@ module Metacrunch
         raise ArgumentError, "source must respond to #each, got #{source.inspect}"
       end
 
-      context = UseContext.for(project:, env: {}, credentials: nil, logger:)
+      context = UseContext.for(project:, env: nil, credentials: nil, logger:)
       pipeline = job.pipeline(binder: values_binder(params), logger:, context:)
       memory = {sink: MemorySink.new, rejects: MemorySink.new, failures: MemorySink.new}
       adapters = memory.transform_values { |sink| SinkAdapter.new(sink) }
@@ -184,7 +184,7 @@ module Metacrunch
 
     # Binds params like the values of `use`, but tests read neither the
     # environment nor credentials.
-    def values_binder(params) = ->(schema) { schema.bind_values(params, env: {}, credentials: nil) }
+    def values_binder(params) = ->(schema) { schema.bind_values(params, env: nil, credentials: nil) }
     private_class_method :values_binder
 
     # [job or transform, project] for run.

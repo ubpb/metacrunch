@@ -13,8 +13,8 @@ class CommandTest < Minitest::Test
       @calls = []
     end
 
-    def invoke(target, params: {}, workers: nil, limit: nil)
-      @calls << [target, params, {workers:, limit:}.compact]
+    def invoke(target, params: {}, workers: nil, limit: nil, secrets: [])
+      @calls << [target, params, {workers:, limit:, secrets: (secrets unless secrets.empty?)}.compact]
       :invoked
     end
 

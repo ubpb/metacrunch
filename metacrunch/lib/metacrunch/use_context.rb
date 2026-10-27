@@ -30,7 +30,7 @@ module Metacrunch
         raise ArgumentError, "project: must be a Metacrunch::Project, got #{project.inspect}"
       end
 
-      resolver = Invoker.new(project: project || -> { Project.nearest }, logger:, env:)
+      resolver = Invoker.new(project: project || -> { Project.nearest }, logger:, env: env || {})
       new(resolver:, env:, credentials:, logger:)
     end
 
@@ -54,12 +54,15 @@ module Metacrunch
     # Params#bind_values) and returns its pipeline: steps and hooks, no
     # source and no sinks. stack: the transforms whose recipes are being
     # evaluated around this use. Errors of the params name the transform,
-    # after the transforms around it: "use outer → inner: ...".
-    def evaluate(transform, params, stack:)
+    # after the transforms around it: "use outer → inner: ...". secrets:
+    # the secret values of the job or transform that uses it (see
+    # Params.secret_values).
+    def evaluate(transform, params, stack:, secrets: [])
       chain = [*stack, transform].map(&:label).join(" → ")
       raise ArgumentError, "use cycle: #{chain}" if stack.include?(transform)
 
-      transform.pipeline(binder: binder(chain, params), logger: @logger, context: self, stack:)
+      binder = binder(chain, params, secrets, transform.label)
+      transform.pipeline(binder:, logger: @logger, context: self, stack:)
     end
 
     private
@@ -72,9 +75,9 @@ module Metacrunch
     end
 
     # No cause: the original message is part of the new one.
-    def binder(chain, params)
+    def binder(chain, params, secrets, target)
       lambda do |schema|
-        schema.bind_values(params, env: @env, credentials: @credentials)
+        schema.bind_values(params, env: @env, credentials: @credentials, secrets:, target:)
       rescue ParamError, ArgumentError => e
         raise e.class, "use #{chain}: #{e.message}", cause: nil
       end

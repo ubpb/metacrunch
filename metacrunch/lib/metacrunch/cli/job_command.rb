@@ -40,12 +40,21 @@ module Metacrunch
         check_target!(declaration)
         schema = requested_help(declaration, argv)
         return show(help_text(declaration, schema)) if schema
+
+        log_environment
         return execute_command(declaration, argv) if declaration.is_a?(Metacrunch::Command)
 
         execute_job(declaration, argv)
       rescue NoInputError => e
         # Only the command line knows the target as the user named it.
         raise e.for(@target)
+      end
+
+      # Where the environment comes from, so METACRUNCH_ENV is no hidden
+      # state; nothing for the default environment.
+      def log_environment
+        name, source = Credentials.environment_source(@environment, @env)
+        logger.info("environment #{name} (from #{source})") if name
       end
 
       # check and trace take jobs and transforms, no commands; run overrides

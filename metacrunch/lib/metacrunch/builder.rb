@@ -85,7 +85,7 @@ module Metacrunch
       raise ArgumentError, "use needs a context: build the job with Job#pipeline(context:)" unless @context
 
       transform = @context.transform(target)
-      built = @context.evaluate(transform, params, stack: @stack)
+      built = @context.evaluate(transform, params, stack: @stack, secrets: Params.secret_values(@values))
       prefix = prefix_for(transform)
       @steps.concat(built.steps.map { it.with(name: "#{prefix}/#{it.name}") })
       @before_hooks.concat(built.before_hooks)

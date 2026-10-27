@@ -14,6 +14,10 @@ module Metacrunch
     ENVIRONMENT_VARIABLE = "METACRUNCH_ENV"
     DIRECTORY_VARIABLE = "METACRUNCH_CREDENTIALS"
     ENVIRONMENT_NAME = /\A[a-z0-9_-]+\z/
+    # The environment without -e: the files without an environment, the
+    # default: section of a params file.
+    DEFAULT_ENVIRONMENT = "default"
+    RESERVED = "default is the environment without -e"
 
     # Reads every plain scalar as its text, so that credential values are
     # converted like command-line values (YAML 1.1 would make "no" false and
@@ -32,14 +36,28 @@ module Metacrunch
 
     def key_name(environment) = environment ? "master.#{environment}.key" : "master.key"
 
-    # The environment from the option (-e), else METACRUNCH_ENV; nil if
-    # neither is set. Empty values count as unset.
-    def environment(option, env)
-      name = present(option) || present(env[ENVIRONMENT_VARIABLE])
-      return if name.nil?
-      return name if ENVIRONMENT_NAME.match?(name)
+    # The environment from the option (-e), else METACRUNCH_ENV; nil for the
+    # default environment, when neither is set. Empty values count as unset.
+    # default names the environment without -e and is reserved.
+    def environment(option, env) = environment_source(option, env)&.first
 
-      raise CredentialsError, "invalid environment #{name.inspect}: use a-z, 0-9, _ and -"
+    # [name, "-e" or "METACRUNCH_ENV"] of the selected environment, or nil
+    # for the default environment; checked as environment.
+    def environment_source(option, env)
+      name, source = present(option) ? [option, "-e"] : [present(env[ENVIRONMENT_VARIABLE]), ENVIRONMENT_VARIABLE]
+      return if name.nil?
+
+      from_variable = source == ENVIRONMENT_VARIABLE
+      if name == DEFAULT_ENVIRONMENT
+        raise CredentialsError, "#{RESERVED}; leave -e out" unless from_variable
+
+        raise CredentialsError, "#{ENVIRONMENT_VARIABLE}=#{name}: #{RESERVED}; unset #{ENVIRONMENT_VARIABLE}"
+      end
+      return [name, source] if ENVIRONMENT_NAME.match?(name)
+
+      raise CredentialsError,
+            "invalid environment #{name.inspect}#{" (from #{ENVIRONMENT_VARIABLE})" if from_variable}: " \
+            "use a-z, 0-9, _ and -"
     end
 
     def present(value) = (value unless value.nil? || value.empty?)

@@ -14,8 +14,11 @@ module Metacrunch
     end
 
     # Runs a job, transform or command by name or path, with params bound
-    # by name; see Invoker#invoke.
-    def invoke(target, params: {}, workers: nil, limit: nil) = @invoker.invoke(target, params:, workers:, limit:)
+    # by name; see Invoker#invoke. A secret of the command passed unchanged
+    # to a parameter that is no secret raises InvokeError.
+    def invoke(target, params: {}, workers: nil, limit: nil)
+      @invoker.invoke(target, params:, workers:, limit:, secrets: Params.secret_values(@params))
+    end
 
     # The root of the current project, a Pathname (see Invoker#root).
     # Raises ProjectError without project.

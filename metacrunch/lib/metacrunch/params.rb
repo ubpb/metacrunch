@@ -62,6 +62,15 @@ module Metacrunch
       def to_s = "#{source} #{key}"
     end
 
+    # The values of the secrets of bound params, for the safety net of use
+    # and invoke: Strings and Arrays only, which a secret owns (immediates
+    # such as Integers cannot be told by identity).
+    def self.secret_values(bound)
+      return [] unless bound.class.const_defined?(:SECRETS, false)
+
+      bound.class::SECRETS.map { bound.public_send(it) }.select { it.is_a?(String) || it.is_a?(Array) }
+    end
+
     # The Reference that value stands for, or nil if value is no Hash.
     # Raises ArgumentError for a Hash that is no reference. Keys may be
     # Symbols (code) or Strings (YAML).
@@ -175,9 +184,11 @@ module Metacrunch
     # its path; nil means "not given". A parameter without a value is read
     # from its env: variable, then from the credentials, then the default.
     # The values come from code, so messages name a parameter by its name,
-    # not as option, and a secret gives no warning. Raises ArgumentError for
-    # a non-Hash and an unknown key.
-    def bind_values(values, env: ENV, credentials: nil)
+    # not as option, and a secret gives no warning. secrets: the secret
+    # values of the caller (see secret_values); passing one unchanged to a
+    # parameter that is no secret raises ParamError, named for target.
+    # Raises ArgumentError for a non-Hash and an unknown key.
+    def bind_values(values, env: ENV, credentials: nil, secrets: [], target: nil)
       raise ArgumentError, "params: must be a Hash, got #{values.inspect}" unless values.is_a?(Hash)
 
       values = values.transform_keys(&:to_sym)
@@ -190,6 +201,7 @@ module Metacrunch
       end
 
       given = values.except(args_name).compact
+      guard_secrets!(given, secrets, target)
       bound = @definitions.to_h do |name, definition|
         [name, bind(definition, given, env, credentials, nil, keyword: true)]
       end
@@ -355,6 +367,18 @@ module Metacrunch
 
       value = env[reference.key]
       [(value unless value.nil? || value.empty?), "environment variable #{reference.key}"]
+    end
+
+    # A secret of the caller, passed unchanged (the same object) to a
+    # parameter that is no secret, would lose its secrecy there.
+    def guard_secrets!(given, secrets, target)
+      return if secrets.empty?
+
+      given.each do |name, value|
+        next if @definitions.fetch(name).secret? || secrets.none? { it.equal?(value) }
+
+        raise ParamError, "#{name} gets a secret, but #{target} declares it as param; declare it secret there"
+      end
     end
 
     # Every key of every section of the params file must name a parameter;

@@ -37,12 +37,14 @@ module Metacrunch
     # errors from the recipe itself (a component constructor, a DSL
     # mistake) propagate. Errors while the pipeline runs end up in the
     # Result. limit stops after that many records; workers runs the steps in
-    # that many processes. Credentials follow env: METACRUNCH_ENV,
+    # that many processes. environment: the environment of the credentials
+    # (else METACRUNCH_ENV of env:); credentials also follow env:
     # METACRUNCH_CREDENTIALS, METACRUNCH_MASTER_KEY, HOME. project: where the
     # names of `use` resolve; without it, the project of the nearest
     # Metacrunchfile above Dir.pwd, loaded when a name needs it.
-    def run(params: {}, env: ENV, logger: Metacrunch.logger, observer: nil, limit: nil, workers: nil, project: nil)
-      credentials = Credentials.store(job_file: file, env:, logger:)
+    def run(params: {}, env: ENV, environment: nil, logger: Metacrunch.logger, observer: nil, limit: nil, workers: nil,
+            project: nil)
+      credentials = Credentials.store(job_file: file, env:, logger:, environment:)
       context = UseContext.for(project:, env:, credentials:, logger:)
       built = pipeline(binder: ->(schema) { schema.bind_values(params, env:, credentials:) }, logger:, context:)
       Engine.new(built.with(limit:), observer:, executor: Executor.for(workers)).run

@@ -93,10 +93,11 @@ module Metacrunch
 
     # Runs a job, transform or command of the project like invoke in a
     # command body (see Invoker#invoke), with its own streams, environment
-    # and logger.
-    def invoke(target, params: {}, logger: Metacrunch.logger, env: ENV, stdin: $stdin, stdout: $stdout, workers: nil,
-               limit: nil)
-      Invoker.new(project: self, logger:, env:, stdin:, stdout:).invoke(target, params:, workers:, limit:)
+    # variables (env:), environment of the credentials (environment:, else
+    # METACRUNCH_ENV of env:) and logger.
+    def invoke(target, params: {}, logger: Metacrunch.logger, env: ENV, environment: nil, stdin: $stdin,
+               stdout: $stdout, workers: nil, limit: nil)
+      Invoker.new(project: self, logger:, env:, environment:, stdin:, stdout:).invoke(target, params:, workers:, limit:)
     end
 
     # Loads the files that match globs (relative to the root, or absolute),
