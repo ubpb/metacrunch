@@ -197,13 +197,23 @@ class ConnectionTest < Minitest::Test
     end
   end
 
-  def test_connection_params_bind_from_the_environment_and_build_a_connection
-    schema = Metacrunch::Params.new
-    schema.instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS)
-    params = schema.bind_values({}, env: {"ELASTICSEARCH_URL" => URL, "ELASTICSEARCH_API_KEY" => "k3y"})
+  def test_connection_params_build_a_connection
+    params = connection_params.bind_values({url: URL, api_key: "k3y"})
 
     assert_equal "#<Metacrunch::Elasticsearch::Connection url=#{URL} api_key=[FILTERED]>",
                  Connection.from_params(params).inspect
+  end
+
+  def test_connection_params_keep_the_api_key_and_the_password_secret
+    params = connection_params.bind_values({user: "elastic", password: "pw", api_key: "k3y"})
+
+    assert_match(/api_key=\[secret\].*user="elastic", password=\[secret\]/, params.inspect)
+  end
+
+  def test_connection_params_read_no_environment_variables
+    params = connection_params.bind_values({}, env: {"ELASTICSEARCH_URL" => URL, "ELASTICSEARCH_API_KEY" => "k3y"})
+
+    assert_equal [nil, nil], [params.url, params.api_key]
   end
 
   def test_from_params_takes_the_connection_params_a_recipe_declares
@@ -213,6 +223,8 @@ class ConnectionTest < Minitest::Test
   end
 
   private
+
+  def connection_params = Metacrunch::Params.new.tap { it.instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS) }
 
   def with_env(values)
     saved = values.keys.to_h { [it, ENV.fetch(it, nil)] }

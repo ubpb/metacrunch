@@ -5,15 +5,16 @@ module Metacrunch
 
     # The connection params for jobs and commands:
     # params { instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS) }
-    # and Connection.from_params(params).
+    # and Connection.from_params(params). The API key and the password are
+    # secrets; values from environment variables or the credentials come from
+    # a params file.
     CONNECTION_PARAMS = proc do
-      param :url, String, env: "ELASTICSEARCH_URL", desc: "Elasticsearch URL, several comma-separated"
-      param :api_key, String, env: "ELASTICSEARCH_API_KEY", credential: "elasticsearch.api_key",
-                              desc: "API key (Base64, as Elasticsearch issues it)"
-      param :user, String, env: "ELASTICSEARCH_USER", desc: "user for basic authentication"
-      param :password, String, env: "ELASTICSEARCH_PASSWORD", credential: "elasticsearch.password",
-                               desc: "password for basic authentication"
-      param :ca_file, String, env: "ELASTICSEARCH_CA_FILE", desc: "CA certificate for TLS"
+      param :url, String, desc: "Elasticsearch URL, several comma-separated " \
+                                "(default: ELASTICSEARCH_URL, else http://localhost:9200)"
+      secret :api_key, String, desc: "API key (Base64, as Elasticsearch issues it)"
+      param :user, String, desc: "user for basic authentication"
+      secret :password, String, desc: "password for basic authentication"
+      param :ca_file, String, desc: "CA certificate for TLS"
     end
 
     # Where and how to reach Elasticsearch. A value: building one does no
@@ -27,8 +28,7 @@ module Metacrunch
       # compatibility the client asks for (client 9 sends compatible-with=9,
       # which Elasticsearch 8 refuses).
       PLAIN_JSON = {"accept" => "application/json", "content-type" => "application/json"}.freeze
-      AUTH_HINT = "check api_key, or user and password " \
-                  "(ELASTICSEARCH_API_KEY, ELASTICSEARCH_USER, ELASTICSEARCH_PASSWORD)"
+      AUTH_HINT = "check api_key, or user and password"
       # The params that from_params reads, as CONNECTION_PARAMS declares them.
       PARAMS = [:url, :api_key, :user, :password, :ca_file].freeze
       DEFAULT_URL = "http://localhost:9200"

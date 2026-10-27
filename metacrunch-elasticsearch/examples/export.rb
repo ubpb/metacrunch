@@ -2,7 +2,7 @@
 
 # Writes the documents of an index as JSON Lines to stdout: all, or those a query string matches:
 #
-#   bundle exec metacrunch run examples/export.rb --index books --query "lang:en"
+#   bundle exec metacrunch run --params examples/params.yml examples/export.rb --index books --query "lang:en"
 require "metacrunch/elasticsearch"
 
 Metacrunch.job do

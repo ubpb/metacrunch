@@ -21,7 +21,7 @@ end
 ```
 
 ```
-$ ELASTICSEARCH_URL=https://search.example.org:9200 metacrunch run jobs/load.rb --index books books.jsonl
+$ metacrunch run jobs/load.rb --url https://search.example.org:9200 --index books books.jsonl
 ```
 
 More in [`examples/`](examples): loading and exporting, and a project that rebuilds an index behind an alias.
@@ -71,8 +71,9 @@ client from it and checks the server on its first request: Elasticsearch, in a v
 `connection.client` returns a client of your own for anything else. `inspect` and the messages never show the API
 key or the password.
 
-The same parameters for jobs and commands, with environment variables and
-[credentials](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/credentials.md):
+The same parameters for jobs and commands: `--url`, `--api-key`, `--user`, `--password` and `--ca-file`. The API key
+and the password are [secrets](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#secrets),
+hidden in `--help`, messages and `inspect`:
 
 ```ruby
 params do
@@ -82,13 +83,26 @@ end
 es = Metacrunch::Elasticsearch::Connection.from_params(params)
 ```
 
-| Param | Environment | Credential |
-|---|---|---|
-| `--url` | `ELASTICSEARCH_URL` | |
-| `--api-key` | `ELASTICSEARCH_API_KEY` | `elasticsearch.api_key` |
-| `--user` | `ELASTICSEARCH_USER` | |
-| `--password` | `ELASTICSEARCH_PASSWORD` | `elasticsearch.password` |
-| `--ca-file` | `ELASTICSEARCH_CA_FILE` | |
+A [params file](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#parameter-files) gives them
+per [environment](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/environments.md), as text, from
+environment variables or from the
+[credentials](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/credentials.md) of the environment:
+
+```yaml
+# params.yml
+default:
+  url: http://localhost:9200
+  user: elastic
+  password: {env: ELASTICSEARCH_PASSWORD}
+
+production:
+  url: https://search.example.org:9200
+  api_key: {credential: elasticsearch.api_key}
+```
+
+```
+$ metacrunch run -e production --params params.yml books:load --index books books.jsonl
+```
 
 ## Reading
 
@@ -189,7 +203,7 @@ on_failure :skip, max_failures: 100
 ```
 
 ```
-$ metacrunch run examples/load.rb --index books examples/data/books.jsonl
+$ metacrunch run --params examples/params.yml examples/load.rb --index books examples/data/books.jsonl
 15:44:56 ERROR [#4] step sink failed at position 4: Metacrunch::Elasticsearch::BulkItemError: 400 document_parsing_exception: [1:68] failed to parse field [year] of type [integer] in document with id '9780140449266'. Preview of field's value: 'around 1844' (index 9780140449266)
 15:44:56 INFO  ok_with_failures: read 6, written 5, failed 1 (Metacrunch::Elasticsearch::BulkItemError: 1) in 0.05s (131 records/s)
 ```
@@ -244,7 +258,7 @@ to go back to.
   again, as analyzers need. `number_of_shards` is left out, so the settings file of `create` works here, too.
 - `delete(name)` refuses an index an alias points to, unless `force: true`. `list("books*")` describes indices.
 
-An incremental update runs the load job against the alias: `metacrunch books:load --index books changes.jsonl`.
+An incremental update runs the load job against the alias: `metacrunch run books:load --index books changes.jsonl`.
 
 ### Commands
 
@@ -267,7 +281,8 @@ Metacrunch.load_files Metacrunch::Elasticsearch::COMMANDS, "jobs/**/*.rb", "comm
 | `es:update-settings INDEX --settings F [--reopen]` | changes settings |
 | `es:list [PATTERN]` | prints indices with aliases, documents, size and health |
 
-All take the connection parameters (`--url`, `--api-key`, ...) and their environment variables.
+All take the connection parameters (`--url`, `--api-key`, ...), also from a params file:
+`metacrunch run --params params.yml es:list "books*"`.
 
 ## Testing jobs
 

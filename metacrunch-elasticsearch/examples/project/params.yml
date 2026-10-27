@@ -1,0 +1,12 @@
+# The connection of the project's jobs and commands. Without -e from
+# environment variables, as for the Elasticsearch in ../../test/compose.yml;
+# with -e production the API key from the production credentials
+# (metacrunch credentials edit -e production).
+default:
+  url: {env: ELASTICSEARCH_URL}
+  user: {env: ELASTICSEARCH_USER}
+  password: {env: ELASTICSEARCH_PASSWORD}
+
+production:
+  url: https://search.example.org:9200
+  api_key: {credential: elasticsearch.api_key}

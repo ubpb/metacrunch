@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-# A project with the gem's commands (es:create-index, es:switch-alias, ...) and its own:
+# A project with the gem's commands (es:create-index, es:switch-alias, ...) and its own, connected by params.yml:
 #
 #   bundle exec metacrunch --help
-#   bundle exec metacrunch books:rebuild        # a new index for the alias books, loaded and switched to
-#   bundle exec metacrunch books:load --index books --input more.jsonl   # an update through the alias
-#   bundle exec metacrunch es:list "books*"
+#   bundle exec metacrunch run --params params.yml books:rebuild   # a new index for the alias books, loaded, switched
+#   bundle exec metacrunch run --params params.yml books:load --index books --input more.jsonl   # an update
+#   bundle exec metacrunch run --params params.yml es:list "books*"
 require "metacrunch/elasticsearch"
 
 Metacrunch.load_files Metacrunch::Elasticsearch::COMMANDS, "jobs/**/*.rb", "commands/**/*.rb"

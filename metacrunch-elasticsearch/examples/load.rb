@@ -3,9 +3,10 @@
 # Loads books from JSON Lines into an Elasticsearch index, with the ISBN as _id. Books the index refuses (here a year
 # that is no number) go to failures.jsonl, and the run ends with exit status 3:
 #
-#   bundle exec metacrunch run examples/load.rb --index books examples/data/books.jsonl
+#   bundle exec metacrunch run --params examples/params.yml examples/load.rb --index books examples/data/books.jsonl
 #
-# The index must exist; examples/project creates one (bundle exec metacrunch es:create-index books there).
+# examples/params.yml connects to Elasticsearch. The index must exist; examples/project creates one
+# (bundle exec metacrunch run --params params.yml es:create-index books there).
 require "metacrunch/elasticsearch"
 
 Metacrunch.job do

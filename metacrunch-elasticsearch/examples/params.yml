@@ -1,0 +1,11 @@
+# The connection of the examples, from the environment variables of the
+# Elasticsearch in test/compose.yml:
+#
+#   export ELASTICSEARCH_URL=http://localhost:9209 ELASTICSEARCH_USER=elastic ELASTICSEARCH_PASSWORD=metacrunch
+#   bundle exec metacrunch run --params examples/params.yml examples/load.rb --index books examples/data/books.jsonl
+#
+# Each environment has a section of its own; default: counts without -e.
+default:
+  url: {env: ELASTICSEARCH_URL}
+  user: {env: ELASTICSEARCH_USER}
+  password: {env: ELASTICSEARCH_PASSWORD}

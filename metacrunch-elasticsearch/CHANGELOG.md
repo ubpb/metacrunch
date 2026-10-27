@@ -11,7 +11,8 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
 
 - `Metacrunch::Elasticsearch::Connection`: URL(s), API key or user and password, CA file, timeout and retries, and
   any option of the client; a check of the server on the first request (Elasticsearch, a version the client works
-  with); `CONNECTION_PARAMS` and `Connection.from_params` for jobs and commands.
+  with); `CONNECTION_PARAMS` (the API key and the password as secrets) and `Connection.from_params` for jobs and
+  commands.
 - `Metacrunch::Elasticsearch::Reader`, a source: the documents of an index, alias or pattern, or those a query
   matches, read with a point in time and `search_after`; `_source` or hits as records; progress.
 - `Metacrunch::Elasticsearch::Search`: `ids` and `hits` for lookups in steps.
