@@ -6,6 +6,11 @@
 #   export TEST_MARIADB_URL=mysql://root:metacrunch@127.0.0.1:3308/metacrunch
 #   bundle exec rake
 #   docker compose -f test/compose.yml down
+#
+# The project name keeps the containers apart from those of other compose files in a directory named test; runs from
+# parallel worktrees share the servers, since every test has tables of its own.
+name: metacrunch-db
+
 services:
   postgres:
     image: postgres:18
