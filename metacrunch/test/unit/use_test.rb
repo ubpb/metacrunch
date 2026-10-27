@@ -23,7 +23,7 @@ class UseTest < Minitest::Test
   end
 
   TOKEN = Metacrunch.transform("token") do
-    params { param :token, String, env: "TOKEN", credential: "api.token", required: true }
+    params { secret :token, String, default: {credential: "api.token"} }
 
     map { params.token }
   end
@@ -142,13 +142,11 @@ class UseTest < Minitest::Test
     assert_equal(["checks/map#2"], failed.contexts.map { it.failure.step })
   end
 
-  def test_values_come_first_then_env_then_credentials
+  def test_values_come_first_then_the_default_from_the_job_credentials
     credentials = FakeCredentials.new("api.token" => "credential")
-    token = ->(env, values = {}) { records(build_job(env:, credentials:) { source [1]; use TOKEN, params: values }) }
+    token = ->(values = {}) { records(build_job(env: {}, credentials:) { source [1]; use TOKEN, params: values }) }
 
-    assert_equal ["given"], token.call({"TOKEN" => "env"}, {token: "given"})
-    assert_equal ["env"], token.call({"TOKEN" => "env"})
-    assert_equal ["credential"], token.call({})
+    assert_equal [["given"], ["credential"]], [token.call({token: "given"}), token.call]
   end
 
   def test_unknown_keys_name_the_transform
@@ -166,8 +164,7 @@ class UseTest < Minitest::Test
   def test_missing_values_name_the_transform
     error = assert_raises(Metacrunch::ParamError) { build_job { source []; use TOKEN } }
 
-    assert_equal "use token: missing required parameter token (TOKEN unset; api.token: no credentials)",
-                 error.message
+    assert_equal "use token: token: Testing reads no credentials; pass token in params:", error.message
   end
 
   def test_use_takes_transforms_only

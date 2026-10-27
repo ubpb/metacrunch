@@ -32,7 +32,7 @@ class InvokerTest < Minitest::Test
     RUBY
     "transforms/scale.rb" => <<~RUBY,
       Metacrunch.transform "scale" do
-        params { param :factor, Integer, env: "SCALE_FACTOR", default: 2 }
+        params { param :factor, Integer, default: 2 }
 
         map { it * params.factor }
       end
@@ -108,7 +108,7 @@ class InvokerTest < Minitest::Test
   # A command from a gem: its file lives outside the project.
   GEM_COMMAND = <<~RUBY
     Metacrunch.command "secret:show" do
-      params { param :api_key, String, credential: "catalog.api_key", required: true }
+      params { secret :api_key, String, default: {credential: "catalog.api_key"} }
 
       run do
         invoke "secret"
@@ -119,7 +119,7 @@ class InvokerTest < Minitest::Test
 
   NAMED_SECRET_JOB = <<~RUBY
     Metacrunch.job "secret" do
-      params { param :api_key, String, credential: "catalog.api_key", required: true }
+      params { secret :api_key, String, default: {credential: "catalog.api_key"} }
 
       source [params.api_key.reverse]
     end
@@ -127,7 +127,7 @@ class InvokerTest < Minitest::Test
 
   REVEAL = <<~RUBY
     Metacrunch.transform "reveal" do
-      params { param :api_key, String, credential: "catalog.api_key", required: true }
+      params { secret :api_key, String, default: {credential: "catalog.api_key"} }
 
       map { params.api_key.reverse }
     end
@@ -368,14 +368,14 @@ class InvokerTest < Minitest::Test
     end
   end
 
-  # A value given at use wins over the transform's env: variable; nil (the
-  # job's factor left unset) falls through to it.
-  def test_values_at_use_win_over_the_environment_and_nil_falls_through
-    with_project(env: {"SCALE_FACTOR" => "3"}) do |invoker, out|
+  # A value given at use wins over the transform's default; nil (the job's
+  # factor left unset) falls through to it.
+  def test_values_at_use_win_over_the_default_and_nil_falls_through
+    with_project do |invoker, out|
       invoker.invoke("scaled", params: {numbers: ["1"]})
       invoker.invoke("scaled", params: {factor: 5, numbers: ["1"]})
 
-      assert_equal "3\n5\n", out.string
+      assert_equal "2\n5\n", out.string
     end
   end
 

@@ -29,13 +29,20 @@ class ParamsTest < Minitest::Test
     "short_help_option" => proc { param :host, short: "-h" }
   }.freeze
 
-  def test_cli_value_wins_over_environment_and_default
-    params = schema { param :url, String, default: "http://default", env: "ES_URL" }
+  def test_cli_value_wins_over_the_default
+    params = schema { param :url, String, default: {env: "ES_URL"} }
     env = {"ES_URL" => "http://env"}
 
-    assert_equal "http://cli", params.bind_argv(["--url", "http://cli"], env:).url
-    assert_equal "http://env", params.bind_argv([], env:).url
-    assert_equal "http://default", params.bind_argv([], env: {}).url
+    assert_equal ["http://cli", "http://env"], [params.bind_argv(["--url", "http://cli"], env:).url,
+                                                params.bind_argv([], env:).url]
+  end
+
+  def test_env_and_credential_are_no_options
+    [{env: "ES_URL"}, {credential: "es.url"}].each do |option|
+      error = assert_raises(ArgumentError) { schema { param :url, String, **option } }
+
+      assert_match(/unknown keyword: :#{option.keys.first}/, error.message)
+    end
   end
 
   def test_converts_cli_values_to_the_declared_types
@@ -52,8 +59,8 @@ class ParamsTest < Minitest::Test
 
   def test_converts_environment_values
     params = schema do
-      param :verbose, :bool, env: "VERBOSE"
-      param :bulk, Integer, env: "BULK"
+      param :verbose, :bool, default: {env: "VERBOSE"}
+      param :bulk, Integer, default: {env: "BULK"}
     end
 
     assert_equal({verbose: true, bulk: 5}, params.bind_argv([], env: {"VERBOSE" => "yes", "BULK" => "5"}).to_h)
@@ -116,16 +123,18 @@ class ParamsTest < Minitest::Test
   end
 
   def test_invalid_environment_values_name_the_variable
-    params = schema { param :bulk, Integer, env: "BULK" }
+    params = schema { param :bulk, Integer, default: {env: "BULK"} }
     error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {"BULK" => "ten"}) }
 
-    assert_match(/invalid value for --bulk from environment variable BULK: "ten" is not an Integer/, error.message)
+    assert_equal %(invalid value for bulk from environment variable BULK via default: "ten" is not an Integer),
+                 error.message
   end
 
   def test_empty_environment_values_count_as_unset
-    params = schema { param :bulk, Integer, default: 5, env: "BULK" }
+    params = schema { param :bulk, Integer, default: {env: "BULK"} }
+    error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {"BULK" => ""}) }
 
-    assert_equal 5, params.bind_argv([], env: {"BULK" => ""}).bulk
+    assert_equal "bulk: environment variable BULK from default: is not set", error.message
   end
 
   def test_help_is_recognized_only_as_an_option
@@ -145,12 +154,12 @@ class ParamsTest < Minitest::Test
   def test_help_lists_options_and_arguments
     help = schema do
       param :index, String, required: true, short: "-i", desc: "Index name"
-      param :url, String, default: "http://localhost:9200", env: "ES_URL"
+      param :url, String, default: "http://localhost:9200"
       args :files, min: 1, desc: "Input files"
     end.help
 
     assert_match(/-i, --index VALUE\s+Index name \(required\)/, help)
-    assert_match(%r{--url VALUE\s+\(default: http://localhost:9200, env: ES_URL\)}, help)
+    assert_match(%r{--url VALUE\s+\(default: http://localhost:9200\)}, help)
     assert_match(/FILES  Input files  \(1 or more arguments\)/, help)
   end
 

@@ -31,7 +31,7 @@ module Metacrunch
     end
 
     # Runs the job with params bound by name (see Params#bind_values):
-    # given values, then env:, then the credentials, then the default.
+    # given values, then the defaults (references read env: and the credentials).
     # Raises ArgumentError for an unknown key and ParamError for invalid
     # values (CredentialsError, a ParamError, for unreadable credentials);
     # errors from the recipe itself (a component constructor, a DSL

@@ -12,18 +12,18 @@ require "openssl"
 #
 #   bundle exec metacrunch run -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb | head -n 2
 #   bundle exec metacrunch run -v -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb > /dev/null
-#   PSEUDONYM_PEPPER=another bundle exec metacrunch run -i examples/data/publications.jsonl \
-#     examples/credentials/pseudonymize.rb | head -n 2
+#   PSEUDONYM_PEPPER=another bundle exec metacrunch run -e container --params examples/credentials/params.yml \
+#     -i examples/data/publications.jsonl examples/credentials/pseudonymize.rb | head -n 2
 #   bundle exec metacrunch credentials show --credentials examples/credentials/.metacrunch
 #
-# -v logs which credentials file was decrypted; PSEUDONYM_PEPPER wins over
-# the credentials. The key in examples/credentials/.metacrunch/master.key is
+# -v logs which credentials file was decrypted. In the environment container,
+# examples/credentials/params.yml takes the pepper from PSEUDONYM_PEPPER
+# instead, as a container gets its secrets. The key in examples/credentials/.metacrunch/master.key is
 # public: it is committed only so that this example runs. Never commit a real
 # key; `metacrunch credentials edit` creates a .gitignore that keeps keys out.
 Metacrunch.job "pseudonymize" do
   params do
-    param :pepper, String, env: "PSEUDONYM_PEPPER", credential: "pseudonyms.pepper", required: true,
-                           desc: "Secret for the pseudonyms"
+    secret :pepper, String, default: {credential: "pseudonyms.pepper"}, desc: "Secret for the pseudonyms"
   end
 
   source id: ->(record) { record["id"] }

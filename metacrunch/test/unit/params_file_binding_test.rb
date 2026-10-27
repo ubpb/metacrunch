@@ -13,17 +13,16 @@ class ParamsFileBindingTest < Minitest::Test
   end
 
   def test_the_order_of_the_sources
-    params = schema { param :index, String, env: "INDEX", default: "d" }
+    params = schema { param :index, String, default: "d" }
     file = params_file("default: {index: f}\n")
 
     values = [
-      params.bind_argv(["--index", "c"], env: {"INDEX" => "e"}, file:),
-      params.bind_argv([], env: {"INDEX" => "e"}, file:),
-      params.bind_argv([], env: {"INDEX" => "e"}),
+      params.bind_argv(["--index", "c"], env: {}, file:),
+      params.bind_argv([], env: {}, file:),
       params.bind_argv([], env: {})
     ].map(&:index)
 
-    assert_equal ["c", "f", "e", "d"], values
+    assert_equal ["c", "f", "d"], values
   end
 
   def test_the_file_wins_over_a_default_reference
@@ -48,8 +47,24 @@ class ParamsFileBindingTest < Minitest::Test
                  params.bind_argv([], env: {}, file:).to_h)
   end
 
-  def test_null_falls_through
-    params = schema { param :index, String, env: "INDEX" }
+  def test_a_missing_required_value_says_what_the_file_has
+    params = schema do
+      param :index, String, required: true
+      param :batch, Integer
+    end
+    absent = params_file("production: {batch: 1}\n")
+    null = params_file("production: {index: ~}\n")
+    messages = [absent, null].map do |file|
+      assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, file:, environment: "production") }
+        .message.sub(file.path, "FILE")
+    end
+
+    assert_equal ["missing required parameter --index (not in FILE (production))",
+                  "missing required parameter --index (null in FILE (production))"], messages
+  end
+
+  def test_null_falls_through_to_the_default
+    params = schema { param :index, String, default: {env: "INDEX"} }
     file = params_file("default: {index: f}\nproduction: {index: ~}\n")
 
     assert_equal "e", params.bind_argv([], env: {"INDEX" => "e"}, file:, environment: "production").index

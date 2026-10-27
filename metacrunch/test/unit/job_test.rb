@@ -98,10 +98,10 @@ class JobTest < Minitest::Test
     assert_nil job.desc
   end
 
-  def test_run_reads_the_environment_for_params_not_given
+  def test_run_reads_env_references_for_params_not_given
     target = CollectingSink.new
     job = Metacrunch.job do
-      params { param :factor, Integer, env: "FACTOR", default: 1 }
+      params { param :factor, Integer, default: {env: "FACTOR"} }
       source [2]
       map { it * params.factor }
       sink target

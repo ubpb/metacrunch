@@ -19,7 +19,7 @@ module CredentialsHelper
 
     Metacrunch.job do
       params do
-        param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key", required: true
+        secret :api_key, String, default: {credential: "catalog.api_key"}
         param :output, String, default: "-"
       end
 

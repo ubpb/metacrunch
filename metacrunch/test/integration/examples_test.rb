@@ -93,8 +93,9 @@ class ExamplesTest < Minitest::Test
     assert_equal 3, pairs.map(&:last).uniq.size
   end
 
-  def test_pseudonymize_takes_the_pepper_from_the_environment_first
-    stdout, = pseudonymize(env: {"PSEUDONYM_PEPPER" => "another pepper"})
+  def test_pseudonymize_takes_the_pepper_from_a_variable_in_the_container_environment
+    stdout, = pseudonymize("-e", "container", "--params", example("credentials/params.yml"),
+                           env: {"PSEUDONYM_PEPPER" => "another pepper"})
     expected = "author-#{OpenSSL::HMAC.hexdigest("SHA256", "another pepper", "Doe, Jane")[0, 12]}"
 
     assert_equal expected, JSON.parse(stdout.lines.first)["authors"].first
@@ -169,8 +170,8 @@ class ExamplesTest < Minitest::Test
     files.map { File.read(it) }
   end
 
-  def pseudonymize(env: {})
-    metacrunch("run", "-i", example("data/publications.jsonl"), example("credentials/pseudonymize.rb"), env:)
+  def pseudonymize(*options, env: {})
+    metacrunch("run", *options, "-i", example("data/publications.jsonl"), example("credentials/pseudonymize.rb"), env:)
   end
 
   def metacrunch(*, stdin_data: "", env: {}, chdir: Dir.pwd)

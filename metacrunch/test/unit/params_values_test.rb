@@ -24,12 +24,11 @@ class ParamsValuesTest < Minitest::Test
     assert_equal ["de", nil, []], [bound.lang, bound.limit, bound.files]
   end
 
-  def test_missing_values_come_from_env_then_credentials
-    credentials = FakeCredentials.new("api.code" => "credential")
-    code = ->(values, env) { secret_schema.bind_values(values, env:, credentials:).code }
+  def test_missing_values_come_from_the_default_reference
+    credentials = FakeCredentials.new("api.pin" => "7")
+    pin = ->(values) { secret_schema.bind_values(values, env: {}, credentials:).pin }
 
-    assert_equal ["given", "env", "credential"],
-                 [code.call({code: "given"}, {"CODE" => "env"}), code.call({}, {"CODE" => "env"}), code.call({}, {})]
+    assert_equal [1, 7], [pin.call({pin: 1, code: "c"}), pin.call({code: "c"})]
   end
 
   def test_unknown_keys_raise_argument_errors
@@ -53,10 +52,10 @@ class ParamsValuesTest < Minitest::Test
     assert_equal "invalid value for pin: (hidden) is not an Integer", error.message
   end
 
-  def test_missing_values_are_named_by_their_name_with_what_was_tried
-    error = assert_raises(Metacrunch::ParamError) { secret_schema.bind_values({}, env: {}) }
+  def test_missing_values_are_named_by_their_name
+    error = assert_raises(Metacrunch::ParamError) { secret_schema.bind_values({pin: 1}, env: {}) }
 
-    assert_equal "missing required parameter code (CODE unset; api.code: no credentials)", error.message
+    assert_equal "missing required parameter code", error.message
   end
 
   # Values from code are named as Ruby types; strings keep the command
@@ -85,9 +84,9 @@ class ParamsValuesTest < Minitest::Test
   end
 
   def test_the_command_line_still_names_options
-    error = assert_raises(Metacrunch::ParamError) { secret_schema.bind_argv([], env: {}) }
+    error = assert_raises(Metacrunch::ParamError) { secret_schema.bind_argv(["--pin", "1"], env: {}) }
 
-    assert_equal "missing required parameter --code (CODE unset; api.code: no credentials)", error.message
+    assert_equal "missing required parameter --code", error.message
   end
 
   def test_pathnames_count_as_strings
@@ -131,8 +130,8 @@ class ParamsValuesTest < Minitest::Test
   # found missing.
   def secret_schema
     Metacrunch::Params.new.tap do |params|
-      params.param :pin, Integer, credential: "api.pin"
-      params.param :code, String, env: "CODE", credential: "api.code", required: true
+      params.secret :pin, Integer, default: {credential: "api.pin"}
+      params.secret :code, String, required: true
     end
   end
 

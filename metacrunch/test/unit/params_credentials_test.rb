@@ -3,26 +3,21 @@
 require "pp"
 require "test_helper"
 
+# Secrets with {credential: PATH} defaults, read from real encrypted
+# credentials.
 class ParamsCredentialsTest < Minitest::Test
 
   include CredentialsHelper
 
   SECRET = "sk-123-geheim"
 
-  def test_the_command_line_wins_over_env_and_credentials
+  def test_the_command_line_wins_over_the_credentials
     with_credentials({"catalog" => {"api_key" => "from-credentials"}}) do |credentials|
       params = api_key_schema
-      env = {"CATALOG_API_KEY" => "from-env"}
 
-      assert_equal "from-cli", params.bind_argv(["--api-key", "from-cli"], env:, credentials:).api_key
-      assert_equal "from-env", params.bind_argv([], env:, credentials:).api_key
-      assert_equal "from-credentials", params.bind_argv([], env: {"CATALOG_API_KEY" => ""}, credentials:).api_key
-    end
-  end
-
-  def test_the_default_comes_last
-    with_credentials({}) do |credentials|
-      assert_equal "from-default", api_key_schema(default: "from-default").bind_argv([], env: {}, credentials:).api_key
+      assert_equal ["from-cli", "from-credentials"],
+                   [params.bind_argv(["--api-key", "from-cli"], env: {}, credentials:).api_key,
+                    params.bind_argv([], env: {}, credentials:).api_key]
     end
   end
 
@@ -30,11 +25,11 @@ class ParamsCredentialsTest < Minitest::Test
     data = {"bulk" => "42", "port" => 9200, "dry" => "yes", "tls" => true, "hosts" => ["es1", "es2"]}
     with_credentials(data) do |credentials|
       params = schema do
-        param :bulk, Integer, credential: "bulk"
-        param :port, Integer, credential: "port"
-        param :dry, :bool, credential: "dry"
-        param :tls, :bool, credential: "tls"
-        param :hosts, Array, credential: "hosts"
+        secret :bulk, Integer, default: {credential: "bulk"}
+        secret :port, Integer, default: {credential: "port"}
+        secret :dry, :bool, default: {credential: "dry"}
+        secret :tls, :bool, default: {credential: "tls"}
+        secret :hosts, Array, default: {credential: "hosts"}
       end
 
       assert_equal({bulk: 42, port: 9200, dry: true, tls: true, hosts: ["es1", "es2"]},
@@ -45,10 +40,10 @@ class ParamsCredentialsTest < Minitest::Test
   def test_values_keep_the_text_that_yaml_1_1_would_retype
     with_credentials("pin: 0123\npassword: no\nport: 0123\ndry: 1\n") do |credentials|
       params = schema do
-        param :pin, String, credential: "pin"
-        param :password, String, credential: "password"
-        param :port, Integer, credential: "port"
-        param :dry, :bool, credential: "dry"
+        secret :pin, String, default: {credential: "pin"}
+        secret :password, String, default: {credential: "password"}
+        secret :port, Integer, default: {credential: "port"}
+        secret :dry, :bool, default: {credential: "dry"}
       end
 
       assert_equal({pin: "0123", password: "no", port: 123, dry: true},
@@ -58,10 +53,10 @@ class ParamsCredentialsTest < Minitest::Test
 
   def test_list_elements_must_be_texts
     with_credentials("hosts: [es1, {port: 9200}]\n") do |credentials|
-      params = schema { param :hosts, Array, credential: "hosts" }
+      params = schema { secret :hosts, Array, default: {credential: "hosts"} }
       error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, credentials:) }
 
-      assert_match(/\(hidden\) is not a comma-separated list/, error.message)
+      assert_match(/\(hidden\) is not an Array of Strings/, error.message)
     end
   end
 
@@ -74,101 +69,70 @@ class ParamsCredentialsTest < Minitest::Test
     end
   end
 
-  def test_a_missing_required_value_names_every_source
+  def test_a_missing_credential_names_the_file
     with_credentials({"other" => 1}, environment: "production") do |credentials, dir|
-      error = assert_raises(Metacrunch::ParamError) do
-        api_key_schema(required: true).bind_argv([], env: {}, credentials:)
-      end
+      error = assert_raises(Metacrunch::ParamError) { api_key_schema.bind_argv([], env: {}, credentials:) }
 
-      assert_equal "missing required parameter --api-key (CATALOG_API_KEY unset; catalog.api_key not in " \
-                   "#{dir}/credentials.production.yml.enc)", error.message
+      assert_equal "api_key: credential catalog.api_key from default: not in #{dir}/credentials.production.yml.enc",
+                   error.message
     end
   end
 
   def test_a_missing_environment_file_is_named
     with_credentials({"catalog" => {"api_key" => SECRET}}) do |_credentials, dir|
       credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: dir, environment: "production")
-      error = assert_raises(Metacrunch::ParamError) do
-        api_key_schema(required: true).bind_argv([], env: {}, credentials:)
-      end
+      error = assert_raises(Metacrunch::ParamError) { api_key_schema.bind_argv([], env: {}, credentials:) }
 
-      assert_equal "missing required parameter --api-key (CATALOG_API_KEY unset; no credentials for environment " \
-                   "production in #{dir})", error.message
+      assert_equal "api_key: credential catalog.api_key from default: no credentials for environment production " \
+                   "in #{dir}", error.message
     end
-  end
-
-  def test_without_credentials_the_message_says_so
-    params = schema { param :api_key, String, credential: "catalog.api_key", required: true }
-    error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}) }
-
-    assert_equal "missing required parameter --api-key (catalog.api_key: no credentials)", error.message
-  end
-
-  def test_a_missing_value_names_the_unset_variable
-    params = schema { param :url, String, env: "ES_URL", required: true }
-    error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}) }
-
-    assert_equal "missing required parameter --url (ES_URL unset)", error.message
   end
 
   def test_a_credential_path_needs_non_empty_segments
     errors = ["", ".a", "a.", "a..b", :a].map do |path|
-      assert_raises(ArgumentError) { schema { param :x, String, credential: path } }.message
+      assert_raises(ArgumentError) { schema { secret :x, String, default: {credential: path} } }.message
     end
 
-    assert_equal "parameter x: credential must be a path like \"catalog.api_key\", got \"\"", errors.first
-    assert_equal 5, errors.grep(/credential must be a path/).size
+    assert_equal ["secret x: a reference is {credential: PATH} or {env: NAME}"] * 5, errors
   end
 
   def test_help_shows_the_sources_of_a_secret_but_no_value
-    help = api_key_schema(required: true, desc: "Catalog API key").help
+    required = schema { secret :api_key, String, required: true, desc: "Catalog API key" }.help
 
-    assert_includes help, "Catalog API key (required, secret, env: CATALOG_API_KEY, credential: catalog.api_key)"
-  end
-
-  def test_help_hides_the_default_of_a_secret
-    help = api_key_schema(default: SECRET).help
-
-    refute_includes help, SECRET
-    assert_includes help, "(secret, env: CATALOG_API_KEY, credential: catalog.api_key)"
+    assert_includes required, "Catalog API key (required, secret)"
+    assert_includes api_key_schema.help, "(secret, default: credential catalog.api_key)"
   end
 
   def test_invalid_values_of_a_secret_are_hidden_from_every_source
     with_credentials({"pin" => SECRET}) do |credentials|
-      params = schema { param :pin, Integer, env: "PIN", credential: "pin" }
-      messages = [[["--pin", SECRET], {}], [[], {"PIN" => SECRET}], [[], {}]].map do |argv, env|
-        assert_raises(Metacrunch::ParamError) { params.bind_argv(argv, env:, credentials:) }.message
+      params = schema { secret :pin, Integer, default: {credential: "pin"} }
+      messages = [["--pin", SECRET], []].map do |argv|
+        assert_raises(Metacrunch::ParamError) { params.bind_argv(argv, env: {}, credentials:) }.message
       end
 
-      assert_equal 3, messages.grep(/\(hidden\) is not an Integer/).size
+      assert_equal 2, messages.grep(/\(hidden\) is not an Integer/).size
       assert_empty messages.grep(/#{SECRET}/)
     end
   end
 
   def test_a_hidden_value_does_not_survive_as_the_cause
-    params = schema { param :pin, Integer, env: "PIN", credential: "pin" }
-    error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {"PIN" => SECRET}) }
+    params = schema { secret :pin, Integer }
+    error = assert_raises(Metacrunch::ParamError) { params.bind_argv(["--pin", SECRET], env: {}) }
 
     assert_nil error.cause
     refute_includes error.full_message(highlight: false), SECRET
   end
 
-  def test_a_hidden_default_does_not_survive_as_the_cause
-    error = assert_raises(ArgumentError) { schema { param :pin, Integer, credential: "pin", default: SECRET } }
+  def test_a_plain_default_of_a_secret_is_not_shown
+    error = assert_raises(ArgumentError) { schema { secret :pin, Integer, default: SECRET } }
 
     refute_includes error.full_message(highlight: false), SECRET
-  end
-
-  def test_an_invalid_default_of_a_secret_is_hidden
-    error = assert_raises(ArgumentError) { schema { param :pin, Integer, credential: "pin", default: SECRET } }
-
-    assert_equal "invalid default for parameter pin: (hidden) is not an Integer", error.message
   end
 
   def test_inspect_to_s_and_pp_show_secrets_as_secret
     params = schema do
       param :index, String
-      param :api_key, String, credential: "catalog.api_key"
+      secret :api_key, String
     end
     values = params.bind_values({index: "test", api_key: SECRET}, env: {})
 
@@ -183,39 +147,33 @@ class ParamsCredentialsTest < Minitest::Test
     assert_equal [SECRET, {api_key: SECRET}], [values.api_key, values.to_h]
   end
 
-  def test_warns_about_a_secret_on_the_command_line
-    warnings = []
-    api_key_schema.bind_argv(["--api-key", SECRET], env: {}, warn: ->(message) { warnings << message })
+  def test_no_warning_for_other_parameters_and_for_values_from_the_credentials
+    with_credentials({"catalog" => {"api_key" => SECRET}}) do |credentials|
+      warnings = []
+      params = schema do
+        param :index, String
+        secret :api_key, String, default: {credential: "catalog.api_key"}
+      end
+      params.bind_argv(["--index", "x"], env: {}, credentials:, warn: ->(message) { warnings << message })
 
-    assert_equal ["--api-key is a secret; give it in a params file as {credential: PATH} or {env: NAME}"], warnings
-  end
-
-  def test_no_warning_for_other_parameters_and_for_values_from_env
-    warnings = []
-    params = schema do
-      param :index, String
-      param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key"
+      assert_empty warnings
     end
-    params.bind_argv(["--index", "x"], env: {"CATALOG_API_KEY" => SECRET}, warn: ->(message) { warnings << message })
-
-    assert_empty warnings
   end
 
-  def test_credentials_are_read_only_when_command_line_and_env_give_no_value
+  def test_credentials_are_read_only_when_no_earlier_source_gives_a_value
     in_tmpdir do |root|
       write_file(root, ".metacrunch/credentials.yml.enc", "garbage")
       credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: File.join(root, ".metacrunch"))
       params = api_key_schema
 
       assert_equal "cli", params.bind_argv(["--api-key", "cli"], env: {}, credentials:).api_key
-      assert_equal "env", params.bind_argv([], env: {"CATALOG_API_KEY" => "env"}, credentials:).api_key
       assert_raises(Metacrunch::CredentialsError) { params.bind_argv([], env: {}, credentials:) }
     end
   end
 
   def test_option_errors_do_not_echo_values
     params = schema do
-      param :api_key, String, credential: "catalog.api_key"
+      secret :api_key, String
       param :dry, :bool
     end
     errors = [["--api-ky=#{SECRET}"], ["--dry=#{SECRET}"]].map do |argv|
@@ -226,18 +184,11 @@ class ParamsCredentialsTest < Minitest::Test
     assert_empty errors.map { it.full_message(highlight: false) }.grep(/#{SECRET}/)
   end
 
-  def test_bind_values_without_credentials_finds_none
-    assert_nil api_key_schema.bind_values({}, env: {}).api_key
-  end
-
   private
 
   def schema(&) = Metacrunch::Params.new.tap { |params| params.instance_exec(&) }
 
-  def api_key_schema(**options)
-    settings = {env: "CATALOG_API_KEY", credential: "catalog.api_key"}.merge(options)
-    schema { param :api_key, String, **settings }
-  end
+  def api_key_schema = schema { secret :api_key, String, default: {credential: "catalog.api_key"} }
 
   # Yields a store over credentials with data (a Hash or YAML text), and
   # the credentials directory.

@@ -14,7 +14,7 @@ class ExeCredentialsTest < Minitest::Test
 
     Metacrunch.job do
       params do
-        param :pin, Integer, credential: "catalog.api_key", required: true
+        secret :pin, Integer, default: {credential: "catalog.api_key"}
       end
 
       source [params.pin]
@@ -63,18 +63,20 @@ class ExeCredentialsTest < Minitest::Test
     end
   end
 
-  def test_the_env_variable_overrides_the_credential
+  def test_a_params_file_takes_the_secret_from_a_variable
     in_tmpdir do |root|
       write_credentials(root, {"catalog" => {"api_key" => SECRET}})
-      stdout, _stderr, status = metacrunch("run", job(root), env: {"CATALOG_API_KEY" => "other"}, chdir: root)
+      stdout, _stderr, status = metacrunch("run", "-e", "container", "--params", params_file(root), job(root),
+                                           env: {"CATALOG_API_KEY" => "other"}, chdir: root)
 
       assert_equal [0, "\"rehto\"\n" * 2], [status.exitstatus, stdout]
     end
   end
 
-  def test_values_from_env_need_neither_key_nor_file
+  def test_values_from_variables_need_neither_key_nor_file
     in_tmpdir do |root|
-      stdout, stderr, status = metacrunch("run", job(root), env: {"CATALOG_API_KEY" => SECRET}, chdir: root)
+      stdout, stderr, status = metacrunch("run", "-e", "container", "--params", params_file(root), job(root),
+                                          env: {"CATALOG_API_KEY" => SECRET}, chdir: root)
 
       assert_equal [0, OUTPUT], [status.exitstatus, stdout], stderr
     end
@@ -106,6 +108,8 @@ class ExeCredentialsTest < Minitest::Test
   private
 
   def job(root) = write_file(root, "jobs/secret.rb", SECRET_JOB)
+
+  def params_file(root) = write_file(root, "params.yml", "container: {api_key: {env: CATALOG_API_KEY}}\n")
 
   def mkdir(path) = path.tap { FileUtils.mkdir_p(it) }
 

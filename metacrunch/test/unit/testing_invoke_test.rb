@@ -13,7 +13,7 @@ class TestingInvokeTest < Minitest::Test
     "Metacrunchfile" => "Metacrunch.load_files \"jobs/*.rb\", \"commands/*.rb\"\n",
     "jobs/a2c.rb" => <<~RUBY,
       Metacrunch.job "a2c" do
-        params { param :api_key, String, credential: "catalog.api_key", required: true }
+        params { secret :api_key, String, required: true }
 
         source raise("a2c must not run")
       end
@@ -23,7 +23,7 @@ class TestingInvokeTest < Minitest::Test
       Metacrunch.command "catalog:reindex" do
         params do
           param :alias, String, default: "catalog"
-          param :api_key, String, credential: "catalog.api_key"
+          secret :api_key, String
           args :files, min: 1
         end
 

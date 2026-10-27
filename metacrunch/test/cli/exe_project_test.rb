@@ -96,7 +96,7 @@ class ExeProjectTest < Minitest::Test
   # and invokes a job of the project that reads the same credential.
   GEM_COMMAND = <<~'RUBY'
     Metacrunch.command "secret:check" do
-      params { param :api_key, String, credential: "catalog.api_key", required: true }
+      params { secret :api_key, String, default: {credential: "catalog.api_key"} }
 
       run do
         logger.info("command: #{params.api_key.reverse}")

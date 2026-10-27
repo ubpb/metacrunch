@@ -101,12 +101,12 @@ module Metacrunch
 
     end
 
-    Definition = Data.define(:name, :type, :default, :required, :env, :desc, :short, :credential, :secret) do
+    Definition = Data.define(:name, :type, :default, :required, :desc, :short, :secret) do
       def option = "--#{name.to_s.tr("_", "-")}"
 
-      # A parameter declared with secret (or with credential:) is secret:
-      # its value is hidden in help texts, error messages and inspect.
-      def secret? = secret || !credential.nil?
+      # A parameter declared with secret: its value is hidden in help texts,
+      # error messages and inspect.
+      def secret? = secret
 
       # How declaration errors name it: "secret api_key", "parameter index".
       def label = "#{secret ? "secret" : "parameter"} #{name}"
@@ -134,17 +134,16 @@ module Metacrunch
     # Defaults are converted and checked like CLI values when the parameter
     # is declared, so a wrong default fails early; a reference
     # ({credential: PATH}, {env: NAME}) is checked for its form and resolved
-    # when its value is needed. credential: a path in the credentials
-    # ("catalog.api_key"); it makes the parameter secret.
-    def param(name, type = String, default: nil, required: false, env: nil, desc: nil, short: nil, credential: nil)
-      declare(name, type, default:, required:, env:, desc:, short:, credential:, secret: false)
+    # when its value is needed; {credential: PATH} only for a secret.
+    def param(name, type = String, default: nil, required: false, desc: nil, short: nil)
+      declare(name, type, default:, required:, desc:, short:, secret: false)
     end
 
     # A secret parameter: hidden in help texts, error messages and inspect,
     # also where use or invoke pass it on. Its default can only be a
     # reference.
     def secret(name, type = String, default: nil, required: false, desc: nil, short: nil)
-      declare(name, type, default:, required:, env: nil, desc:, short:, credential: nil, secret: true)
+      declare(name, type, default:, required:, desc:, short:, secret: true)
     end
 
     def args(name, min: 0, max: nil, desc: nil)
@@ -158,11 +157,11 @@ module Metacrunch
     end
 
     # Binds CLI arguments. A parameter without a value on the command line
-    # is read from the params file (a ParamsFile, its default: section with
-    # that of environment merged over it), then from its env: variable
-    # (empty counts as unset), then from the credentials (a
-    # Credentials::Store, asked only now), then the default. warn is called
-    # with a message for a secret given on the command line.
+    # takes the value of the params file (a ParamsFile; its section of
+    # environment, default: for nil), then its default. References are
+    # resolved through env (variables) and credentials (a
+    # Credentials::Store, asked only now). warn is called with a message for
+    # a secret given on the command line.
     def bind_argv(argv, env: ENV, credentials: nil, warn: nil, file: nil, environment: nil)
       given = {}
       positional = option_parser(given).parse(argv)
@@ -179,10 +178,10 @@ module Metacrunch
     end
 
     # Binds values from code: use, invoke, Project#invoke, Job#run and, with
-    # an empty environment and no credentials, Testing. A value may have the
-    # declared type or be a String, which is converted; a Pathname counts as
-    # its path; nil means "not given". A parameter without a value is read
-    # from its env: variable, then from the credentials, then the default.
+    # no environment variables (env nil) and no credentials, Testing. A value
+    # may have the declared type or be a String, which is converted; a
+    # Pathname counts as its path; nil means "not given". A parameter
+    # without a value takes its default.
     # The values come from code, so messages name a parameter by its name,
     # not as option, and a secret gives no warning. secrets: the secret
     # values of the caller (see secret_values); passing one unchanged to a
@@ -228,14 +227,13 @@ module Metacrunch
 
     private
 
-    def declare(name, type, default:, required:, env:, desc:, short:, credential:, secret:)
+    def declare(name, type, default:, required:, desc:, short:, secret:)
       name = check_name!(name)
       raise ArgumentError, "unsupported type #{type.inspect} for parameter #{name}" unless TYPES.include?(type)
       raise ArgumentError, "parameter #{name}: #{RESERVED_SHORT} is reserved for help" if short == RESERVED_SHORT
       raise ArgumentError, "parameter #{name}: use either default: or required: true" if required && !default.nil?
 
-      check_credential!(name, credential)
-      definition = Definition.new(name:, type:, default: nil, required:, env:, desc:, short:, credential:, secret:)
+      definition = Definition.new(name:, type:, default: nil, required:, desc:, short:, secret:)
       @definitions[name] = definition.with(default: default_value(definition, default))
       nil
     end
@@ -251,12 +249,6 @@ module Metacrunch
       name
     end
 
-    def check_credential!(name, path)
-      return if path.nil? || (path.is_a?(String) && CREDENTIAL_PATH.match?(path))
-
-      raise ArgumentError, "parameter #{name}: credential must be a path like \"catalog.api_key\", got #{path.inspect}"
-    end
-
     # A plain default converted, or a Reference checked for its form and the
     # rules of secrets: credentials only for secrets, secrets only from
     # references.
@@ -270,12 +262,12 @@ module Metacrunch
               "#{definition.label}: a default must be {credential: PATH} or {env: NAME}, not a plain value"
       end
 
-      frozen_copy(convert(definition, default), secret: definition.secret?)
+      frozen_copy(convert(definition, default))
     rescue ParamError
       expected = TYPE_NAMES.fetch(definition.type)
-      shown = definition.secret? ? HIDDEN : default.inspect
       # No cause: the converter's error would repeat the value.
-      raise ArgumentError, "invalid default for parameter #{definition.name}: #{shown} is not #{expected}", cause: nil
+      raise ArgumentError, "invalid default for parameter #{definition.name}: #{default.inspect} is not #{expected}",
+            cause: nil
     end
 
     def default_reference(definition, default)
@@ -318,17 +310,8 @@ module Metacrunch
       notes << "secret" if definition.secret?
       default = definition.default
       notes << "default: #{default}" if default.is_a?(Reference) || !(default.nil? || definition.secret?)
-      notes << "env: #{definition.env}" if definition.env
-      notes << "credential: #{definition.credential}" if definition.credential
       text = [definition.desc, ("(#{notes.join(", ")})" if notes.any?)].compact.join(" ")
       text unless text.empty?
-    end
-
-    def env_value(definition, env)
-      return unless definition.env && env
-
-      value = env[definition.env]
-      value unless value.nil? || value.empty?
     end
 
     # The value of a reference: from the credentials or the environment.
@@ -436,16 +419,10 @@ module Metacrunch
       value, section = selection&.fetch(definition.name.to_s)
       return file_value(definition, value, section, selection, env:, credentials:) unless value.nil?
 
-      raw = env_value(definition, env)
-      return resolve(definition, raw, origin: "environment variable #{definition.env}", keyword:) unless raw.nil?
-
-      raw = credentials&.lookup(definition.credential) if definition.credential
-      return resolve(definition, raw, origin: credentials.origin(definition.credential), keyword:) unless raw.nil?
-
       default = definition.default
       return reference_value(definition, default, "default:", env, credentials) if default.is_a?(Reference)
 
-      resolve(definition, nil, sources: -> { sources(definition, credentials) }, keyword:)
+      resolve(definition, nil, sources: -> { sources(definition, selection) }, keyword:)
     end
 
     # A value of the params file: text or a list, converted like a
@@ -457,16 +434,13 @@ module Metacrunch
       resolve(definition, value, origin: from, keyword: true)
     end
 
-    # What was tried for a missing value, e.g. "CATALOG_API_KEY unset;
-    # catalog.api_key not in FILE"; nil for a parameter without env: and
-    # credential:.
-    def sources(definition, credentials)
-      tried = []
-      tried << "#{definition.env} unset" if definition.env
-      if definition.credential
-        tried << (credentials ? credentials.missing(definition.credential) : "#{definition.credential}: no credentials")
-      end
-      tried.join("; ") unless tried.empty?
+    # Why the params file gave no value for a missing one, e.g. "null in
+    # FILE (production)"; nil without a params file.
+    def sources(definition, selection)
+      return unless selection
+
+      _value, section = selection.fetch(definition.name.to_s)
+      "#{section ? "null" : "not"} in #{selection.path} (#{selection.sections.first})"
     end
 
     def secret_warning(definition)

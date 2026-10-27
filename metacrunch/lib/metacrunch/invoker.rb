@@ -96,8 +96,9 @@ module Metacrunch
     end
 
     # The pipeline of a job or transform with its parameters bound from
-    # argv (the command line) or params (code): then env:, the credentials
-    # searched from anchor, then the default. The transforms it uses
+    # argv (the command line, then the params file) or params (code), then
+    # the defaults; references read the environment and the credentials
+    # searched from anchor. The transforms it uses
     # resolve here and read the same credentials.
     def pipeline(job, anchor:, argv: nil, params: nil, secrets: [], target: nil)
       credentials = credentials_for(anchor)

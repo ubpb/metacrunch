@@ -108,14 +108,15 @@ class TestingTest < Minitest::Test
 
   def test_transforms_get_no_environment
     transform = Metacrunch.transform("env") do
-      params { param :factor, Integer, env: "METACRUNCH_TEST_FACTOR", default: 2 }
+      params { param :factor, Integer, default: {env: "METACRUNCH_TEST_FACTOR"} }
 
       map { it * params.factor }
     end
     job = Metacrunch.job { source [1]; use transform }
     ENV["METACRUNCH_TEST_FACTOR"] = "7"
+    error = assert_raises(Metacrunch::ParamError) { Metacrunch::Testing.run(job) }
 
-    assert_equal [2], Metacrunch::Testing.run(job).records
+    assert_equal "use env: factor: Testing reads no environment variables; pass factor in params:", error.message
   ensure
     ENV.delete("METACRUNCH_TEST_FACTOR")
   end
@@ -123,14 +124,14 @@ class TestingTest < Minitest::Test
   def test_params_are_bound_like_use_but_without_the_environment
     job = Metacrunch.job do
       params do
-        param :lang, String, env: "METACRUNCH_TEST_LANG", default: "de"
+        param :lang, String, default: {env: "METACRUNCH_TEST_LANG"}
         param :path, String
       end
       source [1]
       map { [params.lang, params.path] }
     end
     ENV["METACRUNCH_TEST_LANG"] = "en"
-    result = Metacrunch::Testing.run(job, params: {path: Pathname("a/b")})
+    result = Metacrunch::Testing.run(job, params: {lang: "de", path: Pathname("a/b")})
 
     assert_equal [["de", "a/b"]], result.records
   ensure

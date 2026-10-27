@@ -3,8 +3,8 @@
 module Metacrunch
   module Credentials
     # The credentials of one Location, read and decrypted on the first lookup,
-    # once. Params asks it only for values that neither the command line nor
-    # an env: variable gives.
+    # once. Params asks it only to resolve a {credential: PATH} reference whose
+    # value is needed.
     class Store
 
       def initialize(location, logger: nil)

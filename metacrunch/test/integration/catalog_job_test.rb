@@ -56,12 +56,13 @@ class CatalogJobTest < Minitest::Test
     assert_equal [["5", "KeyError"]], failed
   end
 
-  def test_min_year_can_come_from_the_environment
+  def test_min_year_can_come_from_a_params_file
     Dir.mktmpdir do |dir|
+      params = File.join(dir, "params.yml")
+      File.write(params, "default: {min_year: 1800}\n")
       code = nil
       capture_io do
-        cli = Metacrunch::Cli.new(env: {"CATALOG_MIN_YEAR" => "1800"})
-        code = cli.run([JOB, "--output", dir, INPUT])
+        code = Metacrunch::Cli.new(env: {}).run(["run", "--params", params, JOB, "--output", dir, INPUT])
       end
 
       assert_equal 3, code

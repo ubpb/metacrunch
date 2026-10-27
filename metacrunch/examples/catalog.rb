@@ -18,7 +18,7 @@ require_relative "lib/json_array_file"
 Metacrunch.job "catalog" do
   params do
     param :output, String, required: true, desc: "Directory for records.jsonl, rejects.jsonl and failures.jsonl"
-    param :min_year, Integer, default: 1900, env: "CATALOG_MIN_YEAR", desc: "Oldest year to keep"
+    param :min_year, Integer, default: 1900, desc: "Oldest year to keep"
     args :input, min: 1, max: 1, desc: "JSON file with an array of records"
   end
 
