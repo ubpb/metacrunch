@@ -260,7 +260,16 @@ end
 map Authors.new(db)
 ```
 
-## Workers and SQLite
+## SQLite
+
+A job that writes the SQLite file it reads, e.g. to update a table in place, needs the file in WAL mode. In SQLite's
+default journal mode the reader's statement keeps the writer from committing, and after SQLite's busy timeout (5 s)
+the job stops with `database is locked; another connection holds the file, ...`. Switch the file once; it keeps the
+mode:
+
+```
+$ sqlite3 books.db "PRAGMA journal_mode=WAL"
+```
 
 With `-w`, the workers inherit the connections of the reader and the writer, which only the main process uses. The
 `sqlite3` gem warns about each inherited writable connection in every worker. The warning is harmless here; silence

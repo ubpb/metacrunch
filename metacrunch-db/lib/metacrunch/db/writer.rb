@@ -12,6 +12,11 @@ module Metacrunch
     class Writer
 
       NO_UPSERT = "upsert needs PostgreSQL, SQLite, MySQL or MariaDB"
+      # In SQLite's default journal mode a reading statement keeps others
+      # from committing, such as the reader of a job that writes the file it
+      # reads; WAL lets them write.
+      LOCKED = "; another connection holds the file, such as a reader of the same file: set PRAGMA journal_mode=WAL " \
+               "once"
       # A batch of at least SPARSE² records whose statements hold fewer than
       # SPARSE records on average gets the hint of hint_columns.
       SPARSE = 4
@@ -89,8 +94,11 @@ module Metacrunch
         hint_columns(items, runs)
         database.transaction { runs.each { write_run(it, failed) } }
       rescue Sequel::Error => e
-        raise OutputError, "#{label}: #{e.message}"
+        raise OutputError, "#{label}: #{e.message}#{LOCKED if locked?(e)}"
       end
+
+      # sqlite3 is loaded only for SQLite.
+      def locked?(error) = defined?(::SQLite3::BusyException) && error.wrapped_exception.is_a?(::SQLite3::BusyException)
 
       # Without a key, only neighbours with the same columns share a
       # statement (Statements.runs), which records that leave out absent

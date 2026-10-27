@@ -67,6 +67,22 @@ class JobsTest < Minitest::Test
     assert_equal 2, result.stats.written
   end
 
+  # In SQLite's default journal mode the reader's statement holds a lock that keeps the writer from committing.
+  def test_reading_and_writing_one_sqlite_file_names_the_way_out
+    result = update_in_place.run(logger: Logger.new(StringIO.new))
+
+    assert_equal :aborted, result.status
+    assert_match(/database is locked; .*reader of the same file.*journal_mode=WAL/, result.error.message)
+  end
+
+  def test_reading_and_writing_one_sqlite_file_works_with_wal
+    sqlite("source").run("PRAGMA journal_mode=WAL")
+    result = update_in_place.run(logger: Logger.new(StringIO.new))
+
+    assert_predicate result, :ok?
+    assert_equal ["A!", "B!", "C!"], sqlite("source")[:books].order(:isbn).select_map(:title)
+  end
+
   def test_testing_run_opens_no_database
     unreachable = Metacrunch::Db::Connection.new(url: "postgres://nowhere.invalid/catalog")
     job = Metacrunch.job do
@@ -78,6 +94,17 @@ class JobsTest < Minitest::Test
   end
 
   private
+
+  # A job that updates the titles of the table it reads, with SQLite's busy timeout cut to 50 ms.
+  def update_in_place
+    source = sqlite_connection("source", timeout: 50)
+    target = sqlite_connection("source", timeout: 50)
+    Metacrunch.job do
+      source Metacrunch::Db::Reader.new(source, table: "books")
+      map { |book| {"isbn" => book["isbn"], "title" => "#{book["title"]}!"} }
+      sink Metacrunch::Db::Writer.new(target, table: "books", action: :update, key: "isbn"), batch: 2
+    end
+  end
 
   def copy_job
     source = sqlite_connection("source")
