@@ -12,6 +12,7 @@ class CredentialsTest < Minitest::Test
     "a: [\n" => "invalid YAML in #{PATH} at line 2, column 1",
     "- a\n" => "#{PATH} must contain a mapping at the top level",
     "x: !ruby/object:Object {}\n" => "unsupported value in #{PATH}: Object (quote it)",
+    "x: !ruby/encoding UTF-8\n" => "unsupported value in #{PATH}: Encoding (quote it)",
     "a: *missing\n" => "invalid YAML in #{PATH}"
   }.freeze
 

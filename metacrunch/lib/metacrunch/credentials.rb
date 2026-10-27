@@ -92,6 +92,8 @@ module Metacrunch
     def parse_yaml(text, path, error:)
       document = Psych.parse(text) or return
       loader = Psych::ClassLoader::Restricted.new([], [])
+      # Psych before 5.5 builds !ruby/encoding without asking the loader.
+      loader.load("Encoding") if document.any? { it.tag == "!ruby/encoding" }
       Psych::Visitors::ToRuby.new(TextScanner.new(loader), loader).accept(document)
     rescue Psych::DisallowedClass => e
       type = e.message[/unspecified class: (\S+)/, 1]

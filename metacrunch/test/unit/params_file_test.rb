@@ -91,8 +91,7 @@ class ParamsFileTest < Minitest::Test
         "FILE: default.tags: a value must be text, a list, {credential: PATH} or {env: NAME}",
       "default: {batch: !!float 1.5}\n" =>
         "FILE: default.batch: a value must be text, a list, {credential: PATH} or {env: NAME}",
-      "default: {enc: !ruby/encoding UTF-8}\n" =>
-        "FILE: default.enc: a value must be text, a list, {credential: PATH} or {env: NAME}",
+      "default: {enc: !ruby/encoding UTF-8}\n" => "unsupported value in FILE: Encoding (quote it)",
       "default: {api_key: {credential: x.y, other: 1}}\n" =>
         "FILE: default.api_key: a value must be text, a list, {credential: PATH} or {env: NAME}",
       "default: {api_key: {credential: a..b}}\n" =>
