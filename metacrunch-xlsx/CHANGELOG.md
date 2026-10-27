@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.0.0 (unreleased)
+## 5.1.0 (unreleased)
 
 The first version, for metacrunch 5. It replaces the XLSX sink of the 4.x gem metacrunch-file, which was built on
 caxlsx.

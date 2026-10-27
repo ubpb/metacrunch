@@ -40,7 +40,7 @@ Everything is plain Ruby. There are three kinds of recipes, and `metacrunch run`
 
 ## Installation
 
-Until 5.0 is released, use metacrunch 5 from Git with Bundler:
+Until metacrunch 5 is released, install it from Git with Bundler:
 
 ```ruby
 # Gemfile

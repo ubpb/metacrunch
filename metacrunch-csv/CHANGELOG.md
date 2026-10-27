@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.0.0 (unreleased)
+## 5.1.0 (unreleased)
 
 The first version, for metacrunch 5. It replaces the CSV source and sink of the 4.x gem metacrunch-file, which were
 built on smarter_csv.

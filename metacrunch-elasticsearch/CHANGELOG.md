@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.0.0 (unreleased)
+## 5.1.0 (unreleased)
 
 The first version for metacrunch 5, for Elasticsearch 8 and 9. It replaces metacrunch-elasticsearch 5.0.0, which
 belongs to metacrunch 4.x.

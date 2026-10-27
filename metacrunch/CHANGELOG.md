@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.0.0 (unreleased)
+## 5.1.0 (unreleased)
 
 A redesign. Jobs written for 4.x must be rewritten; see the Readme and docs/.
 
