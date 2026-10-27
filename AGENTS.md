@@ -51,8 +51,8 @@ the phases; where a skill and this file differ, this file wins.
    Minor findings in the report as deferred; fixing them is recommended, and your human partner decides. Record in the
    spec what the review changed.
 6. **Finish** (`verification-before-completion`, `finishing-a-development-branch`). `bundle exec rake` in the root
-   is green. Report the result, the fixed findings and the deferred minors to your human partner. Merging and pushing
-   follow the rules under [Git](#git).
+   is green, and the [integration tests](#integration-tests) ran where they are due. Report the result, the fixed
+   findings and the deferred minors to your human partner. Merging and pushing follow the rules under [Git](#git).
 
 Spec and plan are committed on the feature branch and reach `master` with it. An open question in design or planning
 can be settled with a throwaway prototype; what it teaches goes into the spec, the prototype is not kept.
@@ -67,6 +67,27 @@ yourself"); that holds for this work only.
   of a gem enforces 95 % line and 90 % branch coverage.
 - RuboCop with `rubocop-ubpb` (`ruby.yml`), run through the Rake tasks (see the Readme).
 - Prefer current best practice and modern Ruby over the style of older code.
+
+## Integration tests
+
+Gems that talk to a server (Elasticsearch, databases) test against real servers, started with Docker:
+
+- The tests in the gem's `test/integration` run when an environment variable names the server
+  (`ELASTICSEARCH_URL`) and skip otherwise, with a message that points to `test/compose.yml`.
+- `test/compose.yml` starts the servers in the versions CI uses, with a project `name:` and host ports off the
+  defaults (9208, 9209). The gem's Readme shows the commands under "Running the tests of this gem"; CI starts the
+  same versions as service containers.
+- Each test works on data of its own (unique index or table names, removed afterwards), so runs from parallel
+  worktrees can share the servers. `up -d --wait` can be repeated; stop the servers with `down` only when no other
+  work uses them.
+- Run them locally when the branch changes a gem with integration tests (its code, tests, gemspec or lockfiles) or
+  the metacrunch code such a gem builds on (sources, sinks, failure handling, params): once before the final review,
+  and again on the rebased head before the merge if the rebase brought in new commits. Not after every TDD step, and
+  not for changes elsewhere. When unsure, run them. CI runs them too, but only on pull requests and on `master`: for
+  a branch merged locally, the local run is the only check before the merge.
+- Where they are due, only a run against the servers verifies the change; skipped integration tests do not count.
+  When they cannot run (no Docker, a port taken), say so instead of reporting the branch as verified. Your human
+  partner may waive the run for one piece of work.
 
 ## Conventions
 
