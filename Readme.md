@@ -49,6 +49,8 @@ says `No changes.` Each gem keeps its CHANGELOG in its directory.
 
 ## Development
 
+[AGENTS.md](AGENTS.md) describes how changes are designed, made and reviewed, for people and coding agents alike.
+
 Each gem has a bundle of its own; the root's bundle holds the tooling. In the root:
 
 ```

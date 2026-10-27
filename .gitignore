@@ -1,5 +1,9 @@
 .DS_Store
 /.bundle/
+/.claude/settings.local.json
+/.claude/worktrees/
+/.superpowers/
+CLAUDE.local.md
 /pkg/
 /tmp/
 /vendor/
