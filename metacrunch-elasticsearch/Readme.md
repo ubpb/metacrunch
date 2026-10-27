@@ -9,7 +9,7 @@ require "metacrunch/elasticsearch"
 
 Metacrunch.job do
   params do
-    instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS)
+    use Metacrunch::Elasticsearch::CONNECTION_PARAMS
     param :index, String, required: true
     args :files, min: 1
   end
@@ -71,13 +71,15 @@ client from it and checks the server on its first request: Elasticsearch, in a v
 `connection.client` returns a client of your own for anything else. `inspect` and the messages never show the API
 key or the password.
 
-The same parameters for jobs and commands: `--url`, `--api-key`, `--user`, `--password` and `--ca-file`. The API key
-and the password are [secrets](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#secrets),
-hidden in `--help`, messages and `inspect`:
+The same parameters for jobs and commands, as a
+[group of parameters](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#groups-of-parameters):
+`--url`, `--api-key`, `--user`, `--password` and `--ca-file`. The API key and the password are
+[secrets](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#secrets), hidden in `--help`,
+messages and `inspect`:
 
 ```ruby
 params do
-  instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS)
+  use Metacrunch::Elasticsearch::CONNECTION_PARAMS
 end
 
 es = Metacrunch::Elasticsearch::Connection.from_params(params)
@@ -219,7 +221,7 @@ never see a half-loaded index. `Indices` has the steps; a project chains them in
 
 ```ruby
 Metacrunch.command "books:rebuild", desc: "Load the books into a new index and switch the alias to it" do
-  params { instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS) }
+  params { use Metacrunch::Elasticsearch::CONNECTION_PARAMS }
 
   run do
     indices = Metacrunch::Elasticsearch::Indices.new(Metacrunch::Elasticsearch::Connection.from_params(params), logger:)

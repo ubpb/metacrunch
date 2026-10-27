@@ -2,7 +2,7 @@
 
 Metacrunch.command "es:switch-alias", desc: "Point an Elasticsearch alias to an index, atomically" do
   params do
-    instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS)
+    use Metacrunch::Elasticsearch::CONNECTION_PARAMS
     args :names, min: 2, max: 2, desc: "ALIAS INDEX"
   end
 

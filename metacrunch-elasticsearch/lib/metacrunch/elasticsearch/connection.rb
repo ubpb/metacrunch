@@ -3,8 +3,8 @@
 module Metacrunch
   module Elasticsearch
 
-    # The connection params for jobs and commands:
-    # params { instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS) }
+    # The connection params for jobs and commands, a group of parameters:
+    # params { use Metacrunch::Elasticsearch::CONNECTION_PARAMS }
     # and Connection.from_params(params). The API key and the password are
     # secrets; values from environment variables or the credentials come from
     # a params file.

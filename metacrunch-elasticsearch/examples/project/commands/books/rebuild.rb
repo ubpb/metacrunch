@@ -2,7 +2,7 @@
 
 Metacrunch.command "books:rebuild", desc: "Load the books into a new index and switch the alias to it" do
   params do
-    instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS)
+    use Metacrunch::Elasticsearch::CONNECTION_PARAMS
     param :alias, String, default: "books", desc: "the alias to switch"
     param :input, String, desc: "JSON Lines with books (default: data/books.jsonl)"
   end

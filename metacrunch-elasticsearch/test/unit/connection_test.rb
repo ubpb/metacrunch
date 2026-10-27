@@ -224,7 +224,7 @@ class ConnectionTest < Minitest::Test
 
   private
 
-  def connection_params = Metacrunch::Params.new.tap { it.instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS) }
+  def connection_params = Metacrunch::Params.new.tap { it.use(Metacrunch::Elasticsearch::CONNECTION_PARAMS) }
 
   def with_env(values)
     saved = values.keys.to_h { [it, ENV.fetch(it, nil)] }

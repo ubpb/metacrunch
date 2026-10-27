@@ -2,7 +2,7 @@
 
 Metacrunch.job "books:load", desc: "Load books from JSON Lines into an index or alias" do
   params do
-    instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS)
+    use Metacrunch::Elasticsearch::CONNECTION_PARAMS
     param :index, String, required: true, desc: "index or alias to write to"
     param :input, String, desc: "JSON Lines with books (default: data/books.jsonl)"
   end

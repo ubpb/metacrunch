@@ -7,7 +7,7 @@ require "metacrunch/elasticsearch"
 
 Metacrunch.job do
   params do
-    instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS)
+    use Metacrunch::Elasticsearch::CONNECTION_PARAMS
     param :index, String, required: true, desc: "index, alias or pattern to read"
     param :query, String, desc: "query string in Lucene syntax, e.g. lang:en"
   end

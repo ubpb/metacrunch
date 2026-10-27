@@ -2,7 +2,7 @@
 
 Metacrunch.command "es:create-index", desc: "Create an Elasticsearch index, by name or for an alias" do
   params do
-    instance_exec(&Metacrunch::Elasticsearch::CONNECTION_PARAMS)
+    use Metacrunch::Elasticsearch::CONNECTION_PARAMS
     param :alias, String, desc: "name the index ALIAS-YYYYMMDD-HHMMSS (UTC) instead of NAME"
     param :settings, String, desc: "JSON file with the settings (comments allowed)"
     param :mappings, String, desc: "JSON file with the mappings (comments allowed)"
