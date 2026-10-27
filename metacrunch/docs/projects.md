@@ -126,8 +126,8 @@ Parameters, secrets, `-e`, `--params`, `--help` and logging work as for jobs. `p
 holds the body, which `--help` never runs: `run` declares what the command does when it runs, as `before` and
 `after` do for a job. In the body, `params`, `logger`, `invoke` and `root` (the project root, a `Pathname`, as in
 jobs and transforms) are available, and `next` ends it early (`return` does not work in a block). Helpers shared by
-several commands are plain Ruby: a module that the body `extend`s, or a proc for common parameters
-(`params { instance_exec(&COMMON_PARAMS) }`) in a required file.
+several commands are plain Ruby: a module that the body `extend`s, or a [group of
+parameters](jobs.md#groups-of-parameters) (`params { use COMMON_PARAMS }`) in a required file.
 
 `invoke NAME, params: {...}, workers:, limit:` runs a job, transform or command. `params` are bound as for
 `Job#run` (see [Parameters](jobs.md#parameters)): in the declared type or as a String, a Pathname as its path, `nil`

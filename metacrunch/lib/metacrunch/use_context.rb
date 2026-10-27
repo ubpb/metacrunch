@@ -9,6 +9,8 @@ module Metacrunch
 
     # How to pick one of several transforms in a file given by path.
     PATH_HINT = "use one by its name in a project, or as an object"
+    # Where a Proc given to use belongs (see Params#use).
+    GROUP_HINT = "a group of parameters goes into params { use ... }"
 
     # resolver: responds to resolve(target, kind:, hint:) and returns
     # [declaration, anchor], as Invoker#resolve does. credentials: a
@@ -71,7 +73,8 @@ module Metacrunch
       return target if [Transform, Job, Command].any? { target.is_a?(it) }
       return @resolver.resolve(target, kind: Transform, hint: PATH_HINT).first if target.is_a?(String)
 
-      raise ArgumentError, "use takes a transform, its name or its path, got #{target.inspect}"
+      got = target.is_a?(Proc) ? "a Proc; #{GROUP_HINT}" : target.inspect
+      raise ArgumentError, "use takes a transform, its name or its path, got #{got}"
     end
 
     # No cause: the original message is part of the new one.

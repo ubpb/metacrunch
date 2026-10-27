@@ -152,6 +152,16 @@ module Metacrunch
       declare(name, type, default:, required:, desc:, short:, secret: true)
     end
 
+    # Declares the parameters of a group here: a Proc with param, secret
+    # and args statements, shared by several recipes
+    # (params { use CONNECTION_PARAMS }).
+    def use(group)
+      raise ArgumentError, "use takes a Proc that declares parameters, got #{group.inspect}" unless group.is_a?(Proc)
+
+      instance_exec(&group)
+      nil
+    end
+
     def args(name, min: 0, max: nil, desc: nil)
       raise ArgumentError, "args can only be declared once" if @args_definition
 

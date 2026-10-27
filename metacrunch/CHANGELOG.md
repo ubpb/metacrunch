@@ -57,6 +57,8 @@ repository and share metacrunch's version.
 - `secret` declares a secret parameter, hidden in help texts, errors, `inspect` and logs; only a secret may refer to
   the credentials, and it takes no plain value from a params file or a default. Passing a secret unchanged to a
   `param` of a target of `use` or `invoke` is an error.
+- Groups of parameters: `params { use COMMON_PARAMS }` declares the parameters of a proc that several jobs,
+  transforms and commands share.
 - Environments: `-e NAME` (or `METACRUNCH_ENV`) selects the credentials file and key and the section of a params file;
   without it, the environment `default` applies, a reserved name. A run logs where a selected environment comes from.
   `Job#run` and `Project#invoke` take `environment:`.

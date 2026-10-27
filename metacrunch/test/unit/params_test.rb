@@ -16,7 +16,13 @@ class ParamsTest < Minitest::Test
     "abbreviated_option" => [["--ind", "i", "f"], /invalid option: --ind/]
   }.freeze
 
+  CONNECTION = proc do
+    param :url, String, default: "http://localhost:9200"
+    secret :api_key, String
+  end
+
   DECLARATION_ERRORS = {
+    "group_used_twice" => proc { use CONNECTION; use CONNECTION },
     "reserved_name" => proc { param :help },
     "duplicate_name" => proc { param :x; param :x },
     "unsupported_type" => proc { param :x, Symbol },
@@ -161,6 +167,29 @@ class ParamsTest < Minitest::Test
     assert_match(/-i, --index VALUE\s+Index name \(required\)/, help)
     assert_match(%r{--url VALUE\s+\(default: http://localhost:9200\)}, help)
     assert_match(/FILES  Input files  \(1 or more arguments\)/, help)
+  end
+
+  def test_use_declares_the_parameters_of_a_group_where_it_stands
+    params = schema do
+      param :index, String
+      use CONNECTION
+      param :batch, Integer, default: 100
+    end
+
+    assert_equal [["index", false], ["url", false], ["api_key", true], ["batch", false]], params.parameters.to_a
+    assert_equal "http://localhost:9200", params.bind_argv([], env: {}).url
+  end
+
+  def test_use_takes_procs_only
+    messages = [:connection, "connection", nil].map do |group|
+      schema { use group }
+    rescue ArgumentError => e
+      e.message
+    end
+
+    assert_equal ["use takes a Proc that declares parameters, got :connection",
+                  "use takes a Proc that declares parameters, got \"connection\"",
+                  "use takes a Proc that declares parameters, got nil"], messages
   end
 
   def test_job_is_no_longer_reserved

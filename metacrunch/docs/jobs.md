@@ -224,6 +224,38 @@ path. Without a project, `root` raises `Metacrunch::ProjectError` "no Metacrunch
 called: on the command line in the recipe or a hook, the run ends with exit status 2; in a step, the record fails. Call
 `root` in the recipe or a hook, and keep what a step needs in a local variable.
 
+### Groups of parameters
+
+Parameters that several jobs, transforms and commands share go into a group: a proc with `param`, `secret` and
+`args` statements. `use` declares them where it stands, so they show up there in `--help`:
+
+```ruby
+# lib/catalog_params.rb
+CATALOG_PARAMS = proc do
+  param  :catalog_url, String, default: {env: "CATALOG_URL"}, desc: "URL of the catalog API"
+  secret :api_key,     String, default: {credential: "catalog.api_key"}
+end
+```
+
+```ruby
+# jobs/catalog.rb
+require_relative "../lib/catalog_params"
+
+Metacrunch.job "catalog" do
+  params do
+    use CATALOG_PARAMS
+    param :output, String, required: true
+  end
+
+  # params.catalog_url, params.api_key, params.output
+end
+```
+
+The group lives in `lib/` and is required, since job files are loaded again and define no constants (see
+[Projects](projects.md)). Gems ship groups too, such as `Metacrunch::Elasticsearch::CONNECTION_PARAMS`. A parameter
+declared twice is an error, also when two groups declare it. `use` in `params` takes a group; `use` in the recipe
+inserts a [transform](transforms.md).
+
 ### Secrets
 
 A `secret` is hidden in `--help`, in error messages (`(hidden)`), in `params.inspect`, `to_s` and `pp`

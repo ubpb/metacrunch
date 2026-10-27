@@ -181,6 +181,14 @@ class UseTest < Minitest::Test
                   "use takes a transform, its name or its path, got nil"], messages
   end
 
+  def test_points_a_group_of_parameters_to_params
+    group = proc { param :url, String }
+    error = assert_raises(ArgumentError) { build_job { source []; use group } }
+
+    assert_equal "use takes a transform, its name or its path, got a Proc; " \
+                 "a group of parameters goes into params { use ... }", error.message
+  end
+
   def test_unknown_names_raise_project_errors
     error = assert_raises(Metacrunch::ProjectError) { build_job { source []; use "nope" } }
 
