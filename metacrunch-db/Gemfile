@@ -8,7 +8,7 @@ gemspec
 gem "metacrunch", path: "../metacrunch"
 
 # The drivers of the tests: SQLite for every test, pg against PostgreSQL (see test/compose.yml); both come
-# precompiled. gemfiles/mysql.gemfile has the drivers for MySQL and MariaDB, which are compiled.
+# precompiled for released Rubies. gemfiles/mysql.gemfile has the drivers for MySQL and MariaDB, which are compiled.
 gem "pg", ">= 1.5"
 gem "sqlite3", ">= 2.0"
 

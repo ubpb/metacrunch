@@ -4,8 +4,8 @@
 
 A redesign. Jobs written for 4.x must be rewritten; see the Readme and docs/.
 
-The extension gems metacrunch-csv, metacrunch-xlsx, metacrunch-marc and metacrunch-elasticsearch live in this
-repository and share metacrunch's version.
+The extension gems metacrunch-csv, metacrunch-xlsx, metacrunch-marc, metacrunch-elasticsearch and metacrunch-db
+live in this repository and share metacrunch's version.
 
 ### Breaking changes
 

@@ -57,8 +57,7 @@ Requires Ruby 4.0. The commands in this Readme call `metacrunch`; with Bundler, 
 JSON Lines is built in. Extension gems read and write other formats and systems: `metacrunch-marc` (MARCXML, ISO
 2709 and MARC-in-JSON), `metacrunch-csv` (CSV), `metacrunch-xlsx` (Excel files), `metacrunch-elasticsearch`
 (Elasticsearch 8 and 9, with commands for indices and aliases) and `metacrunch-db` (SQLite, PostgreSQL, MySQL and
-MariaDB). They live in the same repository, share metacrunch's
-version and come from the same Git source:
+MariaDB). They live in the same repository, share metacrunch's version and come from the same Git source:
 
 ```ruby
 # Gemfile

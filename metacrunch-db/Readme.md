@@ -47,7 +47,7 @@ gem "sqlite3"     # SQLite
 | MySQL, MariaDB | `mysql2` (recommended) or `trilogy` | `mysql2://host/database`, `trilogy://host/database` | MySQL 8.4, MariaDB 11.8 |
 | SQLite | `sqlite3` | `sqlite://path/to/file.db`, `sqlite:///absolute/path.db` | SQLite 3 of sqlite3 2.x |
 
-Requires Ruby 4.0, metacrunch in the same version as this gem, and Sequel 5. `pg` and `sqlite3` come precompiled;
+Requires Ruby 4.0, metacrunch in the same version as this gem, and Sequel 5. `pg` and `sqlite3` come precompiled (for released Rubies);
 `mysql2` needs the MySQL client library (`libmysqlclient-dev`, or MariaDB Connector/C), `trilogy` only OpenSSL. Other
 databases Sequel has an adapter for (Oracle with `ruby-oci8`, SQL Server with `tiny_tds`, ...) should work for
 reading and for insert, update and delete, but are not tested; upsert needs one of the four above.
@@ -208,7 +208,10 @@ record with a column the table lacks, without a value for the key, or with anoth
 such as `books has no column titel`, before any SQL.
 
 When the writer opens, it checks that the table exists, has the key columns and, for `:upsert`, that the key is unique
-and the database can upsert. The table must exist: create it with a migration, or in a command as in the examples.
+and the database can upsert; for a callable action that check comes with its first upsert. The table must exist:
+create it with a migration, or in a command as in the examples. On MySQL and MariaDB, `ON DUPLICATE KEY UPDATE` takes
+any unique index of the table, not only the key: a record that matches another row by another unique column updates
+that row.
 
 ### Batches, transactions and failures
 
