@@ -25,7 +25,8 @@ module Metacrunch
         credentials_options(parser, "Credentials directory (default: METACRUNCH_CREDENTIALS,",
                             "then .metacrunch/ above the Metacrunchfile for a name or above the file,",
                             "then ~/.metacrunch/)")
-        parser.on("--params FILE", "Parameter values from FILE: default: and the section of the environment") do |path|
+        parser.on("--params FILE",
+                  "Parameter values from FILE: the section of the environment (default: without -e)") do |path|
           @params_file = path
         end
       end

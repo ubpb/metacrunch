@@ -119,7 +119,8 @@ class ParamsFileCliTest < Minitest::Test
   end
 
   def test_help_lists_the_option
-    assert_match(/--params FILE/, cli("run", "--help")[1])
+    assert_match(/--params FILE +Parameter values from FILE: the section of the environment \(default: without -e\)$/,
+                 cli("run", "--help")[1])
     assert_match(/-e, --environment NAME +Environment of the credentials and the params file/,
                  cli("check", "--help")[1])
   end
