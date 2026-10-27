@@ -6,6 +6,7 @@ require_relative "db/version"
 require_relative "db/errors"
 require_relative "db/table"
 require_relative "db/connection"
+require_relative "db/reader"
 
 module Metacrunch
   # Relational databases for metacrunch, on Sequel: SQLite, PostgreSQL,
