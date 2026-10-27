@@ -101,7 +101,7 @@ production:
 ```
 
 ```
-$ metacrunch run -e production --params params.yml books:load --index books books.jsonl
+$ metacrunch run -e production --params params.yml books:load --index books --input books.jsonl
 ```
 
 ## Reading
@@ -258,7 +258,8 @@ to go back to.
   again, as analyzers need. `number_of_shards` is left out, so the settings file of `create` works here, too.
 - `delete(name)` refuses an index an alias points to, unless `force: true`. `list("books*")` describes indices.
 
-An incremental update runs the load job against the alias: `metacrunch run books:load --index books changes.jsonl`.
+An incremental update runs the load job against the alias:
+`metacrunch run books:load --index books --input changes.jsonl`.
 
 ### Commands
 

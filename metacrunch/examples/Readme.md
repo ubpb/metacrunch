@@ -1,6 +1,6 @@
 # Examples
 
-Runnable jobs with sample data. They need nothing but metacrunch. Run them from the root of the repository with
+Runnable jobs with sample data. They need nothing but metacrunch. Run them from `metacrunch/` of a checkout with
 `bundle exec`, as below, so that they use the metacrunch of the checkout and not one installed as a gem. Every file
 starts with a comment that says what it shows and how to call it.
 

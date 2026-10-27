@@ -100,8 +100,8 @@ INFO  ok: read 3, written 2, rejected 1 (Negative: 1) in 0.00s (...)
 ```
 
 A job without a sink writes its records to stdout as JSON Lines; logs and the summary go to stderr. A job without a
-source reads JSON Lines from stdin, so jobs chain with each other and with other tools. In a checkout of this
-repository:
+source reads JSON Lines from stdin, so jobs chain with each other and with other tools. In `metacrunch/` of a
+checkout of this repository:
 
 ```
 $ metacrunch run examples/hello.rb | jq -c 'select(.name != "Grace")' | metacrunch run examples/normalize.rb
@@ -197,7 +197,7 @@ production:
 ```
 
 ```
-$ metacrunch run -e production --params config/catalog.yml catalog --output out.jsonl
+$ metacrunch run -e production --params config/catalog.yml catalog --output out.jsonl records.jsonl
 ```
 
 A value comes from the command line (`--output out.jsonl`), else from the section of the environment in the params

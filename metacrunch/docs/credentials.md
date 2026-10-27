@@ -26,7 +26,7 @@ Each [environment](environments.md) has its own credentials file and key:
 
 | Environment | File | Key |
 |---|---|---|
-| `default` (no `-e`) | `.metacrunch/credentials.yml.enc` | `.metacrunch/master.key` |
+| `default` (no `-e`, no `METACRUNCH_ENV`) | `.metacrunch/credentials.yml.enc` | `.metacrunch/master.key` |
 | `-e production` | `.metacrunch/credentials.production.yml.enc` | `.metacrunch/master.production.key` |
 
 A run in `production` reads only the production file, never the one of the default environment, so laptops and CI need
@@ -44,7 +44,7 @@ not hold the production key. [`examples/credentials`](../examples/credentials) h
   command line or in the params file wins without reading them, and a container whose params file takes every secret
   from `{env: ...}` needs neither key nor file (see [Environments](environments.md#examples)).
 - **Missing values:** a reference that finds nothing fails and names the file:
-  `api_key: credential catalog.api_key from default: not in .metacrunch/credentials.production.yml.enc`.
+  `api_key: credential catalog.api_key from default: not in /srv/catalog/.metacrunch/credentials.production.yml.enc`.
 - **Secrets:** only a `secret` may refer to the credentials. It is hidden in `--help`, messages and `params.inspect`,
   and a plain value on the command line, where `ps` and the shell history show it, gives a warning (see
   [Secrets](jobs.md#secrets)). What a job does with the value, such as logging it or putting it into an exception, is

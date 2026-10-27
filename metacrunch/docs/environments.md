@@ -7,11 +7,12 @@ values.
 
 ## The default environment
 
-A run without `-e` uses the default environment, named `default`. It needs no setup: a job runs with its defaults and
-the values on the command line, and, if they exist, with `.metacrunch/credentials.yml.enc` and the `default:` section
-of a params file. Most jobs never need another environment.
+A run without `-e` and without `METACRUNCH_ENV` uses the default environment, named `default`. It needs no setup: a
+job runs with its defaults and the values on the command line, and, if they exist, with
+`.metacrunch/credentials.yml.enc` and the `default:` section of a params file. Most jobs never need another
+environment.
 
-`default` is reserved: `-e default` and `METACRUNCH_ENV=default` fail, since leaving `-e` out says the same.
+`default` is reserved: `-e default` and `METACRUNCH_ENV=default` fail, since leaving both out says the same.
 
 ## Selecting an environment
 
@@ -26,12 +27,13 @@ from: `environment production (from -e)` or `environment production (from METACR
 `_` and `-`.
 
 One call runs in one environment: the job named on the command line, the jobs and commands it invokes and the
-transforms they use all read the same credentials. From Ruby, `Job#run(environment:)` and
-`Project#invoke(environment:)` select it; without `environment:`, `METACRUNCH_ENV` of `env:` does.
+transforms they use all read the credentials of that environment, each from the `.metacrunch/` that
+[Credentials](credentials.md) describes for it. From Ruby, `Job#run(environment:)` and `Project#invoke(environment:)`
+select it; without `environment:`, `METACRUNCH_ENV` of `env:` does.
 
 ## What belongs to an environment
 
-| | `default` (no `-e`) | `production` (`-e production`) |
+| | `default` (no `-e`, no `METACRUNCH_ENV`) | `production` (`-e production`) |
 |---|---|---|
 | Credentials file | `.metacrunch/credentials.yml.enc` | `.metacrunch/credentials.production.yml.enc` |
 | Key | `.metacrunch/master.key` or `METACRUNCH_MASTER_KEY` | `.metacrunch/master.production.key` or `METACRUNCH_MASTER_KEY` |

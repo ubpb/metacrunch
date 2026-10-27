@@ -14,8 +14,8 @@ module Metacrunch
     ENVIRONMENT_VARIABLE = "METACRUNCH_ENV"
     DIRECTORY_VARIABLE = "METACRUNCH_CREDENTIALS"
     ENVIRONMENT_NAME = /\A[a-z0-9_-]+\z/
-    # The environment without -e: the files without an environment, the
-    # default: section of a params file.
+    # The environment without -e and METACRUNCH_ENV: the files without an
+    # environment, the default: section of a params file.
     DEFAULT_ENVIRONMENT = "default"
     RESERVED = "default is the environment without -e"
 
@@ -38,7 +38,7 @@ module Metacrunch
 
     # The environment from the option (-e), else METACRUNCH_ENV; nil for the
     # default environment, when neither is set. Empty values count as unset.
-    # default names the environment without -e and is reserved.
+    # default names the environment without -e and METACRUNCH_ENV and is reserved.
     def environment(option, env) = environment_source(option, env)&.first
 
     # environment: of Job#run and Project#invoke: default is reserved there

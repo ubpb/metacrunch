@@ -5,8 +5,8 @@
 #
 #   bundle exec metacrunch run --params examples/params.yml examples/load.rb --index books examples/data/books.jsonl
 #
-# examples/params.yml connects to Elasticsearch. The index must exist; examples/project creates one
-# (bundle exec metacrunch run --params params.yml es:create-index books there).
+# examples/params.yml connects to Elasticsearch. The index must exist; examples/project creates one behind the alias
+# books (bundle exec metacrunch run --params params.yml books:rebuild there).
 require "metacrunch/elasticsearch"
 
 Metacrunch.job do

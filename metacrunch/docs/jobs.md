@@ -206,15 +206,15 @@ A value is text, a list, or a reference that the run resolves when it needs the 
 
 | Value | Where | Gives |
 |---|---|---|
-| Text, a list | command line, params file, `default:`, `params:` | the value, converted to the type (`"1000"` → 1000, `"no"` → false) |
-| `{env: "ES_URL"}` | params file, `default:` | the environment variable; an empty one counts as unset |
-| `{credential: "catalog.api_key"}` | params file, `default:` | the value in the [credentials](credentials.md) of the run's [environment](environments.md); only for a `secret` |
+| Text, a list | command line, params file, `default:` of the declaration, `params:` | the value, converted to the type (`"1000"` → 1000, `"no"` → false) |
+| `{env: "ES_URL"}` | params file, `default:` of the declaration | the environment variable; an empty one counts as unset |
+| `{credential: "catalog.api_key"}` | params file, `default:` of the declaration | the value in the [credentials](credentials.md) of the run's [environment](environments.md); only for a `secret` |
 
 A reference that finds nothing is an error, also for an optional parameter: `es_url: environment variable ES_URL from
 default: is not set`. A value that exists in only some environments belongs into their sections of the params file,
-not into `default:`. Plain defaults are converted and checked when declared (`Integer, default: "1000"` gives 1000),
-references for their form. `--help` shows where a default comes from, never a value: `(default: env ES_URL)`,
-`(secret, default: credential catalog.api_key)`.
+not into the `default:` of the declaration. Plain defaults are converted and checked when declared
+(`Integer, default: "1000"` gives 1000), references for their form. `--help` shows where a default comes from, never a
+value: `(default: env ES_URL)`, `(secret, default: credential catalog.api_key)`.
 
 A value from code (`use`, `invoke`, `Job#run`, `Metacrunch::Testing`) is given as `params: {...}`, in the declared
 type or as a String; a Pathname counts as its path, and `nil` means not given. A params file never applies to them.
@@ -234,7 +234,7 @@ value, such as logging it, is up to the job.
 |---|---|---|
 | Command line | allowed, with a warning (`ps` and the shell history show it) | – |
 | Params file | error | `{credential: ...}`, `{env: ...}` |
-| `default:` | error, when declared | `{credential: ...}`, `{env: ...}` |
+| `default:` of the declaration | error, when declared | `{credential: ...}`, `{env: ...}` |
 | `params: {...}` from code | allowed | – |
 
 `{credential: ...}` for a `param` is an error: what is in the credentials is secret. A secret stays hidden where `use`
@@ -246,7 +246,7 @@ not recognized.
 ### Parameter files
 
 `--params FILE` gives the values of each [environment](environments.md) in one file, one section per environment:
-`default:` for the default environment (no `-e`), `production:` for `-e production`.
+`default:` for the default environment (no `-e`, no `METACRUNCH_ENV`), `production:` for `-e production`.
 
 ```yaml
 # config/export.yml
@@ -268,8 +268,8 @@ $ metacrunch run -e production --params config/export.yml export.rb
 
 - A run uses exactly the section of its environment, and it must exist: `config/export.yml has no section production
   (sections: default)`. Nothing is inherited; a YAML merge key (`<<: *default`) takes values over where wanted, as in
-  Rails' `database.yml`. So `default:` holds the values of the default environment, typically development, and no
-  development value reaches production by accident.
+  Rails' `database.yml`. So the `default:` section holds the values of the default environment, typically development,
+  and no development value reaches production by accident.
 - Keys are the names of the parameters (`api_key`, not `--api-key`). Every key of every section must name a parameter
   of the job, so a typo fails also in a section that is not used; positional arguments come from the command line
   only.
