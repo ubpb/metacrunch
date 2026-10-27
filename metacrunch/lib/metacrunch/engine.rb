@@ -86,7 +86,8 @@ module Metacrunch
     def process(opened)
       Components.open(components, OpenContext.new(params: @pipeline.params, logger: @pipeline.logger), opened)
       @pipeline.before_hooks.each(&:call)
-      @executor.run(@pipeline, stats: @stats, outlet: SinkOutlet.new(@pipeline), observer: @observer, select: @select)
+      outlet = SinkOutlet.new(@pipeline, stats: @stats)
+      @executor.run(@pipeline, stats: @stats, outlet:, observer: @observer, select: @select)
       sinks.each(&:flush)
     end
 

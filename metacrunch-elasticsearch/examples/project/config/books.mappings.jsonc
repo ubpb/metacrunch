@@ -1,0 +1,10 @@
+{
+  // Fields the mappings do not name are refused, so a typo in a job cannot add one.
+  "dynamic": "strict",
+  "properties": {
+    "isbn": {"type": "keyword"},
+    "title": {"type": "text", "analyzer": "folding"},
+    "year": {"type": "integer"},
+    "lang": {"type": "keyword"},
+  },
+}

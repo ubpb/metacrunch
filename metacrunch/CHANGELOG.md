@@ -28,6 +28,8 @@ metacrunch's version.
 - Per-record context with `reject!` (ends the step), `mark`, `store` and a record logger.
 - `rejects` and `failures` sinks.
 - Failure policy `on_failure :abort | :skip` with `max_failures`.
+- Sinks report records they could not write with `Metacrunch::SinkFailures`; those records fail under the pseudo-step
+  `sink` and follow the failure policy. `sink` and `source` are reserved step names.
 - Run results with stats per step and reason; `profile` for step timing.
 - `flat_map` streams its children; batched sinks are flushed after an abort, on Ctrl-C and on SIGTERM.
 - The CLI ends by the signal that stopped a job (exit status 130 for SIGINT, 143 for SIGTERM).
@@ -70,8 +72,9 @@ metacrunch's version.
   Ruby.
 - Commands: `Metacrunch.command "name" do params { ... }; run { ... } end`, with the parameters, credentials, `-e`,
   `--help` and logging of jobs. `invoke NAME, params: {...}` chains jobs, transforms and commands and returns a
-  `Result` or a `CommandResult`; the exit status reports the worst result.
-  `Metacrunch::Testing.invoke` tests a command without running what it invokes. `Metacrunch.load_command` loads a
+  `Result` or a `CommandResult`; the exit status reports the worst result. An exception that ends a command is logged
+  as a job's error is, in one line with the command's name and one for its cause; `-v` adds the backtrace, for jobs
+  too. `Metacrunch::Testing.invoke` tests a command without running what it invokes. `Metacrunch.load_command` loads a
   command file, and `Testing.invoke` takes such a command, too.
 - Names and descriptions for jobs: `Metacrunch.job "a2c", desc: "..."`. Names are parts of `a-z`, `0-9`, `_` and
   `-`, separated by `:`; `Metacrunch.job` raises for other names, and `metacrunch generate` for names and file

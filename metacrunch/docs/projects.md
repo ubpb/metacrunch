@@ -162,7 +162,8 @@ relative to where `metacrunch` was started, and `root.join(...)` reaches the pro
 
 ## Jobs, transforms and commands from gems
 
-A gem ships job, transform and command files like a project's, and a constant with their glob for each kind:
+A gem ships job, transform and command files like a project's, and a constant with their glob for each kind
+(metacrunch-elasticsearch ships its index commands so: `Metacrunch.load_files Metacrunch::Elasticsearch::COMMANDS`):
 
 ```
 metacrunch-example/

@@ -1,0 +1,11 @@
+{
+  "number_of_shards": 1,
+  // One node: no replicas. A cluster wants 1 or more; es:finish-load puts this value back after the load.
+  "number_of_replicas": 0,
+  "analysis": {
+    "analyzer": {
+      // Finds "Etranger" in "L'Étranger".
+      "folding": {"tokenizer": "standard", "filter": ["lowercase", "asciifolding"]},
+    },
+  },
+}

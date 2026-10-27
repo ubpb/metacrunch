@@ -72,7 +72,7 @@ module Metacrunch
       ctx.step = SOURCE_STEP
       @observer&.step_in(SOURCE_STEP, invalid.raw, ctx)
       begin
-        @stats.source_failed(invalid.error)
+        @stats.record_failed(invalid.error)
         handle_failure(SOURCE_STEP, invalid.raw, ctx, invalid.error)
       ensure
         @observer&.step_out(SOURCE_STEP, [], ctx)

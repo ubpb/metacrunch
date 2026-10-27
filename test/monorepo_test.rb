@@ -65,6 +65,15 @@ class MonorepoTest < Minitest::Test
                   ["metacrunch-xlsx", "5.1.0", "5.1.0"]], @locked
   end
 
+  def test_set_version_also_locks_the_further_gemfiles_of_a_gem
+    write("metacrunch-csv/gemfiles/csv-3.gemfile", "")
+    write("metacrunch-csv/gemfiles/csv-3.gemfile.lock", "")
+    Monorepo.set_version("5.1.0", root: @root, lock: @lock)
+    locked = @locked.map { it.delete_prefix("#{@root}/") }
+
+    assert_equal ["metacrunch", "metacrunch-csv", "metacrunch-csv/gemfiles/csv-3.gemfile", "metacrunch-xlsx"], locked
+  end
+
   def test_a_version_that_is_not_canonical_is_refused_and_nothing_is_written
     [nil, "", " ", "5.1.0 ", "5.1.0-pre", "v5.1.0", "five", "5..1"].each do |version|
       error = assert_raises(ArgumentError) { Monorepo.set_version(version, root: @root, lock: @lock) }
@@ -100,6 +109,16 @@ class MonorepoTest < Minitest::Test
     end
 
     assert_equal "bundle lock failed in metacrunch-csv", error.message
+  end
+
+  def test_a_failing_bundle_lock_of_a_further_gemfile_names_it
+    write("metacrunch-csv/gemfiles/csv-3.gemfile", "raise \"broken\"\n")
+
+    error = assert_raises(Monorepo::Error) do
+      capture_subprocess_io { Monorepo.bundle_lock(File.join(@root, "metacrunch-csv/gemfiles/csv-3.gemfile")) }
+    end
+
+    assert_equal "bundle lock failed for csv-3.gemfile", error.message
   end
 
   private

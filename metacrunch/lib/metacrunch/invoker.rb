@@ -136,6 +136,17 @@ module Metacrunch
     # aborted and the body went on.
     def finished_status = @status == :ok ? :ok : :ok_with_failures
 
+    # Logs error and its cause once each (a StepError message already names
+    # its cause), prefixed with label, and the backtrace at debug level
+    # (-v).
+    def log_error(error, label: nil)
+      prefix = label ? "#{label}: " : ""
+      @logger.error("#{prefix}#{error.class}: #{error.message}")
+      cause = error.cause
+      @logger.error("#{prefix}caused by #{cause.class}: #{cause.message}") if cause && !error.is_a?(StepError)
+      @logger.debug { "#{prefix}#{error.full_message(highlight: false).chomp}" }
+    end
+
     private
 
     # Project#fetch raises for a name declared more than once.
@@ -229,16 +240,10 @@ module Metacrunch
       raise ParamError, e.message, cause: nil
     end
 
-    # Logs the error and its cause once each (a StepError message already
-    # names its cause), then the status and stats.
+    # Logs the error, then the status and stats.
     def report(result, label)
+      log_error(result.error, label:) if result.error
       prefix = label ? "#{label}: " : ""
-      error = result.error
-      if error
-        @logger.error("#{prefix}#{error.class}: #{error.message}")
-        cause = error.cause
-        @logger.error("#{prefix}caused by #{cause.class}: #{cause.message}") if cause && !error.is_a?(StepError)
-      end
       @logger.info("#{prefix}#{result.status}: #{result.stats.summary}")
     end
 

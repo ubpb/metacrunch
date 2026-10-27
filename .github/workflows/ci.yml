@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gem: [metacrunch, metacrunch-csv, metacrunch-xlsx, metacrunch-marc]
+        gem: [metacrunch, metacrunch-csv, metacrunch-xlsx, metacrunch-marc, metacrunch-elasticsearch]
         os: [ubuntu-latest, macos-latest]
         ruby: ["4.0", head]
     defaults:
@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gem: [metacrunch, metacrunch-csv, metacrunch-xlsx, metacrunch-marc]
+        gem: [metacrunch, metacrunch-csv, metacrunch-xlsx, metacrunch-marc, metacrunch-elasticsearch]
     defaults:
       run:
         working-directory: ${{ matrix.gem }}
@@ -49,6 +49,48 @@ jobs:
           bundler-cache: true
           working-directory: ${{ matrix.gem }}
       - run: bundle exec rubocop
+
+  # metacrunch-elasticsearch against a server: service containers exist on Linux only.
+  elasticsearch:
+    name: Elasticsearch (server ${{ matrix.server }}, client ${{ matrix.client }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {server: "8.19.23", client: "8", gemfile: gemfiles/elasticsearch_8.gemfile}
+          - {server: "9.5.5", client: "9", gemfile: Gemfile}
+          - {server: "9.5.5", client: "8", gemfile: gemfiles/elasticsearch_8.gemfile}
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:${{ matrix.server }}
+        env:
+          discovery.type: single-node
+          ELASTIC_PASSWORD: metacrunch
+          xpack.security.enabled: "true"
+          xpack.security.http.ssl.enabled: "false"
+          cluster.routing.allocation.disk.threshold_enabled: "false"
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl -fs -u elastic:metacrunch 'localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s'"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/metacrunch-elasticsearch/${{ matrix.gemfile }}
+      ELASTICSEARCH_URL: http://localhost:9200
+      ELASTICSEARCH_USER: elastic
+      ELASTICSEARCH_PASSWORD: metacrunch
+    defaults:
+      run:
+        working-directory: metacrunch-elasticsearch
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: metacrunch-elasticsearch
+      - run: bundle exec rake test
 
   tooling:
     name: Tooling

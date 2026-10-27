@@ -8,6 +8,10 @@ module Metacrunch
   # step may use it.
   SOURCE_STEP = "source"
 
+  # Records the sink reports as not written (SinkFailures) fail under this
+  # name; no step may use it.
+  SINK_STEP = "sink"
+
   # One step of a pipeline. reason is set for filter/reject steps that
   # reject (instead of silently filter) the records they drop.
   Step = Data.define(:kind, :callable, :name, :reason, :pass_context) do
