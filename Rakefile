@@ -47,9 +47,9 @@ task rubocop: "rubocop:root" do
   in_each_gem("bundle", "exec", "rubocop")
 end
 
-desc 'Set the version of all gems, e.g. rake "version[5.1.0]"'
-task :version, [:version] do |_task, args|
-  Monorepo.set_version(args[:version])
+desc "Write the version of VERSION into every gem and update their lockfiles"
+task :version do
+  Monorepo.set_version
 end
 
 task default: [:test, :rubocop]

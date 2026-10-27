@@ -44,14 +44,26 @@ class MonorepoTest < Minitest::Test
                  Monorepo.version_file(@root, "metacrunch-csv")
   end
 
-  def test_set_version_writes_every_version_file
-    Monorepo.set_version("5.1.0", root: @root, lock: @lock)
+  def test_the_version_is_the_content_of_the_root_version_file
+    write("VERSION", "5.1.0\n")
+
+    assert_equal "5.1.0", Monorepo.version(@root)
+  end
+
+  def test_gem_version_is_the_version_in_the_version_file_of_the_gem
+    write("metacrunch-csv/lib/metacrunch/csv/version.rb", VERSION_FILE.sub("5.0.0.pre", "5.1.0"))
+
+    assert_equal "5.1.0", Monorepo.gem_version(@root, "metacrunch-csv")
+  end
+
+  def test_set_version_writes_the_root_version_into_every_version_file
+    set_version("5.1.0")
 
     assert_equal ["5.1.0"], Monorepo.gems(@root).map { version_of(it) }.uniq
   end
 
   def test_set_version_keeps_the_rest_of_the_file
-    Monorepo.set_version("5.1.0.rc1", root: @root, lock: @lock)
+    set_version("5.1.0.rc1")
 
     assert_equal VERSION_FILE.sub("5.0.0.pre", "5.1.0.rc1"), read("metacrunch-csv/lib/metacrunch/csv/version.rb")
   end
@@ -59,7 +71,7 @@ class MonorepoTest < Minitest::Test
   def test_set_version_locks_every_gem_in_order_after_writing
     # The first and the last gem: every file is written before the first lock.
     lock = ->(dir) { @locked << [File.basename(dir), version_of("metacrunch"), version_of("metacrunch-xlsx")] }
-    Monorepo.set_version("5.1.0", root: @root, lock:)
+    set_version("5.1.0", lock:)
 
     assert_equal [["metacrunch", "5.1.0", "5.1.0"], ["metacrunch-csv", "5.1.0", "5.1.0"],
                   ["metacrunch-xlsx", "5.1.0", "5.1.0"]], @locked
@@ -68,34 +80,41 @@ class MonorepoTest < Minitest::Test
   def test_set_version_also_locks_the_further_gemfiles_of_a_gem
     write("metacrunch-csv/gemfiles/csv-3.gemfile", "")
     write("metacrunch-csv/gemfiles/csv-3.gemfile.lock", "")
-    Monorepo.set_version("5.1.0", root: @root, lock: @lock)
+    set_version("5.1.0")
     locked = @locked.map { it.delete_prefix("#{@root}/") }
 
     assert_equal ["metacrunch", "metacrunch-csv", "metacrunch-csv/gemfiles/csv-3.gemfile", "metacrunch-xlsx"], locked
   end
 
-  def test_a_version_that_is_not_canonical_is_refused_and_nothing_is_written
-    [nil, "", " ", "5.1.0 ", "5.1.0-pre", "v5.1.0", "five", "5..1"].each do |version|
-      error = assert_raises(ArgumentError) { Monorepo.set_version(version, root: @root, lock: @lock) }
+  def test_a_missing_root_version_file_is_refused_and_nothing_is_written
+    error = assert_raises(Monorepo::Error) { Monorepo.set_version(root: @root, lock: @lock) }
 
-      assert_equal "not a version: #{version.inspect}", error.message
+    assert_equal "VERSION: no such file", error.message
+    assert_unchanged
+  end
+
+  def test_a_root_version_file_without_a_canonical_version_is_refused_and_nothing_is_written
+    ["", "5.1.0-pre", "v5.1.0", "five", "5..1", "5.1.0\n5.2.0"].each do |version|
+      error = assert_raises(Monorepo::Error) { set_version(version) }
+
+      assert_equal "VERSION: not a version: #{version.inspect}", error.message
     end
     assert_unchanged
   end
 
-  def test_a_version_file_without_exactly_one_version_line_is_refused_and_nothing_is_written
+  def test_a_gem_version_file_without_exactly_one_version_line_is_refused_and_nothing_is_written
     write("metacrunch-xlsx/lib/metacrunch/xlsx/version.rb", %(VERSION = "5.0.0.pre"\nVERSION = "5.0.0.pre"\n))
 
-    error = assert_raises(Monorepo::Error) { Monorepo.set_version("5.1.0", root: @root, lock: @lock) }
+    error = assert_raises(Monorepo::Error) { set_version("5.1.0") }
 
     assert_equal "metacrunch-xlsx/lib/metacrunch/xlsx/version.rb: expected one VERSION line, found 2", error.message
     assert_unchanged
   end
 
-  def test_a_missing_version_file_is_refused_and_nothing_is_written
+  def test_a_missing_gem_version_file_is_refused_and_nothing_is_written
     FileUtils.rm(File.join(@root, "metacrunch-xlsx/lib/metacrunch/xlsx/version.rb"))
 
-    error = assert_raises(Monorepo::Error) { Monorepo.set_version("5.1.0", root: @root, lock: @lock) }
+    error = assert_raises(Monorepo::Error) { set_version("5.1.0") }
 
     assert_equal "metacrunch-xlsx/lib/metacrunch/xlsx/version.rb: no such file", error.message
     assert_unchanged
@@ -122,6 +141,12 @@ class MonorepoTest < Minitest::Test
   end
 
   private
+
+  # Writes version into the root's VERSION, with the newline an editor ends it with, and sets it.
+  def set_version(version, lock: @lock)
+    write("VERSION", "#{version}\n")
+    Monorepo.set_version(root: @root, lock:)
+  end
 
   def add_gem(name)
     write("#{name}/#{name}.gemspec", "")

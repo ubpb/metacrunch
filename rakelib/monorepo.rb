@@ -8,7 +8,7 @@ module Monorepo
   class Error < StandardError; end
 
   CORE = "metacrunch"
-  VERSION_LINE = /^(\s*)VERSION = "[^"]*"$/
+  VERSION_LINE = /^(\s*)VERSION = "([^"]*)"$/
 
   module_function
 
@@ -27,11 +27,24 @@ module Monorepo
   # gem's tests with each of them, too.
   def gemfiles(root, gem) = Dir[File.join(root, gem, "gemfiles", "*.gemfile")]
 
-  # Writes version into the version.rb of every gem, then calls lock with each gem's directory and the paths of its
-  # further Gemfiles. Checks every file before it writes one.
-  def set_version(version, root: Dir.pwd, lock: method(:bundle_lock))
-    raise ArgumentError, "not a version: #{version.inspect}" unless canonical?(version)
+  # The shared version: the content of the file VERSION in root.
+  def version(root = Dir.pwd)
+    path = File.join(root, "VERSION")
+    raise Error, "VERSION: no such file" unless File.file?(path)
 
+    version = File.read(path).strip
+    raise Error, "VERSION: not a version: #{version.inspect}" unless canonical?(version)
+
+    version
+  end
+
+  # The version in the version.rb of gem.
+  def gem_version(root, gem) = version_text(root, gem)[VERSION_LINE, 2]
+
+  # Writes the version of VERSION into the version.rb of every gem, then calls lock with each gem's directory and the
+  # paths of its further Gemfiles. Checks every file before it writes one.
+  def set_version(root: Dir.pwd, lock: method(:bundle_lock))
+    version = version(root)
     texts = gems(root).to_h { [it, version_text(root, it)] }
     texts.each do |gem, text|
       File.write(version_file(root, gem), text.sub(VERSION_LINE, "\\1VERSION = \"#{version}\""))

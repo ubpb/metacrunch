@@ -38,8 +38,14 @@ All gems require Ruby 4.0.
 ## Versioning
 
 All gems share one version, and each extension gem requires metacrunch in exactly its own version: metacrunch-csv
-5.1.0 requires metacrunch 5.1.0. A release tags the repository once (`v5.1.0`) and publishes every gem, also one
-without changes; its CHANGELOG then says `No changes.` Each gem keeps its CHANGELOG in its directory.
+5.1.0 requires metacrunch 5.1.0. The version is in the file [`VERSION`](VERSION) in the root.
+
+To change it, edit `VERSION` and run `bundle exec rake version`. The task writes the version into the `version.rb` of
+every gem, since an installed gem holds only its own directory, and updates the lockfiles. The tooling test fails
+while a gem has a version other than the one in `VERSION`.
+
+A release tags the repository once (`v5.1.0`) and publishes every gem, also one without changes; its CHANGELOG then
+says `No changes.` Each gem keeps its CHANGELOG in its directory.
 
 ## Development
 
@@ -49,7 +55,7 @@ Each gem has a bundle of its own; the root's bundle holds the tooling. In the ro
 $ bundle install
 $ bundle exec rake bundle             # bundle install in every gem
 $ bundle exec rake                    # all tests and RuboCop: the tooling, then every gem
-$ bundle exec rake "version[5.1.0]"   # set the version of all gems and update their lockfiles
+$ bundle exec rake version            # write VERSION into every gem and update their lockfiles
 ```
 
 One gem alone:
