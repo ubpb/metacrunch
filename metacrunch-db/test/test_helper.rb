@@ -20,5 +20,10 @@ require "tmpdir"
 require "fileutils"
 require "securerandom"
 require "metacrunch/db"
+require "sqlite3"
+
+# With workers the forked processes inherit the SQLite connections of the reader and the writer, which they never use;
+# sqlite3 warns about each of them (see the Readme).
+SQLite3::ForkSafety.suppress_warnings!
 
 Dir[File.join(__dir__, "support", "*.rb")].each { |file| require file }

@@ -60,6 +60,11 @@ class ValuesTest < Minitest::Test
     assert_equal({isbn: "1"}, row({"isbn" => "1", "title" => {"no" => "check"}}, action: :delete))
   end
 
+  # A record to delete may carry what led to it, such as a flag the table does not have.
+  def test_delete_ignores_columns_the_table_lacks
+    assert_equal({isbn: "1"}, row({"isbn" => "1", "deleted" => true}, action: :delete))
+  end
+
   def test_allowed_values_pass
     values = ["text", Sequel.blob("\xFF".b), 1, 1.5, BigDecimal("1.25"), true, false, Date.new(2026, 1, 2),
               DateTime.new(2026, 1, 2, 3, 4, 5), Time.now, Sequel.lit("now()"), Literal.new]

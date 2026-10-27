@@ -18,7 +18,7 @@ module Metacrunch
       module_function
 
       # The row of a record: {column => value} with Symbol columns; for
-      # :delete only the key columns. columns: the table's columns (a Set of
+      # :delete only the key columns, the others unchecked. columns: the table's columns (a Set of
       # Symbols), nil to skip the column check; key: an Array of Symbols, nil
       # for inserts. Raises Error for a record the writer cannot write.
       def row(record, table:, columns:, key:, action:)
@@ -26,9 +26,9 @@ module Metacrunch
         raise Error, "record has no columns" if record.empty?
 
         row = columns_of(record)
-        check_columns(row, table, columns)
         check_key(row, key) unless action == :insert
         row = row.slice(*key) if action == :delete
+        check_columns(row, table, columns)
         row.each { |column, value| check(column, value) }
         row
       end
