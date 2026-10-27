@@ -47,21 +47,18 @@ module Metacrunch
       when "--version" then show(VERSION)
       when "help" then help(rest.first)
       when *COMMANDS.keys then command(first).run(rest)
-      else other(first, argv)
+      else other(first)
       end
     end
 
     private
 
-    # An option, or a job, transform or command by name or file: short for
-    # run.
-    def other(first, argv)
+    # An option, or anything else that is no built-in command: a job,
+    # transform or command runs with run only, which makes a call explicit.
+    def other(first)
       return usage_error("unknown option #{first}") if first.start_with?("-")
-      return command("run").run(argv) if runnable?(first)
 
-      usage_error(unknown(first))
-    rescue ProjectError => e
-      usage_error(e.message)
+      usage_error("unknown command #{first}; run a job, transform or command with: metacrunch run #{first}")
     end
 
     def help(name)
@@ -103,7 +100,6 @@ module Metacrunch
       commands << "  #{"help".ljust(width)} Show the help of a command, job, transform or file"
       text = <<~TEXT
         Usage: metacrunch COMMAND [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]
-               metacrunch NAME|FILE [PARAMS...] [ARGS...]    (same as run)
 
         Commands:
         #{commands.join("\n")}

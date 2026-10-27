@@ -60,7 +60,7 @@ class ExeTransformsTest < Minitest::Test
 
   def test_a_transform_runs_alone_through_stdin
     in_project do |root|
-      stdout, stderr, status = metacrunch("labels", stdin_data: "{\"code\":\"b\"}\n", chdir: root)
+      stdout, stderr, status = metacrunch("run", "labels", stdin_data: "{\"code\":\"b\"}\n", chdir: root)
 
       assert_equal [0, "{\"code\":\"b\",\"label\":\"Beta\"}\n"], [status.exitstatus, stdout], stderr
     end

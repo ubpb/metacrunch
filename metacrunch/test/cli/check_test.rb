@@ -5,6 +5,7 @@ require "test_helper"
 class CheckTest < Minitest::Test
 
   include CliHelper
+  include CredentialsHelper
 
   CATALOG = File.expand_path("../fixtures/catalog.json", __dir__)
 
@@ -36,6 +37,31 @@ class CheckTest < Minitest::Test
 
   def test_opens_and_runs_nothing
     assert_equal 0, cli("check", job("unopenable.rb")).first
+  end
+
+  # A command's parameters are bound with its params file; its body does not
+  # run.
+  def test_checks_commands
+    in_tmpdir do |root|
+      write_file(root, "Metacrunchfile", "Metacrunch.load_files \"commands/*.rb\"\n")
+      write_file(root, "commands/touch.rb", <<~RUBY)
+        Metacrunch.command("touch") do
+          params { param :index, String, required: true }
+
+          run { File.write("ran", "") }
+        end
+      RUBY
+      write_file(root, "good.yml", "default: {index: x}\n")
+      write_file(root, "typo.yml", "default: {indx: x}\n")
+      good, typo = ["good.yml", "typo.yml"].map { |file| Dir.chdir(root) { cli("check", "--params", file, "touch") } }
+
+      unknown = "typo.yml: default.indx: unknown parameter (known: index)"
+
+      ran = File.exist?(File.join(root, "ran"))
+
+      assert_equal [0, "touch: command \"touch\" OK\n", 2, true, false],
+                   [*good.take(2), typo.first, typo.last.include?(unknown), ran], good.last
+    end
   end
 
   def test_invalid_jobs_exit_with_the_usage_code

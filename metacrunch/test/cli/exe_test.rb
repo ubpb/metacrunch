@@ -16,33 +16,33 @@ class ExeTest < Minitest::Test
   EXE = File.join(ROOT, "exe", "metacrunch")
 
   def test_prints_data_on_stdout_and_logs_on_stderr
-    stdout, stderr, status = metacrunch(NUMBERS, "--factor", "2", "1", "2")
+    stdout, stderr, status = metacrunch("run", NUMBERS, "--factor", "2", "1", "2")
 
     assert_equal [0, "2\n4\n"], [status.exitstatus, stdout]
     assert_match(/INFO  ok: read 2, written 2/, stderr)
   end
 
   def test_exit_codes
-    assert_equal 1, metacrunch(NUMBERS, "0").last.exitstatus
-    assert_equal 3, metacrunch(NUMBERS, "--skip-errors", "0", "1").last.exitstatus
+    assert_equal 1, metacrunch("run", NUMBERS, "0").last.exitstatus
+    assert_equal 3, metacrunch("run", NUMBERS, "--skip-errors", "0", "1").last.exitstatus
     assert_equal 2, metacrunch.last.exitstatus
   end
 
   def test_interrupt_ends_the_process_by_the_signal
-    _stdout, _stderr, status = metacrunch(File.join(ROOT, "test", "fixtures", "jobs", "interrupted.rb"))
+    _stdout, _stderr, status = metacrunch("run", File.join(ROOT, "test", "fixtures", "jobs", "interrupted.rb"))
 
     assert_predicate status, :signaled?
     assert_equal Signal.list.fetch("INT"), status.termsig
   end
 
   def test_sigterm_ends_the_process_by_the_signal
-    _stdout, _stderr, status = metacrunch(File.join(ROOT, "test", "fixtures", "jobs", "terminated.rb"))
+    _stdout, _stderr, status = metacrunch("run", File.join(ROOT, "test", "fixtures", "jobs", "terminated.rb"))
 
     assert_equal Signal.list.fetch("TERM"), status.termsig
   end
 
   def test_interrupt_keeps_the_data_written_to_stdout
-    stdout, stderr, = metacrunch(File.join(ROOT, "test", "fixtures", "jobs", "interrupted_output.rb"))
+    stdout, stderr, = metacrunch("run", File.join(ROOT, "test", "fixtures", "jobs", "interrupted_output.rb"))
 
     assert_equal "1\n2\n", stdout
     refute_match(/SignalException|Interrupt \(/, stderr)
@@ -83,18 +83,13 @@ class ExeTest < Minitest::Test
     end
   end
 
-  def test_jobs_created_by_generate_run_through_their_shebang_line
+  def test_jobs_created_by_generate_run_with_run
     Dir.mktmpdir do |dir|
-      bin = File.join(dir, "bin")
-      FileUtils.mkdir_p(bin)
-      wrapper = "#!/bin/sh\nexec #{Shellwords.join([RbConfig.ruby, "-I", LIB, EXE])} \"$@\"\n"
-      File.write(File.join(bin, "metacrunch"), wrapper)
-      File.chmod(0o755, File.join(bin, "metacrunch"))
-      env = {"PATH" => "#{bin}:#{ENV.fetch("PATH")}"}
-      Open3.capture3(env, "metacrunch", "generate", "job", "jobs/pass.rb", chdir: dir)
-      stdout, stderr, status = Open3.capture3(env, "./jobs/pass.rb", stdin_data: "{\"id\":1}\n", chdir: dir)
+      Open3.capture3(*command("generate", "job", "jobs/pass.rb"), chdir: dir)
+      stdout, stderr, status = Open3.capture3(*command("run", "jobs/pass.rb"), stdin_data: "{\"id\":1}\n", chdir: dir)
 
       assert_equal [0, "{\"id\":1}\n"], [status.exitstatus, stdout], stderr
+      refute File.executable?(File.join(dir, "jobs/pass.rb"))
     end
   end
 

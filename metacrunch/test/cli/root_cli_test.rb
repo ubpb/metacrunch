@@ -11,7 +11,7 @@ class RootCliTest < Minitest::Test
   def test_a_job_runs_by_name_from_a_subdirectory
     in_tmpdir do |dir|
       write_root_project(dir)
-      code, out, = Dir.chdir(File.join(dir, "jobs")) { cli("rooted") }
+      code, out, = Dir.chdir(File.join(dir, "jobs")) { cli("run", "rooted") }
 
       assert_equal [0, "\"a@#{File.basename(dir)}\"\n"], [code, out]
     end
@@ -20,7 +20,7 @@ class RootCliTest < Minitest::Test
   def test_help_shows_the_absolute_default
     in_tmpdir do |dir|
       write_root_project(dir)
-      code, out, = Dir.chdir(dir) { cli("rooted", "--help") }
+      code, out, = Dir.chdir(dir) { cli("run", "rooted", "--help") }
 
       assert_equal 0, code
       assert_includes out, "default: #{dir}/data/in.txt"
@@ -64,7 +64,7 @@ class RootCliTest < Minitest::Test
   def test_command_help_with_a_root_default
     in_tmpdir do |dir|
       write_root_project(dir)
-      by_name = Dir.chdir(dir) { cli("where", "--help") }
+      by_name = Dir.chdir(dir) { cli("run", "where", "--help") }
       by_path = Dir.chdir(File.dirname(dir)) { cli("run", File.join(dir, "commands/where.rb"), "--help") }
 
       assert_equal [0, 2], [by_name[0], by_path[0]]
@@ -79,7 +79,7 @@ class RootCliTest < Minitest::Test
         write_file(gem_dir, "gemjob.rb", "# frozen_string_literal: true\n\n" \
                                          "Metacrunch.job(\"gemjob\") { source [root.to_s] }\n")
         write_file(dir, "Metacrunchfile", "Metacrunch.load_files #{File.join(gem_dir, "*.rb").inspect}\n")
-        code, out, = Dir.chdir(dir) { cli("gemjob") }
+        code, out, = Dir.chdir(dir) { cli("run", "gemjob") }
 
         assert_equal [0, "#{dir.inspect}\n"], [code, out]
       end

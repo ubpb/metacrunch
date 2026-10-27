@@ -108,11 +108,11 @@ class ExeProjectTest < Minitest::Test
   def test_a_chain_from_a_subdirectory_exits_with_ok_aborted_and_failures
     in_project do |root|
       jobs = File.join(root, "jobs")
-      ok = metacrunch("chain", "4", chdir: jobs, home: root)
+      ok = metacrunch("run", "chain", "4", chdir: jobs, home: root)
       noted = File.read(File.join(root, "note.txt"))
       File.delete(File.join(root, "note.txt"))
-      aborted = metacrunch("chain", "0", chdir: jobs, home: root)
-      partial = metacrunch("chain", "--skip", "0", "4", chdir: jobs, home: root)
+      aborted = metacrunch("run", "chain", "0", chdir: jobs, home: root)
+      partial = metacrunch("run", "chain", "--skip", "0", "4", chdir: jobs, home: root)
 
       assert_equal([0, 1, 3], [ok, aborted, partial].map { it.last.exitstatus })
       assert_equal ["25\n", "done", "25\n"], [ok.first, noted, partial.first]
@@ -152,7 +152,7 @@ class ExeProjectTest < Minitest::Test
   def interrupt_watch(signal)
     in_project do |root|
       output = File.join(root, "forever.txt")
-      pid = Process.spawn(env(root), *command("watch", output), chdir: root, out: File::NULL, err: File::NULL)
+      pid = Process.spawn(env(root), *command("run", "watch", output), chdir: root, out: File::NULL, err: File::NULL)
       status = nil
       begin
         wait_for { File.size?(output) }

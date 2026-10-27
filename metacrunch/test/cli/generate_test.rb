@@ -30,7 +30,7 @@ class GenerateTest < Minitest::Test
 
       assert_equal [0, "created ../jobs/catalog/ids.rb\ncreated ../test/jobs/catalog/ids_test.rb\n", ""],
                    [code, stdout, stderr]
-      assert File.executable?(File.join(root, "jobs/catalog/ids.rb"))
+      refute File.executable?(File.join(root, "jobs/catalog/ids.rb"))
     end
   end
 

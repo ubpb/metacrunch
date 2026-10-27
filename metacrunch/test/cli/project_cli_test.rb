@@ -113,7 +113,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_runs_a_job_by_name_from_a_subdirectory
     in_project do |root|
-      code, stdout, stderr = cli_in(File.join(root, "jobs"), "numbers", "4", "5")
+      code, stdout, stderr = cli_in(File.join(root, "jobs"), "run", "numbers", "4", "5")
 
       assert_equal [0, "25\n20\n"], [code, stdout]
       assert_match(/INFO  ok: read 2, written 2/, stderr)
@@ -122,7 +122,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_runs_a_command_by_name_also_with_run
     in_project do |root|
-      short = cli_in(root, "note", "hello")
+      short = cli_in(root, "run", "note", "hello")
       long = cli_in(root, "run", "note", "hi")
 
       assert_equal [0, 0], [short.first, long.first]
@@ -132,7 +132,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_a_chain_exits_with_the_worst_status
     in_project do |root|
-      results = [["4"], ["0"], ["--skip", "0", "4"], ["--tolerant", "0"]].map { cli_in(root, "chain", *it) }
+      results = [["4"], ["0"], ["--skip", "0", "4"], ["--tolerant", "0"]].map { cli_in(root, "run", "chain", *it) }
       aborted = results[1].last
 
       assert_equal [0, 1, 3, 3], results.map(&:first)
@@ -143,7 +143,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_an_exception_in_the_body_exits_with_1_and_its_backtrace
     in_project do |root|
-      code, _stdout, stderr = cli_in(root, "fail")
+      code, _stdout, stderr = cli_in(root, "run", "fail")
 
       assert_equal 1, code
       assert_match(/disk full \(IOError\)/, stderr)
@@ -152,7 +152,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_invalid_params_of_a_command_are_a_usage_error
     in_project do |root|
-      code, _stdout, stderr = cli_in(root, "note")
+      code, _stdout, stderr = cli_in(root, "run", "note")
 
       assert_equal 2, code
       assert_match(/Error: expected at least 1 argument\(s\) for text, got 0/, stderr)
@@ -161,7 +161,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_ctrl_c_in_an_invoked_job_ends_the_chain_by_the_signal
     in_project do |root|
-      code, _stdout, stderr = cli_in(root, "stop")
+      code, _stdout, stderr = cli_in(root, "run", "stop")
 
       assert_equal 130, code
       refute_match(/note: after/, stderr)
@@ -173,7 +173,7 @@ class ProjectCliTest < Minitest::Test
     in_project("commands/slowly.rb" => slowly) do |root|
       shown = TerminalOutput.new
       hidden = TerminalOutput.new
-      cli_in(root, "slowly", stderr: shown)
+      cli_in(root, "run", "slowly", stderr: shown)
       cli_in(root, "run", "--no-progress", "slowly", stderr: hidden)
 
       assert_includes shown.string, "\r\e[2K"
@@ -183,18 +183,18 @@ class ProjectCliTest < Minitest::Test
 
   def test_help_for_names_shows_the_description
     in_project do |root|
-      code, stdout, = cli_in(root, "numbers", "--help")
+      code, stdout, = cli_in(root, "run", "numbers", "--help")
       usage = /\AUsage: metacrunch run numbers \[JOB_PARAMS\.\.\.\] NUMBERS\.\.\.\n\nDivide 100 by each number\n\n/
 
       assert_equal 0, code
       assert_match(usage, stdout)
-      assert_equal cli_in(root, "note", "--help"), cli_in(root, "help", "note")
+      assert_equal cli_in(root, "run", "note", "--help"), cli_in(root, "help", "note")
     end
   end
 
   def test_help_never_runs_a_body
     in_project("commands/danger.rb" => DANGER) do |root|
-      code, stdout, = cli_in(root, "danger", "--help")
+      code, stdout, = cli_in(root, "run", "danger", "--help")
 
       assert_equal [0, "Usage: metacrunch run danger [PARAMS...]\n\n"], [code, stdout]
       refute_path_exists File.join(root, "ran")
@@ -226,7 +226,7 @@ class ProjectCliTest < Minitest::Test
     in_tmpdir do |root|
       write_file(root, "Metacrunchfile", "# frozen_string_literal: true\n\nraise \"broken\"\n")
       help = cli_in(root, "--help")
-      named = cli_in(root, "numbers")
+      named = cli_in(root, "run", "numbers")
 
       assert_equal [0, 2], [help.first, named.first]
       assert_match(/^Project:\n  could not load .*Metacrunchfile: RuntimeError: broken$/, help[1])
@@ -236,7 +236,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_files_that_did_not_load_give_one_warning_each
     in_project("jobs/broken.rb" => BROKEN) do |root|
-      quiet = cli_in(root, "note", "x")
+      quiet = cli_in(root, "run", "note", "x")
       verbose = cli_in(root, "run", "-v", "note", "x")
 
       assert_equal [0, 1], [quiet.first, quiet.last.scan("WARN  jobs/broken.rb: SyntaxError").size]
@@ -250,7 +250,7 @@ class ProjectCliTest < Minitest::Test
   # also when another name runs, so it shows before the name is needed.
   def test_names_declared_twice_give_one_warning_each
     in_project("jobs/dup.rb" => DUPLICATE) do |root|
-      code, _stdout, stderr = cli_in(root, "numbers", "4")
+      code, _stdout, stderr = cli_in(root, "run", "numbers", "4")
       warning = "WARN  note is declared more than once (commands/note.rb, jobs/dup.rb); rename one"
 
       assert_equal 0, code
@@ -260,7 +260,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_unknown_names_hint_at_files_that_did_not_load
     in_project("jobs/broken.rb" => BROKEN) do |root|
-      code, _stdout, stderr = cli_in(root, "nope")
+      code, _stdout, stderr = cli_in(root, "run", "nope")
 
       assert_equal 2, code
       assert_match(/Error: unknown job, transform, command or file: nope \(1 file of the project did not load\)/,
@@ -270,7 +270,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_unknown_names_outside_a_project
     in_tmpdir do |dir|
-      code, _stdout, stderr = cli_in(dir, "nope")
+      code, _stdout, stderr = cli_in(dir, "run", "nope")
 
       assert_equal 2, code
       assert_match(/Error: unknown job, transform, command or file: nope \(no Metacrunchfile found\)/, stderr)
@@ -279,7 +279,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_a_duplicate_name_is_a_usage_error_naming_both_files
     in_project("jobs/dup.rb" => DUPLICATE) do |root|
-      code, _stdout, stderr = cli_in(root, "note", "x")
+      code, _stdout, stderr = cli_in(root, "run", "note", "x")
 
       assert_equal 2, code
       assert_match(%r{Error: note is declared more than once \(commands/note\.rb, jobs/dup\.rb\); rename one}, stderr)
@@ -295,12 +295,12 @@ class ProjectCliTest < Minitest::Test
     end
   end
 
-  def test_check_and_trace_take_jobs_only
+  def test_check_takes_commands_and_trace_does_not
     in_project do |root|
       results = ["check", "trace"].map { cli_in(root, it, "note", "x") }
 
-      assert_equal [2, 2], results.map(&:first)
-      assert_match(/Error: note is a command; check takes jobs and transforms/, results.first.last)
+      assert_equal [0, 2], results.map(&:first)
+      assert_match(/Error: note is a command; trace takes jobs and transforms/, results.last.last)
     end
   end
 
@@ -325,11 +325,11 @@ class ProjectCliTest < Minitest::Test
     in_tmpdir do |root|
       write_file(root, "Metacrunchfile", "# frozen_string_literal: true\n\nraise \"must not be loaded\"\n")
       results = [
-        cli_in(root, "run", job("double.rb"), stdin: "1\n"), cli_in(root, job("double.rb"), stdin: "1\n"),
-        cli_in(root, "check", job("double.rb")), cli_in(root, "--version"), cli_in(root, "help", "run")
+        cli_in(root, "run", job("double.rb"), stdin: "1\n"), cli_in(root, "check", job("double.rb")),
+        cli_in(root, "--version"), cli_in(root, "help", "run")
       ]
 
-      assert_equal [0] * 5, results.map(&:first)
+      assert_equal [0] * 4, results.map(&:first)
       assert(results.none? { it.last.include?("must not be loaded") })
     end
   end
@@ -337,7 +337,7 @@ class ProjectCliTest < Minitest::Test
   def test_commands_run_by_path
     in_project("tools/release.rb" => TOOL) do |root|
       code, _stdout, stderr = cli_in(File.join(root, "jobs"), "run", File.join(root, "tools", "release.rb"))
-      greeting = cli_in(root, job("greet.rb"), "--name", "Ada")
+      greeting = cli_in(root, "run", job("greet.rb"), "--name", "Ada")
 
       assert_equal [0, 0], [code, greeting.first]
       assert_match(/INFO  note: from tools/, stderr)
@@ -347,7 +347,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_a_name_wins_over_a_file_of_that_name
     in_project("note" => "Metacrunch.job { source [1] }\n") do |root|
-      code, stdout, stderr = cli_in(root, "note", "x")
+      code, stdout, stderr = cli_in(root, "run", "note", "x")
 
       assert_equal [0, ""], [code, stdout]
       assert_match(/INFO  note: x/, stderr)
@@ -370,7 +370,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_runs_checks_and_traces_a_transform
     in_project do |root|
-      results = [cli_in(root, "scale", "--factor", "3", stdin: "1\n2\n"), cli_in(root, "check", "scale"),
+      results = [cli_in(root, "run", "scale", "--factor", "3", stdin: "1\n2\n"), cli_in(root, "check", "scale"),
                  cli_in(root, "trace", "scale", stdin: "1\n")]
 
       assert_equal [0, 0, 0], results.map(&:first)
@@ -383,7 +383,7 @@ class ProjectCliTest < Minitest::Test
   # statement in a used transform, and a path without a transform.
   def test_forbidden_statements_and_paths_without_transform_exit_with_their_status
     in_project("jobs/use_errors.rb" => USE_ERRORS) do |root|
-      results = [["forbidden-use"], ["check", "forbidden-use"], ["path-use"]].map { cli_in(root, *it) }
+      results = [["run", "forbidden-use"], ["check", "forbidden-use"], ["run", "path-use"]].map { cli_in(root, *it) }
 
       assert_equal [1, 2, 2], results.map(&:first)
       assert_match(/transform sourced: a transform has no source; the job that uses it decides/, results[1].last)
@@ -393,7 +393,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_a_cycle_of_transforms_aborts_the_run
     in_project("jobs/use_errors.rb" => USE_ERRORS) do |root|
-      code, _stdout, stderr = cli_in(root, "cycle-use")
+      code, _stdout, stderr = cli_in(root, "run", "cycle-use")
 
       assert_equal 1, code
       assert_match(/use cycle: ping → pong → ping/, stderr)
@@ -402,7 +402,7 @@ class ProjectCliTest < Minitest::Test
 
   def test_help_of_a_transform_shows_its_params
     in_project do |root|
-      code, stdout, = cli_in(root, "scale", "--help")
+      code, stdout, = cli_in(root, "run", "scale", "--help")
 
       assert_equal 0, code
       assert_match(/\AUsage: metacrunch run scale \[PARAMS\.\.\.\]\n\nMultiply by a factor\n\n.*--factor VALUE/m,
@@ -443,7 +443,10 @@ class ProjectCliTest < Minitest::Test
 
   def test_use_errors_exit_with_their_status
     in_project("jobs/use_errors.rb" => USE_ERRORS) do |root|
-      results = [["unknown-use"], ["missing-value"], ["job-use"], ["check", "job-use"]].map { cli_in(root, *it) }
+      results = [["run", "unknown-use"], ["run", "missing-value"], ["run", "job-use"],
+                 ["check", "job-use"]].map do |args|
+        cli_in(root, *args)
+      end
 
       assert_equal [2, 2, 1, 2], results.map(&:first)
       assert_match(/Error: unknown job, transform, command or file: nope/, results[0].last)

@@ -114,10 +114,11 @@ class ExamplesTest < Minitest::Test
     Dir.mktmpdir do |dir|
       project = File.join(dir, "project")
       FileUtils.cp_r(example("project"), project)
-      _stdout, stderr, status = metacrunch("catalog:release", chdir: File.join(project, "jobs"))
+      _stdout, stderr, status = metacrunch("run", "catalog:release", chdir: File.join(project, "jobs"))
       current = File.join(project, "out", "current", "titles.jsonl")
       released = File.readlines(current).size
-      failed = metacrunch("catalog:release", "--input", File.join(project, "data", "broken.jsonl"), chdir: project)
+      failed = metacrunch("run", "catalog:release", "--input", File.join(project, "data", "broken.jsonl"),
+                          chdir: project)
 
       assert_equal [0, 4], [status.exitstatus, released], stderr
       assert_equal 3, failed.last.exitstatus
@@ -141,7 +142,7 @@ class ExamplesTest < Minitest::Test
   end
 
   def test_project_jobs_share_the_transform_with_other_values
-    stdout, stderr, status = metacrunch("catalog:ids", chdir: example("project"))
+    stdout, stderr, status = metacrunch("run", "catalog:ids", chdir: example("project"))
 
     assert_predicate status, :success?, stderr
     assert_equal([{"id" => "t1"}, {"id" => "t2"}, {"id" => "t4"}, {"id" => "t5"}], stdout.lines.map { JSON.parse(it) })

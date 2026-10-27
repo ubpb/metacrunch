@@ -34,7 +34,7 @@ class CatalogJobTest < Minitest::Test
     Dir.mktmpdir do |dir|
       exe = File.join(ROOT, "exe", "metacrunch")
       _stdout, stderr, status = Open3.capture3(
-        RbConfig.ruby, "-I", File.join(ROOT, "lib"), exe, JOB, "--output", ".", INPUT, chdir: dir
+        RbConfig.ruby, "-I", File.join(ROOT, "lib"), exe, "run", JOB, "--output", ".", INPUT, chdir: dir
       )
 
       assert_equal 3, status.exitstatus, stderr

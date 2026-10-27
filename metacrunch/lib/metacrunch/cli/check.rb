@@ -3,15 +3,24 @@
 module Metacrunch
   class Cli
     # metacrunch check: loads the job or transform, binds its parameters and
-    # builds the pipeline. Opens nothing, reads no record, runs no hook.
+    # builds the pipeline; for a command, binds its parameters and prepares
+    # it. Opens nothing, reads no record, runs no hook and no command body.
     # Parameter values are not printed; they may contain secrets.
     class CheckCommand < JobCommand
 
       NAME = "check"
-      SUMMARY = "Validate a job or transform without running it"
-      USAGE = "check [OPTIONS] NAME|FILE [JOB_PARAMS...] [ARGS...]"
+      SUMMARY = "Validate a job, transform or command without running it"
+      USAGE = "check [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]"
 
       private
+
+      def check_target!(_declaration) = nil
+
+      def execute_command(command, argv)
+        invoker.prepare(command, anchor: @anchor, argv:)
+        @stdout.puts("#{@target}: command #{command.name.inspect} OK")
+        EXIT_CODES[:ok]
+      end
 
       def execute_job(job, argv)
         pipeline = build_pipeline(job, argv)

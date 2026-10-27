@@ -18,15 +18,6 @@ class GeneratorsPlanTest < Minitest::Test
     end
   end
 
-  def test_executable_files_get_mode_rwxr_xr_x
-    in_tmpdir do |dir|
-      plan(dir).write(force: false, out: StringIO.new, cwd: dir)
-
-      assert_equal [0o755, false], [File.stat(File.join(dir, "jobs/a/x.rb")).mode & 0o777,
-                                    File.executable?(File.join(dir, "test/x_test.rb"))]
-    end
-  end
-
   def test_refuses_existing_files_and_writes_none
     in_tmpdir do |dir|
       FileUtils.mkdir_p(File.join(dir, "test"))
@@ -60,7 +51,7 @@ class GeneratorsPlanTest < Minitest::Test
   private
 
   def plan(dir)
-    Plan.new.add(File.join(dir, "jobs/a/x.rb"), "x = 1\n", executable: true)
+    Plan.new.add(File.join(dir, "jobs/a/x.rb"), "x = 1\n")
         .add(File.join(dir, "test/x_test.rb"), "test\n")
   end
 

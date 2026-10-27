@@ -16,8 +16,8 @@ class GeneratorsComponentsTest < Minitest::Test
   def test_a_source_by_name_is_a_class_in_its_modules_with_a_test
     entries = plan("source", "a:b:lines").entries
 
-    assert_equal([[ROOT.join("lib/a/b/lines.rb").to_s, false], [ROOT.join("test/lib/a/b/lines_test.rb").to_s, false]],
-                 entries.map { [it.path, it.executable] })
+    assert_equal([ROOT.join("lib/a/b/lines.rb").to_s, ROOT.join("test/lib/a/b/lines_test.rb").to_s],
+                 entries.map(&:path))
     assert_match(/\A# frozen_string_literal: true\n\nrequire "metacrunch"\n\nmodule A\n  module B\n    # A source:/,
                  entries.first.content)
   end

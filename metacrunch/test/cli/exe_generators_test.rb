@@ -30,8 +30,8 @@ class ExeGeneratorsTest < Minitest::Test
     in_tmpdir do |dir|
       root = generate_project(dir)
       help, = metacrunch("--help", chdir: root)
-      outputs = ["catalog:ids", "catalog:clean"].map { metacrunch(it, stdin: RECORDS, chdir: root).first }
-      _stdout, log, status = metacrunch("catalog:re-index", chdir: root)
+      outputs = ["catalog:ids", "catalog:clean"].map { metacrunch("run", it, stdin: RECORDS, chdir: root).first }
+      _stdout, log, status = metacrunch("run", "catalog:re-index", chdir: root)
 
       assert_match HELP, help
       assert_equal([KEPT, KEPT], outputs.map { |out| out.lines.map { JSON.parse(it) } })

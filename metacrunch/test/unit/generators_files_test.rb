@@ -13,12 +13,19 @@ class GeneratorsFilesTest < Minitest::Test
   CWD = "/work/catalog"
   SOURCE = [{"id" => 1}, {"title" => "x"}].freeze
 
-  def test_a_name_gets_an_executable_file_and_a_test
+  def test_a_name_gets_a_file_and_a_test
     entries = plan("job", "catalog:ids").entries
 
-    assert_equal([[ROOT.join("jobs/catalog/ids.rb").to_s, true],
-                  [ROOT.join("test/jobs/catalog/ids_test.rb").to_s, false]],
-                 entries.map { [it.path, it.executable] })
+    assert_equal([ROOT.join("jobs/catalog/ids.rb").to_s, ROOT.join("test/jobs/catalog/ids_test.rb").to_s],
+                 entries.map(&:path))
+  end
+
+  # Executable job files are gone: metacrunch run names the file.
+  def test_files_have_no_shebang_and_name_run
+    contents = ["job", "transform", "command"].map { plan(it, "catalog:ids").entries.first.content }
+
+    assert_empty contents.grep(/\A#!/)
+    assert_equal 3, contents.grep(/#   metacrunch run catalog:ids/).size
   end
 
   def test_without_test_only_the_file
@@ -47,7 +54,7 @@ class GeneratorsFilesTest < Minitest::Test
     by_name = plan("job", "catalog:ids").entries.first.content
     by_path = plan("job", "tools/fix").entries.first.content
 
-    assert_includes by_name, "#   metacrunch catalog:ids < in.jsonl > out.jsonl\n"
+    assert_includes by_name, "#   metacrunch run catalog:ids < in.jsonl > out.jsonl\n"
     assert_includes by_path, "#   metacrunch run tools/fix.rb < in.jsonl > out.jsonl\n"
   end
 

@@ -14,7 +14,7 @@ module Metacrunch
       def plan(target, desc: nil, test: true)
         locals = template_locals(target, desc)
         code = Template.render(File.join(target.kind, "file.rb.erb"), **locals)
-        plan = Plan.new.add(target.file, Template.nest(code, target.modules), executable: target.declared?)
+        plan = Plan.new.add(target.file, Template.nest(code, target.modules))
         return plan unless test
 
         template = target.form == :name ? "test.rb.erb" : "path_test.rb.erb"
@@ -23,7 +23,7 @@ module Metacrunch
 
       # target, and for the templates:
       # - desc: the literal of desc, or nil
-      # - run: what follows `metacrunch` to run it ("catalog:ids", "run tools/fix.rb")
+      # - run: what follows `metacrunch` to run it ("run catalog:ids", "run tools/fix.rb")
       # - helper: test/test_helper relative to the test (name form)
       # - file: the file relative to the test
       # - library: the file to require from a test, below lib/ (name form)
@@ -32,7 +32,7 @@ module Metacrunch
         by_name = target.form == :name
         {
           target:, desc: (Generators.literal(desc) if desc),
-          run: by_name ? target.name : "run #{target.argument}",
+          run: "run #{by_name ? target.name : target.argument}",
           helper: (Generators.relative(target.root.join("test", "test_helper").to_s, test_dir) if by_name),
           file: Generators.relative(target.file, test_dir),
           library: (Generators.relative(target.file, target.root.join("lib").to_s).delete_suffix(".rb") if by_name)
