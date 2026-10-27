@@ -187,15 +187,7 @@ class ParamsCredentialsTest < Minitest::Test
     warnings = []
     api_key_schema.bind_argv(["--api-key", SECRET], env: {}, warn: ->(message) { warnings << message })
 
-    assert_equal ["--api-key is a secret; pass it by CATALOG_API_KEY or credentials instead"], warnings
-  end
-
-  def test_without_env_the_warning_names_only_the_credentials
-    warnings = []
-    params = schema { param :api_key, String, credential: "catalog.api_key" }
-    params.bind_argv(["--api-key", SECRET], env: {}, warn: ->(message) { warnings << message })
-
-    assert_equal ["--api-key is a secret; pass it by credentials instead"], warnings
+    assert_equal ["--api-key is a secret; give it in a params file as {credential: PATH} or {env: NAME}"], warnings
   end
 
   def test_no_warning_for_other_parameters_and_for_values_from_env

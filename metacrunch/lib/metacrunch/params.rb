@@ -51,7 +51,29 @@ module Metacrunch
 
     NO_ROOT = "root needs a project, and none was given"
     CREDENTIAL_PATH = /\A[^.]+(\.[^.]+)*\z/
+    ENV_NAME = /\A[A-Za-z_][A-Za-z0-9_]*\z/
     HIDDEN = "(hidden)"
+    REFERENCE_FORMS = "a reference is {credential: PATH} or {env: NAME}"
+    REFERENCE_SOURCES = {"credential" => CREDENTIAL_PATH, "env" => ENV_NAME}.freeze
+
+    # A value that a run takes from elsewhere: {credential: PATH} from the
+    # credentials, {env: NAME} from an environment variable.
+    Reference = Data.define(:source, :key) do
+      def to_s = "#{source} #{key}"
+    end
+
+    # The Reference that value stands for, or nil if value is no Hash.
+    # Raises ArgumentError for a Hash that is no reference. Keys may be
+    # Symbols (code) or Strings (YAML).
+    def self.reference(value)
+      return unless value.is_a?(Hash)
+
+      source, key = value.first
+      pattern = REFERENCE_SOURCES[source.to_s]
+      raise ArgumentError, REFERENCE_FORMS unless value.size == 1 && pattern && key.is_a?(String) && pattern.match?(key)
+
+      Reference.new(source: source.to_sym, key:)
+    end
 
     # Shows secret parameters as [secret] in inspect, to_s and pp. The
     # values class defines SECRETS.
@@ -70,12 +92,15 @@ module Metacrunch
 
     end
 
-    Definition = Data.define(:name, :type, :default, :required, :env, :desc, :short, :credential) do
+    Definition = Data.define(:name, :type, :default, :required, :env, :desc, :short, :credential, :secret) do
       def option = "--#{name.to_s.tr("_", "-")}"
 
-      # A parameter with credential: is secret: its value is hidden in
-      # help texts, error messages and inspect.
-      def secret? = !credential.nil?
+      # A parameter declared with secret (or with credential:) is secret:
+      # its value is hidden in help texts, error messages and inspect.
+      def secret? = secret || !credential.nil?
+
+      # How declaration errors name it: "secret api_key", "parameter index".
+      def label = "#{secret ? "secret" : "parameter"} #{name}"
     end
 
     ArgsDefinition = Data.define(:name, :min, :max, :desc)
@@ -98,18 +123,19 @@ module Metacrunch
     end
 
     # Defaults are converted and checked like CLI values when the parameter
-    # is declared, so a wrong default fails early. credential: a path in
-    # the credentials ("catalog.api_key"); it makes the parameter secret.
+    # is declared, so a wrong default fails early; a reference
+    # ({credential: PATH}, {env: NAME}) is checked for its form and resolved
+    # when its value is needed. credential: a path in the credentials
+    # ("catalog.api_key"); it makes the parameter secret.
     def param(name, type = String, default: nil, required: false, env: nil, desc: nil, short: nil, credential: nil)
-      name = check_name!(name)
-      raise ArgumentError, "unsupported type #{type.inspect} for parameter #{name}" unless TYPES.include?(type)
-      raise ArgumentError, "parameter #{name}: #{RESERVED_SHORT} is reserved for help" if short == RESERVED_SHORT
-      raise ArgumentError, "parameter #{name}: use either default: or required: true" if required && !default.nil?
+      declare(name, type, default:, required:, env:, desc:, short:, credential:, secret: false)
+    end
 
-      check_credential!(name, credential)
-      definition = Definition.new(name:, type:, default: nil, required:, env:, desc:, short:, credential:)
-      @definitions[name] = definition.with(default: default_value(definition, default))
-      nil
+    # A secret parameter: hidden in help texts, error messages and inspect,
+    # also where use or invoke pass it on. Its default can only be a
+    # reference.
+    def secret(name, type = String, default: nil, required: false, desc: nil, short: nil)
+      declare(name, type, default:, required:, env: nil, desc:, short:, credential: nil, secret: true)
     end
 
     def args(name, min: 0, max: nil, desc: nil)
@@ -191,6 +217,18 @@ module Metacrunch
 
     private
 
+    def declare(name, type, default:, required:, env:, desc:, short:, credential:, secret:)
+      name = check_name!(name)
+      raise ArgumentError, "unsupported type #{type.inspect} for parameter #{name}" unless TYPES.include?(type)
+      raise ArgumentError, "parameter #{name}: #{RESERVED_SHORT} is reserved for help" if short == RESERVED_SHORT
+      raise ArgumentError, "parameter #{name}: use either default: or required: true" if required && !default.nil?
+
+      check_credential!(name, credential)
+      definition = Definition.new(name:, type:, default: nil, required:, env:, desc:, short:, credential:, secret:)
+      @definitions[name] = definition.with(default: default_value(definition, default))
+      nil
+    end
+
     def check_name!(name)
       name = name.to_sym
       raise ArgumentError, "parameter name #{name} is reserved for the CLI" if RESERVED.include?(name)
@@ -208,15 +246,38 @@ module Metacrunch
       raise ArgumentError, "parameter #{name}: credential must be a path like \"catalog.api_key\", got #{path.inspect}"
     end
 
+    # A plain default converted, or a Reference checked for its form and the
+    # rules of secrets: credentials only for secrets, secrets only from
+    # references.
     def default_value(definition, default)
       return if default.nil?
 
-      frozen_copy(convert(definition, default))
+      reference = default_reference(definition, default)
+      return reference if reference
+      if definition.secret
+        raise ArgumentError,
+              "#{definition.label}: a default must be {credential: PATH} or {env: NAME}, not a plain value"
+      end
+
+      frozen_copy(convert(definition, default), secret: definition.secret?)
     rescue ParamError
       expected = TYPE_NAMES.fetch(definition.type)
       shown = definition.secret? ? HIDDEN : default.inspect
       # No cause: the converter's error would repeat the value.
       raise ArgumentError, "invalid default for parameter #{definition.name}: #{shown} is not #{expected}", cause: nil
+    end
+
+    def default_reference(definition, default)
+      reference = Params.reference(default)
+      if reference&.source == :credential && !definition.secret?
+        raise ArgumentError, "#{definition.label}: a value from the credentials needs secret, not param"
+      end
+
+      reference
+    rescue ArgumentError => e
+      raise if e.message != REFERENCE_FORMS
+
+      raise ArgumentError, "#{definition.label}: #{REFERENCE_FORMS}", cause: nil
     end
 
     def option_parser(given)
@@ -244,7 +305,8 @@ module Metacrunch
       notes = []
       notes << "required" if definition.required
       notes << "secret" if definition.secret?
-      notes << "default: #{definition.default}" unless definition.default.nil? || definition.secret?
+      default = definition.default
+      notes << "default: #{default}" if default.is_a?(Reference) || !(default.nil? || definition.secret?)
       notes << "env: #{definition.env}" if definition.env
       notes << "credential: #{definition.credential}" if definition.credential
       text = [definition.desc, ("(#{notes.join(", ")})" if notes.any?)].compact.join(" ")
@@ -252,10 +314,48 @@ module Metacrunch
     end
 
     def env_value(definition, env)
-      return unless definition.env
+      return unless definition.env && env
 
       value = env[definition.env]
       value unless value.nil? || value.empty?
+    end
+
+    # The value of a reference: from the credentials or the environment.
+    # from: where the reference stood ("default:", "FILE (section)"). A
+    # reference that finds nothing is an error; credentials or env nil mean
+    # a test, which reads neither.
+    def reference_value(definition, reference, from, env, credentials)
+      name = definition.name
+      raw, origin = if reference.source == :credential
+        credential(name, reference, credentials)
+      else
+        variable(name, reference, env)
+      end
+      raise ParamError, missing_reference(name, reference, from, credentials) if raw.nil?
+
+      resolve(definition, raw, origin: "#{origin} via #{from.delete_suffix(":")}", keyword: true)
+    end
+
+    # "api_key: credential catalog.api_key from default: not in FILE",
+    # "es_url: environment variable ES_URL from FILE (production) is not set"
+    def missing_reference(name, reference, from, credentials)
+      return "#{name}: environment variable #{reference.key} from #{from} is not set" if reference.source == :env
+
+      reason = credentials.missing(reference.key).delete_prefix("#{reference.key} ")
+      "#{name}: credential #{reference.key} from #{from}#{from.end_with?(":") ? " " : ": "}#{reason}"
+    end
+
+    def credential(name, reference, credentials)
+      raise ParamError, "#{name}: Testing reads no credentials; pass #{name} in params:" unless credentials
+
+      [credentials.lookup(reference.key), credentials.origin(reference.key)]
+    end
+
+    def variable(name, reference, env)
+      raise ParamError, "#{name}: Testing reads no environment variables; pass #{name} in params:" if env.nil?
+
+      value = env[reference.key]
+      [(value unless value.nil? || value.empty?), "environment variable #{reference.key}"]
     end
 
     # Every key of every section of the params file must name a parameter;
@@ -301,6 +401,9 @@ module Metacrunch
       raw = credentials&.lookup(definition.credential) if definition.credential
       return resolve(definition, raw, origin: credentials.origin(definition.credential), keyword:) unless raw.nil?
 
+      default = definition.default
+      return reference_value(definition, default, "default:", env, credentials) if default.is_a?(Reference)
+
       resolve(definition, nil, sources: -> { sources(definition, credentials) }, keyword:)
     end
 
@@ -339,13 +442,16 @@ module Metacrunch
     end
 
     def secret_warning(definition)
-      by = definition.env ? "#{definition.env} or credentials" : "credentials"
-      "#{definition.option} is a secret; pass it by #{by} instead"
+      "#{definition.option} is a secret; give it in a params file as {credential: PATH} or {env: NAME}"
     end
 
     # hidden: whether messages hide the value, as for a secret.
     def resolve(definition, raw, origin: nil, sources: nil, keyword: false, hidden: definition.secret?)
-      value = raw.nil? ? definition.default : frozen_copy(convert(definition, raw, origin:, keyword:, hidden:))
+      value = if raw.nil?
+        definition.default
+      else
+        frozen_copy(convert(definition, raw, origin:, keyword:, hidden:), secret: definition.secret?)
+      end
       return value unless definition.required && value.nil?
 
       detail = sources&.call
@@ -397,10 +503,12 @@ module Metacrunch
 
     # Bound values are frozen, so a default Array cannot leak changes from
     # one run into the next.
-    def frozen_copy(value)
+    # secret: an own copy instead of the deduplicated String, so the values
+    # of secrets can be told by identity (see bind_values).
+    def frozen_copy(value, secret: false)
       case value
-      when Array then value.map { |item| frozen_copy(item) }.freeze
-      when String then -value
+      when Array then value.map { |item| frozen_copy(item, secret:) }.freeze
+      when String then secret ? value.dup.freeze : -value
       else value
       end
     end
