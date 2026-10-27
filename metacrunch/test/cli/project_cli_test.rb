@@ -155,7 +155,7 @@ class ProjectCliTest < Minitest::Test
     broken = "Metacrunch.command(\"broken\") { run { begin; raise IOError, \"disk full\"; " \
              "rescue IOError; raise Metacrunch::Error, \"release failed\"; end } }\n"
     in_project("commands/broken.rb" => broken) do |root|
-      _code, _stdout, stderr = cli_in(root, "broken")
+      _code, _stdout, stderr = cli_in(root, "run", "broken")
 
       assert_match(/ERROR broken: Metacrunch::Error: release failed\n.*ERROR broken: caused by IOError: disk full$/,
                    stderr)
