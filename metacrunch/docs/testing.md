@@ -12,8 +12,9 @@ each file, and `rake test` runs them all.
 | Instead of I/O | `source:`, sinks in memory | `stubs:` for the names it invokes |
 | Result | `records`, `rejects`, `failures`, `stats`, `status`, `ok?`, `error` | `value`, `invoked`, `status`, `ok?`, `error` |
 
-Both bind `params:` like the values of `use` (see [Parameters](jobs.md#parameters)) and read neither the
-environment nor credentials.
+Both bind `params:` like the values of `use` (see [Parameters](jobs.md#parameters)) and read neither environment
+variables nor credentials. A default that refers to them fails, so a test passes the value:
+`api_key: Testing reads no credentials; pass api_key in params:`.
 
 ## Testing jobs and transforms
 

@@ -42,9 +42,10 @@ end
   job, `use trim` inside it. The file still runs by path without `-j`, since transforms beside a single job or command
   count as its building blocks; leave such a transform unnamed and it takes no name in the project either.
 - `params:` of `use` sets the transform's parameters, as Ruby values or as strings like on the command line;
-  `nil` counts as not given. A parameter without a value comes from its `env:` variable, then from the credentials
-  of the job, then its default. The steps and hooks of a transform see its own `params`, never the job's, and
-  `root` is the root of the job's project.
+  `nil` counts as not given. A parameter without a value takes its default; its references read the environment
+  variables and the credentials of the job, and a params file never applies. A secret of the job stays hidden in
+  the transform only if the transform declares it with `secret` (see [Secrets](jobs.md#secrets)). The steps and
+  hooks of a transform see its own `params`, never the job's, and `root` is the root of the job's project.
 - The steps get the transform's name as prefix, `normalize/map#1`, in stats, `trace`, `check`, errors and
   `ctx.step`; a second `use` of the same transform gives `normalize#2/...`. Generated step numbers count the
   statements of a recipe, `use` as one, so a transform that gains a step renames no step of the job. Explicit step

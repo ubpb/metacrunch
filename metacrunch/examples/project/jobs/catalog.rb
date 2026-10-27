@@ -6,8 +6,8 @@
 # (exit status 3).
 #
 #   cd examples/project
-#   bundle exec metacrunch catalog --help
-#   mkdir -p ../../tmp && bundle exec metacrunch catalog --output ../../tmp
+#   bundle exec metacrunch run catalog --help
+#   mkdir -p ../../tmp && bundle exec metacrunch run catalog --output ../../tmp
 Metacrunch.job "catalog", desc: "Write the public titles into a directory" do
   params do
     param :output, String, required: true, desc: "Directory for titles.jsonl; must exist"

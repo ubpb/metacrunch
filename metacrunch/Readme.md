@@ -110,14 +110,15 @@ $ metacrunch run examples/hello.rb | jq -c 'select(.name != "Grace")' | metacrun
 
 ## Quickstart: a project
 
-A project gives jobs, transforms and commands names, and `metacrunch` runs them by name from any of its directories:
+A project gives jobs, transforms and commands names, and `metacrunch run` runs them by name from any of its
+directories:
 
 ```
 $ metacrunch new catalog
 $ cd catalog
 $ bundle install
 $ metacrunch generate job catalog:ids
-$ printf '{"id":1,"title":"A"}\n{"title":"B"}\n' | metacrunch catalog:ids
+$ printf '{"id":1,"title":"A"}\n{"title":"B"}\n' | metacrunch run catalog:ids
 {"id":1,"title":"A"}
 INFO  ok: read 2, written 1, rejected 1 (No id: 1) in 0.00s (...)
 $ rake test
@@ -173,20 +174,36 @@ end
 
 More in [Jobs](docs/jobs.md): records, the record context, batches, hooks and what runs when.
 
-### Parameters and credentials
+### Parameters, secrets and environments
 
 ```ruby
 params do
-  param :output, String, required: true
-  param :limit, Integer, default: 1000, env: "CATALOG_LIMIT"
-  param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key"
-  args  :files, min: 1
+  param  :output, String, required: true
+  param  :limit, Integer, default: 1000
+  param  :es_url, String, default: {env: "ES_URL"}
+  secret :api_key, String, default: {credential: "catalog.api_key"}
+  args   :files, min: 1
 end
 ```
 
-A value comes from the command line (`--output out.jsonl`), else from the `env:` variable, else from the encrypted
-credentials of the project (`metacrunch credentials edit`), else from the default. `metacrunch run JOB --help` lists
-the parameters. See [Parameters](docs/jobs.md#parameters) and [Credentials](docs/credentials.md).
+```yaml
+# config/catalog.yml: the values of each environment
+default:
+  limit: 100
+production:
+  es_url: http://es-prod:9200
+  api_key: {credential: catalog.api_key}
+```
+
+```
+$ metacrunch run -e production --params config/catalog.yml catalog --output out.jsonl
+```
+
+A value comes from the command line (`--output out.jsonl`), else from the section of the environment in the params
+file, else from the default. `{env: ...}` reads an environment variable, `{credential: ...}` the encrypted credentials
+of the environment (`metacrunch credentials edit -e production`); a `secret` is hidden in help, messages and logs.
+`metacrunch run JOB --help` lists the parameters. See [Parameters](docs/jobs.md#parameters),
+[Environments](docs/environments.md) and [Credentials](docs/credentials.md).
 
 ### Transforms
 
@@ -238,7 +255,7 @@ end
 ```
 
 ```
-$ metacrunch catalog:release
+$ metacrunch run catalog:release
 $ metacrunch --help                  # lists the jobs, transforms and commands
 ```
 
@@ -269,7 +286,7 @@ end
 ### Running, checking and tracing
 
 ```
-$ metacrunch catalog --output out.jsonl                # by name, from any directory of the project
+$ metacrunch run catalog --output out.jsonl            # by name, from any directory of the project
 $ metacrunch run jobs/catalog.rb --output out.jsonl    # by path
 $ metacrunch run -n 100 -w 4 catalog --output out.jsonl
 $ metacrunch check catalog --output out.jsonl          # build the job, run nothing
@@ -280,13 +297,15 @@ See [The command line](docs/cli.md) for all options, pipes and exit codes, and [
 
 ## Documentation
 
-- [Jobs](docs/jobs.md): records, sources, steps, the record context, sinks, failures, hooks, parameters, what runs when
+- [Jobs](docs/jobs.md): records, sources, steps, the record context, sinks, failures, hooks, parameters, secrets,
+  params files, what runs when
 - [Files](docs/files.md): `Metacrunch::Input` and `Metacrunch::Output` for sources and sinks: gzip, tar, stdin, pipes
 - [Transforms](docs/transforms.md): `use`, parameters, step names, testing a transform
 - [Projects, commands and gems](docs/projects.md): the `Metacrunchfile`, names, `new` and `generate`, `invoke`
 - [Testing](docs/testing.md): `Metacrunch::Testing.run` and `Metacrunch::Testing.invoke`
 - [The command line](docs/cli.md): commands, options, pipes, `check` and `trace`, exit codes
 - [Workers](docs/workers.md): parallel steps with `-w`
+- [Environments](docs/environments.md): the default environment, `-e`, what belongs to an environment
 - [Credentials](docs/credentials.md): encrypted secrets for parameters
 - [Running jobs from Ruby](docs/ruby-api.md): `Job#run` and `Project#invoke`
 - [Examples](examples): runnable jobs and a project with sample data

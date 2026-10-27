@@ -13,9 +13,11 @@ result.error     # the error that aborted the run, or nil
 result.summary   # "ok: read 1000, written 998, rejected 2 (Not public: 2) in 0.41s ..."
 ```
 
-`run` takes the job's parameters as `params:` (see [Parameters](jobs.md#parameters)), and the environment for
-parameters with `env:` as `env:` (default `ENV`). Credentials follow the same `env:` (`METACRUNCH_ENV`,
-`METACRUNCH_CREDENTIALS`, `METACRUNCH_MASTER_KEY`, `HOME`) and are searched from the job's file. Invalid values
+`run` takes the job's parameters as `params:` (see [Parameters](jobs.md#parameters)), the environment variables that
+references read as `env:` (default `ENV`), and the [environment](environments.md) as `environment:` (default:
+`METACRUNCH_ENV` of `env:`, else the default environment). Credentials follow `env:` as well
+(`METACRUNCH_CREDENTIALS`, `METACRUNCH_MASTER_KEY`, `HOME`) and are searched from the job's file. A params file is a
+command-line feature only: code passes its values in `params:`. Invalid values
 and unreadable credentials raise `Metacrunch::ParamError`, unknown keys `ArgumentError`; errors while the job runs
 end up in the result. A job defined with `Metacrunch.job` in a Rake task or an application runs the same way. Logs
 go to `Metacrunch.logger` (stderr); assign another `Logger` or pass `logger:` to `run`.
@@ -34,4 +36,4 @@ project.invoke("catalog:release", params: {out: "tmp"})    # a CommandResult, li
 
 `project.invoke` returns a job's `Result` or a command's `CommandResult` (`status`, `ok?`, `value`) and raises
 `Metacrunch::InvokeError` as `invoke` does (see [Commands](projects.md#commands)). It takes `params:`, `logger:`,
-`env:`, `stdin:` and `stdout:`, and for a job `workers:` and `limit:` as `Job#run` does.
+`env:`, `environment:`, `stdin:` and `stdout:`, and for a job `workers:` and `limit:` as `Job#run` does.

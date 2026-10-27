@@ -16,9 +16,9 @@ metacrunch's version.
 - `buffer:` is replaced by `batch:` on the sink (`write_batch`).
 - `pre_process`/`post_process` are replaced by `before`/`after` hooks and `open`/`close` on components.
 - `options` is replaced by `params { param ...; args ... }`. `ARGV` is no longer used.
-- The CLI has commands (`run`, `check`, `trace`, `new`, `generate`, `credentials`); `metacrunch JOB_FILE` still runs
-  a job. Options of `metacrunch` go before the job file. It no longer changes into the job's directory and returns
-  defined exit codes.
+- The CLI has commands (`run`, `check`, `trace`, `new`, `generate`, `credentials`); a job runs with `metacrunch run
+  JOB_FILE` (`metacrunch JOB_FILE` and executable job files no longer work). Options of `run` go before the job file.
+  It no longer changes into the job's directory and returns defined exit codes.
 - `-v` now means `--verbose`; the version is shown with `metacrunch --version` only.
 - `Metacrunch::TestUtils` is replaced by `Metacrunch::Testing`.
 - Requires Ruby 4.0. ActiveSupport and colorize are no longer dependencies.
@@ -49,14 +49,22 @@ metacrunch's version.
 - `metacrunch run -w N` (`--workers N|auto`) runs the steps in N worker processes, with the results in source
   order; `Job#run`, `Testing.run` and `Engine` take workers as well. Step components are opened after the `before`
   hooks.
-- Encrypted credentials: parameters read secrets with `credential:` from `.metacrunch/credentials[.ENV].yml.enc`,
-  after the command line and `env:`, and hide them in help texts, errors and `inspect`. `metacrunch credentials
-  edit|show|rotate` manages the files; `run`, `check` and `trace` take `-e`/`--environment` and `--credentials`.
-- Parameter files: `run`, `check` and `trace` take `--params FILE`, a YAML file with a `default:` section and one
-  section per environment (selected by `-e`) whose keys are the parameters; `{credential: PATH}` takes a value from
-  the credentials and hides it. Its values come after the command line and before `env:`.
-- Projects: a `Metacrunchfile` names a project's jobs and commands (`Metacrunch.load_files`); `metacrunch NAME` runs
-  them from any directory of the project, and `metacrunch --help` lists them. A file that fails to load costs only
+- Parameter values come from the command line, then a params file, then the default; a value is text, a list or a
+  reference, `{env: NAME}` for an environment variable or `{credential: PATH}` for the encrypted credentials, also
+  as the default (`default: {env: "ES_URL"}`). A reference that finds nothing is an error.
+- `secret` declares a secret parameter, hidden in help texts, errors, `inspect` and logs; only a secret may refer to
+  the credentials, and it takes no plain value from a params file or a default. Passing a secret unchanged to a
+  `param` of a target of `use` or `invoke` is an error.
+- Environments: `-e NAME` (or `METACRUNCH_ENV`) selects the credentials file and key and the section of a params file;
+  without it, the environment `default` applies, a reserved name. A run logs where a selected environment comes from.
+  `Job#run` and `Project#invoke` take `environment:`.
+- Encrypted credentials in `.metacrunch/credentials[.ENV].yml.enc`; `metacrunch credentials edit|show|rotate` manages
+  the files; `run`, `check` and `trace` take `-e`/`--environment` and `--credentials`.
+- Parameter files: `run`, `check` and `trace` take `--params FILE`, a YAML file with one section per environment
+  (`default:` for the default environment) whose keys are the parameters; sections share values only through YAML
+  merge keys. Every section is checked on every run. `check` also checks commands.
+- Projects: a `Metacrunchfile` names a project's jobs and commands (`Metacrunch.load_files`); `metacrunch run NAME`
+  runs them from any directory of the project, and `metacrunch --help` lists them. A file that fails to load costs only
   its own names. A name declared twice is unusable, every call that loads the project warns about it, and
   `Project#duplicates` lists such names for a test. `Metacrunch.load_project` and `Project#invoke` do the same from
   Ruby.

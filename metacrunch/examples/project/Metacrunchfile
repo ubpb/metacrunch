@@ -9,7 +9,7 @@
 #
 #   cd examples/project
 #   bundle exec metacrunch --help
-#   bundle exec metacrunch catalog:release
-#   bundle exec metacrunch catalog:ids
+#   bundle exec metacrunch run catalog:release
+#   bundle exec metacrunch run catalog:ids
 #   bundle exec rake
 Metacrunch.load_files "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"

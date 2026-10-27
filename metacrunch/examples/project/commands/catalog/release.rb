@@ -8,8 +8,8 @@ require "fileutils"
 # symbolic link, so it is atomic.
 #
 #   cd examples/project
-#   bundle exec metacrunch catalog:release
-#   bundle exec metacrunch catalog:release --input data/broken.jsonl    # exit status 3, out/current stays
+#   bundle exec metacrunch run catalog:release
+#   bundle exec metacrunch run catalog:release --input data/broken.jsonl    # exit status 3, out/current stays
 Metacrunch.command "catalog:release", desc: "Write a new release and switch out/current to it" do
   params do
     param :input, String, desc: "JSON Lines with title records (default: the job's)"

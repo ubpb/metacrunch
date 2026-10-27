@@ -6,8 +6,8 @@
 # and go to. Alone it reads JSON Lines from stdin and writes them to stdout.
 #
 #   cd examples/project
-#   bundle exec metacrunch catalog:public --help
-#   bundle exec metacrunch catalog:public --fields id < data/titles.jsonl
+#   bundle exec metacrunch run catalog:public --help
+#   bundle exec metacrunch run catalog:public --fields id < data/titles.jsonl
 Metacrunch.transform "catalog:public", desc: "Keep the public titles, reduced to some fields" do
   params do
     param :fields, Array, default: ["id", "title"], desc: "Fields to keep"

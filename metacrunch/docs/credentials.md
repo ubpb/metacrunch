@@ -1,10 +1,11 @@
 # Credentials
 
-Parameters can read secrets, such as API keys and passwords, from encrypted files in the project:
+Secrets, such as API keys and passwords, live in encrypted files in the project. A `secret` parameter refers to them
+in its default or in a [params file](jobs.md#parameter-files):
 
 ```ruby
 params do
-  param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key", required: true
+  secret :api_key, String, default: {credential: "catalog.api_key"}
 end
 ```
 
@@ -16,37 +17,39 @@ $ metacrunch credentials rotate -e production
 ```
 
 `edit` creates `.metacrunch/credentials.yml.enc`, which you commit, and the key `.metacrunch/master.key`, which you
-never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `credential: "catalog.api_key"` reads
+never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `{credential: "catalog.api_key"}` reads
 `api_key` below `catalog`. Every value is read as its text and converted like a command-line value, so `0123`, `no`
 or `on` need no quotes; an empty value, `~` and `null` mean "not set". `edit` refuses to save invalid YAML and, on a
 terminal, offers to edit again.
 
+Each [environment](environments.md) has its own credentials file and key:
+
 | Environment | File | Key |
 |---|---|---|
-| none | `.metacrunch/credentials.yml.enc` | `.metacrunch/master.key` |
-| `-e production` or `METACRUNCH_ENV=production` | `.metacrunch/credentials.production.yml.enc` | `.metacrunch/master.production.key` |
+| `default` (no `-e`) | `.metacrunch/credentials.yml.enc` | `.metacrunch/master.key` |
+| `-e production` | `.metacrunch/credentials.production.yml.enc` | `.metacrunch/master.production.key` |
 
-[`examples/credentials`](../examples/credentials) has a runnable example. Each environment has its own file and key, so
-laptops and CI need not hold the production key. A run with an
-environment never falls back to the file without one.
+A run in `production` reads only the production file, never the one of the default environment, so laptops and CI need
+not hold the production key. [`examples/credentials`](../examples/credentials) has a runnable example.
 
 - **Where:** `--credentials DIR` or `METACRUNCH_CREDENTIALS`, else the nearest `.metacrunch/` above the job file
   (for a job or command run by name: above the project's `Metacrunchfile`), else `~/.metacrunch/` for personal
   credentials. The directory found decides alone; `-v` logs the file that was decrypted. `metacrunch credentials`
   looks above the working directory and uses `~/.metacrunch/` only with `--credentials ~/.metacrunch`.
-- **Key:** `METACRUNCH_MASTER_KEY`, else the key file. In containers and CI, set `METACRUNCH_MASTER_KEY`; with Kamal,
-  list it under `env: secret:` and provide it in `.kamal/secrets`.
-- **Order:** a parameter's value comes from the command line, a params file, its `env:` variable, the credentials,
-  then the default, so an environment variable overrides a credential. Credentials are decrypted only if a value is
-  needed: a container that sets every variable needs neither key nor file. Leave out `env:` to make sure that no
-  inherited variable overrides a secret.
-- **Params files:** a value `{credential: PATH}` in a params file (see
-  [Parameter files](jobs.md#parameter-files)) takes the value from these credentials, for any parameter; the value is
-  then hidden like a secret. `-e` selects the credentials and the section of the params file alike.
-- **Secrets:** a parameter with `credential:` is secret. `--help`, error messages and `params.inspect` hide its value,
-  and a value on the command line, where `ps` and the shell history show it, gives a warning. What a job does with the
-  value, such as logging it or putting it into an exception, is not hidden. `Metacrunch::Testing.run` never reads
-  credentials; pass values with `params:`.
+- **Key:** `METACRUNCH_MASTER_KEY`, else the key file of the environment. The variable is the key of whatever
+  environment a run selects; a machine that runs several environments keeps one key file per environment instead. In
+  containers and CI, set `METACRUNCH_MASTER_KEY`; with Kamal, list it under `env: secret:` and provide it in
+  `.kamal/secrets`.
+- **When:** credentials are decrypted only when a `{credential: ...}` reference needs its value: a value on the
+  command line or in the params file wins without reading them, and a container whose params file takes every secret
+  from `{env: ...}` needs neither key nor file (see [Environments](environments.md#examples)).
+- **Missing values:** a reference that finds nothing fails and names the file:
+  `api_key: credential catalog.api_key from default: not in .metacrunch/credentials.production.yml.enc`.
+- **Secrets:** only a `secret` may refer to the credentials. It is hidden in `--help`, messages and `params.inspect`,
+  and a plain value on the command line, where `ps` and the shell history show it, gives a warning (see
+  [Secrets](jobs.md#secrets)). What a job does with the value, such as logging it or putting it into an exception, is
+  not hidden. `Metacrunch::Testing` never reads credentials: a reference fails with `api_key: Testing reads no
+  credentials; pass api_key in params:`.
 - **Rotation:** `rotate` encrypts a file with a new key and replaces the key file, or prints the new key if the old
   one came from `METACRUNCH_MASTER_KEY`. If a `master[.ENV].key.new` is left behind (rotate died between its two
   renames), check first: if `metacrunch credentials show` fails with "wrong key", the `.new` file holds the key of the

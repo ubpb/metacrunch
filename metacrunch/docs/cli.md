@@ -1,12 +1,12 @@
 # The command line
 
 `metacrunch --help` lists the built-in commands and, in a project, its jobs, transforms and commands;
-`metacrunch help COMMAND` and `metacrunch NAME --help` show the options and parameters of one of them.
+`metacrunch help COMMAND|NAME|FILE` and `metacrunch run NAME --help` show the options and parameters of one of them.
 
 | Command | |
 |---|---|
-| `run` | Run a job, transform or command (`metacrunch NAME` is short for `metacrunch run NAME`) |
-| `check` | Load a job or transform, bind its parameters and build it, without running anything |
+| `run` | Run a job, transform or command |
+| `check` | Load a job, transform or command and bind its parameters, without running anything |
 | `trace` | Show what each step does to the first records |
 | `new`, `generate` | Create a project, and jobs, transforms, commands, sources and sinks in it (see [Projects](projects.md#generating-projects-and-files)) |
 | `credentials` | Edit, show or rotate encrypted credentials (see [Credentials](credentials.md)) |
@@ -15,20 +15,20 @@
 
 ```
 $ metacrunch run [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]
-$ metacrunch NAME|FILE [PARAMS...] [ARGS...]                # short for run
 $ metacrunch run jobs/catalog.rb --help                     # the job's parameters
-$ metacrunch catalog --help                                 # the same, by name in a project
+$ metacrunch run catalog --help                             # the same, by name in a project
 ```
 
-Options of `metacrunch` go before the job; everything after it belongs to the job. Use `--` before job arguments that
+A job, transform or command always runs with `run`; `metacrunch catalog` alone is an unknown command. Options of
+`run` go before the job; everything after it belongs to the job. Use `--` before job arguments that
 start with `-`. A job is given by its file or, in a project, by its name; an argument with `/` or `.` is always a
 file. The CLI does not change the working directory: relative paths are relative to where you start it.
 
 | Option | |
 |---|---|
 | `-j`, `--job NAME` | Select a job, transform or command in a file that declares several |
-| `-e`, `--environment NAME` | Environment of the credentials and the params file (default: `METACRUNCH_ENV`) |
-| `--params FILE` | Parameter values from FILE: `default:` and the section of the environment (see [Parameter files](jobs.md#parameter-files)) |
+| `-e`, `--environment NAME` | The [environment](environments.md): its credentials and its section of the params file (default: `METACRUNCH_ENV`, else the default environment) |
+| `--params FILE` | Parameter values from FILE, the section of the environment (see [Parameter files](jobs.md#parameter-files)) |
 | `--credentials DIR` | Credentials directory (default: `METACRUNCH_CREDENTIALS`, then `.metacrunch/` above the job file or, for a name, above the `Metacrunchfile`, then `~/.metacrunch/`) |
 | `-i`, `--input PATH` | Read JSON Lines from PATH (`-` for stdin; gzip and tar are unpacked) instead of the job's source |
 | `-o`, `--output PATH` | Write JSON Lines to PATH (`-` for stdout) instead of the job's sink |
@@ -42,8 +42,6 @@ file. The CLI does not change the working directory: relative paths are relative
 
 The options from `-i` to `--stats` apply to jobs and transforms only; for a command (see
 [Commands](projects.md#commands)) they are a usage error.
-
-A job file that starts with `#!/usr/bin/env metacrunch` and is executable runs as `./jobs/catalog.rb ...`.
 
 ## Pipes
 
@@ -64,13 +62,15 @@ quietly by SIGPIPE. A job without source refuses to read a terminal: run from a 
 $ metacrunch trace -n 2 catalog --output out
 $ metacrunch trace --position 3 catalog --output out
 $ metacrunch check catalog --output out
+$ metacrunch check -e production --params config/release.yml catalog:release
 ```
 
 `trace` shows what every step does to the first records (or to the records at `--position`, or with `--id`): the
 changed keys of Hash records, marks, rejections and failures, and the records a `flat_map` emits. It changes
 nothing: all sinks are replaced, and `before` and `after` hooks do not run. `--full` shows whole records.
 
-`check` loads the job, binds its parameters and builds it, without opening, reading or running anything.
+`check` loads the job, binds its parameters and builds it, without opening, reading or running anything. For a
+command it binds the parameters and runs nothing; with `--params` and `-e` it checks a params file, e.g. in CI.
 
 ## Exit codes
 

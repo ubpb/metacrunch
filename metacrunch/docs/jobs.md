@@ -156,69 +156,102 @@ after  { |result| logger.info(result.summary) }
 
 ```ruby
 params do
-  param :output, String, required: true, desc: "JSON Lines file for the records"
-  param :input,  String, default: root.join("data/titles.jsonl"), env: "CATALOG_INPUT"
-  param :batch,  Integer, default: 1000
-  param :dry,    :bool, default: false
-  param :tags,   Array
-  param :api_key, String, env: "CATALOG_API_KEY", credential: "catalog.api_key"
-  args  :files, min: 1
+  param  :output,  String, required: true, desc: "JSON Lines file for the records"
+  param  :input,   String, default: root.join("data/titles.jsonl")
+  param  :batch,   Integer, default: 1000
+  param  :dry,     :bool, default: false
+  param  :tags,    Array
+  param  :es_url,  String, default: {env: "ES_URL"}
+  secret :api_key, String, default: {credential: "catalog.api_key"}
+  args   :files, min: 1
 end
 ```
 
-`params` must be the first statement of a job. Values come from the command line, then a params file (`--params`,
-see [Parameter files](#parameter-files)), then the environment variable (`env:`, an empty variable counts as unset),
-then the credentials (`credential:`, see [Credentials](credentials.md)), then the default. Types: `String`,
-`Integer`, `Float`, `:bool`, `Array` (comma-separated). Defaults are converted and checked when declared
-(`Integer, default: "1000"` gives 1000). Use the values with `params.output`; they are frozen. Options must be spelled
-out (`--out` is not `--output`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and
-`-h` is reserved for help.
+`params` must be the first statement of a job. `param` declares a parameter, `secret` one whose value is hidden (see
+[Secrets](#secrets)); both take a type, `default:`, `required:`, `desc:` and `short:`. A value comes from the command
+line, then the [params file](#parameter-files) of the run, then the default. Types: `String`, `Integer`, `Float`,
+`:bool`, `Array` (comma-separated). Use the values with `params.output`; they are frozen. Options must be spelled out
+(`--out` is not `--output`), names that would hide a method of `params` (`to_h`, `hash`, ...) are not allowed, and `-h`
+is reserved for help.
+
+A value is text, a list, or a reference that the run resolves when it needs the value:
+
+| Value | Where | Gives |
+|---|---|---|
+| Text, a list | command line, params file, `default:`, `params:` | the value, converted to the type (`"1000"` → 1000, `"no"` → false) |
+| `{env: "ES_URL"}` | params file, `default:` | the environment variable; an empty one counts as unset |
+| `{credential: "catalog.api_key"}` | params file, `default:` | the value in the [credentials](credentials.md) of the run's [environment](environments.md); only for a `secret` |
+
+A reference that finds nothing is an error, also for an optional parameter: `es_url: environment variable ES_URL from
+default: is not set`. A value that exists in only some environments belongs into their sections of the params file,
+not into `default:`. Plain defaults are converted and checked when declared (`Integer, default: "1000"` gives 1000),
+references for their form. `--help` shows where a default comes from, never a value: `(default: env ES_URL)`,
+`(secret, default: credential catalog.api_key)`.
 
 A value from code (`use`, `invoke`, `Job#run`, `Metacrunch::Testing`) is given as `params: {...}`, in the declared
-type or as a String; a Pathname counts as its path, and `nil` means not given. `root` is the root of the project the
-call runs in (see [Projects](projects.md)), so `default: root.join("data/titles.jsonl")` works from any directory
-of the project; `--help` shows it as an absolute path. Without a project, `root` raises `Metacrunch::ProjectError`
-"no Metacrunchfile found in DIR or above" when it is called: on the command line in the recipe or a hook, the run
-ends with exit status 2; in a step, the record fails. Call `root` in the recipe or a hook, and keep what a step
-needs in a local variable.
+type or as a String; a Pathname counts as its path, and `nil` means not given. A params file never applies to them.
+`root` is the root of the project the call runs in (see [Projects](projects.md)), so
+`default: root.join("data/titles.jsonl")` works from any directory of the project; `--help` shows it as an absolute
+path. Without a project, `root` raises `Metacrunch::ProjectError` "no Metacrunchfile found in DIR or above" when it is
+called: on the command line in the recipe or a hook, the run ends with exit status 2; in a step, the record fails. Call
+`root` in the recipe or a hook, and keep what a step needs in a local variable.
+
+### Secrets
+
+A `secret` is hidden in `--help`, in error messages (`(hidden)`), in `params.inspect`, `to_s` and `pp`
+(`api_key=[secret]`) and in the log; `params.to_h` gives the values, since code passes them on. What a job does with a
+value, such as logging it, is up to the job.
+
+| Source | Plain value for a secret | Reference |
+|---|---|---|
+| Command line | allowed, with a warning (`ps` and the shell history show it) | – |
+| Params file | error | `{credential: ...}`, `{env: ...}` |
+| `default:` | error, when declared | `{credential: ...}`, `{env: ...}` |
+| `params: {...}` from code | allowed | – |
+
+`{credential: ...}` for a `param` is an error: what is in the credentials is secret. A secret stays hidden where `use`
+or `invoke` pass it on only if the target declares the parameter with `secret` too; passing one of its own secret
+values unchanged to a `param` of the target fails: `use es-writer: api_key gets a secret, but es-writer declares it as
+param; declare it secret there`. The check compares the value itself, so a derived value (`params.api_key.strip`) is
+not recognized.
 
 ### Parameter files
 
-`--params FILE` gives values per environment, as Rails' `database.yml` does: a `default:` section and one section
-per environment, whose values `-e NAME` (or `METACRUNCH_ENV`) merges over those of `default:`, key by key.
+`--params FILE` gives the values of each [environment](environments.md) in one file, one section per environment:
+`default:` for the default environment (no `-e`), `production:` for `-e production`.
 
 ```yaml
 # config/export.yml
-default:
+default: &default
   batch: 1000
-  index: titles
+  index: titles-dev
   tags: [catalog, nightly]
 
 production:
-  es_url: http://es-prod:9200
+  <<: *default
   index: titles-prod
+  es_url: http://es-prod:9200
   api_key: {credential: catalog.api_key}
 ```
 
 ```
-$ metacrunch run --params config/export.yml -e production export.rb
+$ metacrunch run -e production --params config/export.yml export.rb
 ```
 
-- Keys are the names of the parameters (`api_key`, not `--api-key`). Every key of every section must name a
-  parameter of the job, so a typo fails also in a section that is not used; positional arguments come from the
-  command line only.
-- Values are read as text and converted like command-line values (`0123`, `no` and `on` need no quotes); an
-  `Array` parameter also takes a list. `~`, `null` or an empty value means "not given": in an environment section it
-  removes the value of `default:`, and the parameter falls back to `env:`, `credential:` and its default.
-- `{credential: PATH}` takes the value from the credentials of the run (the same directory and environment as
-  `credential:`, see [Credentials](credentials.md)). A missing one is an error, and the value is hidden in messages
-  and `params.inspect` like a secret. A plain value for a parameter declared with `credential:` is used with a
-  warning, as one on the command line is.
-- Without `-e` and `METACRUNCH_ENV`, only `default:` counts. An environment without a section is an error if the
-  file has any environment section; a file with only `default:` serves every environment.
-- `run`, `check` and `trace` take the file for the job or transform named on the command line, and `run` also for a
-  command; what that target invokes or uses gets its values from code. `metacrunch check --params FILE -e NAME job.rb` checks a file,
-  e.g. in CI, and `-v` logs the file and the sections it used.
+- A run uses exactly the section of its environment, and it must exist: `config/export.yml has no section production
+  (sections: default)`. Nothing is inherited; a YAML merge key (`<<: *default`) takes values over where wanted, as in
+  Rails' `database.yml`. So `default:` holds the values of the default environment, typically development, and no
+  development value reaches production by accident.
+- Keys are the names of the parameters (`api_key`, not `--api-key`). Every key of every section must name a parameter
+  of the job, so a typo fails also in a section that is not used; positional arguments come from the command line
+  only.
+- Values are read as text and converted like command-line values (`0123`, `no` and `on` need no quotes); an `Array`
+  parameter also takes a list. `~`, `null` or an empty value means "not given": the default applies.
+- Every section is checked on every run: keys, plain values, plain values for secrets and `{credential: ...}` for a
+  `param`. References are resolved only in the section of the run.
+- `run`, `check` and `trace` take the file for the job or transform named on the command line, and `run` and `check`
+  also for a command; what that target invokes or uses gets its values from code. `metacrunch check -e production
+  --params FILE job.rb` checks a file, e.g. in CI, and `-v` logs the file and the section it used.
 
 ## What runs when
 

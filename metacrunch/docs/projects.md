@@ -1,7 +1,7 @@
 # Projects, commands and gems
 
-A project gives jobs, transforms and commands names, so that `metacrunch NAME` runs them from any directory of the
-project. Commands chain jobs, transforms and other commands; gems can ship all three.
+A project gives jobs, transforms and commands names, so that `metacrunch run NAME` runs them from any directory of
+the project. Commands chain jobs, transforms and other commands; gems can ship all three.
 
 ## Projects
 
@@ -24,14 +24,14 @@ project/
 ```
 
 ```
-$ metacrunch catalog --output out                    # from any directory of the project
-$ metacrunch catalog:release
-$ metacrunch catalog:release --help
+$ metacrunch run catalog --output out                # from any directory of the project
+$ metacrunch run catalog:release
+$ metacrunch run catalog:release --help
 $ metacrunch --help                                  # lists the jobs, transforms and commands
 ```
 
 `metacrunch` finds the nearest `Metacrunchfile` above the working directory and loads it only when a name is needed:
-for `metacrunch NAME`, for `run`, `check` and `trace` with a name, for `help NAME` and for `--help`, when a job run
+for `run`, `check` and `trace` with a name, for `help NAME` and for `--help`, when a job run
 by path uses a transform by name, and for `generate` with a name and after it writes a job, transform or command.
 The other built-in commands never load it, so job files `require` what they use themselves. The `Metacrunchfile` is
 plain Ruby. `Metacrunch.load_files` takes globs relative to the project root, or absolute ones, and loads each
@@ -122,7 +122,7 @@ end
 The command writes a release of the job `catalog` and switches `out/current` to it only after a clean run, so
 readers of `out/current` never see a half-written or failed release.
 
-Parameters, `env:`, credentials, `-e`, `--help` and logging work as for jobs. `params` comes first; `run { ... }`
+Parameters, secrets, `-e`, `--params`, `--help` and logging work as for jobs. `params` comes first; `run { ... }`
 holds the body, which `--help` never runs: `run` declares what the command does when it runs, as `before` and
 `after` do for a job. In the body, `params`, `logger`, `invoke` and `root` (the project root, a `Pathname`, as in
 jobs and transforms) are available, and `next` ends it early (`return` does not work in a block). Helpers shared by
@@ -133,8 +133,11 @@ several commands are plain Ruby: a module that the body `extend`s, or a proc for
 `Job#run` (see [Parameters](jobs.md#parameters)): in the declared type or as a String, a Pathname as its path, `nil`
 as not given, so `input: params.input` passes an optional value on. An invoked job runs like
 `metacrunch run NAME`: it logs its summary as `catalog: ok: read ...`, reads stdin if it has no source and writes
-stdout if it has no sink. All jobs and commands of a chain share `-e`, `--credentials`, the environment, the log
-level and the progress setting.
+stdout if it has no sink. All jobs and commands of a chain share `-e`, `--credentials`, the environment variables,
+the log level and the progress setting. A params file (`--params`) applies to the command named on the command line
+only: the command passes values on, e.g. `invoke "catalog", params: {index: params.index}`. A secret of the command
+stays hidden in the target only if the target declares it with `secret`; passing it unchanged to a `param` fails
+(see [Secrets](jobs.md#secrets)).
 
 | Case | `invoke` |
 |---|---|
@@ -148,9 +151,9 @@ A command's status is the worst status of the jobs run during its body, nested c
 `:ok_with_failures` if one ended with failed records, or aborted and the body went on. Its exit status reports the
 same (see [Exit codes](cli.md#exit-codes)): 3 for `:ok_with_failures`, 1 if an exception left the body.
 
-`run` takes commands too; the job options (`-i`, `-o`, `-w`, ...) are a usage error for them, and `check` and
-`trace` take jobs and transforms only. A command file can also run by path, or as an executable with
-`#!/usr/bin/env metacrunch`; when it invokes a name, it finds the project from the working directory.
+`run` takes commands too; the job options (`-i`, `-o`, `-w`, ...) are a usage error for them. `check` binds a
+command's parameters, with `--params`, without running the body; `trace` takes jobs and transforms only. A command
+file can also run by path; when it invokes a name, it finds the project from the working directory.
 
 Names search credentials from the project root (`.metacrunch/` next to the `Metacrunchfile`), also for commands from
 gems; a path searches from its file. A job below `jobs/x/` with a `.metacrunch/` of its own therefore uses the
@@ -195,7 +198,7 @@ Metacrunch.load_files Metacrunch::Example::COMMANDS, Metacrunch::Example::TRANSF
                       "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 ```
 
-`bundle exec metacrunch example:check data/titles.csv` then runs a command of the gem, and
+`bundle exec metacrunch run example:check data/titles.csv` then runs a command of the gem, and
 `bundle exec metacrunch --help` lists the gem's jobs, transforms and commands with the project's.
 
 - The job, transform and command files define no constants, since every `Metacrunch.load_project` loads them
@@ -219,5 +222,5 @@ Metacrunch.load_files File.join(gem_dir, "lib/metacrunch/example/commands/*.rb")
 The constant is still the better way: the gem can then move its files without breaking projects.
 
 There is no global registry and no `~/.metacrunch` for jobs or commands: under Bundler a global file could not load
-gems that the project's Gemfile lacks. Personal tools are executable command files on the `PATH`. For task automation
+gems that the project's Gemfile lacks. Personal tools are command files run by path (`metacrunch run ~/tools/x.rb`). For task automation
 without records, Rake, Thor or just fit better.
