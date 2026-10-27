@@ -1,0 +1,21 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gemspec
+
+# The core gem lives next to this one in the monorepo.
+gem "metacrunch", path: "../metacrunch"
+
+# The drivers of the tests: SQLite for every test job, pg and trilogy against the servers (see test/compose.yml).
+# gemfiles/mysql2.gemfile adds the tests with mysql2, which needs the MySQL client library.
+gem "pg", ">= 1.5"
+gem "sqlite3", ">= 2.0"
+gem "trilogy", ">= 2.9"
+
+group :development do
+  gem "minitest", ">= 5.25"
+  gem "rake", ">= 13.0"
+  gem "rubocop-ubpb", github: "ubpb/rubocop-ubpb", require: false
+  gem "simplecov", ">= 0.22", require: false
+end

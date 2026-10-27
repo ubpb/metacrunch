@@ -8,6 +8,7 @@ updates:
       - "/metacrunch-xlsx"
       - "/metacrunch-marc"
       - "/metacrunch-elasticsearch"
+      - "/metacrunch-db"
     schedule:
       interval: weekly
   - package-ecosystem: github-actions

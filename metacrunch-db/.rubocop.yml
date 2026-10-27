@@ -1,0 +1,14 @@
+inherit_gem:
+  rubocop-ubpb: ruby.yml
+
+inherit_mode:
+  merge:
+    - Exclude
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+# Tests leave loops on purpose (`reader.each { break }`).
+Lint/UnreachableLoop:
+  Exclude:
+    - "test/**/*"
