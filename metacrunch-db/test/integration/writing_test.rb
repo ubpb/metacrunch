@@ -72,11 +72,19 @@ module WritingTests
     assert_equal [1, 3], database[name.to_sym].order(:id).select_map(:id)
   end
 
+  # Rows of 100 KB with max_bytes 300 000: two per INSERT.
   def test_max_bytes_splits_a_batch
-    name = create_books
-    write((1..30).map { {"isbn" => it.to_s, "title" => "t" * 90} }, table: name, max_bytes: 1000)
+    name = table("texts")
+    text_type = type == :mysql ? "longtext" : "text"
+    database.create_table(name.to_sym) do
+      Integer :id, primary_key: true
+      column :body, text_type
+    end
+    log = StringIO.new
+    connection = Metacrunch::Db::Connection.new(url: @url, loggers: [Logger.new(log)])
+    write((1..20).map { {"id" => it, "body" => "x" * 100_000} }, table: name, max_bytes: 300_000, connection:)
 
-    assert_equal 30, database[name.to_sym].count
+    assert_equal [10, 20], [log.string.scan("INSERT INTO").size, database[name.to_sym].count]
   end
 
   def test_open_checks_the_table

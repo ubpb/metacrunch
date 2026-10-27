@@ -93,9 +93,8 @@ class WriterTest < Minitest::Test
   end
 
   def test_open_refuses_a_table_it_neither_selects_from_nor_reads_the_schema_of
-    sink = mocked("postgres") do |database|
+    sink = mocked("postgres", schema: -> { raise Sequel::Error, "no such table" }) do |database|
       database.define_singleton_method(:table_exists?) { |*| false }
-      database.define_singleton_method(:schema) { |*| raise Sequel::Error, "no such table" }
     end
     error = assert_raises(Metacrunch::OutputError) { sink.open(context) }
 
@@ -111,7 +110,7 @@ class WriterTest < Minitest::Test
   end
 
   def test_open_turns_sequel_errors_into_output_errors
-    sink = mocked("postgres") { |database| database.define_singleton_method(:schema) { |*| raise Sequel::Error, "x" } }
+    sink = mocked("postgres", schema: -> { raise Sequel::Error, "x" })
     error = assert_raises(Metacrunch::OutputError) { sink.open(context) }
 
     assert_equal "db books: x", error.message
@@ -423,10 +422,11 @@ class WriterTest < Minitest::Test
 
   def writer(connection: sqlite_connection, table: "books", **) = Metacrunch::Db::Writer.new(connection, table:, **)
 
-  # A writer to a mock database of host with the columns isbn and title; the block may change the database.
-  def mocked(host, fetch: nil, **)
+  # A writer to a mock database of host whose schema has the columns isbn and title (or what the callable schema
+  # returns); the block may change the database further.
+  def mocked(host, fetch: nil, schema: -> { [[:isbn, {primary_key: true}], [:title, {}]] }, **)
     database = Sequel.mock(host:, fetch:)
-    database.define_singleton_method(:schema) { |*| [[:isbn, {primary_key: true}], [:title, {}]] }
+    database.define_singleton_method(:schema) { |*| schema.call }
     yield database if block_given?
     Metacrunch::Db::Writer.new(Databases::FakeConnection.new(database), table: "books", **)
   end
