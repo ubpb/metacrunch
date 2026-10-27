@@ -184,6 +184,15 @@ class ReaderTest < Minitest::Test
     assert_equal([0.25, 0.5, 0.75, 1.0], source.each.map { source.progress })
   end
 
+  # The count wraps the SQL in a subquery, where a semicolon or a comment at its end would break it.
+  def test_count_takes_sql_that_ends_in_a_semicolon_or_a_comment
+    ["SELECT * FROM books; ", "SELECT * FROM books;;\n", "SELECT * FROM books -- every book"].each do |query|
+      source = reader(query:, count: true)
+
+      assert_equal [0.5, 1.0], source.each.map { source.progress }, query
+    end
+  end
+
   def test_progress_of_an_empty_result_is_one
     source = reader(query: "SELECT * FROM books WHERE 0", count: true)
     source.each { nil }

@@ -104,11 +104,15 @@ module Metacrunch
         end
       end
 
+      # The SQL without semicolons at its end and with a newline after it, so
+      # that the subquery of count: true takes it, also with a comment at its
+      # end.
       def fetch
+        sql = "#{@query.sub(/[\s;]+\z/, "")}\n"
         case @values
-        when Hash then @database.fetch(@query, @values)
-        when Array then @database.fetch(@query, *@values)
-        else @database.fetch(@query)
+        when Hash then @database.fetch(sql, @values)
+        when Array then @database.fetch(sql, *@values)
+        else @database.fetch(sql)
         end
       end
 
