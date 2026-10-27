@@ -56,6 +56,13 @@ class ConnectionTest < Minitest::Test
     assert_equal "postgres://db/catalog", connection(url: "postgres://db/catalog").url
   end
 
+  def test_url_filters_passwords_in_the_query
+    connection = connection(url: "mysql2://db/x?user=root&password=s3cret&sslpassword=k3y&encoding=utf8mb4")
+
+    assert_equal "mysql2://db/x?user=root&password=[FILTERED]&sslpassword=[FILTERED]&encoding=utf8mb4", connection.url
+    refute_includes connection.inspect, "s3cret"
+  end
+
   def test_inspect_hides_the_password
     with_info = connection(url: "postgres://etl:secret@db/catalog")
     with_options = connection(url: "postgres://db/catalog", user: "etl", password: "secret")

@@ -18,6 +18,7 @@ module Metacrunch
       # What follows sqlite: in a URL of an in-memory database.
       IN_MEMORY = ["", "/", ":memory:"].freeze
       PARAMS = [:url, :user, :password].freeze
+      PASSWORD_OPTION = /([?&][^=&]*password=)[^&]*/i
 
       # A connection from the bound params of a job or command: the ones of
       # Db.connection_params(prefix) it declares.
@@ -27,8 +28,9 @@ module Metacrunch
       end
 
       # A URL for messages: user info (user:password@) as [FILTERED], up to the
-      # last @, since a password may hold an unencoded @.
-      def self.filter(url) = url.to_s.sub(%r{//.*@}, "//[FILTERED]@")
+      # last @, since a password may hold an unencoded @, and the values of
+      # password options in the query (?password=, &sslpassword=).
+      def self.filter(url) = url.to_s.sub(%r{//.*@}, "//[FILTERED]@").gsub(PASSWORD_OPTION, "\\1[FILTERED]")
 
       # url: a Sequel URL (postgres://, mysql2://, trilogy://, sqlite://, ...),
       # a String or Pathname. user and password override nothing: with user
