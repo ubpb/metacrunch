@@ -26,11 +26,12 @@ class ParamsFileBindingTest < Minitest::Test
     assert_equal ["c", "f", "e", "d"], values
   end
 
-  def test_the_file_wins_over_a_credential
-    params = schema { param :index, String, credential: "x.index" }
+  def test_the_file_wins_over_a_default_reference
+    params = schema { secret :index, String, default: {credential: "x.index"} }
     credentials = FakeCredentials.new("x.index" => "cred")
+    file = params_file("default: {index: {env: INDEX}}\n")
 
-    assert_equal "f", params.bind_argv([], env: {}, credentials:, file: params_file("default: {index: f}\n")).index
+    assert_equal "f", params.bind_argv([], env: {"INDEX" => "f"}, credentials:, file:).index
   end
 
   def test_converts_like_command_line_values
@@ -151,64 +152,90 @@ class ParamsFileBindingTest < Minitest::Test
   def test_a_reference_reads_the_credentials
     file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
     credentials = FakeCredentials.new("catalog.api_key" => "sk")
+    bound = schema { secret :api_key }.bind_argv([], env: {}, credentials:, file:)
 
-    assert_equal "sk", schema { param :api_key }.bind_argv([], env: {}, credentials:, file:).api_key
-  end
-
-  def test_a_value_from_the_credentials_is_hidden
-    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
-    credentials = FakeCredentials.new("catalog.api_key" => "sk")
-    inspected = schema { param :api_key }.bind_argv([], env: {}, credentials:, file:).inspect
-
-    assert_includes inspected, "api_key=[secret]"
-    refute_includes inspected, "sk"
+    assert_equal "sk", bound.api_key
+    assert_equal "#<data api_key=[secret]>", bound.inspect
   end
 
   def test_an_invalid_value_from_the_credentials_is_hidden
     file = params_file("default: {port: {credential: catalog.port}}\n")
     credentials = FakeCredentials.new("catalog.port" => "x")
     error = assert_raises(Metacrunch::ParamError) do
-      schema { param :port, Integer }.bind_argv([], env: {}, credentials:, file:)
+      schema { secret :port, Integer }.bind_argv([], env: {}, credentials:, file:)
     end
 
-    assert_equal "invalid value for port from credential catalog.port in test: (hidden) is not an Integer",
-                 error.message
+    assert_equal "invalid value for port from credential catalog.port in test via #{file.path} (default): (hidden) " \
+                 "is not an Integer", error.message
   end
 
   def test_a_missing_reference_fails
     file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
-    params = schema { param :api_key }
-    missing = assert_raises(Metacrunch::ParamError) do
-      params.bind_argv([], env: {}, credentials: FakeCredentials.new({}), file:)
+    error = assert_raises(Metacrunch::ParamError) do
+      schema { secret :api_key }.bind_argv([], env: {}, credentials: FakeCredentials.new({}), file:)
     end
-    none = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, file:) }
 
-    assert_equal ["api_key from #{file.path} (default): catalog.api_key not in test",
-                  "api_key from #{file.path} (default): no credentials"], [missing.message, none.message]
+    assert_equal "api_key: credential catalog.api_key from #{file.path} (default): not in test", error.message
   end
 
   def test_a_reference_converts_lists
     file = params_file("default: {hosts: {credential: es.hosts}}\n")
     credentials = FakeCredentials.new("es.hosts" => ["es1", "es2"])
 
-    assert_equal ["es1", "es2"], schema { param :hosts, Array }.bind_argv([], env: {}, credentials:, file:).hosts
+    assert_equal ["es1", "es2"], schema { secret :hosts, Array }.bind_argv([], env: {}, credentials:, file:).hosts
   end
 
-  def test_a_plain_value_for_a_secret_warns
-    file = params_file("default: {api_key: plain}\n")
-    warnings = []
-    params = schema { param :api_key, String, credential: "catalog.api_key" }
+  def test_env_references_in_the_file
+    params = schema { param :es_url }
+    file = params_file("production: {es_url: {env: ES_URL}}\n")
+    error = assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, file:, environment: "production") }
+    bound = params.bind_argv([], env: {"ES_URL" => "http://es"}, file:, environment: "production")
 
-    assert_equal "plain", params.bind_argv([], env: {}, file:, warn: ->(message) { warnings << message }).api_key
-    assert_equal ["api_key is a secret; refer to it in #{file.path} as {credential: catalog.api_key}"], warnings
+    assert_equal "http://es", bound.es_url
+    assert_equal "es_url: environment variable ES_URL from #{file.path} (production) is not set", error.message
   end
 
-  def test_other_bindings_keep_their_secrets
-    params = schema { param :api_key }
-    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
-    params.bind_argv([], env: {}, credentials: FakeCredentials.new("catalog.api_key" => "sk"), file:)
+  def test_a_credential_reference_for_a_param_in_the_file_fails
+    file = params_file("default: {index: x}\nstaging: {index: {credential: catalog.index}}\n")
+    error = assert_raises(Metacrunch::ParamError) { schema { param :index }.bind_argv([], env: {}, file:) }
 
-    assert_includes params.bind_argv(["--api-key", "visible"], env: {}).inspect, %(api_key="visible")
+    assert_equal "#{file.path}: staging.index: a value from the credentials needs secret, not param", error.message
+  end
+
+  def test_a_plain_value_for_a_secret_in_the_file_fails
+    file = params_file("default: {api_key: {env: API_KEY}}\nstaging: {api_key: plain}\n")
+    error = assert_raises(Metacrunch::ParamError) do
+      schema { secret :api_key }.bind_argv([], env: {"API_KEY" => "k"}, file:)
+    end
+
+    assert_equal "#{file.path}: staging.api_key: api_key is a secret; give it as {credential: PATH} or {env: NAME}",
+                 error.message
+  end
+
+  def test_plain_values_are_checked_in_every_section
+    file = params_file("default: {batch: 1}\nstaging: {batch: x}\n")
+    error = assert_raises(Metacrunch::ParamError) { schema { param :batch, Integer }.bind_argv([], env: {}, file:) }
+
+    assert_equal %(invalid value for batch from #{file.path} (staging): "x" is not an Integer), error.message
+  end
+
+  def test_references_resolve_only_in_the_selected_section
+    file = params_file("production: {api_key: {credential: catalog.api_key}}\nstaging: {api_key: {credential: nope}}\n")
+    credentials = FakeCredentials.new("catalog.api_key" => "sk")
+    bound = schema { secret :api_key }.bind_argv([], env: {}, credentials:, file:, environment: "production")
+
+    assert_equal "sk", bound.api_key
+  end
+
+  def test_file_values_are_named_by_name_command_line_values_by_option
+    params = schema { param :batch, Integer }
+    file = params_file("default: {batch: x}\n")
+    messages = [
+      assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, file:) },
+      assert_raises(Metacrunch::ParamError) { params.bind_argv(["--batch", "y"], env: {}) }
+    ].map { it.message[/invalid value for ([^\s:]+)/, 1] }
+
+    assert_equal ["batch", "--batch"], messages
   end
 
   # A job file may define SECRETS at the top level; it is no declared
@@ -216,12 +243,8 @@ class ParamsFileBindingTest < Minitest::Test
   def test_a_top_level_secrets_constant_changes_nothing
     Object.const_set(:SECRETS, ["index"].freeze)
     params = schema { param :index, String, default: "d" }
-    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
-    credentials = FakeCredentials.new("catalog.api_key" => "sk")
-    secret = schema { param :api_key }.bind_argv([], env: {}, credentials:, file:)
 
-    assert_equal "d", params.bind_argv([], env: {}).index
-    assert_includes secret.inspect, "api_key=[secret]"
+    assert_equal %(#<data index="d">), params.bind_argv([], env: {}).inspect
   ensure
     Object.send(:remove_const, :SECRETS) if Object.const_defined?(:SECRETS, false)
   end

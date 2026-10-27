@@ -15,18 +15,18 @@ class ParamsFileTest < Minitest::Test
     FileUtils.remove_entry(@dir)
   end
 
-  def test_merges_the_environment_over_default
+  def test_each_environment_has_its_own_section
     selection = load(<<~YAML).select("production")
       default: {batch: "1000", index: titles}
       production: {index: titles-prod}
     YAML
 
     assert_equal ["titles-prod", "production"], selection.fetch("index")
-    assert_equal ["1000", "default"], selection.fetch("batch")
-    assert_equal ["default", "production"], selection.sections
+    assert_nil selection.fetch("batch")
+    assert_equal ["production"], selection.sections
   end
 
-  def test_without_environment_only_default_counts
+  def test_without_environment_the_default_section_counts
     selection = load(<<~YAML).select(nil)
       default: {index: titles}
       production: {es_url: http://es-prod:9200}
@@ -50,10 +50,13 @@ class ParamsFileTest < Minitest::Test
   end
 
   def test_lists_and_references
-    selection = load("default: {tags: [a, b], api_key: {credential: catalog.api_key}}\n").select(nil)
+    selection = load("default: {tags: [a, b], api_key: {credential: catalog.api_key}, es_url: {env: ES_URL}}\n")
+                .select(nil)
 
     assert_equal ["a", "b"], selection.fetch("tags").first
-    assert_equal ParamsFile::Reference.new(path: "catalog.api_key"), selection.fetch("api_key").first
+    assert_equal Metacrunch::Params::Reference.new(source: :credential, key: "catalog.api_key"),
+                 selection.fetch("api_key").first
+    assert_equal Metacrunch::Params::Reference.new(source: :env, key: "ES_URL"), selection.fetch("es_url").first
   end
 
   def test_anchors_and_merge_keys
@@ -66,18 +69,16 @@ class ParamsFileTest < Minitest::Test
     assert_equal ["x", "production"], selection.fetch("index")
   end
 
-  def test_a_file_with_only_default_serves_every_environment
-    selection = load("default: {index: titles}\n").select("staging")
+  def test_the_selected_section_must_exist
+    only_default = load("default: {index: titles}\n")
+    only_production = load("production: {index: p}\nstaging: {index: s}\n")
+    messages = [
+      assert_raises(Metacrunch::ParamError) { only_default.select("production") },
+      assert_raises(Metacrunch::ParamError) { only_production.select(nil) }
+    ].map(&:message)
 
-    assert_equal ["titles", "default"], selection.fetch("index")
-    assert_equal ["default"], selection.sections
-  end
-
-  def test_an_environment_without_section_fails
-    file = load("default: {index: titles}\nstaging: {index: s}\n")
-    error = assert_raises(Metacrunch::ParamError) { file.select("production") }
-
-    assert_equal "#{file.path} has no section for environment production (sections: default, staging)", error.message
+    assert_equal ["#{only_default.path} has no section production (sections: default)",
+                  "#{only_production.path} has no section default (sections: production, staging)"], messages
   end
 
   def test_errors_of_the_file
@@ -88,15 +89,18 @@ class ParamsFileTest < Minitest::Test
       "batch: 1000\n" =>
         "FILE: section batch must be a mapping of parameters (parameters go under default: or an environment section)",
       "production: {api_key: {a: 1}}\n" =>
-        "FILE: production.api_key: a value must be text, a list or {credential: PATH}",
-      "default: {tags: [[1]]}\n" => "FILE: default.tags: a value must be text, a list or {credential: PATH}",
-      "default: {batch: !!float 1.5}\n" => "FILE: default.batch: a value must be text, a list or {credential: PATH}",
+        "FILE: production.api_key: a value must be text, a list, {credential: PATH} or {env: NAME}",
+      "default: {tags: [[1]]}\n" =>
+        "FILE: default.tags: a value must be text, a list, {credential: PATH} or {env: NAME}",
+      "default: {batch: !!float 1.5}\n" =>
+        "FILE: default.batch: a value must be text, a list, {credential: PATH} or {env: NAME}",
       "default: {enc: !ruby/encoding UTF-8}\n" =>
-        "FILE: default.enc: a value must be text, a list or {credential: PATH}",
+        "FILE: default.enc: a value must be text, a list, {credential: PATH} or {env: NAME}",
       "default: {api_key: {credential: x.y, other: 1}}\n" =>
-        "FILE: default.api_key: a value must be text, a list or {credential: PATH}",
+        "FILE: default.api_key: a value must be text, a list, {credential: PATH} or {env: NAME}",
       "default: {api_key: {credential: a..b}}\n" =>
         %(FILE: default.api_key: credential must be a path like "catalog.api_key", got "a..b"),
+      "default: {es_url: {env: 1X}}\n" => "FILE: default.es_url: a reference is {credential: PATH} or {env: NAME}",
       "default: [\n" => "invalid YAML in FILE at line 2, column 1"
     }.each do |content, message|
       path = write(content)
@@ -128,9 +132,15 @@ class ParamsFileTest < Minitest::Test
     assert_equal [["default", "batch"], ["default", "index"], ["staging", "index"]], file.to_enum(:each_key).to_a
   end
 
-  def test_an_empty_file_has_no_values
-    assert_nil load("").select(nil).fetch("index")
+  def test_an_empty_section_has_no_values
     assert_nil load("production:\n").select("production").fetch("index")
+  end
+
+  def test_an_empty_file_has_no_section
+    file = load("")
+    error = assert_raises(Metacrunch::ParamError) { file.select(nil) }
+
+    assert_equal "#{file.path} has no section default (sections: none)", error.message
   end
 
   private

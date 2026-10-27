@@ -159,11 +159,10 @@ module Metacrunch
       positional = option_parser(given).parse(argv)
       check_file!(file) if file
       selection = file&.select(environment)
-      secrets = []
       values = @definitions.to_h do |name, definition|
-        [name, bind(definition, given, env, credentials, warn, selection:, secrets:)]
+        [name, bind(definition, given, env, credentials, warn, selection:)]
       end
-      build(values, positional, secrets:)
+      build(values, positional)
     rescue OptionParser::ParseError => e
       # Without "=value" and without cause: a mistyped option may carry a
       # secret (--api-ky=...).
@@ -370,6 +369,25 @@ module Metacrunch
 
         raise ParamError, "#{where}: unknown parameter (known: #{known.empty? ? "none" : known.join(", ")})"
       end
+      file.each_value { |section, key, value| check_file_value!(file, section, @definitions.fetch(key.to_sym), value) }
+    end
+
+    # Every value of every section, also of sections not selected: a
+    # credential only for a secret, no plain value for one, plain values
+    # convertible. References are resolved only for the selected section.
+    def check_file_value!(file, section, definition, value)
+      where = "#{file.path}: #{section}.#{definition.name}"
+      if value.is_a?(Reference)
+        return unless value.source == :credential && !definition.secret?
+
+        raise ParamError, "#{where}: a value from the credentials needs secret, not param"
+      end
+      return if value.nil?
+      if definition.secret?
+        raise ParamError, "#{where}: #{definition.name} is a secret; give it as {credential: PATH} or {env: NAME}"
+      end
+
+      convert(definition, value, origin: "#{file.path} (#{section})", keyword: true)
     end
 
     # A file without sections reads a parameter at the top level (a
@@ -384,16 +402,15 @@ module Metacrunch
     end
 
     # selection: the ParamsFile::Selection of the run, or nil; a null value
-    # in it counts as not given. secrets collects the names of parameters
-    # whose value a reference in the file took from the credentials.
-    def bind(definition, given, env, credentials, warn, keyword: false, selection: nil, secrets: nil)
+    # in it counts as not given.
+    def bind(definition, given, env, credentials, warn, keyword: false, selection: nil)
       if given.key?(definition.name)
         warn&.call(secret_warning(definition)) if definition.secret?
         return resolve(definition, given[definition.name], keyword:)
       end
 
       value, section = selection&.fetch(definition.name.to_s)
-      return file_value(definition, value, section, selection, credentials:, warn:, secrets:) unless value.nil?
+      return file_value(definition, value, section, selection, env:, credentials:) unless value.nil?
 
       raw = env_value(definition, env)
       return resolve(definition, raw, origin: "environment variable #{definition.env}", keyword:) unless raw.nil?
@@ -408,25 +425,12 @@ module Metacrunch
     end
 
     # A value of the params file: text or a list, converted like a
-    # command-line value, or a reference, resolved through the credentials
-    # and hidden in messages and inspect.
-    def file_value(definition, value, section, selection, credentials:, warn:, secrets:)
-      unless value.is_a?(ParamsFile::Reference)
-        warn&.call(file_secret_warning(definition, selection)) if definition.secret?
-        return resolve(definition, value, origin: "#{selection.path} (#{section})", keyword: true)
-      end
+    # command-line value, or a reference (see reference_value).
+    def file_value(definition, value, section, selection, env:, credentials:)
+      from = "#{selection.path} (#{section})"
+      return reference_value(definition, value, from, env, credentials) if value.is_a?(Reference)
 
-      raw = credentials&.lookup(value.path)
-      if raw.nil?
-        detail = credentials ? credentials.missing(value.path) : "no credentials"
-        raise ParamError, "#{definition.name} from #{selection.path} (#{section}): #{detail}"
-      end
-      secrets << definition.name
-      resolve(definition, raw, origin: credentials.origin(value.path), keyword: true, hidden: true)
-    end
-
-    def file_secret_warning(definition, selection)
-      "#{definition.name} is a secret; refer to it in #{selection.path} as {credential: #{definition.credential}}"
+      resolve(definition, value, origin: from, keyword: true)
     end
 
     # What was tried for a missing value, e.g. "CATALOG_API_KEY unset;
@@ -513,32 +517,14 @@ module Metacrunch
       end
     end
 
-    # secrets: parameters that are secret in this binding only.
-    def build(values, positional, secrets: [])
+    def build(values, positional)
       if @args_definition
         check_args!(positional)
         values[@args_definition.name] = frozen_copy(positional)
       elsif positional.any?
         raise ParamError, "unexpected arguments: #{positional.join(" ")}"
       end
-      secret_class(secrets).new(**values)
-    end
-
-    # The values class, or for secrets beyond the declared ones a subclass
-    # that also hides them (one per set of names). Data compares classes, so
-    # such values are not == to equal values of the base class; to_h is.
-    def secret_class(secrets)
-      base = values_class
-      # From the definitions: a SECRETS constant could also be a top-level one.
-      declared = @definitions.values.select(&:secret?).map(&:name)
-      extra = secrets - declared
-      return base if extra.empty?
-
-      @secret_classes ||= {}
-      @secret_classes[extra.sort] ||= Class.new(base) do
-        const_set(:SECRETS, (declared + extra).freeze)
-        include Redacted
-      end
+      values_class.new(**values)
     end
 
     def check_args!(positional)

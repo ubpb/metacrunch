@@ -19,7 +19,7 @@ class ParamsFileCliTest < Minitest::Test
     RUBY
     "jobs/token.rb" => <<~RUBY,
       Metacrunch.job "token" do
-        params { param :token, String, required: true }
+        params { secret :token, String, required: true }
 
         source [1]
         map { params.token.reverse }
@@ -114,7 +114,7 @@ class ParamsFileCliTest < Minitest::Test
     in_project do |root|
       stderr = cli_in(root, "run", "-v", "-e", "production", "--params", "params.yml", "show")[2]
 
-      assert_includes stderr, "params: params.yml (default, production)"
+      assert_includes stderr, "params: params.yml (production)"
     end
   end
 

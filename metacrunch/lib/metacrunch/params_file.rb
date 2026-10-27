@@ -1,22 +1,22 @@
 # frozen_string_literal: true
 
 module Metacrunch
-  # A params file (--params): parameter values in a default: section and one
-  # section per environment. A value is text, a list of texts, null (not
-  # given) or {credential: PATH}. load checks the structure; Params checks
-  # the keys against the declared parameters (see docs/jobs.md).
+  # A params file (--params): the parameter values of each environment, in
+  # one section per environment (default: for the default environment); a
+  # section inherits nothing unless it says so with YAML merge keys. A
+  # value is text, a list of texts, null (not given) or a reference
+  # ({credential: PATH}, {env: NAME}; see Params::Reference). load checks
+  # the structure; Params checks the keys and values against the declared
+  # parameters (see docs/jobs.md).
   class ParamsFile
 
     DEFAULT = "default"
-    FORMS = "a value must be text, a list or {credential: PATH}"
+    FORMS = "a value must be text, a list, {credential: PATH} or {env: NAME}"
     # For files without sections, whose parameters stand at the top level.
     SECTIONS_HINT = "parameters go under default: or an environment section"
 
-    # A value that refers to the credentials.
-    Reference = Data.define(:path)
-
-    # The values of one environment, name => [value, section], the sections
-    # they came from and the path of the file.
+    # The values of one environment, name => [value, section], the section
+    # they came from (one) and the path of the file.
     Selection = Data.define(:path, :values, :sections) do
       # [value, section], or nil if no section has the name.
       def fetch(name) = values[name]
@@ -53,17 +53,19 @@ module Metacrunch
     # default:. Raises ParamError for an environment without a section if
     # the file has any environment section.
     def select(environment)
-      names = [DEFAULT]
-      if @sections.key?(environment)
-        names << environment
-      elsif environment && @sections.keys.any? { it != DEFAULT }
-        raise ParamError,
-              "#{@path} has no section for environment #{environment} (sections: #{@sections.keys.join(", ")})"
+      name = environment || DEFAULT
+      unless @sections.key?(name)
+        sections = @sections.empty? ? "none" : @sections.keys.join(", ")
+        raise ParamError, "#{@path} has no section #{name} (sections: #{sections})"
       end
-      names &= @sections.keys
-      values = {}
-      names.each { |name| @sections.fetch(name).each { |key, value| values[key] = [value, name] } }
-      Selection.new(path: @path, values:, sections: names)
+
+      values = @sections.fetch(name).transform_values { [it, name] }
+      Selection.new(path: @path, values:, sections: [name])
+    end
+
+    # Yields section, key and value of every value, in every section.
+    def each_value
+      @sections.each { |section, values| values.each { |key, value| yield section, key, value } }
     end
 
     private
@@ -102,14 +104,18 @@ module Metacrunch
       raise ParamError, "#{@path}: #{section}.#{key}: #{FORMS}"
     end
 
+    # A Params::Reference; a mapping of one key credential or env that is
+    # no reference names what is wrong with it.
     def reference(section, key, value)
-      raise ParamError, "#{@path}: #{section}.#{key}: #{FORMS}" unless value.keys == ["credential"]
+      where = "#{@path}: #{section}.#{key}"
+      raise ParamError, "#{where}: #{FORMS}" unless value.size == 1 && Params::REFERENCE_SOURCES.key?(value.keys.first)
 
-      path = value.fetch("credential")
-      return Reference.new(path:) if path.is_a?(String) && Params::CREDENTIAL_PATH.match?(path)
+      Params.reference(value)
+    rescue ArgumentError
+      path = value["credential"]
+      raise ParamError, "#{where}: #{Params::REFERENCE_FORMS}" unless value.key?("credential")
 
-      raise ParamError,
-            %(#{@path}: #{section}.#{key}: credential must be a path like "catalog.api_key", got #{path.inspect})
+      raise ParamError, %(#{where}: credential must be a path like "catalog.api_key", got #{path.inspect})
     end
 
   end
