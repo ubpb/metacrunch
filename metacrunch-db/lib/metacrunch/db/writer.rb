@@ -170,13 +170,23 @@ module Metacrunch
       end
 
       def check_table(database)
-        raise OutputError, "#{label}: no such table" unless database.table_exists?(@table.identifier)
+        raise OutputError, "#{label}: no such table" unless table?(database)
 
         @schema = database.supports_schema_parsing? ? database.schema(@table.identifier) : nil
         check_columns if @schema
         check_upsert(database) if @action == :upsert
       rescue Sequel::Error => e
         raise OutputError, "#{label}: #{e.message}"
+      end
+
+      # table_exists? selects from the table, which a user who may only
+      # insert must not; the schema tells for them.
+      def table?(database)
+        return true if database.table_exists?(@table.identifier)
+
+        database.supports_schema_parsing? && !database.schema(@table.identifier).empty?
+      rescue Sequel::Error
+        false
       end
 
       def check_columns

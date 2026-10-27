@@ -85,6 +85,23 @@ class WriterTest < Minitest::Test
     assert_kind_of Sequel::Database, sink.open(context)
   end
 
+  # table_exists? selects from the table, which a user who may only insert must not.
+  def test_open_takes_a_table_it_cannot_select_from_but_whose_schema_it_reads
+    sink = mocked("postgres") { |database| database.define_singleton_method(:table_exists?) { |*| false } }
+
+    assert_kind_of Sequel::Database, sink.open(context)
+  end
+
+  def test_open_refuses_a_table_it_neither_selects_from_nor_reads_the_schema_of
+    sink = mocked("postgres") do |database|
+      database.define_singleton_method(:table_exists?) { |*| false }
+      database.define_singleton_method(:schema) { |*| raise Sequel::Error, "no such table" }
+    end
+    error = assert_raises(Metacrunch::OutputError) { sink.open(context) }
+
+    assert_equal "db books: no such table", error.message
+  end
+
   def test_open_takes_upsert_when_the_adapter_cannot_read_the_schema
     sink = mocked("postgres", action: :upsert, key: "isbn") do |database|
       database.define_singleton_method(:supports_schema_parsing?) { false }

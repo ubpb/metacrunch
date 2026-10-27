@@ -22,6 +22,13 @@ module PrivilegeTests
     assert_match(/\Adb #{name}: .*(permission denied|command denied)/i, error.message)
   end
 
+  def test_a_user_who_may_only_insert_writes
+    name = create_books
+    as_user("INSERT", name) { write([{"isbn" => "1", "title" => "A"}], table: name, connection: it) }
+
+    assert_equal [["1", "A", nil]], stored(name)
+  end
+
   private
 
   # Yields a connection as a new user with privileges on table; drops the user afterwards.
