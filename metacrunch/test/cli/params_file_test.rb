@@ -62,8 +62,56 @@ class ParamsFileCliTest < Minitest::Test
       code, _stdout, stderr = cli_in(root, "check", "--params", "typo.yml", "show")
 
       assert_equal [2, 0], [code, cli_in(root, "check", "--params", "params.yml", "show").first]
-      assert_includes stderr, "Error: typo.yml: default.indx: unknown parameter (known: index)"
+      assert_includes stderr, "Error: typo.yml: default.indx: unknown parameter (known: index, token)"
       assert_includes cli_in(root, "trace", "-n", "1", "--params", "params.yml", "show")[1], "\"f\""
+    end
+  end
+
+  # token's key is ignored by show, and its reference never resolved.
+  def test_one_file_serves_every_target_of_the_project
+    in_project do |root|
+      write_file(root, "shared.yml", "default: {index: f, token: {env: TOKEN}}\n")
+      outputs = [cli_in(root, "run", "--params", "shared.yml", "show"),
+                 cli_in(root, "run", "--params", "shared.yml", "token", env: {"TOKEN" => "abc"})]
+
+      assert_equal([[0, "\"f\"\n"], [0, "\"cba\"\n"]], outputs.map { it.take(2) })
+    end
+  end
+
+  def test_keys_of_other_targets_keep_the_rules_of_secrets
+    in_project do |root|
+      write_file(root, "plain.yml", "default: {token: abc}\n")
+      write_file(root, "credential.yml", "default: {index: {credential: catalog.index}}\n")
+      errors = [cli_in(root, "check", "--params", "plain.yml", "show"),
+                cli_in(root, "check", "--params", "credential.yml", "token")].map { it[2].lines.first.chomp }
+
+      assert_equal ["Error: plain.yml: default.token: token is a secret; give it as {credential: PATH} or {env: NAME}",
+                    "Error: credential.yml: default.index: a value from the credentials needs secret, not param"],
+                   errors
+    end
+  end
+
+  def test_without_a_project_the_file_serves_the_target_alone
+    messages = [nil, "raise \"broken\"\n"].map do |metacrunchfile|
+      in_tmpdir do |root|
+        write_file(root, "Metacrunchfile", metacrunchfile) if metacrunchfile
+        write_file(root, "show.rb", FILES.fetch("jobs/show.rb"))
+        write_file(root, "shared.yml", "default: {index: f, token: {env: TOKEN}}\n")
+        cli_in(root, "check", "--params", "shared.yml", "./show.rb")[2].lines.first
+      end
+    end
+
+    assert_equal ["Error: shared.yml: default.token: unknown parameter (known: index)\n"] * 2, messages
+  end
+
+  def test_a_recipe_that_cannot_be_described_declares_nothing
+    in_project do |root|
+      write_file(root, "jobs/broken.rb", "Metacrunch.job(\"broken\") { params { param :x, :nope } }\n")
+      write_file(root, "shared.yml", "default: {index: f, token: {env: TOKEN}, x: 1}\n")
+      code, _stdout, stderr = cli_in(root, "check", "--params", "shared.yml", "show")
+
+      assert_equal 2, code
+      assert_includes stderr, "Error: shared.yml: default.x: unknown parameter (known: index, token)"
     end
   end
 

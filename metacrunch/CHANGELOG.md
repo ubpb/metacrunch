@@ -64,7 +64,8 @@ repository and share metacrunch's version.
   the files; `run`, `check` and `trace` take `-e`/`--environment` and `--credentials`.
 - Parameter files: `run`, `check` and `trace` take `--params FILE`, a YAML file with one section per environment
   (`default:` for the default environment) whose keys are the parameters; sections share values only through YAML
-  merge keys. Every section is checked on every run. `check` also checks commands.
+  merge keys. One file serves the whole project: each target takes its own keys, and a key no job, transform or
+  command of the project declares fails. Every section is checked on every run. `check` also checks commands.
 - Projects: a `Metacrunchfile` names a project's jobs and commands (`Metacrunch.load_files`); `metacrunch run NAME`
   runs them from any directory of the project, and `metacrunch --help` lists them. A file that fails to load costs only
   its own names. A name declared twice is unusable, every call that loads the project warns about it, and

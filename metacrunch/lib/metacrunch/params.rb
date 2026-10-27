@@ -167,11 +167,13 @@ module Metacrunch
     # environment, default: for nil), then its default. References are
     # resolved through env (variables) and credentials (a
     # Credentials::Store, asked only now). warn is called with a message for
-    # a secret given on the command line.
-    def bind_argv(argv, env: ENV, credentials: nil, warn: nil, file: nil, environment: nil)
+    # a secret given on the command line. others: a callable that returns
+    # the parameters of the other recipes the file may serve, as
+    # #parameters gives them (see check_file!).
+    def bind_argv(argv, env: ENV, credentials: nil, warn: nil, file: nil, environment: nil, others: nil)
       given = {}
       positional = option_parser(given).parse(argv)
-      check_file!(file) if file
+      check_file!(file, others) if file
       selection = file&.select(environment)
       values = @definitions.to_h do |name, definition|
         [name, bind(definition, given, env, credentials, warn, selection:)]
@@ -226,6 +228,10 @@ module Metacrunch
     rescue OptionParser::ParseError
       help
     end
+
+    # name => whether it is a secret, for every declared parameter, names
+    # as Strings; the arguments are none.
+    def parameters = @definitions.to_h { |name, definition| [name.to_s, definition.secret?] }
 
     def help
       lines = option_parser({}).summarize
@@ -381,37 +387,52 @@ module Metacrunch
       [value, *(value if value.is_a?(Array))].any? { |part| secrets.any? { it.equal?(part) } }
     end
 
-    # Every key of every section of the params file must name a parameter;
-    # the arguments come from the command line only.
-    def check_file!(file)
-      known = @definitions.keys.map(&:to_s)
+    # Every key of every section of the params file must name a parameter:
+    # one of this recipe, else one that others declare (the other recipes
+    # of the project; asked only for a key this recipe does not declare).
+    # Such a key is left to them but keeps the rules of secrets. The
+    # arguments come from the command line only.
+    def check_file!(file, others)
+      own = @definitions.keys.map(&:to_s)
+      foreign_keys = file.to_enum(:each_key).any? { |_section, key| !own.include?(key) }
+      foreign = foreign_keys && others ? others.call : {}
+      known = own | foreign.keys
       check_flat_file!(file, known)
       file.each_key do |section, key|
+        next if known.include?(key)
+
         where = "#{file.path}: #{section}.#{key}"
         raise ParamError, "#{where}: arguments cannot be given in a params file" if key == @args_definition&.name&.to_s
-        next if known.include?(key)
 
         raise ParamError, "#{where}: unknown parameter (known: #{known.empty? ? "none" : known.join(", ")})"
       end
-      file.each_value { |section, key, value| check_file_value!(file, section, @definitions.fetch(key.to_sym), value) }
+      file.each_value do |section, key, value|
+        next check_file_value!(file, section, @definitions.fetch(key.to_sym), value) if own.include?(key)
+
+        check_secret_rules!("#{file.path}: #{section}.#{key}", key, foreign.fetch(key), value)
+      end
     end
 
-    # Every value of every section, also of sections not selected: a
-    # credential only for a secret, no plain value for one, plain values
-    # convertible. References are resolved only for the selected section.
+    # Every value of every section, also of sections not selected: the
+    # rules of secrets, plain values convertible. References are resolved
+    # only for the selected section.
     def check_file_value!(file, section, definition, value)
-      where = "#{file.path}: #{section}.#{definition.name}"
+      check_secret_rules!("#{file.path}: #{section}.#{definition.name}", definition.name, definition.secret?, value)
+      return if value.nil? || value.is_a?(Reference)
+
+      convert(definition, value, origin: "#{file.path} (#{section})", keyword: true)
+    end
+
+    # A credential only for a secret, no plain value for one.
+    def check_secret_rules!(where, name, secret, value)
       if value.is_a?(Reference)
-        return unless value.source == :credential && !definition.secret?
+        return unless value.source == :credential && !secret
 
         raise ParamError, "#{where}: a value from the credentials needs secret, not param"
       end
-      return if value.nil?
-      if definition.secret?
-        raise ParamError, "#{where}: #{definition.name} is a secret; give it as {credential: PATH} or {env: NAME}"
-      end
+      return if value.nil? || !secret
 
-      convert(definition, value, origin: "#{file.path} (#{section})", keyword: true)
+      raise ParamError, "#{where}: #{name} is a secret; give it as {credential: PATH} or {env: NAME}"
     end
 
     # A file without sections reads a parameter at the top level (a

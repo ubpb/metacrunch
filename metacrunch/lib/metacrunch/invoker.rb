@@ -227,9 +227,27 @@ module Metacrunch
 
       file = ParamsFile.load(@params_file)
       environment = Credentials.environment(@environment, @env)
-      values = schema.bind_argv(argv, env: @env, credentials:, warn:, file:, environment:)
+      values = schema.bind_argv(argv, env: @env, credentials:, warn:, file:, environment:,
+                                      others: method(:project_parameters))
       @logger.debug("params: #{file.select(environment)}")
       values
+    end
+
+    # The parameters that the jobs, transforms and commands of the project
+    # declare, as Params#parameters gives them, a secret if one declares it
+    # so: one params file serves the whole project. None without a project;
+    # a recipe that cannot be described declares none.
+    def project_parameters
+      current = project
+      return {} unless current
+
+      current.names.flat_map { current.declared(it) }.each_with_object({}) do |declaration, all|
+        declaration.describe(root: method(:root)).parameters.each { |name, secret| all[name] ||= secret }
+      rescue StandardError
+        next
+      end
+    rescue ProjectError
+      {}
     end
 
     # An unknown key is a wrong argument of invoke, as an invalid value is:

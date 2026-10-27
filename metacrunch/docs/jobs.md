@@ -270,13 +270,16 @@ $ metacrunch run -e production --params config/export.yml export.rb
   (sections: default)`. Nothing is inherited; a YAML merge key (`<<: *default`) takes values over where wanted, as in
   Rails' `database.yml`. So the `default:` section holds the values of the default environment, typically development,
   and no development value reaches production by accident.
-- Keys are the names of the parameters (`api_key`, not `--api-key`). Every key of every section must name a parameter
-  of the job, so a typo fails also in a section that is not used; positional arguments come from the command line
-  only.
+- Keys are the names of the parameters (`api_key`, not `--api-key`). One file serves the whole
+  [project](projects.md): a run takes the keys of its job and leaves the others to the jobs, transforms and commands
+  of the project that declare them, also those from gems. A key that none of them declares fails, also in a section
+  that is not used, so a typo does not pass. Without a project, every key must name a parameter of the job.
+  Positional arguments come from the command line only.
 - Values are read as text and converted like command-line values (`0123`, `no` and `on` need no quotes); an `Array`
   parameter also takes a list. `~`, `null` or an empty value means "not given": the default applies.
-- Every section is checked on every run: keys, plain values, plain values for secrets and `{credential: ...}` for a
-  `param`. References are resolved only in the section of the run.
+- Every section is checked on every run: keys, plain values for secrets and `{credential: ...}` for a `param` (for
+  the keys of other recipes too: a secret if one of them declares it so), and the plain values of the job's keys.
+  References are resolved only for the job's keys, in the section of the run.
 - `run`, `check` and `trace` take the file for the job or transform named on the command line, and `run` and `check`
   also for a command; what that target invokes or uses gets its values from code. `metacrunch check -e production
   --params FILE job.rb` checks a file, e.g. in CI, and `-v` logs the file and the section it used.

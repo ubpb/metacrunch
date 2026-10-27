@@ -86,7 +86,8 @@ es = Metacrunch::Elasticsearch::Connection.from_params(params)
 A [params file](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#parameter-files) gives them
 per [environment](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/environments.md), as text, from
 environment variables or from the
-[credentials](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/credentials.md) of the environment:
+[credentials](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/credentials.md) of the environment. One
+file serves all jobs and commands of a project; each takes the keys it declares:
 
 ```yaml
 # params.yml

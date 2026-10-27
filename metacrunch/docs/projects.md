@@ -152,8 +152,9 @@ A command's status is the worst status of the jobs run during its body, nested c
 same (see [Exit codes](cli.md#exit-codes)): 3 for `:ok_with_failures`, 1 if an exception left the body.
 
 `run` takes commands too; the job options (`-i`, `-o`, `-w`, ...) are a usage error for them. `check` binds a
-command's parameters, with `--params`, without running the body; `trace` takes jobs and transforms only. A command
-file can also run by path; when it invokes a name, it finds the project from the working directory.
+command's parameters, with `--params`, without running the body; `trace` takes jobs and transforms only. One params
+file serves all jobs, transforms and commands of the project (see [Parameter files](jobs.md#parameter-files)). A
+command file can also run by path; when it invokes a name, it finds the project from the working directory.
 
 Names search credentials from the project root (`.metacrunch/` next to the `Metacrunchfile`), also for commands from
 gems; a path searches from its file. A job below `jobs/x/` with a `.metacrunch/` of its own therefore uses the
