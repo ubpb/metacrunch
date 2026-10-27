@@ -13,12 +13,33 @@ class TestingInvokeTest < Minitest::Test
     "Metacrunchfile" => "Metacrunch.load_files \"jobs/*.rb\", \"commands/*.rb\"\n",
     "jobs/a2c.rb" => <<~RUBY,
       Metacrunch.job "a2c" do
-        params { secret :api_key, String, required: true }
+        params do
+          param :index, String
+          secret :api_key, String, default: {credential: "catalog.api_key"}
+          args :files
+        end
 
         source raise("a2c must not run")
       end
     RUBY
-    "commands/es.rb" => "Metacrunch.command(\"es:switch-alias\") { run { raise \"must not run\" } }\n",
+    "commands/es.rb" => <<~RUBY,
+      Metacrunch.command "es:switch-alias" do
+        params do
+          param :to, String
+          param :alias, String
+        end
+
+        run { raise "must not run" }
+      end
+    RUBY
+    "commands/leak.rb" => <<~RUBY,
+      Metacrunch.command "leak" do
+        params { secret :api_key, String }
+
+        run { invoke "es:switch-alias", params: {to: params.api_key} }
+      end
+    RUBY
+    "commands/wrong.rb" => "Metacrunch.command(\"wrong\") { run { invoke(\"es:switch-alias\", params: {from: 1}) } }\n",
     "commands/reindex.rb" => <<~RUBY,
       Metacrunch.command "catalog:reindex" do
         params do
@@ -108,6 +129,24 @@ class TestingInvokeTest < Minitest::Test
     run = invoke("tolerant", stubs: {"a2c" => :aborted})
 
     assert_equal [:rescued, :ok_with_failures], [run.value, run.status]
+  end
+
+  def test_invoked_params_are_bound_for_the_target_as_in_a_real_run
+    runs = [invoke("leak", params: {api_key: "k3y"}), invoke("wrong")]
+
+    assert_equal [:aborted, :aborted], runs.map(&:status)
+    assert_equal(["invoke es:switch-alias: to gets a secret, but es:switch-alias declares it as param; " \
+                  "declare it secret there",
+                  "invoke es:switch-alias: unknown parameter :from (known: to, alias)"], runs.map { it.error.message })
+    assert_equal [[], []], runs.map(&:invoked)
+  end
+
+  # The target does not run, so the credential default of a2c's api_key
+  # is not resolved; the credentials of the project are unreadable.
+  def test_references_in_the_defaults_of_an_invoked_target_are_not_resolved
+    run = invoke("tolerant")
+
+    assert_equal [:ok, ["a2c"]], [run.status, run.invoked.map(&:name)]
   end
 
   def test_unknown_names_in_the_body_fail_the_run

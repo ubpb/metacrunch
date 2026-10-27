@@ -89,7 +89,9 @@ end
 `options`) instead of running it. A stub answers with a status or a `Result` for a job, a value or a
 `Metacrunch::CommandResult` (with `:ok` or `:ok_with_failures`) for a command, or a callable that gets the params;
 without a stub a job ends `:ok` and a command returns a `CommandResult` with the value `nil`. A stubbed `:aborted`
-raises like a real abort, an unknown name fails as in a real run, and credentials are never read. A stub for an
+raises like a real abort. As in a real run, an unknown name fails, and so do params the target does not take: an
+unknown or invalid parameter, or a secret passed to a `param` (see [Secrets](jobs.md#secrets)). The references in the
+target's defaults are not resolved, so credentials are never read. A stub for an
 unknown name, or a job's stub that gives no status or `Result`, raises `ArgumentError`, so a mistake in the stubs
 never passes for a failing command. `run.status` is `:ok`, `:ok_with_failures`, or `:aborted` with the exception in
 `run.error`; `run.value` is what the body returned.

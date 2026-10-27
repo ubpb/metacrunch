@@ -192,8 +192,10 @@ module Metacrunch
     # not as option, and a secret gives no warning. secrets: the secret
     # values of the caller (see secret_values); passing one unchanged to a
     # parameter that is no secret raises ParamError, named for target.
+    # references: false leaves a parameter whose default is a reference nil
+    # without resolving it (Testing.invoke, whose targets do not run).
     # Raises ArgumentError for a non-Hash and an unknown key.
-    def bind_values(values, env: ENV, credentials: nil, secrets: [], target: nil)
+    def bind_values(values, env: ENV, credentials: nil, secrets: [], target: nil, references: true)
       raise ArgumentError, "params: must be a Hash, got #{values.inspect}" unless values.is_a?(Hash)
 
       values = values.transform_keys(&:to_sym)
@@ -208,7 +210,7 @@ module Metacrunch
       given = values.except(args_name).compact
       guard_secrets!(given, values[args_name], secrets, target)
       bound = @definitions.to_h do |name, definition|
-        [name, bind(definition, given, env, credentials, nil, keyword: true)]
+        [name, bind(definition, given, env, credentials, nil, keyword: true, references:)]
       end
       build(bound, args_values(values[args_name]))
     end
@@ -425,7 +427,7 @@ module Metacrunch
 
     # selection: the ParamsFile::Selection of the run, or nil; a null value
     # in it counts as not given.
-    def bind(definition, given, env, credentials, warn, keyword: false, selection: nil)
+    def bind(definition, given, env, credentials, warn, keyword: false, selection: nil, references: true)
       if given.key?(definition.name)
         warn&.call(secret_warning(definition)) if definition.secret?
         return resolve(definition, given[definition.name], keyword:)
@@ -435,7 +437,9 @@ module Metacrunch
       return file_value(definition, value, selection, env:, credentials:) unless value.nil?
 
       default = definition.default
-      return reference_value(definition, default, "default:", env, credentials) if default.is_a?(Reference)
+      if default.is_a?(Reference)
+        return references ? reference_value(definition, default, "default:", env, credentials) : nil
+      end
 
       resolve(definition, nil, sources: -> { sources(definition, selection) }, keyword:)
     end

@@ -234,8 +234,9 @@ module Metacrunch
 
     # An unknown key is a wrong argument of invoke, as an invalid value is:
     # both become a ParamError, which invoke raises as InvokeError.
-    def bind_params(schema, params, credentials, secrets, target)
-      schema.bind_values(params, env: @env, credentials:, secrets:, target:)
+    # references: see Params#bind_values.
+    def bind_params(schema, params, credentials, secrets, target, references: true)
+      schema.bind_values(params, env: @env, credentials:, secrets:, target:, references:)
     rescue ArgumentError => e
       raise ParamError, e.message, cause: nil
     end

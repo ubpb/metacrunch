@@ -76,8 +76,9 @@ module Metacrunch
       private
 
       # ** takes the anchor:, which a recording needs no more than the
-      # declaration itself.
-      def invoke_job(_job, params, target:, workers:, limit:, **)
+      # credentials it would find.
+      def invoke_job(job, params, target:, workers:, limit:, secrets:, **)
+        check_params(job, params, target, secrets)
         @invoked << Invocation.new(name: target, params:, options: {workers:, limit:}.compact)
         result = job_result(target, answer(target, params, :ok))
         track(result.status)
@@ -85,9 +86,20 @@ module Metacrunch
         result
       end
 
-      def invoke_command(_command, params, target:, **)
+      def invoke_command(command, params, target:, secrets:, **)
+        check_params(command, params, target, secrets)
         @invoked << Invocation.new(name: target, params:, options: {})
         command_stub_result(target, answer(target, params, nil))
+      end
+
+      # Binds params for the target as a real invoke does, so an unknown or
+      # invalid parameter, or a secret passed to a param, fails as in a run.
+      # The references of the target's defaults stay unresolved: the target
+      # does not run, and Testing reads neither variables nor credentials.
+      def check_params(declaration, params, target, secrets)
+        wrap(target) do
+          bind_params(declaration.describe(root: method(:root)), params, nil, secrets, target, references: false)
+        end
       end
 
       # A value is what the stubbed body returned; a CommandResult also
