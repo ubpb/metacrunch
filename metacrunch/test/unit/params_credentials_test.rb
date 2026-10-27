@@ -176,11 +176,11 @@ class ParamsCredentialsTest < Minitest::Test
       secret :api_key, String
       param :dry, :bool
     end
-    errors = [["--api-ky=#{SECRET}"], ["--dry=#{SECRET}"]].map do |argv|
+    errors = [["--api-ky=#{SECRET}"], ["--dry=#{SECRET}"], ["-P#{SECRET}"]].map do |argv|
       assert_raises(Metacrunch::ParamError) { params.bind_argv(argv, env: {}) }
     end
 
-    assert_equal ["invalid option: --api-ky", "needless argument: --dry"], errors.map(&:message)
+    assert_equal ["invalid option: --api-ky", "needless argument: --dry", "invalid option: -P"], errors.map(&:message)
     assert_empty errors.map { it.full_message(highlight: false) }.grep(/#{SECRET}/)
   end
 

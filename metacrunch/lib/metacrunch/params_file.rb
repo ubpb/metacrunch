@@ -15,11 +15,15 @@ module Metacrunch
     # For files without sections, whose parameters stand at the top level.
     SECTIONS_HINT = "parameters go under default: or an environment section"
 
-    # The values of one environment, name => [value, section], the section
-    # they came from (one) and the path of the file.
-    Selection = Data.define(:path, :values, :sections) do
-      # [value, section], or nil if no section has the name.
-      def fetch(name) = values[name]
+    # The section of one environment: its values (name => value), its name
+    # and the path of the file.
+    Selection = Data.define(:path, :section, :values) do
+      def [](name) = values[name]
+
+      def key?(name) = values.key?(name)
+
+      # "FILE (section)", as messages and the log name it.
+      def to_s = "#{path} (#{section})"
     end
 
     attr_reader :path
@@ -49,9 +53,9 @@ module Metacrunch
     # The keys of every section, also of empty ones: name => [key, ...].
     def keys_by_section = @sections.transform_values(&:keys)
 
-    # The values of environment (nil for none) merged over those of
-    # default:. Raises ParamError for an environment without a section if
-    # the file has any environment section.
+    # The section of environment, default: for nil (the default
+    # environment); nothing is merged from other sections. Raises ParamError
+    # if the file has no such section.
     def select(environment)
       name = environment || DEFAULT
       unless @sections.key?(name)
@@ -59,8 +63,7 @@ module Metacrunch
         raise ParamError, "#{@path} has no section #{name} (sections: #{sections})"
       end
 
-      values = @sections.fetch(name).transform_values { [it, name] }
-      Selection.new(path: @path, values:, sections: [name])
+      Selection.new(path: @path, section: name, values: @sections.fetch(name))
     end
 
     # Yields section, key and value of every value, in every section.

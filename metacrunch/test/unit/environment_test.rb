@@ -7,6 +7,8 @@ class EnvironmentTest < Minitest::Test
   include CliHelper
   include CredentialsHelper
 
+  RESERVED_IN_RUBY = %(environment: "default" is reserved: leave environment: out for the default environment)
+
   JOB = <<~RUBY
     Metacrunch.job do
       params { secret :api_key, default: {credential: "catalog.api_key"} }
@@ -70,10 +72,31 @@ class EnvironmentTest < Minitest::Test
 
   def test_job_run_takes_an_environment
     in_tmpdir do |root|
-      job = Metacrunch.load_job(project(root))
-      result = job.run(environment: "production", env: {}, logger: Logger.new(nil))
+      project(root)
+      check = "params.api_key == #{SECRET.inspect} ? it : raise(\"wrong key\")"
+      job_file = write_file(root, "jobs/production.rb", JOB.sub("params.api_key.reverse", check))
+      result = Metacrunch.load_job(job_file).run(environment: "production", env: {}, logger: Logger.new(nil))
 
       assert_equal :ok, result.status, result.error
+    end
+  end
+
+  def test_ruby_refuses_the_reserved_name_without_mentioning_e
+    in_tmpdir do |root|
+      write_file(root, "Metacrunchfile", "Metacrunch.load_files \"jobs/*.rb\"\n")
+      write_file(root, "jobs/named.rb", JOB.sub("Metacrunch.job do", "Metacrunch.job(\"secret\") do"))
+      job = Metacrunch.load_job(project(root))
+      project = Metacrunch.load_project(root)
+      errors = [
+        assert_raises(Metacrunch::CredentialsError) do
+          job.run(environment: "default", env: {}, logger: Logger.new(nil))
+        end,
+        assert_raises(Metacrunch::CredentialsError) do
+          project.invoke("secret", environment: "default", env: {}, logger: Logger.new(nil))
+        end
+      ]
+
+      assert_equal [RESERVED_IN_RUBY] * 2, errors.map(&:message)
     end
   end
 
@@ -91,9 +114,10 @@ class EnvironmentTest < Minitest::Test
 
   private
 
-  # A job that needs a production credential; returns its file.
+  # A job that needs a credential, whose production value is SECRET;
+  # returns its file.
   def project(root)
-    write_credentials(root, {"catalog" => {"api_key" => SECRET}})
+    write_credentials(root, {"catalog" => {"api_key" => "not the production key"}})
     write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
     write_file(root, "jobs/secret.rb", JOB)
   end

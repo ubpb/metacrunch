@@ -210,14 +210,14 @@ module Metacrunch
     end
 
     # Reads the params file for each binding, so a check sees it as the run
-    # will, and logs the sections it took values from.
+    # will, and logs the section it took values from.
     def bind_argv(schema, argv, credentials, warn)
       return schema.bind_argv(argv, env: @env, credentials:, warn:) unless @params_file
 
       file = ParamsFile.load(@params_file)
       environment = Credentials.environment(@environment, @env)
       values = schema.bind_argv(argv, env: @env, credentials:, warn:, file:, environment:)
-      @logger.debug("params: #{file.path} (#{file.select(environment).sections.join(", ")})")
+      @logger.debug("params: #{file.select(environment)}")
       values
     end
 

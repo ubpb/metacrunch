@@ -63,12 +63,18 @@ module Metacrunch
     end
 
     # The values of the secrets of bound params, for the safety net of use
-    # and invoke: Strings and Arrays only, which a secret owns (immediates
-    # such as Integers cannot be told by identity).
+    # and invoke: Strings, Arrays and their items, which a secret owns
+    # (immediates such as Integers cannot be told by identity).
     def self.secret_values(bound)
       return [] unless bound.class.const_defined?(:SECRETS, false)
 
-      bound.class::SECRETS.map { bound.public_send(it) }.select { it.is_a?(String) || it.is_a?(Array) }
+      bound.class::SECRETS.map { bound.public_send(it) }.flat_map do |value|
+        case value
+        when Array then [value, *value]
+        when String then [value]
+        else []
+        end
+      end
     end
 
     # The Reference that value stands for, or nil if value is no Hash.
@@ -172,9 +178,9 @@ module Metacrunch
       end
       build(values, positional)
     rescue OptionParser::ParseError => e
-      # Without "=value" and without cause: a mistyped option may carry a
-      # secret (--api-ky=...).
-      raise ParamError, "#{e.reason}: #{e.args.map { it.sub(/=.*/m, "") }.join(" ")}", cause: nil
+      # Without "=value", the value attached to a short option, and the
+      # cause: a mistyped option may carry a secret (--api-ky=..., -Psk...).
+      raise ParamError, "#{e.reason}: #{e.args.map { option_name(it) }.join(" ")}", cause: nil
     end
 
     # Binds values from code: use, invoke, Project#invoke, Job#run and, with
@@ -200,7 +206,7 @@ module Metacrunch
       end
 
       given = values.except(args_name).compact
-      guard_secrets!(given, secrets, target)
+      guard_secrets!(given, values[args_name], secrets, target)
       bound = @definitions.to_h do |name, definition|
         [name, bind(definition, given, env, credentials, nil, keyword: true)]
       end
@@ -352,16 +358,25 @@ module Metacrunch
       [(value unless value.nil? || value.empty?), "environment variable #{reference.key}"]
     end
 
-    # A secret of the caller, passed unchanged (the same object) to a
-    # parameter that is no secret, would lose its secrecy there.
-    def guard_secrets!(given, secrets, target)
+    # A secret of the caller, passed unchanged (the same object, also in a
+    # list) to a parameter that is no secret or to the arguments, would lose
+    # its secrecy there.
+    def guard_secrets!(given, args, secrets, target)
       return if secrets.empty?
 
       given.each do |name, value|
-        next if @definitions.fetch(name).secret? || secrets.none? { it.equal?(value) }
+        next if @definitions.fetch(name).secret? || !holds_secret?(value, secrets)
 
         raise ParamError, "#{name} gets a secret, but #{target} declares it as param; declare it secret there"
       end
+      return unless holds_secret?(args, secrets)
+
+      raise ParamError,
+            "#{@args_definition.name} gets a secret, but #{target} takes it as arguments, which cannot be secret"
+    end
+
+    def holds_secret?(value, secrets)
+      [value, *(value if value.is_a?(Array))].any? { |part| secrets.any? { it.equal?(part) } }
     end
 
     # Every key of every section of the params file must name a parameter;
@@ -416,8 +431,8 @@ module Metacrunch
         return resolve(definition, given[definition.name], keyword:)
       end
 
-      value, section = selection&.fetch(definition.name.to_s)
-      return file_value(definition, value, section, selection, env:, credentials:) unless value.nil?
+      value = selection&.[](definition.name.to_s)
+      return file_value(definition, value, selection, env:, credentials:) unless value.nil?
 
       default = definition.default
       return reference_value(definition, default, "default:", env, credentials) if default.is_a?(Reference)
@@ -427,11 +442,10 @@ module Metacrunch
 
     # A value of the params file: text or a list, converted like a
     # command-line value, or a reference (see reference_value).
-    def file_value(definition, value, section, selection, env:, credentials:)
-      from = "#{selection.path} (#{section})"
-      return reference_value(definition, value, from, env, credentials) if value.is_a?(Reference)
+    def file_value(definition, value, selection, env:, credentials:)
+      return reference_value(definition, value, selection.to_s, env, credentials) if value.is_a?(Reference)
 
-      resolve(definition, value, origin: from, keyword: true)
+      resolve(definition, value, origin: selection.to_s, keyword: true)
     end
 
     # Why the params file gave no value for a missing one, e.g. "null in
@@ -439,20 +453,22 @@ module Metacrunch
     def sources(definition, selection)
       return unless selection
 
-      _value, section = selection.fetch(definition.name.to_s)
-      "#{section ? "null" : "not"} in #{selection.path} (#{selection.sections.first})"
+      "#{selection.key?(definition.name.to_s) ? "null" : "not"} in #{selection}"
+    end
+
+    def option_name(argument)
+      argument.match?(/\A-[^-]/) ? argument[0, 2] : argument.sub(/=.*/m, "")
     end
 
     def secret_warning(definition)
       "#{definition.option} is a secret; give it in a params file as {credential: PATH} or {env: NAME}"
     end
 
-    # hidden: whether messages hide the value, as for a secret.
-    def resolve(definition, raw, origin: nil, sources: nil, keyword: false, hidden: definition.secret?)
+    def resolve(definition, raw, origin: nil, sources: nil, keyword: false)
       value = if raw.nil?
         definition.default
       else
-        frozen_copy(convert(definition, raw, origin:, keyword:, hidden:), secret: definition.secret?)
+        frozen_copy(convert(definition, raw, origin:, keyword:), secret: definition.secret?)
       end
       return value unless definition.required && value.nil?
 
@@ -460,13 +476,13 @@ module Metacrunch
       raise ParamError, "missing required parameter #{label(definition, keyword)}#{" (#{detail})" if detail}"
     end
 
-    def convert(definition, raw, origin: nil, keyword: false, hidden: definition.secret?)
+    def convert(definition, raw, origin: nil, keyword: false)
       raw = path_string(raw)
       value = raw.is_a?(String) ? CONVERTERS.fetch(definition.type).call(raw) : raw
       value = value.to_f if definition.type == Float && value.is_a?(Integer)
-      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin, keyword:, hidden:)
+      VALID.fetch(definition.type).call(value) ? value : invalid!(definition, raw, origin, keyword:)
     rescue ArgumentError, TypeError
-      invalid!(definition, raw, origin, keyword:, hidden:)
+      invalid!(definition, raw, origin, keyword:)
     end
 
     # A Pathname (anything with to_path) counts as the String of its path,
@@ -479,11 +495,11 @@ module Metacrunch
     end
 
     # No cause: the converter's error (Integer(), Float(), "not a boolean")
-    # would repeat a hidden value.
-    def invalid!(definition, raw, origin, keyword: false, hidden: definition.secret?)
+    # would repeat the value of a secret, which messages hide.
+    def invalid!(definition, raw, origin, keyword: false)
       expected = (keyword && !raw.is_a?(String) ? VALUE_TYPE_NAMES : TYPE_NAMES).fetch(definition.type)
       from = origin ? " from #{origin}" : ""
-      shown = hidden ? HIDDEN : raw.inspect
+      shown = definition.secret? ? HIDDEN : raw.inspect
       raise ParamError, "invalid value for #{label(definition, keyword)}#{from}: #{shown} is not #{expected}",
             cause: nil
     end

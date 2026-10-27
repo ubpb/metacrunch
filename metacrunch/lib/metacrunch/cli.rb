@@ -18,8 +18,8 @@ require_relative "cli/credentials"
 
 module Metacrunch
   # The command line interface. Dispatches to a command by the first
-  # argument; a job, transform or command there, by name or file, is short
-  # for `run`. #run returns the exit code, exe/metacrunch exits with it.
+  # argument; a job, transform or command runs with `run`. #run returns the
+  # exit code, exe/metacrunch exits with it.
   class Cli
 
     EXIT_CODES = {ok: 0, aborted: 1, usage: 2, ok_with_failures: 3}.freeze
@@ -42,7 +42,7 @@ module Metacrunch
     def run(argv)
       first, *rest = argv
       case first
-      when nil then usage_error("no command, job, transform or file given")
+      when nil then usage_error("no command given; run a job, transform or command with: metacrunch run NAME|FILE")
       when "-h", "--help" then show(usage)
       when "--version" then show(VERSION)
       when "help" then help(rest.first)

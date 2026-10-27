@@ -58,7 +58,7 @@ module Metacrunch
         logger.info("environment #{name} (from #{source})") if name
       end
 
-      # check and trace take jobs and transforms, no commands; run overrides
+      # trace takes jobs and transforms, no commands; run and check override
       # this.
       def check_target!(declaration)
         return unless declaration.is_a?(Metacrunch::Command)

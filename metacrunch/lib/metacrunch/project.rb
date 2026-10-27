@@ -97,6 +97,7 @@ module Metacrunch
     # METACRUNCH_ENV of env:) and logger.
     def invoke(target, params: {}, logger: Metacrunch.logger, env: ENV, environment: nil, stdin: $stdin,
                stdout: $stdout, workers: nil, limit: nil)
+      Credentials.check_keyword!(environment)
       Invoker.new(project: self, logger:, env:, environment:, stdin:, stdout:).invoke(target, params:, workers:, limit:)
     end
 

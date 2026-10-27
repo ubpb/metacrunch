@@ -55,8 +55,8 @@ result = Metacrunch::Testing.run(PROJECT, "catalog", params: {output: "unused"})
 result.stats.steps.keys   # ["catalog:public/reject#1", "catalog:public/map#2"]
 ```
 
-The parameters of transforms get the values of `use` and their defaults; `Testing.run` reads neither the
-environment nor credentials.
+The parameters of transforms get the values of `use` and their defaults; `Testing.run` reads neither
+environment variables nor credentials.
 
 ## Testing commands
 

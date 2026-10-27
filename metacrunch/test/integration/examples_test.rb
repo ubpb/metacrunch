@@ -102,6 +102,13 @@ class ExamplesTest < Minitest::Test
     refute_equal expected, JSON.parse(pseudonymize.first.lines.first)["authors"].first
   end
 
+  def test_pseudonymize_takes_the_pepper_from_the_credentials_with_the_params_file_and_no_environment
+    stdout, stderr, status = pseudonymize("--params", example("credentials/params.yml"))
+
+    assert_predicate status, :success?, stderr
+    assert_equal pseudonymize.first, stdout
+  end
+
   def test_the_example_tests_pass
     arguments = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), example("test/catalog_test.rb")]
     stdout, stderr, status = Open3.capture3(*arguments)

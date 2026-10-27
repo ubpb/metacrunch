@@ -44,6 +44,7 @@ module Metacrunch
     # Metacrunchfile above Dir.pwd, loaded when a name needs it.
     def run(params: {}, env: ENV, environment: nil, logger: Metacrunch.logger, observer: nil, limit: nil, workers: nil,
             project: nil)
+      Credentials.check_keyword!(environment)
       credentials = Credentials.store(job_file: file, env:, logger:, environment:)
       context = UseContext.for(project:, env:, credentials:, logger:)
       built = pipeline(binder: ->(schema) { schema.bind_values(params, env:, credentials:) }, logger:, context:)

@@ -13,6 +13,31 @@ class SecretGuardTest < Minitest::Test
     assert_equal "use t: key gets a secret, but t declares it as param; declare it secret there", error.message
   end
 
+  def test_use_refuses_a_secret_passed_as_arguments
+    error = assert_raises(Metacrunch::ParamError) { run_job(transform { args :key }, &:api_key) }
+
+    assert_equal "use t: key gets a secret, but t takes it as arguments, which cannot be secret", error.message
+  end
+
+  def test_a_secret_inside_a_list_is_recognized
+    error = assert_raises(Metacrunch::ParamError) { run_job(transform { param :key, Array }) { [it.api_key] } }
+
+    assert_equal "use t: key gets a secret, but t declares it as param; declare it secret there", error.message
+  end
+
+  def test_an_item_of_a_secret_list_is_recognized
+    transform = transform { param :key }
+    job = Metacrunch.job do
+      params { secret :tokens, Array }
+
+      source [1]
+      use transform, params: {key: params.tokens.first}
+    end
+    error = assert_raises(Metacrunch::ParamError) { Metacrunch::Testing.run(job, params: {tokens: "a,b"}) }
+
+    assert_equal "use t: key gets a secret, but t declares it as param; declare it secret there", error.message
+  end
+
   def test_use_passes_a_secret_to_a_secret
     result = run_job(transform { secret :key }, &:api_key)
 

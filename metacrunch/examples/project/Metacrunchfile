@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 # The project file: it names the jobs, transforms and commands of this
-# directory, so that `metacrunch NAME` runs them from any directory below
-# it. The files are where `metacrunch generate` puts them: catalog:ids in
+# directory, so that `metacrunch run NAME` runs them from any directory
+# below it. The files are where `metacrunch generate` puts them: catalog:ids in
 # jobs/catalog/ids.rb, its test in test/jobs/catalog/ids_test.rb. The
 # project has no Gemfile, so that it runs with metacrunch from this
 # repository.

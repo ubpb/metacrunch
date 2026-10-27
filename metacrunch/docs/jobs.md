@@ -159,6 +159,7 @@ params do
   param  :output,  String, required: true, desc: "JSON Lines file for the records"
   param  :input,   String, default: root.join("data/titles.jsonl")
   param  :batch,   Integer, default: 1000
+  param  :index,   String, default: "titles"
   param  :dry,     :bool, default: false
   param  :tags,    Array
   param  :es_url,  String, default: {env: "ES_URL"}

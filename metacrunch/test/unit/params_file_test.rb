@@ -21,9 +21,8 @@ class ParamsFileTest < Minitest::Test
       production: {index: titles-prod}
     YAML
 
-    assert_equal ["titles-prod", "production"], selection.fetch("index")
-    assert_nil selection.fetch("batch")
-    assert_equal ["production"], selection.sections
+    assert_equal ["titles-prod", "production"], [selection["index"], selection.section]
+    assert_nil selection["batch"]
   end
 
   def test_without_environment_the_default_section_counts
@@ -32,31 +31,30 @@ class ParamsFileTest < Minitest::Test
       production: {es_url: http://es-prod:9200}
     YAML
 
-    assert_equal ["titles", "default"], selection.fetch("index")
-    assert_nil selection.fetch("es_url")
-    assert_equal ["default"], selection.sections
+    assert_equal ["titles", "default"], [selection["index"], selection.section]
+    assert_nil selection["es_url"]
   end
 
   def test_reads_scalars_as_text
     selection = load("default: {id: 0123, dry: no, batch: 1000}\n").select(nil)
 
-    assert_equal(["0123", "no", "1000"], ["id", "dry", "batch"].map { selection.fetch(it).first })
+    assert_equal(["0123", "no", "1000"], ["id", "dry", "batch"].map { selection[it] })
   end
 
-  def test_null_means_not_given_and_overrides_default
+  def test_null_is_a_key_without_value
     selection = load("default: {index: titles}\nproduction: {index: ~}\n").select("production")
 
-    assert_equal [nil, "production"], selection.fetch("index")
+    assert_equal [true, nil], [selection.key?("index"), selection["index"]]
   end
 
   def test_lists_and_references
     selection = load("default: {tags: [a, b], api_key: {credential: catalog.api_key}, es_url: {env: ES_URL}}\n")
                 .select(nil)
 
-    assert_equal ["a", "b"], selection.fetch("tags").first
+    assert_equal ["a", "b"], selection["tags"]
     assert_equal Metacrunch::Params::Reference.new(source: :credential, key: "catalog.api_key"),
-                 selection.fetch("api_key").first
-    assert_equal Metacrunch::Params::Reference.new(source: :env, key: "ES_URL"), selection.fetch("es_url").first
+                 selection["api_key"]
+    assert_equal Metacrunch::Params::Reference.new(source: :env, key: "ES_URL"), selection["es_url"]
   end
 
   def test_anchors_and_merge_keys
@@ -65,8 +63,7 @@ class ParamsFileTest < Minitest::Test
       production: {<<: *d, index: x}
     YAML
 
-    assert_equal ["5", "production"], selection.fetch("batch")
-    assert_equal ["x", "production"], selection.fetch("index")
+    assert_equal ["5", "x"], [selection["batch"], selection["index"]]
   end
 
   def test_the_selected_section_must_exist
@@ -133,7 +130,7 @@ class ParamsFileTest < Minitest::Test
   end
 
   def test_an_empty_section_has_no_values
-    assert_nil load("production:\n").select("production").fetch("index")
+    assert_nil load("production:\n").select("production")["index"]
   end
 
   def test_an_empty_file_has_no_section

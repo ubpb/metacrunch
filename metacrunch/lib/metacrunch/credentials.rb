@@ -41,6 +41,14 @@ module Metacrunch
     # default names the environment without -e and is reserved.
     def environment(option, env) = environment_source(option, env)&.first
 
+    # environment: of Job#run and Project#invoke: default is reserved there
+    # as for -e, with a message for Ruby.
+    def check_keyword!(environment)
+      return unless environment == DEFAULT_ENVIRONMENT
+
+      raise CredentialsError, %(environment: "default" is reserved: leave environment: out for the default environment)
+    end
+
     # [name, "-e" or "METACRUNCH_ENV"] of the selected environment, or nil
     # for the default environment; checked as environment.
     def environment_source(option, env)

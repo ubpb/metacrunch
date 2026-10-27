@@ -8,7 +8,7 @@ class CliTest < Minitest::Test
   include CredentialsHelper
 
   USAGE_ERRORS = {
-    [] => "no command, job, transform or file given",
+    [] => "no command given; run a job, transform or command with: metacrunch run NAME|FILE",
     ["frobnicate"] => "unknown command frobnicate; run a job, transform or command with: metacrunch run frobnicate",
     ["-v"] => "unknown option -v",
     ["help", "frobnicate"] => "unknown job, transform, command or file: frobnicate (no Metacrunchfile found)"
