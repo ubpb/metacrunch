@@ -1,0 +1,39 @@
+# The servers of the integration tests (see the Readme):
+#
+#   docker compose -f test/compose.yml up -d --wait
+#   export TEST_REDIS_URL=redis://127.0.0.1:6380/0
+#   export TEST_REDIS_7_URL=redis://127.0.0.1:6381/0
+#   export TEST_VALKEY_URL=redis://127.0.0.1:6382/0
+#   export TEST_REDIS_MEMORY_URL=redis://127.0.0.1:6383/0
+#   bundle exec rake
+#   docker compose -f test/compose.yml down
+#
+# The project name keeps the containers apart from those of other compose files in a directory named test; runs from
+# parallel worktrees share the servers, since every test has keys of its own. The memory server is for the test that
+# fills Redis up to its maxmemory, which the test sets.
+name: metacrunch-redis
+
+x-healthcheck: &healthcheck
+  test: ["CMD", "redis-cli", "ping"]
+  interval: 2s
+  retries: 30
+
+services:
+  redis:
+    image: redis:8.10
+    ports: ["6380:6379"]
+    healthcheck: *healthcheck
+  redis-7:
+    image: redis:7.2
+    ports: ["6381:6379"]
+    healthcheck: *healthcheck
+  valkey:
+    image: valkey/valkey:9.1
+    ports: ["6382:6379"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "valkey-cli", "ping"]
+  redis-memory:
+    image: redis:8.10
+    ports: ["6383:6379"]
+    healthcheck: *healthcheck

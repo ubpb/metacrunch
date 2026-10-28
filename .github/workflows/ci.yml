@@ -149,6 +149,45 @@ jobs:
           working-directory: metacrunch-db
       - run: bundle exec rake test
 
+  # metacrunch-redis against Redis 8.10, Redis 7.2 and Valkey 9.1, and a Redis of its own for the test that fills it up
+  # to its maxmemory: service containers exist on Linux only.
+  redis:
+    name: Redis and Valkey
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:8.10
+        ports: ["6380:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30
+      redis-7:
+        image: redis:7.2
+        ports: ["6381:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30
+      valkey:
+        image: valkey/valkey:9.1
+        ports: ["6382:6379"]
+        options: --health-cmd "valkey-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30
+      redis-memory:
+        image: redis:8.10
+        ports: ["6383:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      TEST_REDIS_URL: redis://127.0.0.1:6380/0
+      TEST_REDIS_7_URL: redis://127.0.0.1:6381/0
+      TEST_VALKEY_URL: redis://127.0.0.1:6382/0
+      TEST_REDIS_MEMORY_URL: redis://127.0.0.1:6383/0
+    defaults:
+      run:
+        working-directory: metacrunch-redis
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: metacrunch-redis
+      - run: bundle exec rake test
+
   tooling:
     name: Tooling
     runs-on: ubuntu-latest
