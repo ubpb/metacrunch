@@ -5,6 +5,8 @@ require "redis-client"
 require "metacrunch"
 require_relative "redis/version"
 require_relative "redis/errors"
+require_relative "redis/connection"
+require_relative "redis/format"
 
 module Metacrunch
   # Redis and Valkey for metacrunch, on redis-client: a queue between jobs
