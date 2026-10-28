@@ -10,6 +10,7 @@ require_relative "redis/format"
 require_relative "redis/options"
 require_relative "redis/pieces"
 require_relative "redis/queue_key"
+require_relative "redis/queue_reader"
 require_relative "redis/queue_writer"
 
 module Metacrunch
