@@ -3,6 +3,7 @@
 /.claude/settings.local.json
 /.claude/worktrees/
 /.superpowers/
+/docs/superpowers/
 CLAUDE.local.md
 /pkg/
 /tmp/

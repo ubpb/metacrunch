@@ -35,9 +35,9 @@ the phases; where a skill and this file differ, this file wins.
    with similar tools (Catmandu, Metafacture, Traject, Kiba, Vector, Redpanda Connect, jq) where that helps. Present
    the design in sections; your human partner approves each section.
 2. **Spec**: `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`. It opens with the date, the branch and its base
-   commit, the status, what it builds on and, if any, the specs it supersedes. Section 1 holds the context, goals,
-   non-goals, success criteria and the decisions taken; the last sections cover tests, documentation and what is
-   deferred. Your human partner approves the spec before planning starts.
+   commit, the status and the ADRs it builds on, if any. Section 1 holds the context, goals, non-goals, success
+   criteria and the decisions taken, and says whether one of them calls for an [ADR](#decisions); the last sections
+   cover tests, documentation and what is deferred. Your human partner approves the spec before planning starts.
 3. **Plan** (`writing-plans`): `docs/superpowers/plans/YYYY-MM-DD-<topic>.md`. It names global constraints, a review
    focus (the spots most likely to go wrong), amendments to the spec found while planning, and tasks that are each
    one commit, test first. Your human partner approves the plan.
@@ -54,12 +54,30 @@ the phases; where a skill and this file differ, this file wins.
    is green, and the [integration tests](#integration-tests) ran where they are due. Report the result, the fixed
    findings and the deferred minors to your human partner. Merging and pushing follow the rules under [Git](#git).
 
-Spec and plan are committed on the feature branch and reach `master` with it. An open question in design or planning
-can be settled with a throwaway prototype; what it teaches goes into the spec, the prototype is not kept.
+Spec and plan are working documents: git ignores `docs/superpowers/`, and they go with the worktree. Do not commit
+them, not even with `git add -f`, although the `brainstorming` skill says to commit the spec. What lasts is in the
+code and its tests, the docs, the CHANGELOG, the commit messages and, for a central decision, an [ADR](#decisions).
+An open question in design or planning can be settled with a throwaway prototype; what it teaches goes into the spec,
+the prototype is not kept.
 
 Gates: no code before the plan is approved, and no claim that something works or is done without a green run whose
 output you have seen. Your human partner may waive single approvals for one piece of work ("confirm the plan
 yourself"); that holds for this work only.
+
+## Decisions
+
+A central decision gets an Architecture Decision Record (ADR): `docs/decisions/NNNN-<title>.md`, numbered from 0001.
+Central means that it shapes the project for a long time and that someone would otherwise ask again why: the
+architecture, a concept of the public API, a dependency that is hard to replace, an approach that was dropped but keeps
+coming up. Most decisions are not central; their why goes into the commit message.
+
+- The spec says whether the work takes a central decision, and your human partner decides. The ADR is written in the
+  branch that carries out the decision and is reviewed with it.
+- An ADR is short, about a page. Its title states the decision; it gives the status and the date, the context, the
+  decision, the alternatives considered and why they lost, and the consequences.
+- An accepted ADR is not rewritten. A change of mind gets a new ADR, and the old one's status becomes "Superseded by
+  NNNN".
+- ADRs are public like the rest of the repository: generic, without internal names.
 
 ## Engineering rules
 
@@ -91,10 +109,11 @@ Gems that talk to a server (Elasticsearch, databases) test against real servers,
 
 ## Conventions
 
-- Everything in the repository is in English: code, comments, docs, specs, plans, CHANGELOGs, commit messages.
-- Examples, docs, templates, messages and comments are generic. Do not name internal tools, projects or institutions;
-  library metadata (catalog records, MARC, ISBNs) is welcome. Specs and plans are the exception: they may name the
-  real projects a design was checked against.
+- Everything in the repository is in English: code, comments, docs, ADRs, CHANGELOGs, commit messages. So are specs
+  and plans.
+- Examples, docs, ADRs, templates, messages and comments are generic. Do not name internal tools, projects or
+  institutions; library metadata (catalog records, MARC, ISBNs) is welcome. Specs and plans, which are not committed,
+  are the exception: they may name the real projects a design was checked against.
 - Docs change with the code, in the same branch: the gem's Readme and `docs/`, its examples and its `CHANGELOG.md`.
 - A changed dependency in a gemspec changes lockfiles: run `bundle exec rake bundle` and commit every changed
   `Gemfile.lock`.
