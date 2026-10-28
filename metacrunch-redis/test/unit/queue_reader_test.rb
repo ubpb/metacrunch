@@ -272,6 +272,33 @@ class QueueReaderTest < Minitest::Test
                                              "the dataset in memory); trying again in 0.01 s"
   end
 
+  def test_flush_comes_between_the_records_of_a_group_when_steps_are_slow
+    @redis.push("books", *(1..20).map(&:to_s))
+    records = []
+    opened(wait: 0.05, fetch: 20, flush_after: 0.1).each do |record|
+      records << record
+      sleep(0.03) unless record.equal?(FLUSH)
+    end
+
+    assert_operator records.index(FLUSH), :<=, 8
+  end
+
+  def test_the_quiet_time_counts_from_the_end_of_a_slow_group
+    @redis.push("books", *(1..5).map(&:to_s))
+    pusher = Thread.new do
+      sleep(0.35)
+      @redis.push("books", "6")
+    end
+    records = []
+    opened(wait: 0.2, fetch: 5).each do |record|
+      records << record
+      sleep(0.05) unless record.equal?(FLUSH)
+    end
+    pusher.join
+
+    assert_equal (1..6).to_a, records - [FLUSH]
+  end
+
   def test_wait_seconds_gives_up_after_the_quiet_time
     @redis.fail_next(RedisClient::CannotConnectError.new("Connection refused"), on: "BLMPOP", times: 1000)
     error = assert_raises(Metacrunch::InputError) do

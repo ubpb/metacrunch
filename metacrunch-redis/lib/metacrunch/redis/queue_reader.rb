@@ -107,21 +107,23 @@ module Metacrunch
 
             next
           end
-          @last_entry = now
           hand_on(&)
-          yield FLUSH if flush_due?
+          @last_entry = now
         end
       ensure
         put_back
       end
 
-      # Yields the entries taken, one by one, until a stop.
+      # Yields the entries taken, one by one, until a stop; after each one a
+      # FLUSH when it is due, also when the steps are slow. The quiet time of
+      # wait: seconds counts from the end of the group.
       def hand_on
         until @pending.empty?
           entry = @pending.shift
           @taken += 1
           @unflushed_since ||= now if @wait
           yield Format.decode(@format, entry)
+          yield FLUSH if flush_due?
           break if @stopping
         end
       end
