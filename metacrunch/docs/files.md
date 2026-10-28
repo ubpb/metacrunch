@@ -110,8 +110,8 @@ it into the compressor. Existing files are overwritten.
 When the reader of a pipe goes away (`metacrunch run job.rb | head`), `write` raises `SignalException("PIPE")` once,
 and the run ends as if by SIGPIPE; later writes do nothing. `close` closes files the output opened and only flushes
 `$stdout` and IOs from outside. `flush` writes what Ruby buffers to the file or stream, a gzip file with a sync flush,
-so a reader of the file sees whole lines so far. Other problems raise `Metacrunch::OutputError` with the name first, such as
-`out/x.jsonl: no such directory` or `out.jsonl: no space left on device`.
+so a reader of the file sees whole lines so far. Other problems raise `Metacrunch::OutputError` with the name first,
+such as `out/x.jsonl: no such directory` or `out.jsonl: no space left on device`.
 
 ### A sink on `Output`
 

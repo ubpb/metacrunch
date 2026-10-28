@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+# A project with a queue of books between a producer and its consumers, and a cache of books under keys, on the Redis
+# of params.yml (redis://localhost:6379/0 without -e). In this directory:
+#
+#   bundle exec metacrunch run --params params.yml books:enqueue           # pushes data/books.jsonl into the queue
+#   bundle exec metacrunch run --params params.yml books:queue             # shows how many books it holds
+#   bundle exec metacrunch run --params params.yml books:consume           # takes them and waits for more; SIGTERM
+#                                                                          # (kill PID) ends it after writing them
+#   bundle exec metacrunch run --params params.yml books:consume --wait 5  # ends after 5 s without books
+#   bundle exec metacrunch run --params params.yml books:cache             # books under keys book:<isbn>, for a day
+#   bundle exec metacrunch run --params params.yml books:export            # the cached books as JSON Lines
+require "metacrunch/redis"
+
+Metacrunch.load_files "jobs/**/*.rb", "commands/**/*.rb"

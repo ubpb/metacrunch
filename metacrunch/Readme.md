@@ -56,8 +56,9 @@ Requires Ruby 4.0. The commands in this Readme call `metacrunch`; with Bundler, 
 
 JSON Lines is built in. Extension gems read and write other formats and systems: `metacrunch-marc` (MARCXML, ISO
 2709 and MARC-in-JSON), `metacrunch-csv` (CSV), `metacrunch-xlsx` (Excel files), `metacrunch-elasticsearch`
-(Elasticsearch 8 and 9, with commands for indices and aliases) and `metacrunch-db` (SQLite, PostgreSQL, MySQL and
-MariaDB). They live in the same repository, share metacrunch's version and come from the same Git source:
+(Elasticsearch 8 and 9, with commands for indices and aliases), `metacrunch-db` (SQLite, PostgreSQL, MySQL and
+MariaDB) and `metacrunch-redis` (a queue between jobs, and keys, on Redis and Valkey). They live in the same
+repository, share metacrunch's version and come from the same Git source:
 
 ```ruby
 # Gemfile
@@ -68,8 +69,8 @@ end
 ```
 
 `metacrunch-csv` and `metacrunch-xlsx`, together with `Metacrunch::Input` and `Metacrunch::Output`, replace the 4.x
-gem `metacrunch-file`; `metacrunch-redis` does not work with metacrunch 5 yet. Any other source or
-sink is a small class of your own (see [Sources](docs/jobs.md#sources) and [Sinks](docs/jobs.md#sinks)), built on
+gem `metacrunch-file`. Any other source or sink is a small class of your own (see [Sources](docs/jobs.md#sources) and
+[Sinks](docs/jobs.md#sinks)), built on
 `Metacrunch::Input` and `Metacrunch::Output`, which read gzip and tar and take care of stdin, stdout and pipes (see
 [Files](docs/files.md)).
 

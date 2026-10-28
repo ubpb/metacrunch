@@ -1,0 +1,9 @@
+# The Redis of the project's jobs and commands. Without -e: a Redis on this machine. With -e production: a Redis with
+# TLS and a user, the password from the production credentials (metacrunch credentials edit -e production).
+default:
+  url: redis://localhost:6379/0
+
+production:
+  url: rediss://redis.example.org:6380/0
+  user: etl
+  password: {credential: redis.password}
