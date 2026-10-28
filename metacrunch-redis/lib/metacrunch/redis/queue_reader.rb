@@ -18,9 +18,6 @@ module Metacrunch
       ROUND_TRIP = 1.0
       MIN_TIMEOUT = 0.01
       RECONNECT_DELAYS = [1, 2, 4, 8, 16, 30].freeze
-      # The steps in which the reader sleeps between reconnects, checking
-      # for a stop.
-      NAP = 0.1
 
       # queue: the key of the list. wait: false, true or seconds.
       # format: :json or :string (Format). fetch: entries per round trip.
@@ -181,16 +178,11 @@ module Metacrunch
           delay = @reconnect_delays[[attempt, @reconnect_delays.size - 1].min]
           attempt += 1
           @logger.warn("#{label}: lost the connection (#{e.message}); trying again in #{delay} s")
-          nap(delay)
+          Nap.for(delay) { @stopping }
           retry unless @stopping
         rescue RedisClient::Error => e
           raise InputError, "#{label}: #{e.message}"
         end
-      end
-
-      def nap(seconds)
-        deadline = now + seconds
-        sleep([NAP, deadline - now].min) while !@stopping && now < deadline
       end
 
       # LPUSH e_n ... e_1 puts e_1 ... e_n back at the head, in their order.

@@ -23,10 +23,28 @@ module ConsumersTests
     end
   RUBY
 
+  # From one queue into another that is full.
+  RELAY = <<~RUBY
+    require "metacrunch/redis"
+
+    Metacrunch.job do
+      params do
+        use Metacrunch::Redis::CONNECTION_PARAMS
+        param :from, String, required: true
+        param :to, String, required: true
+      end
+
+      redis = Metacrunch::Redis::Connection.from_params(params)
+      source Metacrunch::Redis::QueueReader.new(redis, queue: params.from, wait: true)
+      sink Metacrunch::Redis::QueueWriter.new(redis, queue: params.to, max_length: 5), batch: 10
+    end
+  RUBY
+
   def setup
     super
     @dir = Dir.mktmpdir
     File.write(File.join(@dir, "consumer.rb"), CONSUMER)
+    File.write(File.join(@dir, "relay.rb"), RELAY)
   end
 
   def teardown
@@ -61,6 +79,22 @@ module ConsumersTests
     assert_predicate status, :success?, File.read(log)
     assert_operator now - started, :<, 3
     assert_equal((1..100).to_a, File.readlines(File.join(@dir, "out.jsonl")).map { JSON.parse(it)["n"] })
+  end
+
+  def test_sigterm_ends_a_job_whose_writer_waits_for_room
+    from = key("in")
+    to = key("out")
+    redis.call("RPUSH", to, *(1..5).map(&:to_s))
+    redis.call("RPUSH", from, *(1..20).map(&:to_s))
+    pid, log = spawn_metacrunch("relay.rb", "--url", target.url, "--from", from, "--to", to, dir: @dir)
+    eventually(20, "the relay did not start to wait") { File.read(log).include?("waiting for consumers") }
+    started = now
+    Process.kill("TERM", pid)
+    status = exited(pid)
+
+    assert_equal 1, status.exitstatus
+    assert_operator now - started, :<, 3
+    assert_includes File.read(log), "stopped while waiting for consumers; 10 records of the batch were not written"
   end
 
   private

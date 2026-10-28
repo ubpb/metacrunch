@@ -110,6 +110,45 @@ class QueueWriterTest < Minitest::Test
     assert_equal 1, log_lines("INFO").size
   end
 
+  def test_stop_while_redis_is_full_gives_up_the_batch
+    @redis.fail_next(RedisClient::OutOfMemoryError.new(OOM, "OOM"), on: "RPUSH", times: 1000)
+    error = stopped_while_waiting(max_bytes: 4) { it.write_batch([1, 2, 3, 4, 5, 6]) }
+
+    assert_equal "redis queue books: stopped while waiting for consumers; 6 records of the batch were not written",
+                 error.message
+  end
+
+  def test_stop_at_max_length_gives_up_the_rest_of_the_batch
+    @redis.push("books", "a", "b")
+    error = stopped_while_waiting(max_length: 3, max_bytes: 1) { it.write_batch([1, 2, 3]) }
+
+    assert_equal "redis queue books: stopped while waiting for consumers; 2 records of the batch were not written",
+                 error.message
+    assert_equal ["a", "b", "1"], @redis.lists["books"]
+  end
+
+  def test_a_writer_that_was_stopped_does_not_wait
+    @redis.fail_next(RedisClient::OutOfMemoryError.new(OOM, "OOM"), on: "RPUSH")
+    error = assert_raises(Metacrunch::OutputError) do
+      writer(pause: 5) do |w|
+        w.stop
+        w.write_batch(["a"])
+      end
+    end
+
+    assert_equal "redis queue books: stopped while waiting for consumers; 1 record of the batch was not written",
+                 error.message
+  end
+
+  def test_a_writer_that_was_stopped_still_writes_when_there_is_room
+    writer do |w|
+      w.stop
+      w.write_batch(["a"])
+    end
+
+    assert_equal ['"a"'], @redis.lists["books"]
+  end
+
   def test_no_pause_below_max_length
     writer(max_length: 3, pause: 0.01) { it.write_batch(["a", "b"]) }
 
@@ -193,6 +232,21 @@ class QueueWriterTest < Minitest::Test
     writer = QueueWriter.new(@connection, queue: "books", **)
     writer.open(context)
     yield writer if block_given?
+  ensure
+    writer&.close
+  end
+
+  # Writes in a thread with a long pause, stops the writer after 0.1 s and returns the OutputError, which must come
+  # within a second.
+  def stopped_while_waiting(**, &)
+    writer = QueueWriter.new(@connection, queue: "books", pause: 5, **)
+    writer.open(context)
+    thread = Thread.new { assert_raises(Metacrunch::OutputError) { yield writer } }
+    sleep(0.1)
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    writer.stop
+
+    thread.value.tap { assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 1 }
   ensure
     writer&.close
   end

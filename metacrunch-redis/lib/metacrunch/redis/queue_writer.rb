@@ -6,10 +6,14 @@ module Metacrunch
     # that QueueReader takes from the head. A batch goes out as one RPUSH per
     # piece of at most max_bytes. While Redis is full (maxmemory) or the
     # queue holds max_length entries, the writer waits and tries again,
-    # without end.
+    # until a stop (SIGTERM) makes it give up the batch.
     class QueueWriter
 
       MAX_BYTES = 1024 * 1024
+
+      # Raised in a pause after a stop.
+      class Stopped < StandardError; end
+      private_constant :Stopped
 
       # queue: the key of the list. format: :json or :string (Format).
       # max_length: pause while the queue holds this many entries. pause:
@@ -24,6 +28,7 @@ module Metacrunch
         @logger = Metacrunch.logger
         @client = nil
         @paused_since = nil
+        @stopping = false
       end
 
       # Connects, checks that the key holds a list or nothing, and warns when
@@ -50,8 +55,22 @@ module Metacrunch
         rescue Error => e
           failed[index] = e
         end
-        Pieces.of(entries, @max_bytes, &:bytesize).each { push(it) }
+        pieces = Pieces.of(entries, @max_bytes, &:bytesize)
+        pieces.each_with_index do |piece, index|
+          push(piece)
+        rescue Stopped
+          left = pieces.drop(index).sum(&:size)
+          what = left == 1 ? "1 record of the batch was" : "#{left} records of the batch were"
+          raise OutputError, "#{label}: stopped while waiting for consumers; #{what} not written"
+        end
         raise SinkFailures, failed unless failed.empty?
+      end
+
+      # Ends a pause: the batch it holds is not written. Called in a signal
+      # handler: it only sets a flag.
+      def stop
+        @stopping = true
+        nil
       end
 
       def close
@@ -80,7 +99,7 @@ module Metacrunch
         going_on
       rescue RedisClient::OutOfMemoryError
         pausing("Redis is full (maxmemory); waiting for consumers to take entries")
-        sleep(@pause)
+        nap
         retry
       rescue RedisClient::Error => e
         raise OutputError, "#{label}: #{e.message}"
@@ -92,8 +111,15 @@ module Metacrunch
           break if length < @max_length
 
           pausing("the queue holds #{length} entries (max_length #{@max_length}); waiting for consumers")
-          sleep(@pause)
+          nap
         end
+      end
+
+      def nap
+        raise Stopped if @stopping
+
+        Nap.for(@pause) { @stopping }
+        raise Stopped if @stopping
       end
 
       # Logs once when a pause begins and once when it ends.
