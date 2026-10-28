@@ -21,6 +21,8 @@ module Metacrunch
       # Errors of a server that is not ready yet: it loads its data after a
       # restart, or runs a long script.
       NOT_READY = ["LOADING", "BUSY"].freeze
+      # Seconds the reader tries to put entries back while Redis is full.
+      PUT_BACK_PATIENCE = 10
 
       # queue: the key of the list. wait: false, true or seconds.
       # format: :json or :string (Format). fetch: entries per round trip.
@@ -200,16 +202,28 @@ module Metacrunch
       end
 
       # LPUSH e_n ... e_1 puts e_1 ... e_n back at the head, in their order.
+      # While Redis is full, it tries again for a while, as other consumers
+      # free memory.
       def put_back
         return if @pending.empty?
 
-        @client.call_once("LPUSH", @queue, *@pending.reverse)
-        @pending = []
+        give_up = now + put_back_patience
+        begin
+          @client.call_once("LPUSH", @queue, *@pending.reverse)
+        rescue RedisClient::OutOfMemoryError
+          raise if now >= give_up
+
+          sleep(Nap::STEP)
+          retry
+        end
       rescue RedisClient::Error => e
         @logger.error("#{label}: #{@pending.size} entries taken from the queue could not be put back and are lost: " \
                       "#{e.message}")
+      ensure
         @pending = []
       end
+
+      def put_back_patience = PUT_BACK_PATIENCE
 
       def wait_option(value)
         return value if [true, false].include?(value) || (value.is_a?(Numeric) && value.positive?)

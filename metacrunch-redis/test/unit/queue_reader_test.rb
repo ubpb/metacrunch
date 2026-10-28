@@ -126,6 +126,35 @@ class QueueReaderTest < Minitest::Test
     assert_equal ["3", "4", "5"], @redis.lists["books"]
   end
 
+  def test_put_back_waits_while_redis_is_full
+    @redis.push("books", "1", "2", "3")
+    @redis.fail_next(RedisClient::OutOfMemoryError.new("OOM command not allowed", "OOM"), on: "LPUSH", times: 2)
+    opened(fetch: 3).each { break }
+
+    assert_equal ["2", "3"], @redis.lists["books"]
+    assert_empty log_lines("ERROR")
+  end
+
+  # A reader that waits only 0.2 s for room to put entries back.
+  class Impatient < QueueReader
+
+    private
+
+    def put_back_patience = 0.2
+
+  end
+
+  def test_put_back_gives_up_when_redis_stays_full
+    @redis.push("books", "1", "2", "3")
+    @redis.fail_next(RedisClient::OutOfMemoryError.new("OOM command not allowed", "OOM"), on: "LPUSH", times: 1000)
+    reader = Impatient.new(@connection, queue: "books", fetch: 3)
+    reader.open(context)
+    reader.each { break }
+
+    assert_includes log_lines("ERROR").first, "2 entries taken from the queue could not be put back and are lost: " \
+                                              "OOM command not allowed"
+  end
+
   def test_a_failed_put_back_is_logged_and_the_error_passes
     @redis.push("books", "1", "2", "3", "4")
     @redis.fail_next(RedisClient::ConnectionError.new("Connection lost"), on: "LPUSH")
