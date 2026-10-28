@@ -30,6 +30,25 @@ class InvokerTest < Minitest::Test
         sink Metacrunch::JsonLines::Writer.new(params.output), batch: 10
       end
     RUBY
+    "jobs/stopped.rb" => <<~RUBY,
+      # A source that sends SIGTERM to its own process after one record and waits until it is stopped.
+      class SelfStopping
+        def each
+          yield 1
+          Process.kill("TERM", Process.pid)
+          sleep(0.01) until @stop
+        end
+
+        def stop = @stop = true
+      end
+
+      Metacrunch.job "stopped" do
+        params { param :output, String, required: true }
+
+        source SelfStopping.new
+        sink Metacrunch::JsonLines::Writer.new(params.output), batch: 10
+      end
+    RUBY
     "transforms/scale.rb" => <<~RUBY,
       Metacrunch.transform "scale" do
         params { param :factor, Integer, default: 2 }
@@ -327,6 +346,16 @@ class InvokerTest < Minitest::Test
 
       assert_raises(SignalException) { invoker.invoke("term", params: {output:}) }
       assert_equal "1\n", File.read(output)
+    end
+  end
+
+  # The job ends normally and writes what it read; the chain ends by the signal, as a command would without stop.
+  def test_a_job_stopped_by_sigterm_ends_the_chain_by_sigterm
+    with_project do |invoker, _out, root|
+      output = File.join(root, "stopped.jsonl")
+      error = assert_raises(SignalException) { invoker.invoke("stopped", params: {output:}) }
+
+      assert_equal ["SIGTERM", "1\n"], [error.message, File.read(output)]
     end
   end
 

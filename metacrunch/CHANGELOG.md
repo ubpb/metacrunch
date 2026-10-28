@@ -36,7 +36,8 @@ metacrunch-redis live in this repository and share metacrunch's version.
   get their partial batch, the sinks write what they buffer for `batch:`, and sinks with `flush` (the JSON Lines
   writers, `Metacrunch::Output#flush`) write their own buffers.
 - A source with `stop` ends on SIGTERM, and the run ends normally (status `:ok`, exit code 0), unless the program
-  trapped SIGTERM itself; sinks with `stop` are told too; a second SIGTERM stops at once.
+  trapped SIGTERM itself; sinks with `stop` are told too; a second SIGTERM stops at once. `Result#stopped` says so;
+  `invoke` then raises `SignalException`, so a command that invoked the job ends by the signal.
 - The CLI ends by the signal that stopped a job (exit status 130 for SIGINT, 143 for SIGTERM).
 - Steps and sinks get the context only for a second required parameter, so `map(&method(:Integer))` works.
 - Job files are loaded again only when they change.

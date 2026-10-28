@@ -146,6 +146,7 @@ stays hidden in the target only if the target declares it with `secret`; passing
 | Unknown name, unknown or invalid params | raises `Metacrunch::InvokeError`: the command has a bug |
 | Command | returns a `CommandResult` (`status`, `ok?`, `error` (`nil`), `value`: what the body returned); its exceptions pass unchanged |
 | Ctrl-C, SIGTERM | the running job flushes and closes its sinks, then the chain ends by the signal |
+| SIGTERM to a job whose source has `stop` | the job ends normally and writes what it read, then `invoke` raises `SignalException`, so the chain ends by the signal |
 
 A command's status is the worst status of the jobs run during its body, nested commands included: `:ok`, or
 `:ok_with_failures` if one ended with failed records, or aborted and the body went on. Its exit status reports the

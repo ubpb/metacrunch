@@ -23,6 +23,7 @@ module Metacrunch
       @observer = observer
       @monitor = monitor
       @select = select
+      @stopped = false
     end
 
     def run
@@ -30,7 +31,7 @@ module Metacrunch
       @stats = StatsCollector.new(@pipeline.steps.map(&:name), profile: @pipeline.profile)
       error = stoppable { monitored { execute } }
       @stats.count_written(@pipeline.sink.delivered) if @pipeline.sink
-      run_after_hooks(Result.new(status: status_for(error), error:, stats: @stats.snapshot))
+      run_after_hooks(Result.new(status: status_for(error), error:, stats: @stats.snapshot, stopped: @stopped))
     end
 
     private
@@ -47,14 +48,13 @@ module Metacrunch
       source = @pipeline.source
       return yield unless source.respond_to?(:stop) && Thread.current.equal?(Thread.main)
 
-      stopped = false
       previous = nil
       handler = proc do
-        if stopped
+        if @stopped
           Signal.trap("TERM", previous)
           Process.kill("TERM", Process.pid)
         else
-          stopped = true
+          @stopped = true
           source.stop
           stoppable_sinks.each(&:stop)
         end
@@ -71,7 +71,7 @@ module Metacrunch
         current = Signal.trap("TERM", previous)
         Signal.trap("TERM", current) unless current.equal?(handler)
       end
-      @pipeline.logger.info(STOPPED) if stopped && error.nil?
+      @pipeline.logger.info(STOPPED) if @stopped && error.nil?
       error
     end
 

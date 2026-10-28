@@ -57,7 +57,8 @@ without `stop`. The engine calls `stop` in a signal handler, so it must only set
 logging, no Mutex. Sinks that have `stop` are told as well, so a sink that waits (a queue writer while its queue is
 full) gives up instead of holding the run. This holds for runs in the main thread whose program has not trapped
 SIGTERM itself, which includes every run of `metacrunch`; a program with its own handler (a job server, a web server)
-keeps it.
+keeps it. A command that invokes such a job ends by the signal once the job has ended (see
+[Projects](projects.md)).
 
 `Metacrunch::JsonLines::Reader.new(targets)` reads JSON Lines from a path, `-` for stdin, an IO or an Array of them;
 gzip files and tar archives are unpacked whatever their names (see [Files](files.md)). A source can yield
@@ -193,7 +194,8 @@ before { logger.info("starting") }
 after  { |result| logger.info(result.summary) }
 ```
 
-`result.status` is `:ok`, `:ok_with_failures` or `:aborted`; `result.stats` has the counts per step and reason.
+`result.status` is `:ok`, `:ok_with_failures` or `:aborted`; `result.stats` has the counts per step and reason;
+`result.stopped` is true when SIGTERM stopped the source (see [Sources](#sources)).
 `profile true` adds the time per step.
 
 ## Parameters

@@ -70,6 +70,11 @@ class EngineStopTest < Minitest::Test
     assert run_and_terminate["sink_stopped"]
   end
 
+  def test_the_result_says_that_sigterm_stopped_the_source
+    assert run_and_terminate["stopped"]
+    refute_predicate run_pipeline { source StoppableProbe.new }, :stopped
+  end
+
   def test_with_workers_a_sigterm_to_the_main_process_ends_the_run_normally
     outcome = run_and_terminate(executor: Metacrunch::Executor::Fork.new(workers: 2, batch_size: 3))
 
@@ -255,7 +260,8 @@ class EngineStopTest < Minitest::Test
       sink target
     end
     result = Metacrunch::Engine.new(pipeline, executor:).run
-    {"status" => result.status, "records" => target.records, "log" => log.string, "sink_stopped" => target.stopped}
+    {"status" => result.status, "records" => target.records, "log" => log.string, "sink_stopped" => target.stopped,
+     "stopped" => result.stopped}
   rescue SignalException => e
     {"signal" => e.message, "records" => target.records}
   end

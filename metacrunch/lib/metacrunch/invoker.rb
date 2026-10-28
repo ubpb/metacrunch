@@ -169,6 +169,7 @@ module Metacrunch
         raise NoInputError.new(target, hint: "pipe them into the command that invokes it")
       end
       aborted!(result, target)
+      stopped!(result)
       result
     end
 
@@ -197,6 +198,12 @@ module Metacrunch
       error = result.error
       raise InvokeError.new("#{target} aborted: #{error.class}: #{error.message}", name: target, result:),
             cause: error
+    end
+
+    # A job that SIGTERM stopped wrote what it read; the chain that invoked
+    # it ends by the signal, as it would without stop.
+    def stopped!(result)
+      raise SignalException, "TERM" if result.stopped
     end
 
     def wrap(target)

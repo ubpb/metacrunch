@@ -3,8 +3,11 @@
 module Metacrunch
 
   # Outcome of a run. status is :ok, :ok_with_failures or :aborted; error
-  # is the error that aborted the run.
-  Result = Data.define(:status, :error, :stats) do
+  # is the error that aborted the run. stopped: SIGTERM stopped the source,
+  # and the run ended as if the source had ended.
+  Result = Data.define(:status, :error, :stats, :stopped) do
+    def initialize(stopped: false, **) = super
+
     def ok? = status == :ok
 
     def summary
