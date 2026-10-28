@@ -31,15 +31,9 @@ module Metacrunch
         @stopping = false
       end
 
-      # Connects, checks that the key holds a list or nothing, and warns when
-      # Redis may evict the queue's entries.
       def open(context)
         @logger = context.logger
         @client = connect
-        QueueKey.check_type!(@client, @queue)
-        warn_about_eviction
-      rescue Error, RedisClient::Error => e
-        raise OutputError, "#{label}: #{e.message}"
       end
 
       def write(record) = write_batch([record])
@@ -84,9 +78,14 @@ module Metacrunch
 
       def label = "redis queue #{@queue}"
 
+      # Connects, checks that the key holds a list or nothing, and warns when
+      # Redis may evict the queue's entries.
       def connect
-        @connection.connect
-      rescue Error => e
+        client = @connection.connect
+        QueueKey.check_type!(client, @queue)
+        warn_about_eviction(client)
+        client
+      rescue Error, RedisClient::Error => e
         raise OutputError, "#{label}: #{e.message}"
       end
 
@@ -137,8 +136,8 @@ module Metacrunch
         @paused_since = nil
       end
 
-      def warn_about_eviction
-        info = @client.call("INFO", "memory")
+      def warn_about_eviction(client)
+        info = client.call("INFO", "memory")
         policy = info[/^maxmemory_policy:(\S+)/, 1]
         return if info[/^maxmemory:(\d+)/, 1].to_i.zero? || policy.nil? || policy == "noeviction"
 

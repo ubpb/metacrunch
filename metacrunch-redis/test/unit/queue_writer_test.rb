@@ -207,6 +207,13 @@ class QueueWriterTest < Minitest::Test
     assert_equal ['"a"'], @redis.lists["books"]
   end
 
+  def test_write_without_open_checks_the_key
+    @redis.call("SET", "books", "x")
+    error = assert_raises(Metacrunch::OutputError) { QueueWriter.new(@connection, queue: "books").write_batch(["a"]) }
+
+    assert_equal "redis queue books: books holds a string, not a list", error.message
+  end
+
   def test_close_closes_the_client
     writer
 
