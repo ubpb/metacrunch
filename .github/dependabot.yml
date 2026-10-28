@@ -9,6 +9,7 @@ updates:
       - "/metacrunch-marc"
       - "/metacrunch-elasticsearch"
       - "/metacrunch-db"
+      - "/metacrunch-redis"
     schedule:
       interval: weekly
   - package-ecosystem: github-actions

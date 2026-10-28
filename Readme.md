@@ -21,6 +21,7 @@ This repository holds metacrunch and its extension gems. Start with [metacrunch'
 | `metacrunch-marc` | [`metacrunch-marc/`](metacrunch-marc) | MARCXML, ISO 2709 and MARC-in-JSON on one record model |
 | `metacrunch-elasticsearch` | [`metacrunch-elasticsearch/`](metacrunch-elasticsearch) | a source, a bulk sink and index commands for Elasticsearch 8 and 9 |
 | `metacrunch-db` | [`metacrunch-db/`](metacrunch-db) | a source and a sink for SQLite, PostgreSQL, MySQL and MariaDB |
+| `metacrunch-redis` | [`metacrunch-redis/`](metacrunch-redis) | a queue between jobs, and a source and a sink for keys, on Redis and Valkey |
 
 ## Installation
 
