@@ -104,7 +104,8 @@ class ExeTest < Minitest::Test
       Process.wait(pid)
     end
 
-    assert_match(/\e\[2K[━─]{20} \d+% 00:00:00  /, output)
+    # The display draws every 0.25 s, so on a slow machine at 50 %, with an ETA, instead of at 100 %
+    assert_match(/\e\[2K[━─]{20} \d+% \d\d:\d\d:\d\d /, output)
   end
 
   private
