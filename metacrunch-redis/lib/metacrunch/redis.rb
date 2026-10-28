@@ -7,6 +7,10 @@ require_relative "redis/version"
 require_relative "redis/errors"
 require_relative "redis/connection"
 require_relative "redis/format"
+require_relative "redis/options"
+require_relative "redis/pieces"
+require_relative "redis/queue_key"
+require_relative "redis/queue_writer"
 
 module Metacrunch
   # Redis and Valkey for metacrunch, on redis-client: a queue between jobs

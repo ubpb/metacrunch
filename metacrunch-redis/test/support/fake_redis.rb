@@ -40,9 +40,9 @@ class FakeRedis
     @closed = false
   end
 
-  # The next times calls of command (any command without on:) raise error.
-  def fail_next(error, on: nil, times: 1)
-    @lock.synchronize { times.times { @failures << [on, error] } }
+  # The next times calls of command (any command without on:) raise error, after the first after calls.
+  def fail_next(error, on: nil, times: 1, after: 0)
+    @lock.synchronize { times.times { @failures << {on:, error:, after:} } }
   end
 
   # Entries pushed by the test, as another program would.
@@ -95,10 +95,11 @@ class FakeRedis
   end
 
   def fail_if_asked(name)
-    index = @failures.index { |on, _| on.nil? || on == name }
+    index = @failures.index { it[:on].nil? || it[:on] == name }
     return unless index
+    return @failures[index][:after] -= 1 if @failures[index][:after].positive?
 
-    raise @failures.delete_at(index).last
+    raise @failures.delete_at(index)[:error]
   end
 
   def dispatch(name, args)
