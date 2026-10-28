@@ -18,6 +18,9 @@ module Metacrunch
       ROUND_TRIP = 1.0
       MIN_TIMEOUT = 0.01
       RECONNECT_DELAYS = [1, 2, 4, 8, 16, 30].freeze
+      # Errors of a server that is not ready yet: it loads its data after a
+      # restart, or runs a long script.
+      NOT_READY = ["LOADING", "BUSY"].freeze
 
       # queue: the key of the list. wait: false, true or seconds.
       # format: :json or :string (Format). fetch: entries per round trip.
@@ -161,27 +164,36 @@ module Metacrunch
         [limits.min, MIN_TIMEOUT].max.round(3)
       end
 
-      # Retries a lost connection after the reconnect delays, until a stop
-      # (then it returns nil) or, with wait: seconds, until the quiet time is
-      # over.
+      # Retries after the reconnect delays when the connection is lost or the
+      # server is not ready (it loads its data after a restart, or runs a
+      # long script), until a stop (then it returns nil) or, with wait:
+      # seconds, until the quiet time is over.
       def reconnecting
         lost = nil
         attempt = 0
         begin
           result = yield
-          @logger.info("#{label}: connected again after #{(now - lost).round} s") if lost
+          @logger.info("#{label}: going on after #{(now - lost).round} s") if lost
           result
-        rescue RedisClient::ConnectionError => e
+        rescue RedisClient::Error => e
+          reason = retry_reason(e)
+          raise InputError, "#{label}: #{e.message}" unless reason
+
           lost ||= now
-          raise InputError, "#{label}: no connection for #{(now - lost).round} s: #{e.message}" if quiet_too_long?
+          raise InputError, "#{label}: gave up after #{(now - lost).round} s: #{e.message}" if quiet_too_long?
 
           delay = @reconnect_delays[[attempt, @reconnect_delays.size - 1].min]
           attempt += 1
-          @logger.warn("#{label}: lost the connection (#{e.message}); trying again in #{delay} s")
+          @logger.warn("#{label}: #{reason} (#{e.message}); trying again in #{delay} s")
           Nap.for(delay) { @stopping }
           retry unless @stopping
-        rescue RedisClient::Error => e
-          raise InputError, "#{label}: #{e.message}"
+        end
+      end
+
+      def retry_reason(error)
+        case error
+        when RedisClient::ConnectionError, RedisClient::ProtocolError then "lost the connection"
+        when RedisClient::CommandError then NOT_READY.include?(error.code) ? "the server is not ready" : nil
         end
       end
 

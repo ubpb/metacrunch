@@ -250,7 +250,26 @@ class QueueReaderTest < Minitest::Test
     end
 
     assert_equal expected, warnings
-    assert_match(/redis queue books: connected again after \d+ s/, log_lines("INFO").last)
+    assert_match(/redis queue books: going on after \d+ s/, log_lines("INFO").last)
+  end
+
+  def test_wait_retries_while_the_server_loads_its_data_or_is_busy
+    @redis.push("books", "1")
+    ["LOADING Redis is loading the dataset in memory", "BUSY Redis is busy running a script"].each do |message|
+      @redis.fail_next(RedisClient::CommandError.new(message, message.split.first), on: "BLMPOP")
+    end
+    @redis.fail_next(RedisClient::ProtocolError.new("Unexpected end of stream"), on: "BLMPOP")
+    reader = opened(wait: true, reconnect_delays: [0.01])
+    records = []
+    reader.each do |record|
+      records << record
+      reader.stop
+    end
+
+    assert_equal [1], records
+    assert_equal 3, log_lines("WARN").size
+    assert_includes log_lines("WARN").first, "redis queue books: the server is not ready (LOADING Redis is loading " \
+                                             "the dataset in memory); trying again in 0.01 s"
   end
 
   def test_wait_seconds_gives_up_after_the_quiet_time
@@ -259,7 +278,7 @@ class QueueReaderTest < Minitest::Test
       opened(wait: 0.1, reconnect_delays: [0.02]).each { flunk("no record expected") }
     end
 
-    assert_match(/\Aredis queue books: no connection for \d+ s: Connection refused\z/, error.message)
+    assert_match(/\Aredis queue books: gave up after \d+ s: Connection refused\z/, error.message)
   end
 
   def test_a_stop_ends_the_reconnect_delays
@@ -289,6 +308,13 @@ class QueueReaderTest < Minitest::Test
     error = assert_raises(Metacrunch::InputError) { read(wait: true) }
 
     assert_equal "redis queue books: #{FakeRedis::WRONGTYPE}", error.message
+  end
+
+  def test_other_client_errors_are_input_errors_also_with_wait
+    @redis.fail_next(RedisClient::UnsupportedServer.new("unsupported"), on: "BLMPOP")
+    error = assert_raises(Metacrunch::InputError) { read(wait: true) }
+
+    assert_equal "redis queue books: unsupported", error.message
   end
 
   def test_close_closes_the_client
