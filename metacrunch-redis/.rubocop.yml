@@ -15,4 +15,7 @@ Lint/UnreachableLoop:
 
 # Key templates take %{field} on purpose (KeyTemplate); they are no format strings.
 Style/FormatStringToken:
-  Enabled: false
+  Exclude:
+    - "lib/metacrunch/redis/key_writer.rb"
+    - "test/**/*"
+    - "examples/**/*"

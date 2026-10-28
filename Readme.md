@@ -82,8 +82,8 @@ A gem may have further Gemfiles in `gemfiles/`: metacrunch-elasticsearch tests t
 updates only `Gemfile.lock`, so after its updates `bundle exec rake bundle` brings the further lockfiles up to date.
 
 Gems that talk to a server, such as metacrunch-elasticsearch, metacrunch-db and metacrunch-redis, have integration
-tests that need the server: the gem's `test/compose.yml` starts it with Docker, and the gem's Readme shows how to run them. Without the
-server they are skipped. [AGENTS.md](AGENTS.md#integration-tests) says when they have to run before a merge.
+tests that need the server: the gem's `test/compose.yml` starts it with Docker, and the gem's Readme shows how to run
+them. Without the server they are skipped. [AGENTS.md](AGENTS.md#integration-tests) says when they have to run before a merge.
 
 ## License
 

@@ -23,6 +23,7 @@ end
 Consumers, on as many machines as you like, take them and wait for more:
 
 ```ruby
+require "metacrunch/redis"
 require "metacrunch/elasticsearch"
 
 Metacrunch.job do
@@ -149,7 +150,11 @@ The writer waits instead of failing when the consumers fall behind:
   producers can overshoot it by a batch each. A limit keeps a queue from growing without `maxmemory`, or from taking
   all of it.
 
-It logs when it starts to wait and when it goes on, and waits without end; SIGTERM or Ctrl-C stop it.
+It logs when it starts to wait and when it goes on, and waits without end. SIGTERM or Ctrl-C stop it, and the batch
+it was writing is not written: a producer that reads files is run again. In a job whose source is a `QueueReader`
+(from one queue into another), SIGTERM stops the reader and the writer gives up its wait at once; the run then fails
+with "redis queue books: stopped while waiting for consumers; 100 records of the batch were not written", since
+those records were taken from the first queue.
 
 ```
 08:12:01 WARN  redis queue books: Redis is full (maxmemory); waiting for consumers to take entries
@@ -186,21 +191,26 @@ is a failed record (`Metacrunch::InvalidRecord`).
 
 While it waits, the reader makes sure that what it read is written: `flush_after` seconds after it took a record, it
 has the job write what the sinks hold for `batch:`, and what the workers of `-w` hold, by yielding
-[`Metacrunch::FLUSH`](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#sources). So a consumer
-with `batch: 1000` writes a record within about a second also when only a few come in, and a busy one still writes
-full batches.
+[`Metacrunch::FLUSH`](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md#sources), also between
+the records of a group when the steps are slow. So a consumer with `batch: 1000` writes a record within about a second
+plus the time of the record's steps, also when only a few come in, and a busy one still writes full batches. Sinks
+that write files (JSON Lines, CSV, MARC) flush them then, so a reader of the file sees the records.
 
-With `wait`, a lost connection (a restart of Redis, a failover) does not end the reader: it logs it, tries again
+With `wait`, a lost connection (a restart of Redis, a failover) does not end the reader, nor a server that is not
+ready yet (`LOADING` while it reads its data after a restart, `BUSY` while a script runs): it logs it, tries again
 after 1, 2, 4, 8, 16 and then every 30 seconds, and goes on when the server is back; with `wait: seconds` it gives up
-when the quiet time is over. Without `wait` a lost connection stops the run. A reader that cannot connect when it
+when the quiet time is over, counted from the end of the last group of entries. Without `wait` a lost connection stops the run. A reader that cannot connect when it
 opens stops the run at once, so a supervisor sees it.
 
 ### Running consumers
 
 `metacrunch run` ends a consumer gracefully on SIGTERM: the reader stops taking entries, the records under way are
-processed and written, and the run ends normally with exit code 0, within about a second. Entries the reader took but
-had not handed on yet go back to the head of the queue. A second SIGTERM stops it at once, and so does Ctrl-C (SIGINT),
-which also reaches the workers of `-w`.
+processed and written, and the run ends normally with exit code 0. Without workers that takes about a second plus the
+steps of one record; with `-w`, the workers first process the batches they hold, which can take longer, so leave
+enough time before a supervisor sends SIGKILL. Entries the reader took but had not handed on yet go back to the head
+of the queue, also while Redis is full (for up to ten seconds). A second SIGTERM stops it at once, and so does Ctrl-C
+(SIGINT), which also reaches the workers of `-w`. A command that invokes a consumer ends by SIGTERM once the consumer
+has ended.
 
 With workers, send SIGTERM to the main process only, as `kill PID` and `docker stop` do; a signal to the whole
 process group ends the workers, and the run stops at once. Under systemd:
@@ -215,8 +225,9 @@ TimeoutStopSec=60
 Restart=always
 ```
 
-`KillMode=mixed` sends SIGTERM to the main process and, after `TimeoutStopSec`, SIGKILL to all of them; `Restart`
-starts a consumer again that stopped by an error, say because Redis was down when it started.
+`KillMode=mixed` sends SIGTERM to the main process and, after `TimeoutStopSec`, SIGKILL to all of them; size it for the
+batches the workers hold. `Restart` starts a consumer again that stopped by an error, say because Redis was down when
+it started.
 
 ### Delivery
 

@@ -16,12 +16,14 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
   commands.
 - `Metacrunch::Redis::QueueWriter`, a sink: one entry per record at the tail of a list, one `RPUSH` per batch (and
   per `max_bytes`); waits while Redis is full (`maxmemory`) or the queue holds `max_length` entries, and logs when it
-  starts and stops waiting; warns about an eviction policy that would delete queue entries.
+  starts and stops waiting, until a stop (SIGTERM to a job whose source can stop) makes it give up the batch; warns
+  about an eviction policy that would delete queue entries.
 - `Metacrunch::Redis::QueueReader`, a source: takes entries from the head of a list, `fetch` per round trip, until
   the queue is empty, or with `wait:` for new entries without end or until the queue stayed empty for a while; yields
   `Metacrunch::FLUSH` while it waits, so batched sinks and workers write what they hold within `flush_after`
-  seconds; retries a lost connection while it waits; ends on SIGTERM after the records under way, and puts entries it
-  took but did not hand on back at the head of the queue.
+  seconds, also between the records of a group; retries a lost connection and a server that is still loading its
+  data while it waits; ends on SIGTERM after the records under way, and puts entries it took but did not hand on back
+  at the head of the queue, also while Redis is full.
 - `Metacrunch::Redis::KeyWriter`, a sink: the record as the value of a key from a template (`book:%{isbn}`) or a
   callable, with an expiry, `SET` or `DEL` per record, pipelined per batch.
 - `Metacrunch::Redis::KeyReader`, a source: the String keys that match a pattern, with their values, by `SCAN` and
