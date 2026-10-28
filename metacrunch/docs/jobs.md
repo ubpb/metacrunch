@@ -121,7 +121,7 @@ steps directly: `map(&method(:Integer))`. A step written as `->(record, ctx = ni
 
 ## Sinks
 
-Any object with `#write(record)`. Optional `#write_batch(records)`, `#open(context)` and `#close`. Sinks that
+Any object with `#write(record)`. Optional `#write_batch(records)`, `#open(context)`, `#flush` and `#close`. Sinks that
 accept a second argument get the (read-only) context: `write(record, ctx)`, `write_batch(records, ctxs)`. A sink that
 writes files is best built on `Metacrunch::Output` (see [Files](files.md)).
 
@@ -133,7 +133,9 @@ failures Metacrunch::JsonLines::ContextWriter.new("failures.jsonl")   # failed r
 
 With `batch:` the sink gets `write_batch` calls with up to that many records; the rest is written at the end, also
 when the job aborts or is interrupted, so `batch:` never changes which records arrive. A source that yields
-`Metacrunch::FLUSH` has the buffered records written earlier (see [Sources](#sources)). One object used as both
+`Metacrunch::FLUSH` has the buffered records written earlier (see [Sources](#sources)), and then calls the sink's
+`flush`, if it has one, so a sink that buffers itself writes its buffer too: the JSON Lines writers flush their file
+or stream. One object used as both
 `sink` and `rejects` (or `failures`) is opened and closed once.
 
 `Metacrunch::JsonLines::Writer.new(target)` writes JSON Lines to a path (`.gz` is compressed), `-` for stdout or an

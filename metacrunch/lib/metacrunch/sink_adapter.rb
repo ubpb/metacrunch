@@ -52,6 +52,13 @@ module Metacrunch
       @write_batch ? flush_batch : flush_one_by_one
     end
 
+    # Writes the buffered records and has the sink write what it buffers
+    # itself (its optional flush, e.g. a file): a FLUSH of the source.
+    def drain
+      flush
+      @sink.flush if @sink.respond_to?(:flush)
+    end
+
     def close
       @sink.close if @sink.respond_to?(:close)
     end

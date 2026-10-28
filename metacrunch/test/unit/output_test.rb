@@ -69,6 +69,39 @@ class OutputTest < Minitest::Test
     end
   end
 
+  def test_flush_writes_what_is_buffered_to_the_file
+    path = File.join(@dir, "out.jsonl")
+    output = Metacrunch::Output.new(path).open
+    output.write("a\n")
+    output.flush
+
+    assert_equal "a\n", File.read(path)
+  ensure
+    output&.close
+  end
+
+  def test_flush_of_a_gzip_file_gives_whole_lines_so_far
+    path = File.join(@dir, "out.jsonl.gz")
+    output = Metacrunch::Output.new(path).open
+    output.write("a\n")
+    output.flush
+
+    assert_equal "a\n", Zlib::Inflate.new(Zlib::MAX_WBITS + 32).inflate(File.binread(path))
+  ensure
+    output&.close
+  end
+
+  def test_flush_flushes_an_io_from_outside_and_does_nothing_before_open
+    io = StringIO.new
+    output = Metacrunch::Output.new(io)
+
+    assert_nil output.flush
+    output.open
+    output.write("a")
+
+    assert_nil output.flush
+  end
+
   def test_overwrites_existing_files
     path = File.join(@dir, "out.jsonl")
     File.write(path, "old content\n")

@@ -50,6 +50,19 @@ module Metacrunch
       nil
     end
 
+    # Writes what Ruby buffers to the file or stream, a gzip file with a
+    # sync flush, so a reader gets the lines so far (the sinks' answer to a
+    # FLUSH of the source). Does nothing before open. Returns nil.
+    def flush
+      return unless @io
+
+      guard do
+        flush_io(@io)
+        @file.flush if @file && !@file.equal?(@io)
+      end
+      nil
+    end
+
     # Closes an own file, flushes an IO from outside. Does nothing before
     # open and the second time. Returns nil.
     def close
@@ -62,7 +75,7 @@ module Metacrunch
       if @broken
         discard(io, file)
       else
-        guard { file ? io.close : flush(io) }
+        guard { file ? io.close : flush_io(io) }
       end
       nil
     ensure
@@ -95,7 +108,7 @@ module Metacrunch
                          "e.g. metacrunch run job.rb | #{command.sub("PATH", Shellwords.escape(@target))}"
     end
 
-    def flush(io)
+    def flush_io(io)
       io.flush if io.respond_to?(:flush)
     end
 

@@ -63,6 +63,18 @@ class JsonLinesWriterTest < Minitest::Test
     assert_equal "{\"a\":1}\n", Zlib::GzipReader.open(gzip, &:read)
   end
 
+  def test_flush_writes_the_lines_written_so_far
+    path = File.join(@dir, "out.jsonl")
+    writer = Writer.new(path)
+    writer.open(nil)
+    writer.write({"a" => 1}, @ctx)
+    writer.flush
+
+    assert_equal "{\"a\":1}\n", File.read(path)
+  ensure
+    writer&.close
+  end
+
   def test_accepts_pathnames
     path = File.join(@dir, "out.jsonl")
     writer = open_writer(Pathname(path))

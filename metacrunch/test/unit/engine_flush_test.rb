@@ -128,6 +128,31 @@ class EngineFlushTest < Minitest::Test
     assert_equal [[1], [3]], rejected.batches
   end
 
+  # A sink that buffers on its own, as a file does, and notes when it was told to flush.
+  class Buffering
+
+    attr_reader :log
+
+    def initialize
+      @log = []
+    end
+
+    def write(record) = @log << record
+
+    def flush = @log << :flush
+
+  end
+
+  def test_a_flush_lets_a_sink_write_what_it_buffers_itself
+    target = Buffering.new
+    run_pipeline do
+      source [1, FLUSH, 2]
+      sink target
+    end
+
+    assert_equal [1, :flush, 2], target.log
+  end
+
   def test_flushes_between_partial_worker_batches_keep_the_order
     target = BatchCollector.new
     run_pipeline do

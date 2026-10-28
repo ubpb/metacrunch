@@ -33,7 +33,8 @@ live in this repository and share metacrunch's version.
 - Run results with stats per step and reason; `profile` for step timing.
 - `flat_map` streams its children; batched sinks are flushed after an abort, on Ctrl-C and on SIGTERM.
 - A source that waits for data yields `Metacrunch::FLUSH` to have the records it yielded written at once: the workers
-  get their partial batch, the sinks write what they buffer for `batch:`.
+  get their partial batch, the sinks write what they buffer for `batch:`, and sinks with `flush` (the JSON Lines
+  writers, `Metacrunch::Output#flush`) write their own buffers.
 - A source with `stop` ends on SIGTERM, and the run ends normally (status `:ok`, exit code 0), unless the program
   trapped SIGTERM itself; a second SIGTERM stops at once.
 - The CLI ends by the signal that stopped a job (exit status 130 for SIGINT, 143 for SIGTERM).
