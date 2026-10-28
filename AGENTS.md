@@ -55,10 +55,11 @@ the phases; where a skill and this file differ, this file wins.
    findings and the deferred minors to your human partner. Merging and pushing follow the rules under [Git](#git).
 
 Spec and plan are working documents: git ignores `docs/superpowers/`, and they go with the worktree. Do not commit
-them, not even with `git add -f`, although the `brainstorming` skill says to commit the spec. What lasts is in the
-code and its tests, the docs, the CHANGELOG, the commit messages and, for a central decision, an [ADR](#decisions).
-An open question in design or planning can be settled with a throwaway prototype; what it teaches goes into the spec,
-the prototype is not kept.
+them, not even with `git add -f`, although the `brainstorming` skill says to commit the spec. Code, comments, docs
+and commit messages do not refer to them, since no one else can read them. What lasts is in the code and its tests,
+the docs, the CHANGELOG, the commit messages and, for a central decision, an [ADR](#decisions). An open question in
+design or planning can be settled with a throwaway prototype; what it teaches goes into the spec, the prototype is
+not kept.
 
 Gates: no code before the plan is approved, and no claim that something works or is done without a green run whose
 output you have seen. Your human partner may waive single approvals for one piece of work ("confirm the plan
