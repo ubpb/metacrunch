@@ -153,6 +153,17 @@ class EngineFlushTest < Minitest::Test
     assert_equal [1, :flush, 2], target.log
   end
 
+  def test_one_object_as_sink_and_rejects_is_told_to_flush_once
+    target = Buffering.new
+    run_pipeline do
+      source [1, FLUSH, 2]
+      sink target
+      rejects target
+    end
+
+    assert_equal [1, :flush, 2], target.log
+  end
+
   def test_flushes_between_partial_worker_batches_keep_the_order
     target = BatchCollector.new
     run_pipeline do

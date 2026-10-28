@@ -19,9 +19,13 @@ module Metacrunch
       @sink&.failure_handler = method(:sink_failed)
     end
 
-    # Writes what the sinks buffer (a FLUSH of the source), each once.
+    # Writes what the sinks buffer (a FLUSH of the source): the records each
+    # adapter holds for batch:, then the sink's own buffer through its
+    # optional flush, once per sink object, also when it serves two roles.
     def flush
-      [@sink, @rejects, @failures].compact.uniq(&:__id__).each(&:drain)
+      adapters = [@sink, @rejects, @failures].compact
+      adapters.each(&:flush)
+      adapters.map(&:sink).uniq(&:__id__).each { it.flush if it.respond_to?(:flush) }
     end
 
     def deliver(record, ctx)
