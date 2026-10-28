@@ -12,6 +12,7 @@ require_relative "redis/pieces"
 require_relative "redis/queue_key"
 require_relative "redis/queue_reader"
 require_relative "redis/queue_writer"
+require_relative "redis/key_reader"
 require_relative "redis/key_template"
 require_relative "redis/key_writer"
 
