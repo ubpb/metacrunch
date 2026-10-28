@@ -12,3 +12,7 @@ Style/FrozenStringLiteralComment:
 Lint/UnreachableLoop:
   Exclude:
     - "test/**/*"
+
+# Key templates take %{field} on purpose (KeyTemplate); they are no format strings.
+Style/FormatStringToken:
+  Enabled: false

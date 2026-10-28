@@ -22,7 +22,7 @@ class FakeRedis
 
   end
 
-  attr_reader :lists, :strings, :expiries, :blocking_timeouts
+  attr_reader :lists, :strings, :expiries, :blocking_timeouts, :pipelines
   attr_accessor :hello, :info_memory, :scan_page
 
   def initialize
@@ -34,6 +34,7 @@ class FakeRedis
     @log = []
     @failures = []
     @blocking_timeouts = []
+    @pipelines = 0
     @hello = {"server" => "redis", "version" => "8.10.3", "mode" => "standalone", "role" => "master"}
     @info_memory = "# Memory\r\nmaxmemory:0\r\nmaxmemory_policy:noeviction\r\n"
     @scan_page = 10
@@ -65,6 +66,7 @@ class FakeRedis
   def pipelined(exception: true)
     pipeline = Pipeline.new
     yield pipeline
+    @lock.synchronize { @pipelines += 1 }
     results = pipeline.commands.map do |command|
       execute(command)
     rescue RedisClient::Error => e
