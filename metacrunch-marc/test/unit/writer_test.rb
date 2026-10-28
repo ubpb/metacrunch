@@ -36,6 +36,17 @@ class WriterTest < Minitest::Test
     FileUtils.remove_entry(@dir)
   end
 
+  def test_flush_writes_the_records_so_far_to_the_file
+    path = File.join(@dir, "out.mrc")
+    writer = open_writer(path, format: :iso2709)
+    writer.write(record, @ctx)
+    writer.flush
+
+    assert_equal [record.fields], Marc::Iso2709.each(File.binread(path)).map(&:fields)
+  ensure
+    writer&.close
+  end
+
   def test_writes_a_collection
     io = StringIO.new
     writer = open_writer(io)

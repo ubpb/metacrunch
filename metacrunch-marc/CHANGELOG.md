@@ -40,7 +40,8 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
   IOs. A record that cannot be read becomes a `Metacrunch::InvalidRecord`; a document in another format or a
   truncated gzip or tar file raises `Metacrunch::InputError`.
 - `Metacrunch::Marc::Writer`, a sink on `Metacrunch::Output` with `format:` (`:xml`, `:iso2709` or `:json`), for
-  `Record`s and for record Strings serialized in a worker.
+  `Record`s and for record Strings serialized in a worker; `flush` writes the records so far, when a source that waits
+  yields `Metacrunch::FLUSH`.
 - `Record#to_xml`, `#to_h` (MARC-in-JSON) and `#to_s` (MarcEdit's mnemonic form, also used by `inspect`).
 - Changing records: `Record#add`, `#append`, `#remove` (also with a block), `#clear`, `DataField#add`, `#remove`, deep
   `dup`. The fields of a record are a frozen Array and the tag of a field is fixed, so queries by tag use an index.

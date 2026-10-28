@@ -43,6 +43,9 @@ module Metacrunch
         @output.write(records.zip(ctxs).map { |record, ctx| encode(line(record, ctx), ctx) }.join)
       end
 
+      # Writes the rows so far to the file or stream (a FLUSH of the source).
+      def flush = @output.flush
+
       def close = @output.close
 
       private

@@ -15,7 +15,8 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
   be read becomes a `Metacrunch::InvalidRecord`.
 - `Metacrunch::Csv::Writer`, a sink on `Metacrunch::Output`: `columns:` (an Array of keys or a Hash of header name =>
   key) or the keys of the first record, `header:`, `col_sep:`, `quote_char:`, `encoding:` and `bom:`. Strings,
-  Integers, Floats, BigDecimals, `true`, `false` and `nil` are written; other values stop the run.
+  Integers, Floats, BigDecimals, `true`, `false` and `nil` are written; other values stop the run. `flush` writes
+  the rows so far, when a source that waits yields `Metacrunch::FLUSH`.
 
 ### Changes from metacrunch-file
 

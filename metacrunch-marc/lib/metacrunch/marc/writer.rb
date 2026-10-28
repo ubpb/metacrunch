@@ -57,6 +57,10 @@ module Metacrunch
         @output.write(batch)
       end
 
+      # Writes the records so far to the file or stream (a FLUSH of the
+      # source); a MARCXML collection lacks its end until close.
+      def flush = @output.flush
+
       # Writes the end of a MARCXML collection, also after an aborted run,
       # and closes the output. Does nothing the second time.
       def close

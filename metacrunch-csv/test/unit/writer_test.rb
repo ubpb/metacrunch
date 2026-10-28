@@ -25,6 +25,18 @@ class WriterTest < Minitest::Test
     refute_path_exists path
   end
 
+  def test_flush_writes_the_rows_so_far_to_the_file
+    path = File.join(@dir, "out.csv")
+    writer = Writer.new(path)
+    writer.open(nil)
+    writer.write({"id" => "1"}, ctx)
+    writer.flush
+
+    assert_equal "id\n1\n", File.read(path)
+  ensure
+    writer&.close
+  end
+
   def test_invalid_options_are_argument_errors
     [{columns: "id"}, {header: "yes"}, {bom: nil}, {encoding: "Klingon"}, {quote_char: ","}].each do |options|
       assert_raises(ArgumentError) { Writer.new(StringIO.new, **options) }
