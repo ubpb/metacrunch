@@ -32,12 +32,13 @@ class JobsTest < Minitest::Test
     [nil, 2].each do |workers|
       @redis.push("books", *(1..5).map(&:to_s))
       sink = TimedSink.new
-      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       result = consumer(sink).run(logger: Logger.new(nil), workers:)
+      finished = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
       assert_equal :ok, result.status
       assert_equal [1, 2, 3, 4, 5], sink.batches.flat_map(&:last)
-      assert_operator sink.batches.first.first - started, :<, 0.3, "workers: #{workers.inspect}"
+      # The run ends 0.4 s after the queue went quiet; the batch came long before.
+      assert_operator finished - sink.batches.first.first, :>, 0.25, "workers: #{workers.inspect}"
     end
   end
 

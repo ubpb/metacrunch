@@ -3,11 +3,13 @@
 require "test_helper"
 
 # A producer against a Redis that is full: TEST_REDIS_MEMORY_URL names a server of its own (see test/compose.yml),
-# whose maxmemory the test sets, since that holds for the whole server.
+# whose maxmemory the test sets, since that holds for the whole server. Runs from parallel worktrees take turns
+# through a lock key.
 class MemoryTest < Minitest::Test
 
   ENTRIES = 3000
   ENTRY = "x" * 10_000
+  LOCK = "metacrunch-test:memory-lock"
 
   def setup
     url = ENV.fetch("TEST_REDIS_MEMORY_URL", "")
@@ -16,6 +18,7 @@ class MemoryTest < Minitest::Test
     @connection = Metacrunch::Redis::Connection.new(url:)
     @queue = "metacrunch-test:#{SecureRandom.hex(4)}:books"
     @redis = @connection.connect
+    lock
     @redis.call("CONFIG", "SET", "maxmemory", "16mb", "maxmemory-policy", "noeviction")
   end
 
@@ -24,6 +27,7 @@ class MemoryTest < Minitest::Test
 
     @redis.call("DEL", @queue)
     @redis.call("CONFIG", "SET", "maxmemory", "0")
+    @redis.call("DEL", LOCK) if @redis.call("GET", LOCK) == @token
     @redis.close
   end
 
@@ -49,6 +53,18 @@ class MemoryTest < Minitest::Test
     assert_match(/going on after \d+ s/, log.string)
   ensure
     writer&.close
+  end
+
+  private
+
+  # Waits up to two minutes for the lock; it expires by itself after two minutes, should a run die.
+  def lock
+    @token = SecureRandom.hex(8)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 120
+    until @redis.call("SET", LOCK, @token, "NX", "EX", 120)
+      flunk("another run held #{LOCK} for two minutes") if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+      sleep(0.5)
+    end
   end
 
 end

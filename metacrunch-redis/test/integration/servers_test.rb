@@ -17,7 +17,7 @@ module ServersTests
     assert_match(/\A#{Regexp.escape(target.url)}: WRONGPASS/, error.message)
   end
 
-  def test_the_writer_warns_about_an_eviction_policy_of_the_server
+  def test_the_writer_does_not_warn_on_a_server_with_noeviction
     log = StringIO.new
     writer = Metacrunch::Redis::QueueWriter.new(connection, queue: key("books"))
     writer.open(context(log))

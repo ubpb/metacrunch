@@ -14,11 +14,18 @@ module ConsumersTests
         use Metacrunch::Redis::CONNECTION_PARAMS
         param :queue, String, required: true
         param :wait, Float
+        param :fetch, Integer, default: 100
+        param :delay, Float, default: 0.0
         param :output, String, required: true
       end
 
       redis = Metacrunch::Redis::Connection.from_params(params)
-      source Metacrunch::Redis::QueueReader.new(redis, queue: params.queue, wait: params.wait || true, flush_after: 0.1)
+      source Metacrunch::Redis::QueueReader.new(redis, queue: params.queue, wait: params.wait || true, flush_after: 0.1,
+                                                       fetch: params.fetch)
+      map do |record|
+        sleep(params.delay)
+        record
+      end
       sink Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
     end
   RUBY
@@ -79,6 +86,23 @@ module ConsumersTests
     assert_predicate status, :success?, File.read(log)
     assert_operator now - started, :<, 3
     assert_equal((1..100).to_a, File.readlines(File.join(@dir, "out.jsonl")).map { JSON.parse(it)["n"] })
+  end
+
+  def test_sigterm_in_the_middle_of_a_group_puts_the_rest_back_in_order
+    queue = key("books")
+    redis.call("RPUSH", queue, *(1..100).map { JSON.generate({"n" => it}) })
+    pid, log = spawn_metacrunch("consumer.rb", *consumer_params(queue, "out.jsonl"), "--fetch", "20", "--delay", "0.05",
+                                dir: @dir)
+    eventually(20, "the consumer did not take a group") { redis.call("LLEN", queue) <= 80 }
+    sleep(0.3)
+    Process.kill("TERM", pid)
+    status = exited(pid)
+    written = File.readlines(File.join(@dir, "out.jsonl")).map { JSON.parse(it)["n"] }
+    left = redis.call("LRANGE", queue, 0, -1).map { JSON.parse(it)["n"] }
+
+    assert_predicate status, :success?, File.read(log)
+    assert_equal (1..100).to_a, written + left
+    assert_includes 1..19, written.size
   end
 
   def test_sigterm_ends_a_job_whose_writer_waits_for_room

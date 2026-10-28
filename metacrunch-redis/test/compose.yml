@@ -10,7 +10,7 @@
 #
 # The project name keeps the containers apart from those of other compose files in a directory named test; runs from
 # parallel worktrees share the servers, since every test has keys of its own. The memory server is for the test that
-# fills Redis up to its maxmemory, which the test sets.
+# fills Redis up to its maxmemory, which the test sets; parallel runs of it take turns through a lock key.
 name: metacrunch-redis
 
 x-healthcheck: &healthcheck
