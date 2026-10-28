@@ -78,8 +78,8 @@ module Metacrunch
 
       def label = "redis queue #{@queue}"
 
-      # Connects, checks that the key holds a list or nothing, and warns when
-      # Redis may evict the queue's entries.
+      # Connects, checks that the key holds a list or nothing, and warns about
+      # a maxmemory-policy other than noeviction.
       def connect
         client = @connection.connect
         QueueKey.check_type!(client, @queue)
@@ -136,15 +136,25 @@ module Metacrunch
         @paused_since = nil
       end
 
+      # Also without maxmemory: CONFIG SET maxmemory takes effect at once.
       def warn_about_eviction(client)
-        info = client.call("INFO", "memory")
-        policy = info[/^maxmemory_policy:(\S+)/, 1]
-        return if info[/^maxmemory:(\d+)/, 1].to_i.zero? || policy.nil? || policy == "noeviction"
+        policy = client.call("INFO", "memory")[/^maxmemory_policy:(\S+)/, 1]
+        return if policy.nil? || policy == "noeviction"
 
-        @logger.warn("#{label}: Redis evicts keys when it is full (maxmemory-policy #{policy}), entries of this " \
-                     "queue among them; set maxmemory-policy noeviction")
+        @logger.warn("#{label}: #{eviction(policy)}; set maxmemory-policy noeviction")
       rescue RedisClient::CommandError
         nil
+      end
+
+      # A volatile policy deletes only keys with an expiry, which a queue has
+      # not, and refuses writes when none are left.
+      def eviction(policy)
+        if policy.start_with?("volatile-")
+          "Redis deletes keys with an expiry instead of refusing writes when it is full (maxmemory-policy " \
+            "#{policy}); the writer pauses only when none are left"
+        else
+          "Redis evicts keys when it is full (maxmemory-policy #{policy}), entries of this queue among them"
+        end
       end
 
       def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)

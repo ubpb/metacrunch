@@ -162,8 +162,10 @@ those records were taken from the first queue.
 ```
 
 Set `maxmemory-policy noeviction` (Redis's default) on a server that holds queues: with an eviction policy such as
-`allkeys-lru`, a full Redis deletes keys instead of refusing writes, entries of queues among them. The writer warns
-when it opens on such a server. Persistence (RDB snapshots, the AOF) is Redis's configuration.
+`allkeys-lru`, a full Redis deletes keys instead of refusing writes, entries of queues among them. A `volatile-`
+policy deletes only keys with an expiry, which queues have not, but the writer pauses only when none of them are left.
+The writer warns when it opens on a server with another policy, also without `maxmemory`, since `CONFIG SET
+maxmemory` takes effect at once. Persistence (RDB snapshots, the AOF) is Redis's configuration.
 
 When the connection breaks, the writer stops the run: it cannot know whether the last `RPUSH` arrived, and sending it
 again could write its entries twice.

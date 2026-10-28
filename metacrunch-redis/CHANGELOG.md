@@ -17,7 +17,7 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
 - `Metacrunch::Redis::QueueWriter`, a sink: one entry per record at the tail of a list, one `RPUSH` per batch (and
   per `max_bytes`); waits while Redis is full (`maxmemory`) or the queue holds `max_length` entries, and logs when it
   starts and stops waiting, until a stop (SIGTERM to a job whose source can stop) makes it give up the batch; warns
-  about an eviction policy that would delete queue entries.
+  about a `maxmemory-policy` other than `noeviction`.
 - `Metacrunch::Redis::QueueReader`, a source: takes entries from the head of a list, `fetch` per round trip, until
   the queue is empty, or with `wait:` for new entries without end or until the queue stayed empty for a while; yields
   `Metacrunch::FLUSH` while it waits, so batched sinks and workers write what they hold within `flush_after`

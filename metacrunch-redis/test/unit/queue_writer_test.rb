@@ -171,9 +171,28 @@ class QueueWriterTest < Minitest::Test
                     "of this queue among them; set maxmemory-policy noeviction"
   end
 
-  def test_no_eviction_warning_without_maxmemory_with_noeviction_or_without_info
-    ["maxmemory:0\r\nmaxmemory_policy:allkeys-lru\r\n",
-     "maxmemory:100\r\nmaxmemory_policy:noeviction\r\n"].each do |info|
+  def test_open_warns_about_an_eviction_policy_also_without_maxmemory
+    # CONFIG SET maxmemory takes effect at once, without a restart the writer would notice
+    @redis.info_memory = "# Memory\r\nmaxmemory:0\r\nmaxmemory_policy:allkeys-random\r\n"
+    writer
+
+    assert_includes log_lines("WARN").first, "(maxmemory-policy allkeys-random), entries of this queue among them"
+  end
+
+  def test_open_warns_that_a_volatile_policy_keeps_the_writer_from_pausing
+    @redis.info_memory = "# Memory\r\nmaxmemory:1000000\r\nmaxmemory_policy:volatile-lru\r\n"
+    writer
+
+    assert_includes log_lines("WARN").first,
+                    "redis queue books: Redis deletes keys with an expiry instead of refusing writes when it is full " \
+                    "(maxmemory-policy volatile-lru); the writer pauses only when none are left; " \
+                    "set maxmemory-policy noeviction"
+  end
+
+  def test_no_eviction_warning_with_noeviction_or_without_info
+    ["maxmemory:0\r\nmaxmemory_policy:noeviction\r\n",
+     "maxmemory:100\r\nmaxmemory_policy:noeviction\r\n",
+     "maxmemory:100\r\n"].each do |info|
       @redis.info_memory = info
       writer
     end
