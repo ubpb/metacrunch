@@ -68,6 +68,34 @@ class EngineStopTest < Minitest::Test
     assert_equal [1, 2], outcome["records"]
   end
 
+  # A sink that writes inside Thread.handle_interrupt(Object => :never), as one that must not leave a file half
+  # written; it says "in" and "finished" on a pipe.
+  class Shielded
+
+    def initialize(report)
+      @report = report
+    end
+
+    def write(_record)
+      Thread.handle_interrupt(Object => :never) do
+        @report.puts("in")
+        @report.flush
+        sleep(0.6)
+        @report.puts("finished")
+        @report.flush
+      end
+    end
+
+  end
+
+  def test_a_second_sigterm_waits_for_a_block_that_holds_interrupts_back
+    skip "needs Process.fork" unless Process.respond_to?(:fork)
+
+    lines = shielded_run
+
+    assert_equal ["in", "finished", "SIGTERM"], lines
+  end
+
   def test_no_handler_for_a_source_without_stop
     probe = Probe.new
     run_pipeline { source probe }
@@ -172,6 +200,36 @@ class EngineStopTest < Minitest::Test
       Process.kill("KILL", pid)
       Process.waitpid(pid)
     end
+  end
+
+  # Runs a job with a source that ignores stop and a Shielded sink in a child process, sends SIGTERM twice while the
+  # sink holds interrupts back, and returns the lines the child wrote: the sink's, then the signal that ended it.
+  def shielded_run
+    report_reader, report = IO.pipe
+    pid = Process.fork do
+      report_reader.close
+      pipeline = build_pipeline do
+        source Stoppable.new(File.open(File::NULL, "w"), ignore_stop: true)
+        sink Shielded.new(report)
+      end
+      begin
+        Metacrunch::Engine.new(pipeline).run
+      rescue SignalException => e
+        report.puts(e.message)
+      end
+      Process.exit!(0)
+    end
+    report.close
+    wait_for(report_reader)
+    lines = [report_reader.gets.chomp]
+    2.times do
+      Process.kill("TERM", pid)
+      sleep(0.1)
+    end
+    lines.concat(report_reader.read.lines.map(&:chomp))
+  ensure
+    report_reader&.close
+    Process.waitpid(pid) if pid
   end
 
   def child_run(executor, ready, ignore_stop)

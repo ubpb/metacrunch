@@ -37,19 +37,24 @@ module Metacrunch
 
     # Lets SIGTERM stop a source that has stop: the run then ends as if the
     # source ended. Only in the main thread and when SIGTERM has its default
-    # handler, so a program's own handling stays; a second SIGTERM raises
-    # SignalException, as the default handler does. stop runs in the signal
-    # handler. Returns the block's value, the run's error.
+    # handler, so a program's own handling stays. A second SIGTERM goes to
+    # the default handler, which raises SignalException where interrupts are
+    # allowed (Thread.handle_interrupt), as without stop. stop runs in the
+    # signal handler. Returns the block's value, the run's error.
     def stoppable
       source = @pipeline.source
       return yield unless source.respond_to?(:stop) && Thread.current.equal?(Thread.main)
 
       stopped = false
+      previous = nil
       handler = proc do
-        raise SignalException, "TERM" if stopped
-
-        stopped = true
-        source.stop
+        if stopped
+          Signal.trap("TERM", previous)
+          Process.kill("TERM", Process.pid)
+        else
+          stopped = true
+          source.stop
+        end
       end
       previous = Signal.trap("TERM", handler)
       unless DEFAULT_HANDLERS.include?(previous)
