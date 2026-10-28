@@ -54,8 +54,10 @@ partial batch, so a source yields it when it waits, not after every record.
 A source that waits can have `stop`. On SIGTERM the engine calls it, and the run ends as if the source had ended: the
 records read are written and the status is `:ok`, so `metacrunch run` exits with 0. A second SIGTERM stops at once, as
 without `stop`. The engine calls `stop` in a signal handler, so it must only set a flag that `each` checks: no I/O, no
-logging, no Mutex. This holds for runs in the main thread whose program has not trapped SIGTERM itself, which
-includes every run of `metacrunch`; a program with its own handler (a job server, a web server) keeps it.
+logging, no Mutex. Sinks that have `stop` are told as well, so a sink that waits (a queue writer while its queue is
+full) gives up instead of holding the run. This holds for runs in the main thread whose program has not trapped
+SIGTERM itself, which includes every run of `metacrunch`; a program with its own handler (a job server, a web server)
+keeps it.
 
 `Metacrunch::JsonLines::Reader.new(targets)` reads JSON Lines from a path, `-` for stdin, an IO or an Array of them;
 gzip files and tar archives are unpacked whatever their names (see [Files](files.md)). A source can yield
@@ -121,9 +123,10 @@ steps directly: `map(&method(:Integer))`. A step written as `->(record, ctx = ni
 
 ## Sinks
 
-Any object with `#write(record)`. Optional `#write_batch(records)`, `#open(context)`, `#flush` and `#close`. Sinks that
-accept a second argument get the (read-only) context: `write(record, ctx)`, `write_batch(records, ctxs)`. A sink that
-writes files is best built on `Metacrunch::Output` (see [Files](files.md)).
+Any object with `#write(record)`. Optional `#write_batch(records)`, `#open(context)`, `#flush`, `#stop` (see
+[Sources](#sources)) and `#close`. Sinks that accept a second argument get the (read-only) context: `write(record,
+ctx)`, `write_batch(records, ctxs)`. A sink that writes files is best built on `Metacrunch::Output` (see
+[Files](files.md)).
 
 ```ruby
 sink     Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
@@ -132,11 +135,11 @@ failures Metacrunch::JsonLines::ContextWriter.new("failures.jsonl")   # failed r
 ```
 
 With `batch:` the sink gets `write_batch` calls with up to that many records; the rest is written at the end, also
-when the job aborts or is interrupted, so `batch:` never changes which records arrive. A source that yields
-`Metacrunch::FLUSH` has the buffered records written earlier (see [Sources](#sources)), and then calls the sink's
-`flush`, if it has one, so a sink that buffers itself writes its buffer too: the JSON Lines writers flush their file
-or stream. One object used as both
-`sink` and `rejects` (or `failures`) is opened and closed once.
+when the job aborts or is interrupted, so `batch:` never changes which records arrive. When the source yields
+`Metacrunch::FLUSH` (see [Sources](#sources)), the buffered records are written at once, and the engine then calls
+the sink's `flush`, if it has one, so a sink that buffers itself writes its buffer too: the JSON Lines writers flush
+their file or stream. One object used as both `sink` and `rejects` (or `failures`) is opened, flushed, stopped and
+closed once.
 
 `Metacrunch::JsonLines::Writer.new(target)` writes JSON Lines to a path (`.gz` is compressed), `-` for stdout or an
 IO, and refuses values that are not JSON types. `Metacrunch::JsonLines::ContextWriter` writes every record with its

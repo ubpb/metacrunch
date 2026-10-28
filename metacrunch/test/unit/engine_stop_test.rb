@@ -30,6 +30,17 @@ class EngineStopTest < Minitest::Test
 
   end
 
+  # A sink that notes stop, as one that waits (a queue writer that pauses) does.
+  class StoppableSink < CollectingSink
+
+    attr_reader :stopped
+
+    def stop
+      @stopped = true
+    end
+
+  end
+
   # A source that notes the handler of SIGTERM while it is read.
   class Probe
 
@@ -53,6 +64,10 @@ class EngineStopTest < Minitest::Test
 
     assert_equal ["ok", [1, 2], 0], [outcome["status"], outcome["records"], outcome["exitstatus"]]
     assert_includes outcome["log"], "SIGTERM: the source stopped reading; the records read were written"
+  end
+
+  def test_sigterm_stops_the_sinks_that_have_stop_too
+    assert run_and_terminate["sink_stopped"]
   end
 
   def test_with_workers_a_sigterm_to_the_main_process_ends_the_run_normally
@@ -233,14 +248,14 @@ class EngineStopTest < Minitest::Test
   end
 
   def child_run(executor, ready, ignore_stop)
-    target = CollectingSink.new
+    target = StoppableSink.new
     log = StringIO.new
     pipeline = build_pipeline(logger: Logger.new(log)) do
       source Stoppable.new(ready, ignore_stop:)
       sink target
     end
     result = Metacrunch::Engine.new(pipeline, executor:).run
-    {"status" => result.status, "records" => target.records, "log" => log.string}
+    {"status" => result.status, "records" => target.records, "log" => log.string, "sink_stopped" => target.stopped}
   rescue SignalException => e
     {"signal" => e.message, "records" => target.records}
   end

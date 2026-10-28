@@ -36,7 +36,9 @@ module Metacrunch
     private
 
     # Lets SIGTERM stop a source that has stop: the run then ends as if the
-    # source ended. Only in the main thread and when SIGTERM has its default
+    # source ended. Sinks that have stop are told too, so one that waits (a
+    # queue that is full) gives up instead of holding the run. Only in the
+    # main thread and when SIGTERM has its default
     # handler, so a program's own handling stays. A second SIGTERM goes to
     # the default handler, which raises SignalException where interrupts are
     # allowed (Thread.handle_interrupt), as without stop. stop runs in the
@@ -54,6 +56,7 @@ module Metacrunch
         else
           stopped = true
           source.stop
+          stoppable_sinks.each(&:stop)
         end
       end
       previous = Signal.trap("TERM", handler)
@@ -70,6 +73,10 @@ module Metacrunch
       end
       @pipeline.logger.info(STOPPED) if stopped && error.nil?
       error
+    end
+
+    def stoppable_sinks
+      sinks.map(&:sink).uniq(&:__id__).select { it.respond_to?(:stop) }
     end
 
     # Tells the monitor about the run. stop runs in any case, also after an
