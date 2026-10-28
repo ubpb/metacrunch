@@ -31,21 +31,22 @@ class InvokerTest < Minitest::Test
       end
     RUBY
     "jobs/stopped.rb" => <<~RUBY,
-      # A source that sends SIGTERM to its own process after one record and waits until it is stopped.
-      class SelfStopping
-        def each
-          yield 1
-          Process.kill("TERM", Process.pid)
-          sleep(0.01) until @stop
-        end
-
-        def stop = @stop = true
-      end
-
       Metacrunch.job "stopped" do
         params { param :output, String, required: true }
 
-        source SelfStopping.new
+        # A source that sends SIGTERM to its own process after one record and waits until it is stopped; anonymous,
+        # since every test loads the project again.
+        self_stopping = Class.new do
+          def each
+            yield 1
+            Process.kill("TERM", Process.pid)
+            sleep(0.01) until @stop
+          end
+
+          def stop = @stop = true
+        end
+
+        source self_stopping.new
         sink Metacrunch::JsonLines::Writer.new(params.output), batch: 10
       end
     RUBY
