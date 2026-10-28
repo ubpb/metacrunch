@@ -6,6 +6,20 @@ class SinkOutletTest < Minitest::Test
 
   include PipelineHelper
 
+  class BatchSink
+
+    attr_reader :batches
+
+    def initialize
+      @batches = []
+    end
+
+    def write(_record) = raise("write_batch expected")
+
+    def write_batch(records) = @batches << records
+
+  end
+
   def test_writes_each_kind_to_its_sink
     target = CollectingSink.new
     rejected = CollectingSink.new
@@ -60,6 +74,25 @@ class SinkOutletTest < Minitest::Test
 
     assert_equal [[1, 1], ["sink"]], [failed.records, failed.contexts.map { it.failure.step }.uniq]
     assert_equal "2 failed records exceed max_failures 1", error.message
+  end
+
+  # One object as sink and rejects has one adapter per role; a flush writes each adapter's buffer once.
+  def test_flush_writes_what_each_sink_buffers
+    target = BatchSink.new
+    failed = BatchSink.new
+    outlet = outlet(build_pipeline do
+      sink target, batch: 10
+      rejects target, batch: 10
+      failures failed, batch: 10
+      on_failure :skip
+    end)
+    outlet.deliver(1, context(1))
+    outlet.reject(2, context(2))
+    outlet.fail(3, failed_context(3))
+    outlet.flush
+    outlet.flush
+
+    assert_equal [[[1], [2]], [[3]]], [target.batches, failed.batches]
   end
 
   private

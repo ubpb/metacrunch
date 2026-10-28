@@ -46,6 +46,11 @@ source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record[
 
 `id:` gives every record an id for logs and errors.
 
+A source that waits for data, such as a queue, can yield `Metacrunch::FLUSH` instead of a record: the records it
+yielded before are written at once, also those a sink holds for `batch:` and those in a worker's batch (see
+[Workers](workers.md)). `FLUSH` is no record: it has no position and counts toward no limit. Each one costs the sinks a
+partial batch, so a source yields it when it waits, not after every record.
+
 `Metacrunch::JsonLines::Reader.new(targets)` reads JSON Lines from a path, `-` for stdin, an IO or an Array of them;
 gzip files and tar archives are unpacked whatever their names (see [Files](files.md)). A source can yield
 `Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines that are not
@@ -121,7 +126,8 @@ failures Metacrunch::JsonLines::ContextWriter.new("failures.jsonl")   # failed r
 ```
 
 With `batch:` the sink gets `write_batch` calls with up to that many records; the rest is written at the end, also
-when the job aborts or is interrupted, so `batch:` never changes which records arrive. One object used as both
+when the job aborts or is interrupted, so `batch:` never changes which records arrive. A source that yields
+`Metacrunch::FLUSH` has the buffered records written earlier (see [Sources](#sources)). One object used as both
 `sink` and `rejects` (or `failures`) is opened and closed once.
 
 `Metacrunch::JsonLines::Writer.new(target)` writes JSON Lines to a path (`.gz` is compressed), `-` for stdout or an

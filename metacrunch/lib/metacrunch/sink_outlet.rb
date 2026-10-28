@@ -19,6 +19,11 @@ module Metacrunch
       @sink&.failure_handler = method(:sink_failed)
     end
 
+    # Writes what the sinks buffer (a FLUSH of the source), each once.
+    def flush
+      [@sink, @rejects, @failures].compact.uniq(&:__id__).each(&:flush)
+    end
+
     def deliver(record, ctx)
       @sink&.write(record, ctx)
     end

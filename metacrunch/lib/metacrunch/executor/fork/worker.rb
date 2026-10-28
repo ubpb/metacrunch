@@ -146,10 +146,10 @@ module Metacrunch
         # reads no frame of this worker after that one.
         def process_batches(input)
           while (batch = Frame.read(input))
-            positions, records = batch
+            positions, records, flush = batch
             error = process(positions, records)
             close_steps if error
-            error = send_frame(:batch, error:)
+            error = send_frame(:batch, error:, flush:)
             return error if error
           end
           nil
@@ -179,11 +179,14 @@ module Metacrunch
         end
 
         # Writes a frame and clears the events. A :batch frame carries what
-        # the batch counted. Returns the frame's error, which Dump.frame sets
-        # if a record could not be dumped.
-        def send_frame(type, error: nil)
+        # the batch counted, and flush: true for a batch the parent sent to
+        # flush. Returns the frame's error, which Dump.frame sets if a record
+        # could not be dumped.
+        def send_frame(type, error: nil, flush: nil)
           stats = type == :batch ? @stats.take : nil
-          data, error = Dump.frame({type:, events: @events, stats:, error:})
+          frame = {type:, events: @events, stats:, error:}
+          frame[:flush] = true if flush
+          data, error = Dump.frame(frame)
           Frame.write(@output, data)
           @events.clear
           error

@@ -143,6 +143,14 @@ class ExecutorForkWorkerTest < Minitest::Test
     assert_match(/\Arecord at position 2 cannot be sent from a worker/, frames[1][:error].message)
   end
 
+  def test_a_batch_marked_to_flush_gives_a_frame_marked_to_flush
+    frames = run_worker([[[1], [10]], [[2], [20], true], [[], [], true]]) { sink CollectingSink.new }
+    batches = frames.select { it[:type] == :batch }
+
+    assert_equal([nil, true, true], batches.map { it[:flush] })
+    assert_equal([1, 1, 0], batches.map { it[:events].size })
+  end
+
   private
 
   def run_worker(batches, logger: SILENT_LOGGER, &)
@@ -151,12 +159,14 @@ class ExecutorForkWorkerTest < Minitest::Test
 
   # Runs a worker in this process: writes the batches to its input (each
   # record dumped on its own, as Run does), then returns the frames it
-  # wrote. The frames of these tests fit in a pipe
+  # wrote. A third element true marks a batch to flush. The frames of these tests fit in a pipe
   # buffer, so nothing has to read while the worker runs.
   def drive(pipeline, batches)
     input, feed = IO.pipe
     results, output = IO.pipe
-    batches.each { |positions, records| Frame.write(feed, Marshal.dump([positions, records.map { Marshal.dump(it) }])) }
+    batches.each do |positions, records, *flush|
+      Frame.write(feed, Marshal.dump([positions, records.map { Marshal.dump(it) }, *flush]))
+    end
     feed.close
     begin
       Metacrunch::Executor::Fork::Worker.new(pipeline).run(input, output)

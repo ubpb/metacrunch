@@ -73,7 +73,8 @@ module Metacrunch
         end
 
         # Runs in the feeder thread: reads the source and sends batch k to
-        # worker k mod N, then closes the input of every worker. Returns the
+        # worker k mod N, then closes the input of every worker. A FLUSH sends
+        # the batch at once, also an empty one, marked to flush. Returns the
         # exception that ended the source, or nil.
         def feed
           Thread.current.report_on_exception = false
@@ -81,7 +82,8 @@ module Metacrunch
           @positions = []
           @records = []
           catch(:worker_gone) do
-            Inline.each_record(@pipeline.source, limit: @pipeline.limit, select: @select) do |record, position|
+            flush = -> { send_batch(flush: true) }
+            Inline.each_record(@pipeline.source, limit: @pipeline.limit, select: @select, flush:) do |record, position|
               add(record, position)
             end
             send_batch
@@ -107,13 +109,14 @@ module Metacrunch
                        "with --workers, records must be Marshal-able (e.g. parse XML in a step, not in the source)"
         end
 
-        # Sends the batch to the next worker. If that worker is gone, it ended
-        # after an error, which the main thread reports when it reaches that
-        # batch; the feeding stops.
-        def send_batch
-          return if @records.empty?
+        # Sends the batch to the next worker; flush: true marks it, so the
+        # main thread writes what the sinks buffer once it applied the batch.
+        # If that worker is gone, it ended after an error, which the main
+        # thread reports when it reaches that batch; the feeding stops.
+        def send_batch(flush: false)
+          return if @records.empty? && !flush
 
-          Frame.write(@handles[@batch % @workers].input, Marshal.dump([@positions, @records]))
+          Frame.write(@handles[@batch % @workers].input, Marshal.dump([@positions, @records, *(true if flush)]))
           @batch += 1
           @positions = []
           @records = []
@@ -131,6 +134,7 @@ module Metacrunch
             return finish(handle, frame) if frame[:type] == :done
 
             raise_error(frame)
+            @outlet.flush if frame[:flush]
             batch += 1
           end
         end

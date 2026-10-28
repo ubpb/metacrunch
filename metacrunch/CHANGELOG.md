@@ -32,6 +32,8 @@ live in this repository and share metacrunch's version.
   `sink` and follow the failure policy. `sink` and `source` are reserved step names.
 - Run results with stats per step and reason; `profile` for step timing.
 - `flat_map` streams its children; batched sinks are flushed after an abort, on Ctrl-C and on SIGTERM.
+- A source that waits for data yields `Metacrunch::FLUSH` to have the records it yielded written at once: the workers
+  get their partial batch, the sinks write what they buffer for `batch:`.
 - The CLI ends by the signal that stopped a job (exit status 130 for SIGINT, 143 for SIGTERM).
 - Steps and sinks get the context only for a second required parameter, so `map(&method(:Integer))` works.
 - Job files are loaded again only when they change.

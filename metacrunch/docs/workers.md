@@ -33,7 +33,8 @@ than it saves: 8 workers handled 0.5 M records/s, inline 2.8 M records/s.
   inherit it from the main process, and `--help` does not build it (see [What runs when](jobs.md#what-runs-when)). Steps
   are opened after the `before` hooks, also without workers.
 - Records are sent in batches of 100, so a slow source (records trickling in through a pipe) delays a record until
-  its batch is full. Each process holds a few batches: with records of 1 MB, the main process needs several hundred
+  its batch is full, unless the source yields `Metacrunch::FLUSH` (see [Sources](jobs.md#sources)), which sends the
+  batch at once. Each process holds a few batches: with records of 1 MB, the main process needs several hundred
   MB more than without workers.
 - The source is read in a thread of its own. A source that relies on thread-local state (`Thread.current[...]`,
   e.g. a database connection per thread) or that continues an external enumerator (`Enumerator#next`) begun in

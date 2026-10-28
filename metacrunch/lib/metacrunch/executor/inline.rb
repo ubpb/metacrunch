@@ -13,11 +13,14 @@ module Metacrunch
       # select: callable (record, position); only records it accepts are
       # yielded, positions still count every record. limit: stop after this
       # many yielded records; `break` lets the source's ensure blocks run.
-      def self.each_record(source, limit: nil, select: nil)
+      # flush: called for each FLUSH the source yields, which is no record.
+      def self.each_record(source, limit: nil, select: nil, flush: nil)
         position = 0
         yielded = 0
         source.each do |*values|
           record = values.size <= 1 ? values.first : values
+          next flush&.call if record.equal?(FLUSH)
+
           position += 1
           next if select && !select.call(record, position)
 
@@ -37,7 +40,8 @@ module Metacrunch
         processor = Processor.new(pipeline, stats:, outlet:, observer:)
         begin
           processor.open
-          Inline.each_record(pipeline.source, limit: pipeline.limit, select:) do |record, position|
+          flush = -> { outlet.flush }
+          Inline.each_record(pipeline.source, limit: pipeline.limit, select:, flush:) do |record, position|
             processor.call(record, position)
           end
         ensure
