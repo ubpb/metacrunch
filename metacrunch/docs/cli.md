@@ -85,4 +85,6 @@ command it binds the parameters and runs nothing; with `--params` and `-e` it ch
 | 143 | terminated (SIGTERM) | the same |
 
 After Ctrl-C or SIGTERM the running job writes what its sinks have buffered, closes them, and `metacrunch` ends by the
-signal, so shells and `xargs` see the interruption. Data already written to stdout is kept.
+signal, so shells and `xargs` see the interruption. Data already written to stdout is kept. A job whose source has
+`stop`, such as a queue consumer, ends normally on SIGTERM instead, with exit code 0 (see
+[Sources](jobs.md#sources)); a second SIGTERM interrupts it.

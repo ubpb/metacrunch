@@ -41,6 +41,9 @@ than it saves: 8 workers handled 0.5 M records/s, inline 2.8 M records/s.
   `open` behaves differently than without workers.
 - After an abort in the middle of a batch, the stats may count up to 99 records after the point of abort; the
   records in the sinks are exact. With `profile true`, step times are summed over all workers.
+- A source that has `stop` ends on SIGTERM to the main process (`kill PID`, `docker stop`, systemd `KillMode=mixed`),
+  and the records the workers hold are written (see [Sources](jobs.md#sources)). Workers that get SIGTERM too, from a
+  signal to the whole process group, end at once, and so does the run.
 - `trace` always runs without workers. In tests, `Metacrunch::Testing.run(job, source: records, workers: 2)` checks
   that a job's records cross the process boundary.
 

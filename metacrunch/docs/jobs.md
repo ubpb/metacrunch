@@ -51,6 +51,12 @@ yielded before are written at once, also those a sink holds for `batch:` and tho
 [Workers](workers.md)). `FLUSH` is no record: it has no position and counts toward no limit. Each one costs the sinks a
 partial batch, so a source yields it when it waits, not after every record.
 
+A source that waits can have `stop`. On SIGTERM the engine calls it, and the run ends as if the source had ended: the
+records read are written and the status is `:ok`, so `metacrunch run` exits with 0. A second SIGTERM stops at once, as
+without `stop`. The engine calls `stop` in a signal handler, so it must only set a flag that `each` checks: no I/O, no
+logging, no Mutex. This holds for runs in the main thread whose program has not trapped SIGTERM itself, which
+includes every run of `metacrunch`; a program with its own handler (a job server, a web server) keeps it.
+
 `Metacrunch::JsonLines::Reader.new(targets)` reads JSON Lines from a path, `-` for stdin, an IO or an Array of them;
 gzip files and tar archives are unpacked whatever their names (see [Files](files.md)). A source can yield
 `Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines that are not

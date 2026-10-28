@@ -10,6 +10,10 @@ module Metacrunch
     # SystemExit) ends the process as usual.
     RECOVERABLE = [StandardError, ScriptError, SystemStackError].freeze
 
+    # What Signal.trap reports for SIGTERM when no program trapped it.
+    DEFAULT_HANDLERS = ["DEFAULT", "SYSTEM_DEFAULT"].freeze
+    STOPPED = "SIGTERM: the source stopped reading; the records read were written"
+
     # executor: Executor::Inline or Executor::Fork. observer: see Processor.
     # monitor: start(LiveStats) and stop. select: see
     # Executor::Inline.each_record.
@@ -24,12 +28,44 @@ module Metacrunch
     def run
       validate!
       @stats = StatsCollector.new(@pipeline.steps.map(&:name), profile: @pipeline.profile)
-      error = monitored { execute }
+      error = stoppable { monitored { execute } }
       @stats.count_written(@pipeline.sink.delivered) if @pipeline.sink
       run_after_hooks(Result.new(status: status_for(error), error:, stats: @stats.snapshot))
     end
 
     private
+
+    # Lets SIGTERM stop a source that has stop: the run then ends as if the
+    # source ended. Only in the main thread and when SIGTERM has its default
+    # handler, so a program's own handling stays; a second SIGTERM raises
+    # SignalException, as the default handler does. stop runs in the signal
+    # handler. Returns the block's value, the run's error.
+    def stoppable
+      source = @pipeline.source
+      return yield unless source.respond_to?(:stop) && Thread.current.equal?(Thread.main)
+
+      stopped = false
+      handler = proc do
+        raise SignalException, "TERM" if stopped
+
+        stopped = true
+        source.stop
+      end
+      previous = Signal.trap("TERM", handler)
+      unless DEFAULT_HANDLERS.include?(previous)
+        Signal.trap("TERM", previous)
+        return yield
+      end
+
+      begin
+        error = yield
+      ensure
+        current = Signal.trap("TERM", previous)
+        Signal.trap("TERM", current) unless current.equal?(handler)
+      end
+      @pipeline.logger.info(STOPPED) if stopped && error.nil?
+      error
+    end
 
     # Tells the monitor about the run. stop runs in any case, also after an
     # abort or a signal.
