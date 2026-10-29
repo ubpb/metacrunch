@@ -219,6 +219,18 @@ class InputDecodingTest < Minitest::Test
     assert_equal "is zstd compressed", Formats.detect("\x28\xB5\x2F\xFD".b).label
   end
 
+  def test_detect_split
+    assert_equal Formats::SPLIT, Formats.detect("PK\x07\x08PK\x03\x04".b)
+  end
+
+  # zip -s 0 cannot sit in a pipe: the hint names the tool only.
+  def test_split_archives_are_named_with_a_hint
+    path = write("part.z01", "PK\x07\x08PK\x03\x04rest".b)
+
+    assert_equal "#{path}: is part of a split zip archive, which metacrunch cannot read; join the parts first, " \
+                 "e.g. with zip -s 0", input_error(path)
+  end
+
   private
 
   def gzip(text) = Zlib.gzip(text)

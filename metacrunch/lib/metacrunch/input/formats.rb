@@ -20,7 +20,11 @@ module Metacrunch
       NUL = "\0".b
 
       # A format metacrunch recognizes but cannot read, by its magic bytes.
-      Unsupported = Data.define(:magics, :label, :advice, :tool) do
+      # pipe: false for a tool that cannot sit in a pipe; its hint names
+      # the tool only.
+      Unsupported = Data.define(:magics, :label, :advice, :tool, :pipe) do
+        def initialize(magics:, label:, advice:, tool:, pipe: true) = super
+
         def match?(head) = magics.any? { head.start_with?(it) }
 
         # True if head could be the start of one of the magics.
@@ -34,6 +38,7 @@ module Metacrunch
         end
 
         def hint(name, file)
+          return "with #{tool}" unless pipe
           return "#{tool} #{Shellwords.escape(file)} | metacrunch run job.rb -i -" if file
           return "... | #{tool} | metacrunch run job.rb -i -" if name == STDIO
 
@@ -43,11 +48,17 @@ module Metacrunch
 
       BZIP2 = ("1".."9").flat_map { |level| ["BZh#{level}1AY&SY", "BZh#{level}\x17rE8P\x90"] }.map(&:b).freeze
 
+      # The first part of a split archive (zip -s); also raised for the
+      # last part, whose end record names another disk.
+      SPLIT = Unsupported.new(magics: ["PK\x07\x08".b], label: "is part of a split zip archive",
+                              advice: "join the parts", tool: "zip -s 0", pipe: false)
+
       UNSUPPORTED = [
         Unsupported.new(BZIP2, "is bzip2 compressed", "decompress it", "bzip2 -dc"),
         Unsupported.new(["\xFD7zXZ\x00".b], "is xz compressed", "decompress it", "xz -dc"),
         Unsupported.new(["\x28\xB5\x2F\xFD".b], "is zstd compressed", "decompress it", "zstd -dc"),
-        Unsupported.new(["PK\x03\x04".b, "PK\x05\x06".b], "is a zip archive", "unpack it", "unzip -p")
+        Unsupported.new(["PK\x03\x04".b, "PK\x05\x06".b], "is a zip archive", "unpack it", "unzip -p"),
+        SPLIT
       ].freeze
 
       module_function
