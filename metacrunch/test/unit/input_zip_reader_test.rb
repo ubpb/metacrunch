@@ -113,13 +113,24 @@ class InputZipReaderTest < Minitest::Test
     assert_equal "a.zip: broken zip archive (ends early)", error.message
   end
 
+  # A maxed value that leads nowhere needs the Zip64 end record.
   def test_maxed_values_without_zip64
-    assert_equal "a.zip: broken zip archive (the Zip64 end record is missing)",
-                 error(ZipBuilder.build({"a.txt" => "a"}, count: 0xFFFF))
+    archive = ZipBuilder.build({"a.txt" => "a"})
+    archive[archive.rindex("PK\x05\x06".b) + 16, 4] = [0xFFFF_FFFF].pack("V")
+
+    assert_equal "a.zip: broken zip archive (the Zip64 end record is missing)", error(archive)
 
     archive = ZipBuilder.build([{name: "a.txt", data: "a", size: 0xFFFF_FFFF}])
 
     assert_equal "a.zip: broken zip archive (an entry lacks its Zip64 extra field)", error(archive)
+  end
+
+  # Python writes Zip64 only for more than 65,535 entries: 65,535 is a
+  # count of 0xFFFF in the classic end record, and a true one.
+  def test_exactly_65535_entries_without_zip64
+    entries = Array.new(65_535) { {name: "f#{it}", method: 0} }
+
+    assert_equal 65_535, reader(ZipBuilder.build(entries)).entries.size
   end
 
   def test_more_than_65535_entries_without_zip64

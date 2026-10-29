@@ -35,6 +35,7 @@ module Metacrunch
       S_IFLNK = 0o120000
       DOS_DIRECTORY = 0x10
       NO_END = "no end of central directory record"
+      MISPLACED = "the central directory does not end where the end record says"
       # Stored and deflate; the names of the others.
       READABLE = [0, 8].freeze
       METHODS = {9 => "Deflate64", 12 => "bzip2", 14 => "LZMA", 93 => "zstd", 95 => "xz", 98 => "PPMd"}.freeze
@@ -156,19 +157,17 @@ module Metacrunch
         end
       end
 
+      # Without Zip64 the classic values count, also at their maximum: an
+      # archive of exactly 65,535 entries has the count 0xFFFF. Only a
+      # maximum that leads nowhere needs the Zip64 end record.
       def locate(offset, record)
         disk, directory_disk, disk_count, count, size, directory_offset = record.unpack("x4vvvvVV")
-        directory = zip64(offset)
-        unless directory
-          if count == MAX16 || [size, directory_offset].include?(MAX32)
-            raise Mismatch, "the Zip64 end record is missing"
-          end
-
-          directory = Directory.new(count:, size:, offset: directory_offset, end_offset: offset, zip64: false,
-                                    one_disk: disk.zero? && directory_disk.zero? && disk_count == count)
-        end
+        directory = zip64(offset) ||
+                    Directory.new(count:, size:, offset: directory_offset, end_offset: offset, zip64: false,
+                                  one_disk: disk.zero? && directory_disk.zero? && disk_count == count)
         unless directory.offset + directory.size == directory.end_offset
-          raise Mismatch, "the central directory does not end where the end record says"
+          maxed = !directory.zip64 && (count == MAX16 || [size, directory_offset].include?(MAX32))
+          raise Mismatch, maxed ? "the Zip64 end record is missing" : MISPLACED
         end
         raise split unless directory.one_disk
 
