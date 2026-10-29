@@ -1,14 +1,21 @@
 # frozen_string_literal: true
 
+require "tempfile"
+
 module Metacrunch
   # The documents of one or more targets, for sources and other readers:
-  # gzip and tar are detected by their content and unpacked, up to
+  # gzip, tar and zip are detected by their content and unpacked, up to
   # MAX_LAYERS deep. Not a source itself: it has each_document, not each.
   # Used from one thread; only #progress may be read from another one. See
   # docs/files.md.
   class Input
 
     MAX_LAYERS = 4
+
+    # A target that can be read at any offset, as a ZIP archive needs it:
+    # io from start; position: see Zip.
+    Seekable = Data.define(:io, :start, :position)
+    private_constant :Seekable
 
     # targets: a path (String or Pathname), "-" for stdin, an IO (anything
     # with readpartial or read), or a non-empty Array of these. Checks types
@@ -85,14 +92,31 @@ module Metacrunch
 
       io = target == STDIO ? $stdin : target
       name = Files.name(target)
-      layers(Stream.new(Raw.new(io, name)), name, nil, 0, &)
+      layers(Stream.new(Raw.new(io, name)), name, nil, 0, seekable(io), &)
     end
 
+    # A Seekable for an IO that can seek and knows its size (a File, a
+    # StringIO), from where it is; nil for pipes, sockets and stdin.
+    def seekable(io)
+      return unless [:seek, :pos, :size].all? { io.respond_to?(it) }
+
+      Seekable.new(io:, start: io.pos, position: nil)
+    rescue SystemCallError
+      nil
+    end
+
+    # For progress, the file's share is the bytes read, or the offset a
+    # ZIP archive was read up to, whichever is more, and its size at the
+    # end.
     def read_file(path, &)
       file = open_file(path)
       begin
+        before = @done
         count = ->(bytes) { @done += bytes } if @total
-        layers(Stream.new(Raw.new(file, path, count:)), path, path, 0, &)
+        position = ->(offset) { @done = [@done, before + offset].max } if @total
+        seekable = Seekable.new(io: file, start: 0, position:) if file.stat.file?
+        layers(Stream.new(Raw.new(file, path, count:)), path, path, 0, seekable, &)
+        @done = before + file.size if @total
       ensure
         file.close
       end
@@ -108,13 +132,15 @@ module Metacrunch
 
     # Yields the documents of stream. file: the path, for the hint of an
     # unsupported format on the outer layer of a file, else nil; depth: the
-    # layers of gzip and tar around stream.
-    def layers(stream, name, file, depth, &)
+    # layers of gzip, tar and zip around stream; seekable: the target of
+    # an outer layer, if it can seek.
+    def layers(stream, name, file, depth, seekable = nil, &)
       format = detect(stream)
       case format
       when :plain then document(stream, name, &)
       when :gzip then gzip(stream, name, depth, &)
       when :tar then tar(stream, name, depth, &)
+      when :zip then zip(stream, name, depth, seekable, &)
       else raise InputError, format.message(name, file)
       end
     end
@@ -151,8 +177,43 @@ module Metacrunch
       end
     end
 
+    # A ZIP archive's directory is at its end: a Seekable target is read
+    # directly, anything else is copied into a temporary file first, which
+    # is removed afterwards, also on errors and interrupts.
+    def zip(stream, name, depth, seekable, &)
+      deeper(name, depth)
+      if seekable
+        archive = Zip.new(seekable.io, name, start: seekable.start, position: seekable.position)
+        return zip_documents(archive, name, depth, &)
+      end
+
+      Tempfile.create("metacrunch-zip", binmode: true) do |copy|
+        spool(stream, copy, name)
+        zip_documents(Zip.new(copy, name), name, depth, &)
+      end
+    end
+
+    def spool(stream, copy, name)
+      IO.copy_stream(stream, copy)
+      copy.flush
+    rescue SystemCallError => e
+      raise InputError, "#{name}: #{Files.reason(e)}"
+    end
+
+    # A document read only in part is read to its end afterwards, to check
+    # it, as a tar member is.
+    def zip_documents(zip, name, depth, &)
+      zip.entries.each do |entry|
+        next unless entry.document?
+
+        member = zip.member(entry)
+        layers(Stream.new(member), "#{name}:#{entry.name}", nil, depth + 1, &)
+        member.drain
+      end
+    end
+
     def deeper(name, depth)
-      raise InputError, "#{name}: more than #{MAX_LAYERS} layers of gzip and tar" if depth == MAX_LAYERS
+      raise InputError, "#{name}: more than #{MAX_LAYERS} layers of gzip, tar and zip" if depth == MAX_LAYERS
     end
 
   end

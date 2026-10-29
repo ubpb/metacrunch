@@ -4,13 +4,15 @@ require "shellwords"
 
 module Metacrunch
   class Input
-    # Tells gzip, tar and the formats metacrunch cannot read from the first
-    # bytes of a document. Internal.
+    # Tells gzip, tar, zip and the formats metacrunch cannot read from the
+    # first bytes of a document. Internal.
     module Formats
 
       # How many bytes detection looks at: tar's magic ends at byte 262.
       PEEK = 262
       GZIP = "\x1F\x8B\x08".b
+      # A local file header, or the end record of an empty archive.
+      ZIP = ["PK\x03\x04".b, "PK\x05\x06".b].freeze
       TAR = "ustar".b
       TAR_AT = 257
       # A tar header starts with the member's name, 100 bytes padded with
@@ -31,8 +33,8 @@ module Metacrunch
         def possible?(head) = magics.any? { it.start_with?(head) }
 
         # file: the path of the file whose outer layer the format is; nil
-        # for stdin, IOs and documents inside gzip or tar, where a command
-        # on a file would decompress the wrong layer.
+        # for stdin, IOs and documents inside gzip, tar or zip, where a
+        # command on a file would decompress the wrong layer.
         def message(name, file)
           "#{name}: #{label}, which metacrunch cannot read; #{advice} first, e.g. #{hint(name, file)}"
         end
@@ -57,13 +59,12 @@ module Metacrunch
         Unsupported.new(BZIP2, "is bzip2 compressed", "decompress it", "bzip2 -dc"),
         Unsupported.new(["\xFD7zXZ\x00".b], "is xz compressed", "decompress it", "xz -dc"),
         Unsupported.new(["\x28\xB5\x2F\xFD".b], "is zstd compressed", "decompress it", "zstd -dc"),
-        Unsupported.new(["PK\x03\x04".b, "PK\x05\x06".b], "is a zip archive", "unpack it", "unzip -p"),
         SPLIT
       ].freeze
 
       module_function
 
-      # :gzip, :tar, :plain or an Unsupported, for head: the first PEEK
+      # :gzip, :tar, :zip, :plain or an Unsupported, for head: the first PEEK
       # bytes of a document, or fewer. complete: head is all there will be
       # (PEEK bytes, or the end of the document). Without it, nil means that
       # more bytes are needed to decide, so a slow pipe is not waited for
@@ -71,11 +72,12 @@ module Metacrunch
       def detect(head, complete: true)
         return :gzip if head.start_with?(GZIP)
         return :tar if head.byteslice(TAR_AT, TAR.bytesize) == TAR
+        return :zip if ZIP.any? { head.start_with?(it) }
 
         unsupported = UNSUPPORTED.find { it.match?(head) }
         return unsupported if unsupported
         return :plain if complete
-        return if GZIP.start_with?(head) || UNSUPPORTED.any? { it.possible?(head) } || tar?(head)
+        return if [GZIP, *ZIP].any? { it.start_with?(head) } || UNSUPPORTED.any? { it.possible?(head) } || tar?(head)
 
         :plain
       end

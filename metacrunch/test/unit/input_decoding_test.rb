@@ -50,7 +50,7 @@ class InputDecodingTest < Minitest::Test
 
     assert_equal "x", content(write("four.gz", four))
     error = assert_raises(Metacrunch::InputError) { documents(path) }
-    assert_equal "#{path}: more than 4 layers of gzip and tar", error.message
+    assert_equal "#{path}: more than 4 layers of gzip, tar and zip", error.message
   end
 
   def test_broken_and_truncated_gzip
@@ -104,9 +104,7 @@ class InputDecodingTest < Minitest::Test
   def test_unsupported_formats_are_named_with_a_hint
     {"BZh91AY&SY" => "is bzip2 compressed, which metacrunch cannot read; decompress it first, e.g. bzip2 -dc",
      "\xFD7zXZ\x00" => "is xz compressed, which metacrunch cannot read; decompress it first, e.g. xz -dc",
-     "\x28\xB5\x2F\xFD" => "is zstd compressed, which metacrunch cannot read; decompress it first, e.g. zstd -dc",
-     "PK\x03\x04" => "is a zip archive, which metacrunch cannot read; unpack it first, e.g. unzip -p",
-     "PK\x05\x06" => "is a zip archive, which metacrunch cannot read; unpack it first, e.g. unzip -p"}
+     "\x28\xB5\x2F\xFD" => "is zstd compressed, which metacrunch cannot read; decompress it first, e.g. zstd -dc"}
       .each do |head, text|
       path = write("data", "#{head}rest".b)
       error = assert_raises(Metacrunch::InputError) { documents(path) }
@@ -217,6 +215,12 @@ class InputDecodingTest < Minitest::Test
 
   def test_detect_unsupported_formats
     assert_equal "is zstd compressed", Formats.detect("\x28\xB5\x2F\xFD".b).label
+  end
+
+  def test_detect_zip
+    assert_equal :zip, Formats.detect("PK\x03\x04".b)
+    assert_equal :zip, Formats.detect("PK\x05\x06".b)
+    assert_nil Formats.detect("PK".b, complete: false)
   end
 
   def test_detect_split

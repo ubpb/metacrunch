@@ -163,7 +163,7 @@ class InputTarTest < Minitest::Test
     path = write("deep.tar", data)
     error = assert_raises(Metacrunch::InputError) { documents(path) }
 
-    assert_equal "#{path}:a: more than 4 layers of gzip and tar", error.message
+    assert_equal "#{path}:a: more than 4 layers of gzip, tar and zip", error.message
   end
 
   def test_breaking_out_of_a_nested_member_closes_the_file_quietly
