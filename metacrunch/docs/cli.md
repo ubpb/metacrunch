@@ -30,7 +30,7 @@ file. The CLI does not change the working directory: relative paths are relative
 | `-e`, `--environment NAME` | The [environment](environments.md): its credentials and its section of the params file (default: `METACRUNCH_ENV`, else the default environment) |
 | `--params FILE` | Parameter values from FILE, the section of the environment (see [Parameter files](jobs.md#parameter-files)) |
 | `--credentials DIR` | Credentials directory (default: `METACRUNCH_CREDENTIALS`, then `.metacrunch/` above the job file or, for a name, above the `Metacrunchfile`, then `~/.metacrunch/`) |
-| `-i`, `--input PATH` | Read JSON Lines from PATH (`-` for stdin; gzip and tar are unpacked) instead of the job's source |
+| `-i`, `--input PATH` | Read JSON Lines from PATH (`-` for stdin; gzip, tar and zip are unpacked) instead of the job's source |
 | `-o`, `--output PATH` | Write JSON Lines to PATH (`-` for stdout) instead of the job's sink |
 | `--rejects PATH`, `--failures PATH` | Write rejected or failed records with their context; both may name the same file |
 | `-n`, `--limit N` | Process only the first N source records |

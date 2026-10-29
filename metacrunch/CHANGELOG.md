@@ -43,11 +43,13 @@ metacrunch-redis live in this repository and share metacrunch's version.
 - Job files are loaded again only when they change.
 - Unix pipes: a job without source reads JSON Lines from stdin, a job without sink writes them to stdout.
 - `Metacrunch::JsonLines` reader and writers; `Metacrunch::InvalidRecord` for records a source cannot read. The reader
-  takes Arrays of files and reads gzip and tar archives whatever their names, also on stdin (`-i dump.tar.gz`).
-- `Metacrunch::Input` and `Metacrunch::Output` for sources and sinks: paths, `-`, IOs (and Arrays for input); gzip and
-  tar detected by content and unpacked; bzip2, xz, zstd and zip named in the error; all paths checked before reading;
+  takes Arrays of files and reads gzip, tar and zip archives whatever their names, also on stdin (`-i dump.tar.gz`).
+- `Metacrunch::Input` and `Metacrunch::Output` for sources and sinks: paths, `-`, IOs (and Arrays for input); gzip, tar
+  and zip detected by content and unpacked; bzip2, xz and zstd named in the error; all paths checked before reading;
   progress; a closed pipe ends the run as SIGPIPE. Problems raise `Metacrunch::InputError` and
   `Metacrunch::OutputError` with the file name. `metacrunch generate source|sink` builds on them.
+- `Metacrunch::Input` reads zip archives: every file is a document, also on stdin and inside gzip or tar; Office,
+  OpenDocument and EPUB files are refused with a hint.
 - `run` options to replace the source and sinks (`-i`, `-o`, `--rejects`, `--failures`), `--limit`, `--on-failure`,
   `--max-failures`, `--stats` and a progress display.
 - `metacrunch trace` shows what each step does to a record; `metacrunch check` validates a job; `metacrunch new`

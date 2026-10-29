@@ -19,10 +19,11 @@ A target is a path (String or Pathname), `"-"` for stdin or an IO (anything with
 Array of them, read in order. `new` only checks the types; nothing is opened before `each_document`. Directories and
 glob patterns are no targets: pass `Dir.glob(root.join("data/*.jsonl.gz")).sort` to choose files and their order.
 
-`each_document` yields one stream per document: a plain or gzip file is one document, a tar archive one per regular
-member. The stream's methods return binary Strings; the format sets the encoding
+`each_document` yields one stream per document: a plain or gzip file is one document, a tar or zip archive one per
+file in it. The stream's methods return binary Strings; the format sets the encoding
 (`line.force_encoding(Encoding::UTF_8)`). A stream is valid until the next document. `name` labels the document in
-messages: the path as given, `-` for stdin, `dump.tar.gz:records/0001.xml` for a member.
+messages: the path as given, `-` for stdin, `dump.tar.gz:records/0001.xml` or `export.zip:data/titles.csv` for a file
+in an archive.
 
 ### What is unpacked
 
@@ -32,11 +33,20 @@ The first bytes decide, not the name, for files, stdin and IOs alike:
 |---|---|
 | gzip | All members are read, as `zcat` reads files written with `cat a.gz b.gz` |
 | tar | Every regular member; directories, links and members whose names start with `.` (such as the `._name` files of macOS `tar`) are skipped |
-| bzip2, xz, zstd, zip | An error that names the format and the command to decompress it first, e.g. `zstd -dc dump.jsonl.zst \| metacrunch run job.rb -i -` |
+| zip | Every file, in the order of the archive's directory; directories, links and files whose names start with `.` (such as the `__MACOSX/._name` files of macOS) are skipped |
+| Excel, Word, PowerPoint, EPUB, OpenDocument | An error: they are zip archives, but their parts are no documents (`data.xlsx: is an Excel workbook, which metacrunch cannot read; save it as CSV first`) |
+| bzip2, xz, zstd | An error that names the format and the command to decompress it first, e.g. `zstd -dc dump.jsonl.zst \| metacrunch run job.rb -i -` |
 | anything else | The document as it is |
 
-Unpacked content is checked again, so `.tar.gz`, a tar of `.gz` files and gzip inside gzip work, up to 4 layers. On
-a slow pipe, detection does not hold back the first line of a line-based format such as JSON Lines.
+Unpacked content is checked again, so `.tar.gz`, a tar of `.gz` files, a zip of `.gz` files, a zip inside a `.tar.gz`
+and gzip inside gzip work, up to 4 layers. On a slow pipe, detection does not hold back the first line of a
+line-based format such as JSON Lines.
+
+A zip archive keeps its directory at its end, so it is read with random access:
+- a file, or an IO that can seek (an open File, a StringIO, from its position), directly;
+- stdin, a pipe, a FIFO and a zip archive inside gzip, tar or zip through a temporary file in `Dir.tmpdir` (which
+  `TMPDIR` sets). The copy needs disk space for the archive and is removed when the archive is done, also after an
+  error or Ctrl-C.
 
 ### Errors
 
@@ -48,6 +58,8 @@ data/b.jsonl: no such file
 dump.jsonl.gz: broken gzip data (invalid compressed data -- format violated)
 dump.jsonl.gz: data after the end of the gzip data
 dump.tar.gz:records/7.xml: broken tar archive (ends inside the member's data)
+export.zip:data/titles.csv: broken zip archive (wrong CRC32)
+export.zip:data/titles.csv: is encrypted, which metacrunch cannot read; decrypt it first, e.g. 7z x export.zip
 ```
 
 All paths are checked before the first document, so a typo in the last of several files ends the run before anything
@@ -56,14 +68,20 @@ for example, are errors, not shorter data, and so are wrong gzip CRCs and tar he
 exactly between two members cannot be told from a complete one, since its end marker is optional; it is read as it
 is, as `tar` reads it.
 
+A zip archive is checked as strictly: a wrong CRC32 or size, a truncated archive, a broken directory and files that
+share data (a trick of zip bombs) are errors. Bytes after the end of an archive are accepted, as `unzip` accepts them.
+An archive with files that are encrypted or compressed with another method than deflate (Deflate64, bzip2, LZMA,
+zstd, xz, PPMd) is refused before its first document, with a hint to unpack it with 7z. A file read only in part is
+still read to its end and checked, as a tar member is.
+
 The hint for a format metacrunch cannot read names the command with the file (quoted for the shell) when the format is
-the file's outer layer, a pipe for stdin, and only the tool for IOs and for documents inside gzip or tar.
+the file's outer layer, a pipe for stdin, and only the tool for IOs and for documents inside gzip, tar or zip.
 
 ### Progress
 
 With only regular files as targets, `progress` is the share of their bytes read so far (for gzip, of the compressed
-bytes), counted in blocks of 64 KiB. A source that returns it from its own `progress` method feeds the progress display
-of `metacrunch run`. With stdin, an IO or a FIFO among the targets it is `nil`.
+bytes; for zip, up to the data read), counted in blocks of 64 KiB. A source that returns it from its own `progress`
+method feeds the progress display of `metacrunch run`. With stdin, an IO or a FIFO among the targets it is `nil`.
 
 ### Known limits
 
@@ -72,6 +90,13 @@ of `metacrunch run`. With stdin, an IO or a FIFO among the targets it is `nil`.
 - Old tar archives without the `ustar` mark (v7) are read as plain content.
 - GNU sparse members of a tar archive are skipped.
 - Members larger than 8 GiB, whose size tar stores in binary, raise an error.
+- zip archives: only stored and deflated files, no encryption and no split archives (`.z01`, ...). Data before an
+  archive (a self-extracting archive) is not read as zip.
+- File names in a zip archive are read as UTF-8, else as CP437, the code page of MS-DOS. Names written in other code
+  pages (CP850, CP866, CP932) appear wrongly in messages; the data is not affected.
+- A zip archive whose writer stored a size off by exactly 4 GiB, a bug of some writers, raises an error.
+- For a zip archive inside gzip or tar, progress moves on while the archive is copied, and then stands still while
+  its documents are read.
 
 ### A source on `Input`
 

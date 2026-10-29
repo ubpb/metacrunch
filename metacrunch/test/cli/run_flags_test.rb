@@ -62,7 +62,7 @@ class RunFlagsTest < Minitest::Test
   end
 
   def test_the_help_of_input_names_gzip_and_tar
-    assert_includes cli("help", "run")[1], "(gzip and tar are unpacked)"
+    assert_includes cli("help", "run")[1], "(gzip, tar and zip are unpacked)"
   end
 
   def test_rejects_and_failures_files_get_the_context

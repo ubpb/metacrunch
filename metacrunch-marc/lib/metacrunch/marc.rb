@@ -67,7 +67,7 @@ module Metacrunch
       # format its first bytes show (see Formats). Raises ParseError for
       # another format, and at the first record that cannot be read. Without
       # a block an Enumerator. Unlike the Reader it reads one document, takes
-      # no paths and unpacks no gzip or tar.
+      # no paths and unpacks no gzip, tar or zip.
       def each(input, normalize: nil, &block)
         check_input(input)
         check_normalize(normalize)

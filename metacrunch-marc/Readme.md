@@ -137,7 +137,7 @@ Metacrunch::Marc::Iso2709.each_raw(io_or_string) { ... }  # every record as a St
 
 `Metacrunch::Marc.parse` reads a record whatever its format, e.g. the Strings the [Reader](#reader) yields with
 `parse: false`. `Metacrunch::Marc.each` streams a document whatever its format, for code outside a job: unlike the
-[Reader](#reader) it reads one String or IO-like object, takes no paths, unpacks no gzip or tar and raises at the
+[Reader](#reader) it reads one String or IO-like object, takes no paths, unpacks no gzip, tar or zip and raises at the
 first record it cannot read. The format modules read their format only, so input in another format fails, and they
 also stream.
 
@@ -257,7 +257,7 @@ gives no records.
 
 A record that cannot be parsed becomes a `Metacrunch::InvalidRecord` and fails under the job's failure policy; the
 records after it are read. So does a record that the end of a file cuts off, e.g. after an interrupted download.
-Errors of a whole input (a missing file, broken or truncated gzip or tar data) stop the run with
+Errors of a whole input (a missing file, broken or truncated gzip, tar or zip data) stop the run with
 `Metacrunch::InputError` and the file name. The progress display shows how much of the files has been read.
 
 ### Writer

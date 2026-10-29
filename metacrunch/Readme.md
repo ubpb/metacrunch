@@ -71,7 +71,7 @@ end
 `metacrunch-csv` and `metacrunch-xlsx`, together with `Metacrunch::Input` and `Metacrunch::Output`, replace the 4.x
 gem `metacrunch-file`. Any other source or sink is a small class of your own (see [Sources](docs/jobs.md#sources) and
 [Sinks](docs/jobs.md#sinks)), built on
-`Metacrunch::Input` and `Metacrunch::Output`, which read gzip and tar and take care of stdin, stdout and pipes (see
+`Metacrunch::Input` and `Metacrunch::Output`, which read gzip, tar and zip and take care of stdin, stdout and pipes (see
 [Files](docs/files.md)).
 
 ## Quickstart: a job
@@ -301,7 +301,8 @@ See [The command line](docs/cli.md) for all options, pipes and exit codes, and [
 
 - [Jobs](docs/jobs.md): records, sources, steps, the record context, sinks, failures, hooks, parameters, secrets,
   params files, what runs when
-- [Files](docs/files.md): `Metacrunch::Input` and `Metacrunch::Output` for sources and sinks: gzip, tar, stdin, pipes
+- [Files](docs/files.md): `Metacrunch::Input` and `Metacrunch::Output` for sources and sinks: gzip, tar, zip, stdin,
+  pipes
 - [Transforms](docs/transforms.md): `use`, parameters, step names, testing a transform
 - [Projects, commands and gems](docs/projects.md): the `Metacrunchfile`, names, `new` and `generate`, `invoke`
 - [Testing](docs/testing.md): `Metacrunch::Testing.run` and `Metacrunch::Testing.invoke`

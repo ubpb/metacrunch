@@ -9,7 +9,7 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
 
 ### Added
 
-- `Metacrunch::Csv::Reader`, a source on `Metacrunch::Input` and Ruby's `csv`: files, stdin, IOs, gzip and tar; the
+- `Metacrunch::Csv::Reader`, a source on `Metacrunch::Input` and Ruby's `csv`: files, stdin, IOs, gzip, tar and zip; the
   options `col_sep:`, `quote_char:`, `encoding:` and `headers:`; Hash records with String keys and String values,
   `""` for empty and `nil` for missing fields; the byte order mark is removed and values are UTF-8; a row that cannot
   be read becomes a `Metacrunch::InvalidRecord`.
