@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "tempfile"
 
 module Metacrunch
@@ -187,10 +188,24 @@ module Metacrunch
         return zip_documents(archive, name, file, depth, &)
       end
 
-      Tempfile.create("metacrunch-zip", binmode: true) do |copy|
+      copy = temporary_file(name)
+      begin
         spool(stream, copy, name)
         zip_documents(Zip.new(copy, name), name, file, depth, &)
+      ensure
+        copy.close
+        FileUtils.rm_f(copy.path)
       end
+    end
+
+    # Errors in creating it are named; errors of the block that reads
+    # the documents are not, so only the creation is rescued.
+    def temporary_file(name)
+      Tempfile.create("metacrunch-zip", binmode: true)
+    rescue SystemCallError => e
+      raise InputError, "#{name}: #{Files.reason(e)}"
+    rescue ArgumentError => e # no temporary directory to write to
+      raise InputError, "#{name}: #{e.message}"
     end
 
     def spool(stream, copy, name)

@@ -167,6 +167,32 @@ class InputZipTest < Minitest::Test
     $stdin = original
   end
 
+  def test_an_error_creating_the_temporary_file_names_the_target
+    {Errno::EMFILE.new => "-: too many open files",
+     ArgumentError.new("could not find a temporary directory") => "-: could not find a temporary directory"}
+      .each do |exception, message|
+      original = $stdin
+      $stdin = piped(zip("a.csv" => "1\n"))
+      error = override(Tempfile, :create, ->(*, **) { raise exception }) do
+        assert_raises(Metacrunch::InputError) { documents("-") }
+      end
+
+      assert_equal message, error.message
+    ensure
+      $stdin = original
+    end
+  end
+
+  # An error of the block is the block's, not one of the temporary file.
+  def test_errors_of_the_block_are_not_renamed
+    error = assert_raises(Errno::EACCES) do
+      Input.new(piped(zip("a.csv" => "1\n"))).each_document { raise Errno::EACCES }
+    end
+
+    assert_kind_of SystemCallError, error
+    assert_equal 0, temporary_files
+  end
+
   def test_progress_of_a_zip_path
     input = Input.new(write("random.zip", zip("a.bin" => Random.new(1).bytes(4 * Input::Stream::BLOCK))))
     values = []

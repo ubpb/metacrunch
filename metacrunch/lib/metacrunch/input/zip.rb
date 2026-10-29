@@ -119,13 +119,16 @@ module Metacrunch
       def broken(reason) = Zip.broken(@name, reason)
 
       # Callers keep offset and length within the archive; an IO that
-      # gives less than its size said (a file that shrank) ends early.
+      # gives less than its size said (a file that shrank) ends early. A
+      # system error is named as Raw names it for gzip and tar.
       def read_at(offset, length)
         @io.seek(@start + offset)
         data = @io.read(length)
         raise broken("ends early") unless data && data.bytesize == length
 
         data.b
+      rescue SystemCallError => e
+        raise InputError, "#{@name}: #{Files.reason(e)}"
       end
 
       # The end record is the last one in the tail whose comment fits and
