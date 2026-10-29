@@ -318,13 +318,15 @@ module Metacrunch
       # thousandfold, so the inflater gets FIRST_INPUT bytes at first, less
       # after a chunk that gave more than a block, and more, up to
       # MAX_INPUT, after one that gave less: memory stays flat for a deflate
-      # bomb too. At the end the size and the CRC32 are checked. Internal.
+      # bomb too, since a call inflates at most about MAX_INPUT * 1,032
+      # bytes (4 MiB). At the end the size and the CRC32 are checked.
+      # Internal.
       class Member
 
         BLOCK = 65_536
         FIRST_INPUT = 1024
         MIN_INPUT = 64
-        MAX_INPUT = 16_384
+        MAX_INPUT = 4096
 
         # read: called with an offset and a length, returns those bytes of
         # the archive; offset: where the data starts; position: see Zip.
