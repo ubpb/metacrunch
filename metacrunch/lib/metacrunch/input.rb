@@ -203,16 +203,23 @@ module Metacrunch
     def temporary_file(name)
       Tempfile.create("metacrunch-zip", anonymous: true).binmode
     rescue SystemCallError => e
-      raise InputError, "#{name}: #{Files.reason(e)}"
+      raise copy_error(name, e)
     rescue ArgumentError => e # no temporary directory to write to
       raise InputError, "#{name}: #{e.message}"
     end
 
+    # Errors in reading stream are InputErrors already (Raw); a system
+    # error here is one of the copy.
     def spool(stream, copy, name)
       IO.copy_stream(stream, copy)
       copy.flush
     rescue SystemCallError => e
-      raise InputError, "#{name}: #{Files.reason(e)}"
+      raise copy_error(name, e)
+    end
+
+    # Names the copy and where it is, so a full disk points to TMPDIR.
+    def copy_error(name, error)
+      InputError.new("#{name}: #{Files.reason(error)} for a temporary copy in #{Dir.tmpdir} (TMPDIR)")
     end
 
     # Refuses Office files and unsupported entries before the first

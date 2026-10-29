@@ -60,6 +60,7 @@ dump.jsonl.gz: data after the end of the gzip data
 dump.tar.gz:records/7.xml: broken tar archive (ends inside the member's data)
 export.zip:data/titles.csv: broken zip archive (wrong CRC32)
 export.zip:data/titles.csv: is encrypted, which metacrunch cannot read; decrypt it first, e.g. 7z x export.zip
+-: no space left on device for a temporary copy in /tmp (TMPDIR)
 ```
 
 All paths are checked before the first document, so a typo in the last of several files ends the run before anything

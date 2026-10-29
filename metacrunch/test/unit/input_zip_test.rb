@@ -173,13 +173,13 @@ class InputZipTest < Minitest::Test
       assert_raises(Metacrunch::InputError) { documents("-") }
     end
 
-    assert_equal "-: no space left on device", error.message
+    assert_equal "-: no space left on device for a temporary copy in #{@tmp} (TMPDIR)", error.message
   ensure
     $stdin = original
   end
 
   def test_an_error_creating_the_temporary_file_names_the_target
-    {Errno::EMFILE.new => "-: too many open files",
+    {Errno::EMFILE.new => "-: too many open files for a temporary copy in #{@tmp} (TMPDIR)",
      ArgumentError.new("could not find a temporary directory") => "-: could not find a temporary directory"}
       .each do |exception, message|
       original = $stdin
