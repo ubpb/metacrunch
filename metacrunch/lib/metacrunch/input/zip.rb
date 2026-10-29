@@ -312,13 +312,17 @@ module Metacrunch
       end
 
       # The data of an entry, stored or deflated, as the source of a Stream:
-      # at most BLOCK bytes per call, also from a deflate bomb, since the
-      # inflater gets INPUT bytes at a time. At the end the size and the
-      # CRC32 are checked. Internal.
+      # at most BLOCK bytes per call. Deflate data can inflate a
+      # thousandfold, so the inflater gets FIRST_INPUT bytes at first, less
+      # after a chunk that gave more than a block, and more, up to
+      # MAX_INPUT, after one that gave less: memory stays flat for a deflate
+      # bomb too. At the end the size and the CRC32 are checked. Internal.
       class Member
 
         BLOCK = 65_536
-        INPUT = 16_384
+        FIRST_INPUT = 1024
+        MIN_INPUT = 64
+        MAX_INPUT = 16_384
 
         # read: called with an offset and a length, returns those bytes of
         # the archive; offset: where the data starts; position: see Zip.
@@ -330,6 +334,7 @@ module Metacrunch
           @position = position
           @left = entry.compressed_size
           @inflate = Zlib::Inflate.new(-Zlib::MAX_WBITS) if entry.compression == 8
+          @input = @inflate ? FIRST_INPUT : BLOCK
           @out = "".b
           @size = 0
           @crc = 0
@@ -355,11 +360,15 @@ module Metacrunch
         def fill
           return finish if @left.zero? || @inflate&.finished?
 
-          chunk = @read.call(@offset, [@left, @inflate ? INPUT : BLOCK].min)
+          chunk = @read.call(@offset, [@left, @input].min)
           @offset += chunk.bytesize
           @left -= chunk.bytesize
           @position&.call(@offset)
-          add(@inflate ? inflate(chunk) : chunk)
+          return add(chunk) unless @inflate
+
+          data = inflate(chunk)
+          @input = data.bytesize > BLOCK ? [@input / 2, MIN_INPUT].max : [@input * 2, MAX_INPUT].min
+          add(data)
         end
 
         def inflate(chunk)

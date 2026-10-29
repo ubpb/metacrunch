@@ -249,6 +249,22 @@ class InputZipReaderTest < Minitest::Test
     assert_equal 65_536, member.readpartial(10_000_000).bytesize
   end
 
+  # Zeros inflate a thousandfold: the inflater must not get much of them at
+  # once, or memory grows with the entry.
+  def test_inflating_a_bomb_holds_little_at_a_time
+    sizes = []
+    recorder = Module.new do
+      define_method(:inflate) { |*args, **opts| super(*args, **opts).tap { sizes << it.bytesize } }
+    end
+    Zlib::Inflate.prepend(recorder)
+    zip = reader(ZipBuilder.build([{name: "zeros", data: "\0" * (32 << 20)}]))
+
+    assert_equal 32 << 20, read_all(zip, zip.entries.first).bytesize
+    assert_operator sizes.max, :<=, 1_100_000
+  ensure
+    recorder&.send(:remove_method, :inflate)
+  end
+
   def test_entries_are_read_wherever_their_data_is
     zip = reader(ZipBuilder.build({"a.txt" => "a" * 100, "b.txt" => "b" * 100}, reverse: true))
 
