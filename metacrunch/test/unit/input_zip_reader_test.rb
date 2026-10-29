@@ -294,6 +294,15 @@ class InputZipReaderTest < Minitest::Test
     assert_equal "abc", read_all(zip, zip.entries.first)
   end
 
+  # Python refuses them, libarchive reads them: the central name counts,
+  # and the local one only for where the data starts.
+  def test_local_and_central_names_may_differ
+    zip = reader(ZipBuilder.build([{name: "a.txt", data: "abc", local_name: "a-much-longer-local-name.txt"}]))
+
+    assert_equal ["a.txt"], zip.entries.map(&:name)
+    assert_equal "abc", read_all(zip, zip.entries.first)
+  end
+
   def test_empty_entry
     zip = reader(ZipBuilder.build({"a.txt" => ""}))
 
