@@ -188,9 +188,110 @@ class InputZipTest < Minitest::Test
     assert_in_delta 1.0, input.progress
   end
 
+  def test_office_files_are_refused
+    path = write("data.xlsx", zip("[Content_Types].xml" => "x", "xl/workbook.xml" => "x"))
+
+    assert_equal "#{path}: is an Excel workbook, which metacrunch cannot read; save it as CSV first", error(path)
+    {"word/document.xml" => "is a Word document", "ppt/presentation.xml" => "is a PowerPoint presentation"}
+      .each do |part, label|
+      office = write("office.zip", zip("[Content_Types].xml" => "x", part => "x"))
+
+      assert_equal "#{office}: #{label}, which metacrunch cannot read; unpack it first, e.g. unzip #{office}",
+                   error(office)
+    end
+  end
+
+  def test_epub_and_opendocument_files_are_refused
+    epub = write("book.epub", zip("mimetype" => "application/epub+zip", "META-INF/container.xml" => "x",
+                                  "META-INF/manifest.xml" => "x"))
+    odt = write("text.odt", zip("mimetype" => "application/vnd.oasis.opendocument.text",
+                                "META-INF/manifest.xml" => "x"))
+
+    assert_equal "#{epub}: is an EPUB book, which metacrunch cannot read; unpack it first, e.g. unzip #{epub}",
+                 error(epub)
+    assert_equal "#{odt}: is an OpenDocument file, which metacrunch cannot read; unpack it first, e.g. unzip #{odt}",
+                 error(odt)
+  end
+
+  def test_other_packages_are_archives
+    nupkg = write("lib.nupkg", zip("[Content_Types].xml" => "x", "lib/a.dll" => "dll"))
+    jar = write("lib.jar", zip("META-INF/MANIFEST.MF" => "m", "a/B.class" => "c"))
+
+    assert_equal ["#{nupkg}:[Content_Types].xml", "#{nupkg}:lib/a.dll"], documents(nupkg).map(&:first)
+    assert_equal ["#{jar}:META-INF/MANIFEST.MF", "#{jar}:a/B.class"], documents(jar).map(&:first)
+  end
+
+  def test_office_files_inside_other_archives
+    path = write("dump.tar", tar("a.xlsx" => zip("[Content_Types].xml" => "x", "xl/workbook.xml" => "x")))
+
+    assert_equal "#{path}:a.xlsx: is an Excel workbook, which metacrunch cannot read; save it as CSV first",
+                 error(path)
+  end
+
+  def test_encrypted_entries
+    [{flags: 1}, {flags: 64}, {method: 99}].each do |options|
+      path = write("secret.zip", ZipBuilder.build([{name: "a.txt", data: "a", **options}]))
+
+      assert_equal "#{path}:a.txt: is encrypted, which metacrunch cannot read; decrypt it first, e.g. 7z x #{path}",
+                   error(path)
+    end
+  end
+
+  def test_other_compression_methods
+    {9 => "Deflate64", 12 => "bzip2", 14 => "LZMA", 93 => "zstd", 95 => "xz", 98 => "PPMd",
+     42 => "method 42"}.each do |method, label|
+      path = write("packed.zip", ZipBuilder.build([{name: "a.txt", data: "a", method:}]))
+
+      assert_equal "#{path}:a.txt: is compressed with #{label}, which metacrunch cannot read; unpack it first, " \
+                   "e.g. 7z x #{path}", error(path)
+    end
+  end
+
+  def test_unsupported_entries_are_refused_before_the_first_document
+    path = write("mixed.zip", ZipBuilder.build([{name: "a.txt", data: "a"}, {name: "b.txt", data: "b", method: 12}]))
+    yielded = []
+    assert_raises(Metacrunch::InputError) { Input.new(path).each_document { |_stream, name| yielded << name } }
+
+    assert_empty yielded
+  end
+
+  def test_skipped_entries_are_not_checked
+    path = write("skipped.zip", ZipBuilder.build([{name: "d/", flags: 1, method: 0}, {name: ".hidden", flags: 1},
+                                                  {name: "a.txt", data: "a"}]))
+
+    assert_equal [["#{path}:a.txt", "a"]], documents(path)
+  end
+
+  def test_an_encrypted_central_directory
+    path = write("hidden.zip", ZipBuilder.build([{name: "a.txt", data: "a", flags: 0x2000}]))
+
+    assert_equal "#{path}: is encrypted, which metacrunch cannot read; decrypt it first, e.g. 7z x #{path}",
+                 error(path)
+  end
+
+  def test_hints_inside_other_archives_and_on_stdin
+    tar_path = write("dump.tar", tar("a.zip" => ZipBuilder.build([{name: "x.txt", data: "x", method: 12}])))
+    original = $stdin
+    $stdin = piped(zip("[Content_Types].xml" => "x", "word/document.xml" => "x"))
+
+    assert_equal "#{tar_path}:a.zip:x.txt: is compressed with bzip2, which metacrunch cannot read; unpack it first, " \
+                 "e.g. with 7z", error(tar_path)
+    assert_equal "-: is a Word document, which metacrunch cannot read; unpack it first, e.g. with unzip", error("-")
+  ensure
+    $stdin = original
+  end
+
+  def test_paths_are_quoted_in_hints
+    path = write("my dump.zip", ZipBuilder.build([{name: "a.txt", data: "a", flags: 1}]))
+
+    assert error(path).end_with?("e.g. 7z x #{path.gsub(" ", "\\ ")}")
+  end
+
   private
 
   def zip(entries) = ZipBuilder.build(entries)
+
+  def error(target) = assert_raises(Metacrunch::InputError) { documents(target) }.message
 
   def documents(target)
     result = []

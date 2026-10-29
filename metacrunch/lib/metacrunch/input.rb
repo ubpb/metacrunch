@@ -140,7 +140,7 @@ module Metacrunch
       when :plain then document(stream, name, &)
       when :gzip then gzip(stream, name, depth, &)
       when :tar then tar(stream, name, depth, &)
-      when :zip then zip(stream, name, depth, seekable, &)
+      when :zip then zip(stream, name, file, depth, seekable, &)
       else raise InputError, format.message(name, file)
       end
     end
@@ -180,16 +180,16 @@ module Metacrunch
     # A ZIP archive's directory is at its end: a Seekable target is read
     # directly, anything else is copied into a temporary file first, which
     # is removed afterwards, also on errors and interrupts.
-    def zip(stream, name, depth, seekable, &)
+    def zip(stream, name, file, depth, seekable, &)
       deeper(name, depth)
       if seekable
         archive = Zip.new(seekable.io, name, start: seekable.start, position: seekable.position)
-        return zip_documents(archive, name, depth, &)
+        return zip_documents(archive, name, file, depth, &)
       end
 
       Tempfile.create("metacrunch-zip", binmode: true) do |copy|
         spool(stream, copy, name)
-        zip_documents(Zip.new(copy, name), name, depth, &)
+        zip_documents(Zip.new(copy, name), name, file, depth, &)
       end
     end
 
@@ -200,9 +200,11 @@ module Metacrunch
       raise InputError, "#{name}: #{Files.reason(e)}"
     end
 
-    # A document read only in part is read to its end afterwards, to check
-    # it, as a tar member is.
-    def zip_documents(zip, name, depth, &)
+    # Refuses Office files and unsupported entries before the first
+    # document. A document read only in part is read to its end afterwards,
+    # to check it, as a tar member is.
+    def zip_documents(zip, name, file, depth, &)
+      ZipCheck.check(zip, name, file)
       zip.entries.each do |entry|
         next unless entry.document?
 
@@ -225,3 +227,4 @@ require_relative "input/formats"
 require_relative "input/gzip"
 require_relative "input/tar"
 require_relative "input/zip"
+require_relative "input/zip_check"
