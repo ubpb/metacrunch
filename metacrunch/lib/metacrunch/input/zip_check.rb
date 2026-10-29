@@ -28,8 +28,6 @@ module Metacrunch
         Package.new("is an OpenDocument file", "mimetype", "META-INF/manifest.xml", "unpack it", "unzip")
       ].freeze
 
-      METHODS = {9 => "Deflate64", 12 => "bzip2", 14 => "LZMA", 93 => "zstd", 95 => "xz", 98 => "PPMd"}.freeze
-      READABLE = [0, 8].freeze
       ENCRYPTED_DIRECTORY = 0x2000
       # The tool for encrypted entries and other methods, and its command.
       SEVEN_ZIP = ["7z", "7z x"].freeze
@@ -53,10 +51,10 @@ module Metacrunch
       def check_entry(entry, name, file)
         name = "#{name}:#{entry.name}"
         raise InputError, message(name, "is encrypted", "decrypt it", file, *SEVEN_ZIP) if entry.encrypted?
-        return if READABLE.include?(entry.compression)
+        return if Zip::READABLE.include?(entry.compression)
 
-        method = METHODS.fetch(entry.compression) { "method #{entry.compression}" }
-        raise InputError, message(name, "is compressed with #{method}", "unpack it", file, *SEVEN_ZIP)
+        label = "is compressed with #{Zip.method_name(entry.compression)}"
+        raise InputError, message(name, label, "unpack it", file, *SEVEN_ZIP)
       end
 
       # tool: nil for advice without one. With file, the hint is the

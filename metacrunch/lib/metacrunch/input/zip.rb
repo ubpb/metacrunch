@@ -35,6 +35,9 @@ module Metacrunch
       S_IFLNK = 0o120000
       DOS_DIRECTORY = 0x10
       NO_END = "no end of central directory record"
+      # Stored and deflate; the names of the others.
+      READABLE = [0, 8].freeze
+      METHODS = {9 => "Deflate64", 12 => "bzip2", 14 => "LZMA", 93 => "zstd", 95 => "xz", 98 => "PPMd"}.freeze
 
       # An entry of the central directory. host: the system that wrote it
       # (3 for Unix); external: its attributes (the Unix mode in the upper
@@ -92,10 +95,20 @@ module Metacrunch
       # The first entry of that name, or nil.
       def entry(name) = @entries.find { it.name == name }
 
-      # The data of entry, as the source of a Stream. Its errors are raised
-      # when it is read.
+      # The name of a compression method, as in messages.
+      def self.method_name(compression) = METHODS.fetch(compression) { "method #{compression}" }
+
+      # The data of entry, as the source of a Stream; raises InputError for
+      # an encrypted entry or another method than stored and deflate. Its
+      # other errors are raised when it is read.
       def member(entry)
         name = "#{@name}:#{entry.name}"
+        raise InputError, "#{name}: is encrypted, which metacrunch cannot read" if entry.encrypted?
+        unless READABLE.include?(entry.compression)
+          raise InputError, "#{name}: is compressed with #{Zip.method_name(entry.compression)}, which metacrunch " \
+                            "cannot read"
+        end
+
         offset = data_offset(entry, name)
         Member.new(entry, name, ->(at, length) { read_at(at, length) }, offset, @position)
       end

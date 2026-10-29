@@ -332,6 +332,16 @@ class InputZipReaderTest < Minitest::Test
     assert_equal "a.zip:a.txt: broken zip archive (wrong CRC32)", error.message
   end
 
+  # Input refuses them before; a gem that reads parts of an archive with
+  # Zip directly gets the reason, not a wrong size.
+  def test_members_that_cannot_be_read
+    zip = reader(ZipBuilder.build([{name: "a.txt", data: "a" * 100, method: 12}, {name: "b.txt", data: "b", flags: 1}]))
+    errors = zip.entries.map { |entry| assert_raises(Metacrunch::InputError) { zip.member(entry) }.message }
+
+    assert_equal ["a.zip:a.txt: is compressed with bzip2, which metacrunch cannot read",
+                  "a.zip:b.txt: is encrypted, which metacrunch cannot read"], errors
+  end
+
   def test_drain_reads_the_rest
     zip = reader(ZipBuilder.build({"a.txt" => "a" * 1000}))
     member = zip.member(zip.entries.first)
