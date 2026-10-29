@@ -68,20 +68,31 @@ class InputZipTest < Minitest::Test
     assert_empty documents(write("empty.zip", zip({})))
   end
 
-  def test_stdin_and_pipes_go_through_a_temporary_file
+  # The copy has no name in TMPDIR, not even while it is read, so nothing
+  # is left when the process is killed.
+  def test_stdin_and_pipes_go_through_an_anonymous_temporary_file
     archive = zip("a.csv" => "1\n")
-    seen = []
     original = $stdin
     $stdin = piped(archive)
-    stdin = []
-    Input.new("-").each_document { |stream, name| stdin << [name, stream.read, temporary_files] }
-    Input.new(piped(archive)).each_document { |stream, _name| seen << [stream.read, temporary_files] }
+    seen = []
+    copies = spying_on_temporary_files do
+      Input.new("-").each_document { |stream, name| seen << [name, stream.read, temporary_files] }
+      Input.new(piped(archive)).each_document { |stream, name| seen << [name, stream.read, temporary_files] }
+    end
 
-    assert_equal [["-:a.csv", "1\n", 1]], stdin
-    assert_equal [["1\n", 1]], seen
-    assert_equal 0, temporary_files
+    assert_equal [["-:a.csv", "1\n", 0], ["IO:a.csv", "1\n", 0]], seen
+    assert_equal 2, copies.size
   ensure
     $stdin = original
+  end
+
+  def test_the_temporary_file_is_closed_after_an_error
+    archive = ZipBuilder.build([{name: "a.csv", data: "1\n", crc: 1}])
+    copies = spying_on_temporary_files do
+      assert_raises(Metacrunch::InputError) { documents(piped(archive)) }
+    end
+
+    assert_equal [true], copies.map(&:closed?)
   end
 
   def test_a_stringio_is_read_directly_from_its_position
@@ -357,6 +368,14 @@ class InputZipTest < Minitest::Test
 
   def without_temporary_files(&)
     override(Tempfile, :create, ->(*, **) { flunk("a temporary file was created") }, &)
+  end
+
+  # Runs the block and returns the temporary files Tempfile.create made.
+  def spying_on_temporary_files(&)
+    copies = []
+    create = Tempfile.method(:create)
+    override(Tempfile, :create, ->(*args, **options) { create.call(*args, **options).tap { copies << it } }, &)
+    copies
   end
 
 end

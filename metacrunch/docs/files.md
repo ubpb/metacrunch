@@ -44,9 +44,9 @@ line-based format such as JSON Lines.
 
 A zip archive keeps its directory at its end, so it is read with random access:
 - a file, or an IO that can seek (an open File, a StringIO, from its position), directly;
-- stdin, a pipe, a FIFO and a zip archive inside gzip, tar or zip through a temporary file in `Dir.tmpdir` (which
-  `TMPDIR` sets). The copy needs disk space for the archive and is removed when the archive is done, also after an
-  error or Ctrl-C.
+- stdin, a pipe, a FIFO and a zip archive inside gzip, tar or zip through an anonymous temporary file in
+  `Dir.tmpdir` (which `TMPDIR` sets). The copy needs disk space for the archive. It has no name in the directory, so
+  its space is freed when the archive is done or the process ends, however it ends.
 
 ### Errors
 

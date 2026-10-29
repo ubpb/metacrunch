@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "fileutils"
 require "tempfile"
 
 module Metacrunch
@@ -194,14 +193,15 @@ module Metacrunch
         zip_documents(Zip.new(copy, name), name, file, depth, &)
       ensure
         copy.close
-        FileUtils.rm_f(copy.path)
       end
     end
 
-    # Errors in creating it are named; errors of the block that reads
-    # the documents are not, so only the creation is rescued.
+    # Anonymous: the file has no name in the directory, so closing it, or
+    # the end of the process however it ends, frees its space. Errors in
+    # creating it are named; errors of the block that reads the documents
+    # are not, so only the creation is rescued.
     def temporary_file(name)
-      Tempfile.create("metacrunch-zip", binmode: true)
+      Tempfile.create("metacrunch-zip", anonymous: true).binmode
     rescue SystemCallError => e
       raise InputError, "#{name}: #{Files.reason(e)}"
     rescue ArgumentError => e # no temporary directory to write to
