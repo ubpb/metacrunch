@@ -202,9 +202,166 @@ class InputZipReaderTest < Minitest::Test
     assert_equal ["a.txt"], Zip.new(io, "a.zip", start: 4).entries.map(&:name)
   end
 
+  def test_stored_and_deflated_data
+    [0, 8].each do |method|
+      zip = reader(ZipBuilder.build([{name: "a.txt", data: "x" * 200_000, method:}]))
+
+      assert_equal "x" * 200_000, read_all(zip, zip.entries.first)
+    end
+  end
+
+  def test_data_descriptors
+    contents = [:signed, :unsigned].map do |descriptor|
+      zip = reader(ZipBuilder.build([{name: "a.txt", data: "abc" * 1000, descriptor:}, {name: "b.txt", data: "b"}]))
+      zip.entries.map { read_all(zip, it) }
+    end
+
+    assert_equal [["abc" * 1000, "b"]] * 2, contents
+  end
+
+  def test_data_comes_in_blocks
+    data = Random.new(1).bytes(1 << 20)
+    zip = reader(ZipBuilder.build([{name: "a.bin", data:}]))
+    member = zip.member(zip.entries.first)
+    sizes = []
+    begin
+      loop { sizes << member.readpartial(10_000_000).bytesize }
+    rescue EOFError
+      nil
+    end
+
+    assert_equal data.bytesize, sizes.sum
+    assert_operator sizes.max, :<=, 65_536
+  end
+
+  def test_a_bomb_comes_in_blocks_too
+    zip = reader(ZipBuilder.build([{name: "zeros", data: "\0" * (32 << 20)}]))
+    member = zip.member(zip.entries.first)
+
+    assert_equal 65_536, member.readpartial(10_000_000).bytesize
+  end
+
+  def test_entries_are_read_wherever_their_data_is
+    zip = reader(ZipBuilder.build({"a.txt" => "a" * 100, "b.txt" => "b" * 100}, reverse: true))
+
+    assert_equal(["b" * 100, "a" * 100], zip.entries.map { read_all(zip, it) })
+  end
+
+  def test_local_extra_fields_may_differ
+    zip = reader(ZipBuilder.build([{name: "a.txt", data: "abc", local_extra: "\xCA\xFE\x02\x00ab".b}]))
+
+    assert_equal "abc", read_all(zip, zip.entries.first)
+  end
+
+  def test_empty_entry
+    zip = reader(ZipBuilder.build({"a.txt" => ""}))
+
+    assert_raises(EOFError) { zip.member(zip.entries.first).readpartial(10) }
+  end
+
+  def test_a_wrong_crc
+    assert_equal "a.zip:a.txt: broken zip archive (wrong CRC32)", data_error([{name: "a.txt", data: "a", crc: 1}])
+  end
+
+  def test_a_wrong_size
+    [0, 8].each do |method|
+      assert_equal "a.zip:a.txt: broken zip archive (100 bytes instead of 101)",
+                   data_error([{name: "a.txt", data: "a" * 100, size: 101, method:}])
+    end
+  end
+
+  def test_more_data_than_the_size_stops_before_it_comes_out
+    zip = reader(ZipBuilder.build([{name: "a.txt", data: "a" * 100, size: 10}]))
+    error = assert_raises(Metacrunch::InputError) { zip.member(zip.entries.first).readpartial(5) }
+
+    assert_equal "a.zip:a.txt: broken zip archive (more data than its size)", error.message
+  end
+
+  def test_deflate_data_that_ends_early
+    data = ("a" * 1000) + Random.new(3).bytes(1000)
+    compressed = ZipBuilder.deflate(data).bytesize
+
+    assert_equal "a.zip:a.txt: broken zip archive (deflate data ends early)",
+                 data_error([{name: "a.txt", data:, compressed_size: compressed - 5}])
+  end
+
+  def test_data_after_the_deflate_data
+    compressed = ZipBuilder.deflate("abc").bytesize
+
+    assert_equal "a.zip:a.txt: broken zip archive (data after the deflate data)",
+                 data_error([{name: "a.txt", data: "abc", compressed_size: compressed + 2}])
+  end
+
+  def test_broken_deflate_data
+    archive = ZipBuilder.build([{name: "a.txt", data: Random.new(4).bytes(500), method: 0}])
+    archive[archive.index("PK\x01\x02".b) + 10, 2] = [8].pack("v")
+
+    assert data_error(archive).start_with?("a.zip:a.txt: broken zip archive (broken deflate data (")
+  end
+
+  def test_no_local_file_header
+    archive = ZipBuilder.build({"a.txt" => "abc"})
+    central = archive.index("PK\x01\x02".b)
+
+    [1, central + 10, archive.bytesize].each do |offset|
+      broken = archive.dup.tap { it[central + 42, 4] = [offset].pack("V") }
+
+      assert_equal "a.zip:a.txt: broken zip archive (no local file header)", data_error(broken)
+    end
+  end
+
+  def test_data_beyond_the_end_of_the_archive
+    assert_equal "a.zip:a.txt: broken zip archive (data beyond the end of the archive)",
+                 data_error([{name: "a.txt", data: "abc", compressed_size: 10_000}])
+  end
+
+  def test_drain_checks_the_rest
+    zip = reader(ZipBuilder.build([{name: "a.txt", data: "a" * 1000, crc: 1}]))
+    member = zip.member(zip.entries.first)
+    member.readpartial(10)
+    error = assert_raises(Metacrunch::InputError) { member.drain }
+
+    assert_equal "a.zip:a.txt: broken zip archive (wrong CRC32)", error.message
+  end
+
+  def test_drain_reads_the_rest
+    zip = reader(ZipBuilder.build({"a.txt" => "a" * 1000}))
+    member = zip.member(zip.entries.first)
+    member.readpartial(10)
+
+    assert_nil member.drain
+    assert_raises(EOFError) { member.readpartial(10) }
+  end
+
+  def test_position_is_reported
+    offsets = []
+    data = Random.new(5).bytes(200_000)
+    archive = ZipBuilder.build([{name: "a.bin", data:, method: 0}])
+    zip = Zip.new(StringIO.new(archive), "a.zip", position: ->(offset) { offsets << offset })
+    read_all(zip, zip.entries.first)
+
+    assert_equal offsets.sort, offsets
+    assert_equal 30 + "a.bin".bytesize + data.bytesize, offsets.last
+  end
+
   private
 
   def reader(bytes) = Zip.new(StringIO.new(bytes), "a.zip")
+
+  def read_all(zip, entry)
+    member = zip.member(entry)
+    data = +"".b
+    loop { data << member.readpartial(65_536) }
+  rescue EOFError
+    data
+  end
+
+  # The error from reading the first entry; entries: an archive or the
+  # entries to build one from.
+  def data_error(entries)
+    zip = reader(entries.is_a?(String) ? entries : ZipBuilder.build(entries))
+    assert_raises(Metacrunch::InputError) { read_all(zip, zip.entries.first) }.message
+  end
 
   # Entries of every kind: directories (by name, Unix mode, MS-DOS
   # attribute), a link, documents (FIFO, a mode without a type, MS-DOS),

@@ -17,6 +17,7 @@ module Metacrunch
       ZIP64_LOCATOR = "PK\x06\x07".b
       ZIP64_END = "PK\x06\x06".b
       CENTRAL = "PK\x01\x02".b
+      LOCAL = "PK\x03\x04".b
       END_SIZE = 22
       LOCATOR_SIZE = 20
       ZIP64_END_SIZE = 56
@@ -89,6 +90,14 @@ module Metacrunch
 
       # The first entry of that name, or nil.
       def entry(name) = @entries.find { it.name == name }
+
+      # The data of entry, as the source of a Stream. Its errors are raised
+      # when it is read.
+      def member(entry)
+        name = "#{@name}:#{entry.name}"
+        offset = data_offset(entry, name)
+        Member.new(entry, name, ->(at, length) { read_at(at, length) }, offset, @position)
+      end
 
       private
 
@@ -268,6 +277,106 @@ module Metacrunch
         entries.sort_by(&:header_offset).each_cons(2) do |a, b|
           raise broken("entries overlap") if a.header_offset + LOCAL_SIZE + a.compressed_size > b.header_offset
         end
+      end
+
+      # Where the data of entry starts: after its local header, whose name
+      # and extra field may differ in length from the central ones.
+      def data_offset(entry, name)
+        header = read_at(entry.header_offset, LOCAL_SIZE) if entry.header_offset + LOCAL_SIZE <= @size
+        raise Zip.broken(name, "no local file header") unless header&.start_with?(LOCAL)
+
+        name_length, extra_length = header.unpack("vv", offset: 26)
+        offset = entry.header_offset + LOCAL_SIZE + name_length + extra_length
+        raise Zip.broken(name, "data beyond the end of the archive") if offset + entry.compressed_size > @size
+
+        offset
+      end
+
+      # The data of an entry, stored or deflated, as the source of a Stream:
+      # at most BLOCK bytes per call, also from a deflate bomb, since the
+      # inflater gets INPUT bytes at a time. At the end the size and the
+      # CRC32 are checked. Internal.
+      class Member
+
+        BLOCK = 65_536
+        INPUT = 16_384
+
+        # read: called with an offset and a length, returns those bytes of
+        # the archive; offset: where the data starts; position: see Zip.
+        def initialize(entry, name, read, offset, position)
+          @entry = entry
+          @name = name
+          @read = read
+          @offset = offset
+          @position = position
+          @left = entry.compressed_size
+          @inflate = Zlib::Inflate.new(-Zlib::MAX_WBITS) if entry.compression == 8
+          @out = "".b
+          @size = 0
+          @crc = 0
+          @done = false
+        end
+
+        def readpartial(length)
+          fill while @out.empty? && !@done
+          raise EOFError, "end of member reached" if @out.empty?
+
+          take([length, BLOCK, @out.bytesize].min)
+        end
+
+        # Reads the rest, to check it.
+        def drain
+          loop { readpartial(BLOCK) }
+        rescue EOFError
+          nil
+        end
+
+        private
+
+        def fill
+          return finish if @left.zero? || @inflate&.finished?
+
+          chunk = @read.call(@offset, [@left, @inflate ? INPUT : BLOCK].min)
+          @offset += chunk.bytesize
+          @left -= chunk.bytesize
+          @position&.call(@offset)
+          add(@inflate ? inflate(chunk) : chunk)
+        end
+
+        def inflate(chunk)
+          @inflate.inflate(chunk)
+        rescue Zlib::Error => e
+          raise broken("broken deflate data (#{e.message})")
+        end
+
+        def add(data)
+          @size += data.bytesize
+          raise broken("more data than its size") if @size > @entry.size
+
+          @crc = Zlib.crc32(data, @crc)
+          @out << data
+        end
+
+        def finish
+          @done = true
+          if @inflate
+            raise broken("deflate data ends early") unless @inflate.finished?
+            raise broken("data after the deflate data") unless @inflate.total_in == @entry.compressed_size
+
+            @inflate.close
+          end
+          raise broken("#{@size} bytes instead of #{@entry.size}") unless @size == @entry.size
+          raise broken("wrong CRC32") unless @crc == @entry.crc
+        end
+
+        def take(length)
+          data = @out.byteslice(0, length)
+          @out = @out.byteslice(length, @out.bytesize - length)
+          data
+        end
+
+        def broken(reason) = Zip.broken(@name, reason)
+
       end
 
     end
