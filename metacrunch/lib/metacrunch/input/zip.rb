@@ -34,6 +34,7 @@ module Metacrunch
       S_IFDIR = 0o040000
       S_IFLNK = 0o120000
       DOS_DIRECTORY = 0x10
+      NO_END = "no end of central directory record"
 
       # An entry of the central directory. host: the system that wrote it
       # (3 for Unix); external: its attributes (the Unix mode in the upper
@@ -115,24 +116,29 @@ module Metacrunch
 
       # The end record is the last one in the tail whose comment fits and
       # whose directory lies where it says: that skips an end record inside
-      # the comment. The first candidate's problem is the one reported.
+      # the comment. The problem of the candidate nearest the end is the
+      # one reported, also when its comment is cut off.
       def read_directory
         failure = nil
-        each_end_record do |offset, record|
+        each_end_record do |offset, record, fits|
+          raise Mismatch, NO_END unless fits
+
           return parse(locate(offset, record))
         rescue Mismatch => e
           failure ||= e.message
         end
-        raise broken(failure || "no end of central directory record")
+        raise broken(failure || NO_END)
       end
 
+      # Yields every candidate from the end, with whether its comment fits
+      # into the bytes after it.
       def each_end_record
         tail_offset = [@size - END_SIZE - MAX_COMMENT, 0].max
         tail = read_at(tail_offset, @size - tail_offset)
         index = tail.bytesize - END_SIZE
         while index >= 0 && (index = tail.rindex(END_RECORD, index))
           record = tail.byteslice(index, END_SIZE)
-          yield tail_offset + index, record if record.unpack1("v", offset: 20) <= tail.bytesize - index - END_SIZE
+          yield tail_offset + index, record, record.unpack1("v", offset: 20) <= tail.bytesize - index - END_SIZE
           index -= 1
         end
       end

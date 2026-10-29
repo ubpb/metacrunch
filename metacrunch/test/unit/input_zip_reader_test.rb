@@ -36,6 +36,14 @@ class InputZipReaderTest < Minitest::Test
     assert_equal "a.zip: broken zip archive (no end of central directory record)", error(archive)
   end
 
+  # The bytes of an end record in the data before must not take over.
+  def test_a_truncated_comment_after_end_record_bytes_in_the_data
+    data = "PK\x05\x06#{"\0" * 18}"
+    archive = ZipBuilder.build([{name: "a.txt", data:, method: 0}], comment: "cc").byteslice(0..-2)
+
+    assert_equal "a.zip: broken zip archive (no end of central directory record)", error(archive)
+  end
+
   def test_truncated_archives
     archive = ZipBuilder.build({"a.txt" => "a" * 100, "b.txt" => "b" * 100})
 
