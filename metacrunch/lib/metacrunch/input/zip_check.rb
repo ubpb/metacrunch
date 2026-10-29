@@ -7,7 +7,7 @@ module Metacrunch
     # Refuses a ZIP archive before its first document when it is a document
     # itself (Office, EPUB, OpenDocument: a reader would get its XML parts)
     # or when it holds documents metacrunch cannot read (encrypted, or
-    # compressed with another method than deflate). Internal.
+    # compressed with a method other than stored or deflate). Internal.
     module ZipCheck
 
       # A kind of ZIP package: marker and part are entry names, a part

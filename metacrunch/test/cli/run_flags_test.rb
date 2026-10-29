@@ -61,7 +61,7 @@ class RunFlagsTest < Minitest::Test
     assert_includes stderr, "ERROR Metacrunch::InputError: #{missing}: no such file"
   end
 
-  def test_the_help_of_input_names_gzip_and_tar
+  def test_the_help_of_input_names_gzip_tar_and_zip
     assert_includes cli("help", "run")[1], "(gzip, tar and zip are unpacked)"
   end
 

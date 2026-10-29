@@ -74,8 +74,9 @@ module Metacrunch
       # Where the central directory is, from the end records.
       Directory = Data.define(:count, :size, :offset, :end_offset, :zip64, :one_disk)
 
-      # A candidate end record that does not lead to a directory. Internal.
+      # A candidate end record that does not lead to a directory.
       class Mismatch < StandardError; end
+      private_constant :Directory, :Mismatch
 
       def self.broken(name, reason) = InputError.new("#{name}: broken zip archive (#{reason})")
 

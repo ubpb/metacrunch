@@ -16,7 +16,7 @@ structure of an archive (end record, Zip64, central directory, local headers) in
 CRCs or sizes, and it ignores encryption flags, name encodings and file types. A throwaway reader on Ruby's `zlib`
 was checked against Python's `zipfile` on 265 archives with 75,157 files: writers on a local machine, the ZIP test
 data of Go, libarchive and CPython (WinZip, WinRAR, 7-Zip, Windows, macOS), real deliveries and a 4.5 GiB Zip64 file.
-It gave the same data. Both readers then read 21,000 mutated archives:
+Wherever both read an entry, it gave the same data. Both readers then read 21,000 mutated archives:
 
 | | Own reader | zip_kit |
 |---|---|---|
@@ -47,7 +47,7 @@ own gems may use it, for example to read the parts of a workbook.
   writes archives byte by byte, archives of other writers from Go's test data, and a fuzz test.
 - Only stored and deflate: Ruby's standard library has no Deflate64, bzip2, LZMA or zstd. Such archives need 7z
   first.
-- An archive needs random access, since its directory is at its end: stdin, pipes and archives inside gzip or tar are
-  copied into a temporary file first.
+- An archive needs random access, since its directory is at its end: stdin, pipes and archives inside gzip, tar or
+  zip are copied into a temporary file first.
 - A ZIP-based format with parts that are no documents (Office, OpenDocument, EPUB) is refused by Input, but can be
   read with the reader directly.

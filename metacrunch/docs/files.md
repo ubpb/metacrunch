@@ -71,9 +71,9 @@ is, as `tar` reads it.
 
 A zip archive is checked as strictly: a wrong CRC32 or size, a truncated archive, a broken directory and files that
 share data (a trick of zip bombs) are errors. Bytes after the end of an archive are accepted, as `unzip` accepts them.
-An archive with files that are encrypted or compressed with another method than deflate (Deflate64, bzip2, LZMA,
-zstd, xz, PPMd) is refused before its first document, with a hint to unpack it with 7z. A file read only in part is
-still read to its end and checked, as a tar member is.
+An archive with files that are encrypted or compressed with a method other than stored or deflate (Deflate64, bzip2,
+LZMA, zstd, xz, PPMd) is refused before its first document, with a hint to unpack it with 7z. A file read only in
+part is still read to its end and checked, as a tar member is.
 
 The hint for a format metacrunch cannot read names the command with the file (quoted for the shell) when the format is
 the file's outer layer, a pipe for stdin, and only the tool for IOs and for documents inside gzip, tar or zip.
