@@ -36,9 +36,10 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
 - `Metacrunch::Marc.parse` reads one record in any of the three formats, and `Metacrunch::Marc.each` streams a document
   in any of them.
 - `Metacrunch::Marc::Reader`, a source on `Metacrunch::Input`: all three formats, told by the content of each
-  document; files, gzip files (also with several members) and tar archives recognized by their content, stdin and
-  IOs. A record that cannot be read becomes a `Metacrunch::InvalidRecord`; a document in another format or a
-  truncated gzip or tar file raises `Metacrunch::InputError`.
+  document; files, gzip files (also with several members), tar and zip archives recognized by their content, stdin
+  and IOs; `unpack:` chooses the formats that are unpacked. A record that cannot be read becomes a
+  `Metacrunch::InvalidRecord`; a document in another format or a truncated gzip, tar or zip file raises
+  `Metacrunch::InputError`.
 - `Metacrunch::Marc::Writer`, a sink on `Metacrunch::Output` with `format:` (`:xml`, `:iso2709` or `:json`), for
   `Record`s and for record Strings serialized in a worker; `flush` writes the records so far, when a source that waits
   yields `Metacrunch::FLUSH`.

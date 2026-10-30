@@ -77,6 +77,14 @@ class ReaderTest < Minitest::Test
     assert_equal IDS, ids(read(Reader.new(path)))
   end
 
+  def test_unpack_is_passed_on
+    path = write("records.xml.gz", Zlib.gzip(fixture("collection.xml")))
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path, unpack: [])) }
+
+    assert_includes error.message, NOT_MARC
+    assert_raises(ArgumentError) { Reader.new(path, unpack: [:bzip2]) }
+  end
+
   def test_reads_all_members_of_a_gzip_file
     path = write("cat.xml.gz", Zlib.gzip(fixture("collection.xml")) + Zlib.gzip(fixture("local.xml")))
 
