@@ -4,8 +4,9 @@ module Metacrunch
   module Csv
     # A metacrunch source: reads CSV from what Metacrunch::Input reads
     # (paths, "-" for stdin, IOs or an Array of them; gzip, tar and zip
-    # are unpacked) and yields a Hash per row (String keys and values, "" for an
-    # empty field, nil for a missing one), or an Array with headers: false.
+    # are unpacked, unless unpack: says otherwise) and yields a Hash per row
+    # (String keys and values, "" for an empty field, nil for a missing
+    # one), or an Array with headers: false.
     # A row that cannot be read is yielded as Metacrunch::InvalidRecord.
     class Reader
 

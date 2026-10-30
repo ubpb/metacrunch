@@ -8,7 +8,8 @@ built on them, and so are the sources and sinks that `metacrunch generate` creat
 ## Reading: `Metacrunch::Input`
 
 ```ruby
-input = Metacrunch::Input.new(params.files, unpack: [:gzip, :tar, :zip])  # a path, "-", an IO, or an Array of them
+input = Metacrunch::Input.new(params.files,     # a path, "-", an IO, or an Array of them
+                               unpack: [:gzip, :tar, :zip])
 input.each_document do |stream, name|
   stream.each_line { |line| ... }               # or read, readpartial, peek, eof?
 end
@@ -20,7 +21,7 @@ Array of them, read in order. `new` only checks the types; nothing is opened bef
 glob patterns are no targets: pass `Dir.glob(root.join("data/*.jsonl.gz")).sort` to choose files and their order.
 
 `each_document` yields one stream per document: a plain or gzip file is one document, a tar or zip archive one per
-file in it. The stream's methods return binary Strings; the format sets the encoding
+file in it, with their formats in `unpack:`. The stream's methods return binary Strings; the format sets the encoding
 (`line.force_encoding(Encoding::UTF_8)`). A stream is valid until the next document. `name` labels the document in
 messages: the path as given, `-` for stdin, `dump.tar.gz:records/0001.xml` or `export.zip:data/titles.csv` for a file
 in an archive.

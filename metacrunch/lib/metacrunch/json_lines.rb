@@ -6,9 +6,8 @@ module Metacrunch
   # A source and sinks for JSON Lines: one JSON value per line. The reader
   # takes what Input takes (paths, "-" for stdin, IOs or an Array of them;
   # gzip, tar and zip are unpacked whatever their names, unless unpack:
-  # says otherwise), the writers what
-  # Output takes (paths, ".gz" compressed, "-" for stdout, IOs). IO objects
-  # are never closed.
+  # says otherwise), the writers what Output takes (paths, ".gz"
+  # compressed, "-" for stdout, IOs). IO objects are never closed.
   module JsonLines
 
     # Source: yields every line parsed with JSON.parse. A line that is not

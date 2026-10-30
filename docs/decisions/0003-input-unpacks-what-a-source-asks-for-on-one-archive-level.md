@@ -19,9 +19,9 @@ end (jar, nupkg and 3mf are zip-based too), and it judged the content, which Inp
 
 - **Input unpacks only what it is asked to.** `Input.new(targets, unpack: [...])` takes `:gzip`, `:tar` and `:zip`.
   Without `unpack:` nothing is unpacked, and a format that is not named comes as a document with its bytes.
-- **The readers pass `unpack:` on, with all three as their default.** These are `JsonLines::Reader`, `Csv::Reader`,
-  `Marc::Reader` and the generator's source template. A job can narrow it; a reader of a ZIP-based format leaves
-  `:zip` out.
+- **The readers pass `unpack:` on, with all three as their default.** These are `JsonLines::Reader`, `Csv::Reader`
+  and `Marc::Reader`; the generator's source template names all three itself. A job can narrow it; a reader of a
+  ZIP-based format leaves `:zip` out.
 - **gzip is decompressed wherever it is.** It compresses one file and brings in nothing else: `.tar.gz`, `.zip.gz`
   and `.jsonl.gz` files in an archive work.
 - **Archives are unpacked on one level, as `tar -x` and `unzip` do.** A tar or zip in an archive is a document; a

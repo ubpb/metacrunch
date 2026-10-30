@@ -6,7 +6,8 @@ module Metacrunch
   module Marc
     # A metacrunch source: reads MARCXML, ISO 2709 and MARC-in-JSON from what
     # Metacrunch::Input reads (paths, "-" for stdin, IOs or an Array of them;
-    # gzip, tar and zip are unpacked whatever their names). The format of each
+    # gzip, tar and zip are unpacked whatever their names, unless unpack:
+    # says otherwise). The format of each
     # document is told by its first bytes (see Formats), so inputs may mix
     # formats. Yields a Record per record, or with parse: false the record
     # as a String in its format, which is cheaper to send to workers. A
