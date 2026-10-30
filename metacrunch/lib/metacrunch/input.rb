@@ -11,6 +11,8 @@ module Metacrunch
   class Input
 
     MAX_LAYERS = 4
+    # The formats Input can unpack, as sources pass them to unpack:.
+    UNPACK = [:gzip, :tar, :zip].freeze
 
     # A target that can be read at any offset, as a ZIP archive needs it:
     # io from start; position: see Zip.
@@ -18,13 +20,15 @@ module Metacrunch
     private_constant :Seekable
 
     # targets: a path (String or Pathname), "-" for stdin, an IO (anything
-    # with readpartial or read), or a non-empty Array of these. Checks types
-    # only and touches no file.
-    def initialize(targets)
+    # with readpartial or read), or a non-empty Array of these. unpack: the
+    # formats to unpack, of UNPACK; any other comes as a document with its
+    # bytes. Checks types only and touches no file.
+    def initialize(targets, unpack: [])
       list = targets.is_a?(Array) ? targets : [targets]
       raise ArgumentError, "targets must not be empty" if list.empty?
 
       @targets = list.map { target(it) }.freeze
+      @unpack = unpack_formats(unpack)
       @total = nil
       @done = 0
     end
@@ -62,6 +66,12 @@ module Metacrunch
     end
 
     def io?(target) = target.respond_to?(:readpartial) || target.respond_to?(:read)
+
+    def unpack_formats(unpack)
+      return unpack.to_set.freeze if unpack.is_a?(Array) && unpack.all? { UNPACK.include?(it) }
+
+      raise ArgumentError, "unpack must be an Array of :gzip, :tar and :zip, got #{unpack.inspect}"
+    end
 
     # The File::Stat of every path; raises InputError for missing files,
     # directories and unreadable files.
@@ -136,6 +146,7 @@ module Metacrunch
     # an outer layer, if it can seek.
     def layers(stream, name, file, depth, seekable = nil, &)
       format = detect(stream)
+      format = :plain if UNPACK.include?(format) && !@unpack.include?(format)
       case format
       when :plain then document(stream, name, &)
       when :gzip then gzip(stream, name, depth, &)

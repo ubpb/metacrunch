@@ -10,7 +10,10 @@ require "metacrunch"
 class <%= target.class_name %>
 
   def initialize(targets)
-    @input = ::Metacrunch::Input.new(targets)
+    # unpack: the formats that are unpacked; tar and zip on one level, an
+    # archive inside them is a document. Leave out what the source reads
+    # itself.
+    @input = ::Metacrunch::Input.new(targets, unpack: [:gzip, :tar, :zip])
   end
 
   # Optional: called once before the first record, with context.params

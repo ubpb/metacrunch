@@ -76,8 +76,8 @@ class InputZipTest < Minitest::Test
     $stdin = piped(archive)
     seen = []
     copies = spying_on_temporary_files do
-      Input.new("-").each_document { |stream, name| seen << [name, stream.read, temporary_files] }
-      Input.new(piped(archive)).each_document { |stream, name| seen << [name, stream.read, temporary_files] }
+      Input.new("-", unpack: Input::UNPACK).each_document { |stream, name| seen << [name, stream.read, temporary_files] }
+      Input.new(piped(archive), unpack: Input::UNPACK).each_document { |stream, name| seen << [name, stream.read, temporary_files] }
     end
 
     assert_equal [["-:a.csv", "1\n", 0], ["IO:a.csv", "1\n", 0]], seen
@@ -133,18 +133,18 @@ class InputZipTest < Minitest::Test
   def test_documents_read_only_in_part_are_still_checked
     path = write("parts.zip", zip("a.txt" => "a" * 3000, "b.txt" => "b" * 3000))
     heads = []
-    Input.new(path).each_document { |stream, _name| heads << stream.read(2) }
+    Input.new(path, unpack: Input::UNPACK).each_document { |stream, _name| heads << stream.read(2) }
 
     assert_equal ["aa", "bb"], heads
 
     broken = write("broken.zip", ZipBuilder.build([{name: "a.txt", data: "a" * 3000, crc: 1}]))
-    error = assert_raises(Metacrunch::InputError) { Input.new(broken).each_document { |stream, _| stream.read(2) } }
+    error = assert_raises(Metacrunch::InputError) { Input.new(broken, unpack: Input::UNPACK).each_document { |stream, _| stream.read(2) } }
 
     assert_equal "#{broken}:a.txt: broken zip archive (wrong CRC32)", error.message
   end
 
   def test_breaking_out_removes_the_temporary_file
-    Input.new(piped(zip("a.csv" => "1\n", "b.csv" => "2\n"))).each_document { break }
+    Input.new(piped(zip("a.csv" => "1\n", "b.csv" => "2\n")), unpack: Input::UNPACK).each_document { break }
 
     assert_equal 0, temporary_files
   end
@@ -153,7 +153,7 @@ class InputZipTest < Minitest::Test
     queue = Queue.new
     reading = Queue.new
     thread = Thread.new do
-      Input.new(piped(zip("a.csv" => "1\n"))).each_document do
+      Input.new(piped(zip("a.csv" => "1\n")), unpack: Input::UNPACK).each_document do
         reading << true
         queue.pop
       end
@@ -197,7 +197,7 @@ class InputZipTest < Minitest::Test
   # An error of the block is the block's, not one of the temporary file.
   def test_errors_of_the_block_are_not_renamed
     error = assert_raises(Errno::EACCES) do
-      Input.new(piped(zip("a.csv" => "1\n"))).each_document { raise Errno::EACCES }
+      Input.new(piped(zip("a.csv" => "1\n")), unpack: Input::UNPACK).each_document { raise Errno::EACCES }
     end
 
     assert_kind_of SystemCallError, error
@@ -205,7 +205,7 @@ class InputZipTest < Minitest::Test
   end
 
   def test_progress_of_a_zip_path
-    input = Input.new(write("random.zip", zip("a.bin" => Random.new(1).bytes(4 * Input::Stream::BLOCK))))
+    input = Input.new(write("random.zip", zip("a.bin" => Random.new(1).bytes(4 * Input::Stream::BLOCK))), unpack: Input::UNPACK)
     values = []
     input.each_document { |stream, _name| values << input.progress while stream.read(1000) }
 
@@ -217,7 +217,7 @@ class InputZipTest < Minitest::Test
   def test_progress_of_a_zip_among_other_files
     paths = [write("a.jsonl", "1\n" * 1000), write("b.zip", zip("b.bin" => Random.new(2).bytes(200_000))),
              write("c.jsonl", "3\n" * 1000)]
-    input = Input.new(paths)
+    input = Input.new(paths, unpack: Input::UNPACK)
     values = []
     input.each_document { |stream, _name| values << input.progress while stream.read(1000) }
 
@@ -260,7 +260,7 @@ class InputZipTest < Minitest::Test
   def test_unsupported_entries_are_refused_before_the_first_document
     path = write("mixed.zip", ZipBuilder.build([{name: "a.txt", data: "a"}, {name: "b.txt", data: "b", method: 12}]))
     yielded = []
-    assert_raises(Metacrunch::InputError) { Input.new(path).each_document { |_stream, name| yielded << name } }
+    assert_raises(Metacrunch::InputError) { Input.new(path, unpack: Input::UNPACK).each_document { |_stream, name| yielded << name } }
 
     assert_empty yielded
   end
@@ -305,7 +305,7 @@ class InputZipTest < Minitest::Test
 
   def documents(target)
     result = []
-    Input.new(target).each_document { |stream, name| result << [name, stream.read] }
+    Input.new(target, unpack: Input::UNPACK).each_document { |stream, name| result << [name, stream.read] }
     result
   end
 

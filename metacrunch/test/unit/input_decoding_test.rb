@@ -39,7 +39,7 @@ class InputDecodingTest < Minitest::Test
 
   def test_a_line_may_span_two_gzip_members
     lines = []
-    Input.new(write("split.gz", gzip("1\n2") + gzip("3\n"))).each_document { |s, _| lines.concat(s.each_line.to_a) }
+    Input.new(write("split.gz", gzip("1\n2") + gzip("3\n")), unpack: Input::UNPACK).each_document { |s, _| lines.concat(s.each_line.to_a) }
 
     assert_equal ["1\n", "23\n"], lines
   end
@@ -80,7 +80,7 @@ class InputDecodingTest < Minitest::Test
     _, stderr = capture_io do
       verbose = $VERBOSE
       $VERBOSE = true
-      Input.new(path).each_document { |stream, _name| break stream.read(10) }
+      Input.new(path, unpack: Input::UNPACK).each_document { |stream, _name| break stream.read(10) }
     ensure
       $VERBOSE = verbose
     end
@@ -95,7 +95,7 @@ class InputDecodingTest < Minitest::Test
     path = write("big.gz", gzip(Random.new(1).bytes(200_000)))
     changes = []
     trace_var(:$VERBOSE) { changes << it }
-    Input.new(path).each_document { |stream, _name| break stream.read(10) }
+    Input.new(path, unpack: Input::UNPACK).each_document { |stream, _name| break stream.read(10) }
     untrace_var(:$VERBOSE)
 
     assert_empty changes
@@ -170,7 +170,7 @@ class InputDecodingTest < Minitest::Test
     reader, writer = IO.pipe
     writer.write("1\n")
     lines = Queue.new
-    thread = Thread.new { Input.new(reader).each_document { |stream, _name| stream.each_line { lines << it } } }
+    thread = Thread.new { Input.new(reader, unpack: Input::UNPACK).each_document { |stream, _name| stream.each_line { lines << it } } }
     first = lines.pop(timeout: 2)
     writer.close
     thread.join
@@ -193,7 +193,7 @@ class InputDecodingTest < Minitest::Test
   end
 
   def test_progress_of_gzip_is_the_compressed_position
-    input = Input.new(write("random.gz", gzip(Random.new(2).bytes(4 * Input::Stream::BLOCK))))
+    input = Input.new(write("random.gz", gzip(Random.new(2).bytes(4 * Input::Stream::BLOCK))), unpack: Input::UNPACK)
     values = []
     input.each_document { |stream, _name| values << input.progress while stream.read(1000) }
 
@@ -241,7 +241,7 @@ class InputDecodingTest < Minitest::Test
 
   def documents(target)
     result = []
-    Input.new(target).each_document { |stream, name| result << [name, stream.read] }
+    Input.new(target, unpack: Input::UNPACK).each_document { |stream, name| result << [name, stream.read] }
     result
   end
 

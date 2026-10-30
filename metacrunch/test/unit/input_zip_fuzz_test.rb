@@ -45,7 +45,7 @@ class InputZipFuzzTest < Minitest::Test
   end
 
   def read(bytes)
-    Metacrunch::Input.new(StringIO.new(bytes)).each_document { |stream, _name| stream.read }
+    Metacrunch::Input.new(StringIO.new(bytes), unpack: Metacrunch::Input::UNPACK).each_document { |stream, _name| stream.read }
   end
 
   # Flips a bit or sets a byte near the end (end records, directory), sets

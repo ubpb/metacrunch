@@ -13,7 +13,7 @@ module Metacrunch
       SAMPLE = 65_536
 
       def initialize(targets, col_sep: ",", quote_char: '"', encoding: "UTF-8", headers: true)
-        @input = Metacrunch::Input.new(targets)
+        @input = Metacrunch::Input.new(targets, unpack: Metacrunch::Input::UNPACK)
         @encoding = Csv.encoding(col_sep, quote_char, encoding)
         @headers = check_headers(headers)
         # Ruby's csv cannot go on after invalid bytes. Where it can parse the

@@ -64,7 +64,7 @@ class InputTarTest < Minitest::Test
   def test_members_read_only_in_part_do_not_disturb_the_next_one
     path = write("records.tar", tar("a.jsonl" => "a" * 3000, "b.jsonl" => "b" * 3000))
     heads = []
-    Input.new(path).each_document { |stream, _name| heads << stream.read(2) }
+    Input.new(path, unpack: Input::UNPACK).each_document { |stream, _name| heads << stream.read(2) }
 
     assert_equal ["aa", "bb"], heads
   end
@@ -79,7 +79,7 @@ class InputTarTest < Minitest::Test
   def test_a_member_read_only_in_part_is_still_checked
     path = write("cut.tar", tar("a.txt" => "a" * 3000).byteslice(0, 512 + 1000))
 
-    assert_raises(Metacrunch::InputError) { Input.new(path).each_document { |stream, _name| stream.read(10) } }
+    assert_raises(Metacrunch::InputError) { Input.new(path, unpack: Input::UNPACK).each_document { |stream, _name| stream.read(10) } }
   end
 
   def test_an_archive_cut_inside_a_block
@@ -171,7 +171,7 @@ class InputTarTest < Minitest::Test
     _, stderr = capture_io do
       verbose = $VERBOSE
       $VERBOSE = true
-      Input.new(path).each_document { |stream, _name| break stream.each_line.first }
+      Input.new(path, unpack: Input::UNPACK).each_document { |stream, _name| break stream.each_line.first }
     ensure
       $VERBOSE = verbose
     end
@@ -192,7 +192,7 @@ class InputTarTest < Minitest::Test
   end
 
   def test_progress_of_a_tar_gz
-    input = Input.new(write("records.tgz", Zlib.gzip(tar("a.jsonl" => "1\n"))))
+    input = Input.new(write("records.tgz", Zlib.gzip(tar("a.jsonl" => "1\n"))), unpack: Input::UNPACK)
     input.each_document { |stream, _name| stream.read }
 
     assert_in_delta 1.0, input.progress
@@ -202,7 +202,7 @@ class InputTarTest < Minitest::Test
 
   def documents(target)
     result = []
-    Input.new(target).each_document { |stream, name| result << [name, stream.read] }
+    Input.new(target, unpack: Input::UNPACK).each_document { |stream, name| result << [name, stream.read] }
     result
   end
 

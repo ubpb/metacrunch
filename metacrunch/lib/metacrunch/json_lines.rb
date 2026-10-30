@@ -21,7 +21,7 @@ module Metacrunch
       private_constant :BLANK
 
       def initialize(targets)
-        @input = Input.new(targets)
+        @input = Input.new(targets, unpack: Input::UNPACK)
       end
 
       # Without a block an Enumerator.
