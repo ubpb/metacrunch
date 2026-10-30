@@ -8,7 +8,7 @@ built on them, and so are the sources and sinks that `metacrunch generate` creat
 ## Reading: `Metacrunch::Input`
 
 ```ruby
-input = Metacrunch::Input.new(params.files)     # a path, "-", an IO, or an Array of them
+input = Metacrunch::Input.new(params.files, unpack: [:gzip, :tar, :zip])  # a path, "-", an IO, or an Array of them
 input.each_document do |stream, name|
   stream.each_line { |line| ... }               # or read, readpartial, peek, eof?
 end
@@ -27,31 +27,41 @@ in an archive.
 
 ### What is unpacked
 
+Input unpacks what `unpack:` names, of `:gzip`, `:tar` and `:zip` (`Metacrunch::Input::UNPACK` holds all three).
+Without it, nothing is unpacked: every target is one document as it is. The readers of metacrunch and its gems
+(`JsonLines::Reader`, `Csv::Reader`, `Marc::Reader`) unpack all three by default and pass their own `unpack:` on, so
+a job can narrow it.
+
 The first bytes decide, not the name, for files, stdin and IOs alike:
 
-| Content | |
+| Content | With its format in `unpack:` |
 |---|---|
-| gzip | All members are read, as `zcat` reads files written with `cat a.gz b.gz` |
+| gzip | Decompressed, wherever it is: all members are read, as `zcat` reads files written with `cat a.gz b.gz` |
 | tar | Every regular member; directories, links and members whose names start with `.` (such as the `._name` files of macOS `tar`) are skipped |
 | zip | Every file, in the order of the archive's directory; directories, links and files whose names start with `.` (such as the `__MACOSX/._name` files of macOS) are skipped |
-| bzip2, xz, zstd | An error that names the format and the command to decompress it first, e.g. `zstd -dc dump.jsonl.zst \| metacrunch run job.rb -i -` |
+| bzip2, xz, zstd | An error that names the format and the command to decompress it first, e.g. `zstd -dc dump.jsonl.zst \| metacrunch run job.rb -i -`, also without `unpack:` |
 | anything else | The document as it is |
 
-Unpacked content is checked again, so `.tar.gz`, a tar of `.gz` files, a zip of `.gz` files, a zip inside a `.tar.gz`
-and gzip inside gzip work, up to 4 layers. On a slow pipe, detection does not hold back the first line of a
-line-based format such as JSON Lines.
+A format that is not in `unpack:` comes as a document with its bytes.
+
+gzip compresses one file and is decompressed wherever it is: `.tar.gz`, `.zip.gz`, and `.gz` files in a tar or zip
+archive work. Archives are unpacked on one level only, as `tar -x` and `unzip` do: a tar or zip in an archive is a
+document with its bytes, not unpacked. A gzip-compressed archive in an archive gives its content, e.g. the workbook of
+`book.xlsx.gz` in a tar. Up to 4 layers are unpacked, which leaves room for gzip inside gzip. On a slow pipe,
+detection does not hold back the first line of a line-based format such as JSON Lines.
 
 Input unpacks, but does not judge what it unpacks: whether a document suits the source is up to whoever chooses the
 input. A source reads every document in its format, so a `readme.txt` in a zip of CSV files is read as CSV, as it
-would be when given directly. Excel, Word, PowerPoint, OpenDocument and EPUB files are zip archives too, and are
-unpacked like any other: their XML parts become documents. Give a job the files it is meant for, and unpack archives
-with other files first.
+would be when given directly. Excel, Word, PowerPoint, OpenDocument and EPUB files are zip archives. Given directly
+with `:zip` in `unpack:`, they are unpacked like any other, and their XML parts become documents; in an archive,
+they are documents with their bytes. Give a job the files it is meant for, and unpack archives with other files
+first. A source for a ZIP-based format leaves `:zip` out of `unpack:` and reads the archive itself.
 
 A zip archive keeps its directory at its end, so it is read with random access:
 - a file, or an IO that can seek (an open File, a StringIO, from its position), directly;
-- stdin, a pipe, a FIFO and a zip archive inside gzip, tar or zip through an anonymous temporary file in
-  `Dir.tmpdir` (which `TMPDIR` sets). The copy needs disk space for the archive. It has no name in the directory, so
-  its space is freed when the archive is done or the process ends, however it ends.
+- stdin, a pipe, a FIFO and a zip archive inside gzip through an anonymous temporary file in `Dir.tmpdir` (which
+  `TMPDIR` sets). The copy needs disk space for the archive. It has no name in the directory, so its space is freed
+  when the archive is done or the process ends, however it ends.
 
 ### Errors
 
@@ -101,8 +111,8 @@ method feeds the progress display of `metacrunch run`. With stdin, an IO or a FI
 - File names in a zip archive are read as UTF-8, else as CP437, the code page of MS-DOS. Names written in other code
   pages (CP850, CP866, CP932) appear wrongly in messages; the data is not affected.
 - A zip archive whose writer stored a size off by exactly 4 GiB, a bug of some writers, raises an error.
-- For a zip archive inside gzip or tar, progress moves on while the archive is copied, and then stands still while
-  its documents are read.
+- For a zip archive inside gzip, progress moves on while the archive is copied, and then stands still while its
+  documents are read.
 
 ### A source on `Input`
 
@@ -110,7 +120,7 @@ method feeds the progress display of `metacrunch run`. With stdin, an IO or a FI
 class Lines
 
   def initialize(targets)
-    @input = Metacrunch::Input.new(targets)
+    @input = Metacrunch::Input.new(targets, unpack: [:gzip, :tar, :zip])
   end
 
   def each

@@ -47,7 +47,8 @@ own gems may use it, for example to read the parts of a workbook.
   writes archives byte by byte, archives of other writers from Go's test data, and a fuzz test.
 - Only stored and deflate: Ruby's standard library has no Deflate64, bzip2, LZMA or zstd. Such archives need 7z
   first.
-- An archive needs random access, since its directory is at its end: stdin, pipes and archives inside gzip, tar or
-  zip are copied into a temporary file first.
-- Input unpacks every zip archive, also a ZIP-based format such as an Office, OpenDocument or EPUB file, whose parts
-  then become documents. A reader for such a format uses the ZIP reader directly.
+- An archive needs random access, since its directory is at its end: stdin, pipes and archives inside gzip are copied
+  into a temporary file first.
+- Input unpacks a zip archive like any other when `:zip` is in `unpack:`, also a ZIP-based format such as an Office,
+  OpenDocument or EPUB file, whose parts then become documents. A reader for such a format leaves `:zip` out of
+  `unpack:`, so it gets the file as a document, or uses the ZIP reader directly.
