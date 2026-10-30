@@ -244,10 +244,10 @@ class ReaderTest < Minitest::Test
     path = file("data.csv.gz", Zlib.gzip("id\n1\n"))
 
     assert_equal [{"id" => "1"}], Reader.new(path).each.to_a
-    # The gzip bytes are no CSV: the reader fails on their first row.
     error = assert_raises(Metacrunch::InputError) { Reader.new(path, unpack: []).each.to_a }
 
-    assert_includes error.message, "the header row cannot be read"
+    assert_equal "#{path}: is gzip compressed; to decompress it, pass unpack: [:gzip] (--unpack gzip with -i)",
+                 error.message
   end
 
   def test_an_invalid_unpack_is_refused
@@ -260,12 +260,13 @@ class ReaderTest < Minitest::Test
     assert_equal [{"id" => "1"}, {"name" => "Moby"}], read(archive, unpack: [:tar])
   end
 
-  # Only gzip is unpacked by default: a job asks for archives. A tar read
-  # as it is starts with its header, the member's name and NULs.
-  def test_archives_are_read_as_they_are_by_default
-    rows = read(tar("a.csv" => "id\n1\n"))
+  # Only gzip is unpacked by default: a job asks for archives. Read as it
+  # is, a tar would give a header named after the member, and no error.
+  def test_an_archive_it_does_not_unpack_is_refused
+    error = assert_raises(Metacrunch::InputError) { read(tar("a.csv" => "id\n1\n")) }
 
-    assert_match(/\Aa\.csv\0/, rows.first.keys.first)
+    assert_equal "StringIO: is a tar archive; to read its files, pass unpack: [:gzip, :tar] " \
+                 "(--unpack gzip,tar with -i)", error.message
   end
 
   def test_dash_is_stdin

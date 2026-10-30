@@ -13,10 +13,11 @@ module Metacrunch
       # Bytes of a document in which the row separator is looked for.
       SAMPLE = 65_536
 
-      # unpack: the formats Metacrunch::Input unpacks.
+      # unpack: the formats Metacrunch::Input unpacks; a document in one it
+      # leaves out raises Metacrunch::InputError.
       def initialize(targets, col_sep: ",", quote_char: '"', encoding: "UTF-8", headers: true,
                      unpack: [:gzip])
-        @input = Metacrunch::Input.new(targets, unpack:)
+        @input = Metacrunch::Input.new(targets, unpack:, packed: :refuse)
         @encoding = Csv.encoding(col_sep, quote_char, encoding)
         @headers = check_headers(headers)
         # Ruby's csv cannot go on after invalid bytes. Where it can parse the

@@ -93,16 +93,18 @@ class GeneratorsComponentsTest < Minitest::Test
     end
   end
 
-  # The template unpacks gzip only; archives are the author's choice.
-  def test_a_source_reads_a_tar_as_it_is
+  # The template unpacks gzip only; archives are the author's choice, and
+  # one it does not unpack is refused rather than read as lines.
+  def test_a_source_refuses_a_tar_it_does_not_unpack
     in_project do |root|
       write(plan("source", "marc:dump", root:), root)
       io = StringIO.new(+"", "wb")
       Gem::Package::TarWriter.new(io) { |tar| tar.add_file_simple("b.txt", 0o644, 2) { it.write("b\n") } }
       File.binwrite(root.join("b.tar"), io.string)
-      lines = load_class(root.join("lib/marc/dump.rb"), "Marc::Dump").new(root.join("b.tar")).enum_for(:each).to_a
+      source = load_class(root.join("lib/marc/dump.rb"), "Marc::Dump").new(root.join("b.tar"))
+      error = assert_raises(Metacrunch::InputError) { source.enum_for(:each).to_a }
 
-      assert_match(/\Ab\.txt\0/, lines.first["line"])
+      assert_match(/b\.tar: is a tar archive; to read its files, pass unpack: \[:gzip, :tar\]/, error.message)
     end
   end
 

@@ -12,8 +12,9 @@ class <%= target.class_name %>
   def initialize(targets)
     # unpack: the formats that are unpacked. Add :tar and :zip to read the
     # files of archives (on one level: an archive inside them is a
-    # document).
-    @input = ::Metacrunch::Input.new(targets, unpack: [:gzip])
+    # document). packed: :refuse raises an error for a gzip, tar or zip
+    # document that unpack: leaves out, instead of reading its bytes.
+    @input = ::Metacrunch::Input.new(targets, unpack: [:gzip], packed: :refuse)
   end
 
   # Optional: called once before the first record, with context.params

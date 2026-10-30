@@ -83,7 +83,8 @@ class ReaderTest < Minitest::Test
     path = write("records.xml.gz", Zlib.gzip(fixture("collection.xml")))
     error = assert_raises(Metacrunch::InputError) { read(Reader.new(path, unpack: [])) }
 
-    assert_includes error.message, NOT_MARC
+    assert_equal "#{path}: is gzip compressed; to decompress it, pass unpack: [:gzip] (--unpack gzip with -i)",
+                 error.message
     assert_raises(ArgumentError) { Reader.new(path, unpack: [:bzip2]) }
   end
 
@@ -254,13 +255,14 @@ class ReaderTest < Minitest::Test
     assert_match(/broken gzip data/, assert_raises(Metacrunch::InputError) { read(Reader.new(broken)) }.message)
   end
 
-  # Only gzip is unpacked by default: a tar read as it is starts with its
-  # header, which is no MARC.
-  def test_archives_are_read_as_they_are_by_default
+  # Only gzip is unpacked by default: a tar is refused with the unpack:
+  # that reads it.
+  def test_an_archive_it_does_not_unpack_is_refused
     path = write("records.tar", tar("a.xml" => fixture("collection.xml")))
     error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
 
-    assert_includes error.message, NOT_MARC
+    assert_equal "#{path}: is a tar archive; to read its files, pass unpack: [:gzip, :tar] " \
+                 "(--unpack gzip,tar with -i)", error.message
   end
 
   def test_reads_tar_archives_whatever_the_name

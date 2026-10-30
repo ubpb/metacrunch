@@ -20,9 +20,10 @@ module Metacrunch
       BLANK = Object.new.freeze
       private_constant :BLANK
 
-      # unpack: the formats Input unpacks (see Input::UNPACK).
+      # unpack: the formats Input unpacks (see Input::UNPACK); a document
+      # in one it leaves out raises InputError.
       def initialize(targets, unpack: [:gzip])
-        @input = Input.new(targets, unpack:)
+        @input = Input.new(targets, unpack:, packed: :refuse)
       end
 
       # Without a block an Enumerator.

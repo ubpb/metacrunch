@@ -27,13 +27,16 @@ class RunFlagsTest < Minitest::Test
     assert_equal "1\n2\n", File.read(output)
   end
 
-  # -i unpacks gzip by default; the tar inside comes as it is, which is no
-  # JSON, so the run aborts at its first line.
+  # -i unpacks gzip by default; the tar inside is refused with the
+  # --unpack that reads it.
   def test_input_unpacks_only_gzip_by_default
     input = File.join(@dir, "dump.tar.gz")
     File.binwrite(input, Zlib.gzip(tar("a.jsonl" => "1\n2\n", "b.jsonl" => "3\n")))
+    code, _, stderr = cli("run", "-i", input, job("double.rb"))
 
-    assert_equal 1, cli("run", "-i", input, job("double.rb")).first
+    assert_equal 1, code
+    assert_includes stderr, "#{input}: is a tar archive; to read its files, pass unpack: [:gzip, :tar] " \
+                            "(--unpack gzip,tar with -i)"
   end
 
   def test_gzip_piped_into_stdin

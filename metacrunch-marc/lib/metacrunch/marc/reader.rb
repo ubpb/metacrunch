@@ -16,9 +16,10 @@ module Metacrunch
     class Reader
 
       # targets: what Metacrunch::Input takes. IOs are never closed.
-      # unpack: the formats Metacrunch::Input unpacks.
+      # unpack: the formats Metacrunch::Input unpacks; a document in one it
+      # leaves out raises Metacrunch::InputError.
       def initialize(targets, parse: true, normalize: nil, unpack: [:gzip])
-        @input = Metacrunch::Input.new(targets, unpack:)
+        @input = Metacrunch::Input.new(targets, unpack:, packed: :refuse)
         Marc.check_normalize(normalize)
         if normalize && !parse
           raise ArgumentError, "normalize: needs parse: true; with parse: false normalize in the step that parses: " \

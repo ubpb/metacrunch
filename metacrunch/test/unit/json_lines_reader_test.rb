@@ -25,26 +25,26 @@ class JsonLinesReaderTest < Minitest::Test
 
   def test_unpack_is_passed_on
     gzipped = Zlib.gzip("1\n")
-    raw = read(Reader.new(StringIO.new(gzipped), unpack: []))
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(StringIO.new(gzipped), unpack: [])) }
 
     assert_equal [1], read(Reader.new(StringIO.new(gzipped)))
-    refute_empty raw
-    assert(raw.all?(Metacrunch::InvalidRecord))
+    assert_equal "StringIO: is gzip compressed; to decompress it, pass unpack: [:gzip] (--unpack gzip with -i)",
+                 error.message
   end
 
   def test_an_invalid_unpack_is_refused
     assert_raises(ArgumentError) { Reader.new(StringIO.new("1\n"), unpack: [:bzip2]) }
   end
 
-  # Only gzip is unpacked by default: a zip archive is one document of its
-  # bytes, which are no JSON, unless the job asks for :zip.
-  def test_archives_are_read_as_they_are_by_default
-    archive = ZipBuilder.build({"a.jsonl" => "1\n"})
-    records = read(Reader.new(StringIO.new(archive)))
+  # Only gzip is unpacked by default: a zip archive, whose bytes are no
+  # JSON, is refused unless the job asks for :zip.
+  def test_an_archive_it_does_not_unpack_is_refused
+    path = write("records.zip", ZipBuilder.build({"a.jsonl" => "1\n"}))
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
 
-    assert_equal [1], read(Reader.new(StringIO.new(archive), unpack: [:gzip, :zip]))
-    refute_empty records
-    assert(records.all?(Metacrunch::InvalidRecord))
+    assert_equal [1], read(Reader.new(path, unpack: [:gzip, :zip]))
+    assert_equal "#{path}: is a zip archive; to read its files, pass unpack: [:gzip, :zip] " \
+                 "(--unpack gzip,zip with -i)", error.message
   end
 
   def test_skips_blank_lines
