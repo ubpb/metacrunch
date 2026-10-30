@@ -29,7 +29,7 @@ module Metacrunch
         parser.separator("")
         parser.separator("For jobs and transforms only:")
         parser.on("-i", "--input PATH", "Read JSON Lines from PATH (- for stdin) instead of the job's source",
-                  "(gzip, tar and zip are unpacked)") do |path|
+                  "(gzip is unpacked; --unpack for tar and zip)") do |path|
           @options[:input] = path
         end
         define_unpack_option(parser) { @options[:unpack] = it }

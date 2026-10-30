@@ -257,7 +257,15 @@ class ReaderTest < Minitest::Test
   def test_every_member_of_a_tar_archive_has_its_own_header_row
     archive = tar("a.csv" => "id\n1\n", "b.csv" => "name\nMoby\n")
 
-    assert_equal [{"id" => "1"}, {"name" => "Moby"}], read(archive)
+    assert_equal [{"id" => "1"}, {"name" => "Moby"}], read(archive, unpack: [:tar])
+  end
+
+  # Only gzip is unpacked by default: a job asks for archives. A tar read
+  # as it is starts with its header, the member's name and NULs.
+  def test_archives_are_read_as_they_are_by_default
+    rows = read(tar("a.csv" => "id\n1\n"))
+
+    assert_match(/\Aa\.csv\0/, rows.first.keys.first)
   end
 
   def test_dash_is_stdin

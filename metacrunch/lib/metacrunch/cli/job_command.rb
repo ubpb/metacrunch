@@ -37,7 +37,7 @@ module Metacrunch
       # and of stdin unpacks; yields them as Symbols.
       def define_unpack_option(parser)
         parser.on("--unpack LIST", Array, "Formats -i and stdin unpack, of gzip, tar and zip",
-                  "(default: all three)") do |list|
+                  "(default: gzip)") do |list|
           unknown = list - Input::UNPACK.map(&:to_s)
           raise UsageError, "--unpack must name gzip, tar or zip, got #{unknown.first}" unless unknown.empty?
 

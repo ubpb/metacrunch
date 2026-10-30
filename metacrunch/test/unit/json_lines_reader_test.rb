@@ -36,13 +36,13 @@ class JsonLinesReaderTest < Minitest::Test
     assert_raises(ArgumentError) { Reader.new(StringIO.new("1\n"), unpack: [:bzip2]) }
   end
 
-  # Without :zip in unpack:, a zip archive is one document of its bytes,
-  # which are no JSON.
-  def test_an_archive_left_packed_is_read_as_it_is
+  # Only gzip is unpacked by default: a zip archive is one document of its
+  # bytes, which are no JSON, unless the job asks for :zip.
+  def test_archives_are_read_as_they_are_by_default
     archive = ZipBuilder.build({"a.jsonl" => "1\n"})
-    records = read(Reader.new(StringIO.new(archive), unpack: [:gzip]))
+    records = read(Reader.new(StringIO.new(archive)))
 
-    assert_equal [1], read(Reader.new(StringIO.new(archive)))
+    assert_equal [1], read(Reader.new(StringIO.new(archive), unpack: [:gzip, :zip]))
     refute_empty records
     assert(records.all?(Metacrunch::InvalidRecord))
   end
@@ -146,7 +146,7 @@ class JsonLinesReaderTest < Minitest::Test
     path = File.join(@dir, "records.data")
     File.binwrite(path, gzip(io.string))
 
-    assert_equal [1, 2], read(Reader.new(path))
+    assert_equal [1, 2], read(Reader.new(path, unpack: [:gzip, :tar]))
   end
 
   def test_reads_gzip_from_stdin

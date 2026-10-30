@@ -81,17 +81,28 @@ class GeneratorsComponentsTest < Minitest::Test
     end
   end
 
-  def test_a_source_reads_gzip_tar_and_arrays
+  def test_a_source_reads_gzip_and_arrays
     in_project do |root|
       write(plan("source", "marc:dump", root:), root)
       File.binwrite(root.join("a.txt.gz"), Zlib.gzip("a\n"))
-      io = StringIO.new(+"", "wb")
-      Gem::Package::TarWriter.new(io) { |tar| tar.add_file_simple("b.txt", 0o644, 2) { it.write("b\n") } }
-      File.binwrite(root.join("b.tar"), io.string)
-      source = load_class(root.join("lib/marc/dump.rb"), "Marc::Dump").new([root.join("a.txt.gz"), root.join("b.tar")])
+      File.binwrite(root.join("b.txt"), "b\n")
+      source = load_class(root.join("lib/marc/dump.rb"), "Marc::Dump").new([root.join("a.txt.gz"), root.join("b.txt")])
 
       assert_equal [{"line" => "a"}, {"line" => "b"}], source.enum_for(:each).to_a
       assert_in_delta 1.0, source.progress
+    end
+  end
+
+  # The template unpacks gzip only; archives are the author's choice.
+  def test_a_source_reads_a_tar_as_it_is
+    in_project do |root|
+      write(plan("source", "marc:dump", root:), root)
+      io = StringIO.new(+"", "wb")
+      Gem::Package::TarWriter.new(io) { |tar| tar.add_file_simple("b.txt", 0o644, 2) { it.write("b\n") } }
+      File.binwrite(root.join("b.tar"), io.string)
+      lines = load_class(root.join("lib/marc/dump.rb"), "Marc::Dump").new(root.join("b.tar")).enum_for(:each).to_a
+
+      assert_match(/\Ab\.txt\0/, lines.first["line"])
     end
   end
 

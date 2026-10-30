@@ -15,6 +15,8 @@ class ReaderTest < Minitest::Test
   Reader = Metacrunch::Marc::Reader
   IDS = ["book-1", "article-1", "holding-1"].freeze
   NOT_MARC = "is neither MARCXML, ISO 2709 nor MARC-in-JSON"
+  # The formats a job names to read archives; the reader unpacks gzip only.
+  ARCHIVES = [:gzip, :tar].freeze
 
   # Hands out its first chunk, then waits until the test lets it go on, as
   # a pipe whose writer pauses.
@@ -128,7 +130,7 @@ class ReaderTest < Minitest::Test
     paths = [write("records.tar", archive), write("records.tar.gz", Zlib.gzip(archive)),
              write("records.tgz", Zlib.gzip(archive))]
 
-    paths.each { assert_equal [*IDS, "local-1"], ids(read(Reader.new(it))) }
+    paths.each { assert_equal [*IDS, "local-1"], ids(read(Reader.new(it, unpack: ARCHIVES))) }
   end
 
   def test_parse_false_yields_record_strings
@@ -252,23 +254,32 @@ class ReaderTest < Minitest::Test
     assert_match(/broken gzip data/, assert_raises(Metacrunch::InputError) { read(Reader.new(broken)) }.message)
   end
 
+  # Only gzip is unpacked by default: a tar read as it is starts with its
+  # header, which is no MARC.
+  def test_archives_are_read_as_they_are_by_default
+    path = write("records.tar", tar("a.xml" => fixture("collection.xml")))
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
+
+    assert_includes error.message, NOT_MARC
+  end
+
   def test_reads_tar_archives_whatever_the_name
     path = write("records.dat", tar("a.xml.gz" => Zlib.gzip(fixture("collection.xml"))))
 
-    assert_equal IDS, ids(read(Reader.new(path)))
+    assert_equal IDS, ids(read(Reader.new(path, unpack: ARCHIVES)))
   end
 
   def test_skips_members_whose_names_start_with_a_dot
     hidden = %(<record><controlfield tag="001">hidden-1</controlfield></record>)
     archive = tar("._a.xml" => hidden, "a.xml" => fixture("collection.xml"))
 
-    assert_equal IDS, ids(read(Reader.new(write("mac.tar", archive))))
+    assert_equal IDS, ids(read(Reader.new(write("mac.tar", archive), unpack: ARCHIVES)))
   end
 
   def test_a_truncated_tar_raises
     archive = tar("a.xml" => fixture("collection.xml"))
     path = write("cut.tar", archive.byteslice(0, 2048))
-    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path)) }
+    error = assert_raises(Metacrunch::InputError) { read(Reader.new(path, unpack: ARCHIVES)) }
 
     assert_match(/broken tar archive \(ends inside the member's data\)/, error.message)
   end
@@ -351,7 +362,7 @@ class ReaderTest < Minitest::Test
     archive = tar("a.xml" => fixture("collection.xml"), "b.mrc" => File.binread(fixture_path("collection.mrc")),
                   "c.jsonl" => fixture("collection.jsonl"))
 
-    assert_equal IDS * 3, ids(read(Reader.new(write("all.tar", archive))))
+    assert_equal IDS * 3, ids(read(Reader.new(write("all.tar", archive), unpack: ARCHIVES)))
   end
 
   def test_a_json_array_raises

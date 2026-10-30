@@ -3,10 +3,10 @@
 module Metacrunch
   module Csv
     # A metacrunch source: reads CSV from what Metacrunch::Input reads
-    # (paths, "-" for stdin, IOs or an Array of them; gzip, tar and zip
-    # are unpacked, unless unpack: says otherwise) and yields a Hash per row
-    # (String keys and values, "" for an empty field, nil for a missing
-    # one), or an Array with headers: false.
+    # (paths, "-" for stdin, IOs or an Array of them; gzip is unpacked, tar
+    # and zip when unpack: names them) and yields a Hash per row (String
+    # keys and values, "" for an empty field, nil for a missing one), or an
+    # Array with headers: false.
     # A row that cannot be read is yielded as Metacrunch::InvalidRecord.
     class Reader
 
@@ -15,7 +15,7 @@ module Metacrunch
 
       # unpack: the formats Metacrunch::Input unpacks.
       def initialize(targets, col_sep: ",", quote_char: '"', encoding: "UTF-8", headers: true,
-                     unpack: Metacrunch::Input::UNPACK)
+                     unpack: [:gzip])
         @input = Metacrunch::Input.new(targets, unpack:)
         @encoding = Csv.encoding(col_sep, quote_char, encoding)
         @headers = check_headers(headers)

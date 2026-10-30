@@ -27,11 +27,14 @@ class RunFlagsTest < Minitest::Test
     assert_equal "1\n2\n", File.read(output)
   end
 
-  def test_input_reads_tar_gz_archives
+  # -i unpacks gzip by default; the tar inside comes as it is, which is no
+  # JSON, so the run aborts at its first line.
+  def test_input_unpacks_only_gzip_by_default
     input = File.join(@dir, "dump.tar.gz")
     File.binwrite(input, Zlib.gzip(tar("a.jsonl" => "1\n2\n", "b.jsonl" => "3\n")))
 
-    assert_equal [0, "2\n4\n6\n"], cli("run", "-i", input, job("double.rb")).take(2)
+    assert_equal 1, cli("run", "-i", input, job("double.rb")).first
+    assert_equal [0, "2\n4\n6\n"], cli("run", "--unpack", "gzip,tar", "-i", input, job("double.rb")).take(2)
   end
 
   def test_gzip_piped_into_stdin
@@ -56,7 +59,7 @@ class RunFlagsTest < Minitest::Test
   end
 
   def test_the_help_of_input_names_gzip_tar_and_zip
-    assert_includes cli("help", "run")[1], "(gzip, tar and zip are unpacked)"
+    assert_includes cli("help", "run")[1], "(gzip is unpacked; --unpack for tar and zip)"
   end
 
   def test_rejects_and_failures_files_get_the_context

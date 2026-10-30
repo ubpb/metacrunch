@@ -5,9 +5,9 @@ require "json"
 module Metacrunch
   # A source and sinks for JSON Lines: one JSON value per line. The reader
   # takes what Input takes (paths, "-" for stdin, IOs or an Array of them;
-  # gzip, tar and zip are unpacked whatever their names, unless unpack:
-  # says otherwise), the writers what Output takes (paths, ".gz"
-  # compressed, "-" for stdout, IOs). IO objects are never closed.
+  # gzip is unpacked whatever its name, tar and zip when unpack: names
+  # them), the writers what Output takes (paths, ".gz" compressed, "-" for
+  # stdout, IOs). IO objects are never closed.
   module JsonLines
 
     # Source: yields every line parsed with JSON.parse. A line that is not
@@ -21,7 +21,7 @@ module Metacrunch
       private_constant :BLANK
 
       # unpack: the formats Input unpacks (see Input::UNPACK).
-      def initialize(targets, unpack: Input::UNPACK)
+      def initialize(targets, unpack: [:gzip])
         @input = Input.new(targets, unpack:)
       end
 

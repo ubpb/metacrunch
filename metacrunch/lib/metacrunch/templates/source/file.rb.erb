@@ -3,17 +3,17 @@
 require "metacrunch"
 
 # A source: yields a record for each line of its targets: paths, "-" for
-# stdin, IOs or an Array of them; gzip, tar and zip are unpacked. The targets
+# stdin, IOs or an Array of them; gzip is unpacked. The targets
 # are read in each, not in new, so that --help, check and tests with
 # another source read nothing. In a job:
 #   source <%= target.constant %>.new(params.input)
 class <%= target.class_name %>
 
   def initialize(targets)
-    # unpack: the formats that are unpacked; tar and zip on one level, an
-    # archive inside them is a document. Leave out what the source reads
-    # itself.
-    @input = ::Metacrunch::Input.new(targets, unpack: [:gzip, :tar, :zip])
+    # unpack: the formats that are unpacked. Add :tar and :zip to read the
+    # files of archives (on one level: an archive inside them is a
+    # document).
+    @input = ::Metacrunch::Input.new(targets, unpack: [:gzip])
   end
 
   # Optional: called once before the first record, with context.params
