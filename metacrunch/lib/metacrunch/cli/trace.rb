@@ -37,6 +37,7 @@ module Metacrunch
                   "(gzip, tar and zip are unpacked)") do |path|
           @input = path
         end
+        define_unpack_option(parser) { @unpack = it }
       end
 
       def execute_job(job, argv)
@@ -59,7 +60,7 @@ module Metacrunch
 
       def traced_pipeline(pipeline)
         null = SinkAdapter.new(Metacrunch::Trace::NullSink.new)
-        RunOptions.new(input: @input).apply_input(pipeline, stdin: @stdin).with(
+        RunOptions.new(input: @input, unpack: @unpack).apply_input(pipeline, stdin: @stdin).with(
           sink: null, rejects: null, failures: null, on_failure: :skip, max_failures: nil, limit:,
           before_hooks: [], after_hooks: []
         )

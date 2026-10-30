@@ -324,6 +324,15 @@ class ProjectCliTest < Minitest::Test
     end
   end
 
+  def test_unpack_is_a_usage_error_for_commands
+    in_project do |root|
+      code, _stdout, stderr = cli_in(root, "run", "--unpack", "gzip,tar", "note", "x")
+
+      assert_equal 2, code
+      assert_match(/Error: note is a command; --unpack applies to jobs and transforms/, stderr)
+    end
+  end
+
   def test_check_takes_commands_and_trace_does_not
     in_project do |root|
       results = ["check", "trace"].map { cli_in(root, it, "note", "x") }

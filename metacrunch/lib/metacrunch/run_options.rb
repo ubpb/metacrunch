@@ -4,11 +4,14 @@ module Metacrunch
 
   # The options of `metacrunch run` that change the pipeline: source and
   # sinks replaced by JSON Lines, the filter default, the limit and the
-  # failure policy. Paths may be "-" for stdin or stdout. The Invoker applies
-  # them to every job it runs; invoked jobs get the defaults.
-  RunOptions = Data.define(:input, :output, :rejects, :failures, :stats, :limit, :on_failure, :max_failures) do
-    def initialize(input: nil, output: nil, rejects: nil, failures: nil, stats: nil, limit: nil, on_failure: nil,
-                   max_failures: nil)
+  # failure policy. Paths may be "-" for stdin or stdout; unpack: the
+  # formats the JSON Lines reader of input and stdin unpacks, nil for its
+  # default. The Invoker applies them to every job it runs; invoked jobs get
+  # the defaults.
+  RunOptions = Data.define(:input, :unpack, :output, :rejects, :failures, :stats, :limit, :on_failure,
+                           :max_failures) do
+    def initialize(input: nil, unpack: nil, output: nil, rejects: nil, failures: nil, stats: nil, limit: nil,
+                   on_failure: nil, max_failures: nil)
       super
     end
 
@@ -33,14 +36,16 @@ module Metacrunch
     # Only the input: -i, or JSON Lines from stdin for a job without
     # source (the filter default).
     def apply_input(pipeline, stdin:)
-      return pipeline.with(source: JsonLines::Reader.new(input == STDIO ? stdin : input)) if input
+      return pipeline.with(source: reader(input == STDIO ? stdin : input)) if input
       return pipeline if pipeline.source
       raise NoInputError if stdin.tty?
 
-      pipeline.with(source: JsonLines::Reader.new(stdin))
+      pipeline.with(source: reader(stdin))
     end
 
     private
+
+    def reader(target) = unpack ? JsonLines::Reader.new(target, unpack:) : JsonLines::Reader.new(target)
 
     def sink(pipeline, stdout)
       return SinkAdapter.new(JsonLines::Writer.new(target(output, stdout))) if output

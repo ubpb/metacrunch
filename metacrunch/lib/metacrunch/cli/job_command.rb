@@ -33,6 +33,18 @@ module Metacrunch
 
       def environment_help = "Environment of the credentials and the params file (default: METACRUNCH_ENV)"
 
+      # --unpack of run and trace: the formats the JSON Lines reader of -i
+      # and of stdin unpacks; yields them as Symbols.
+      def define_unpack_option(parser)
+        parser.on("--unpack LIST", Array, "Formats -i and stdin unpack, of gzip, tar and zip",
+                  "(default: all three)") do |list|
+          unknown = list - Input::UNPACK.map(&:to_s)
+          raise UsageError, "--unpack must name gzip, tar or zip, got #{unknown.first}" unless unknown.empty?
+
+          yield list.map(&:to_sym)
+        end
+      end
+
       def execute(argv)
         @target = argv.shift
         raise UsageError, "no job, transform, command or file given" unless @target

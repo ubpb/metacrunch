@@ -57,6 +57,14 @@ class TraceCommandTest < Minitest::Test
     assert_match(/^traced 1 record: 1 to sink$/, stdout)
   end
 
+  def test_unpack_chooses_what_the_input_unpacks
+    gzipped = Zlib.gzip("1\n")
+
+    assert_match(/^traced 1 record: 1 to sink$/, cli("trace", "--unpack", "gzip", job("double.rb"), stdin: gzipped)[1])
+    refute_match(/1 to sink/, cli("trace", "--unpack", "", job("double.rb"), stdin: gzipped)[1])
+    assert_match(/--unpack must name gzip, tar or zip, got rar/, cli("trace", "--unpack", "rar", job("double.rb"))[2])
+  end
+
   def test_ids_need_an_id_extractor
     code, _stdout, stderr = cli("trace", "--id", "1", job("double.rb"), stdin: "1\n")
 

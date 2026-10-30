@@ -28,14 +28,8 @@ class RunFlagsTest < Minitest::Test
   end
 
   def test_input_reads_tar_gz_archives
-    io = StringIO.new(+"", "wb")
-    Gem::Package::TarWriter.new(io) do |tar|
-      {"a.jsonl" => "1\n2\n", "b.jsonl" => "3\n"}.each do |name, content|
-        tar.add_file_simple(name, 0o644, content.bytesize) { it.write(content) }
-      end
-    end
     input = File.join(@dir, "dump.tar.gz")
-    File.binwrite(input, Zlib.gzip(io.string))
+    File.binwrite(input, Zlib.gzip(tar("a.jsonl" => "1\n2\n", "b.jsonl" => "3\n")))
 
     assert_equal [0, "2\n4\n6\n"], cli("run", "-i", input, job("double.rb")).take(2)
   end
@@ -78,6 +72,28 @@ class RunFlagsTest < Minitest::Test
 
   def test_limit_stops_after_n_records
     assert_equal [0, "2\n4\n"], cli("run", "-n", "2", job("double.rb"), stdin: "1\n2\n3\n").take(2)
+  end
+
+  def test_unpack_chooses_what_input_unpacks
+    input = File.join(@dir, "dump.tar.gz")
+    File.binwrite(input, Zlib.gzip(tar("a.jsonl" => "1\n2\n", "b.jsonl" => "3\n")))
+
+    assert_equal [0, "2\n4\n6\n"], cli("run", "--unpack", "gzip,tar", "-i", input, job("double.rb")).take(2)
+    refute_equal 0, cli("run", "--unpack", "gzip", "-i", input, job("double.rb")).first
+  end
+
+  def test_unpack_applies_to_stdin_of_a_job_without_source
+    gzipped = Zlib.gzip("1\n2\n")
+
+    assert_equal [0, "2\n4\n"], cli("run", "--unpack", "gzip", job("double.rb"), stdin: gzipped).take(2)
+    refute_equal 0, cli("run", "--unpack", "", job("double.rb"), stdin: gzipped).first
+  end
+
+  def test_unpack_must_name_formats
+    code, _stdout, stderr = cli("run", "--unpack", "gzip,bzip2", job("double.rb"))
+
+    assert_equal 2, code
+    assert_match(/--unpack must name gzip, tar or zip, got bzip2/, stderr)
   end
 
   def test_invalid_option_values_are_usage_errors
@@ -188,6 +204,17 @@ class RunFlagsTest < Minitest::Test
     assert_match(/-i, --input PATH/, stdout)
     assert_match(/-n, --limit N/, stdout)
     assert_match(/--stats PATH/, stdout)
+  end
+
+  private
+
+  # entries: name => content.
+  def tar(entries)
+    io = StringIO.new(+"", "wb")
+    Gem::Package::TarWriter.new(io) do |tar|
+      entries.each { |name, content| tar.add_file_simple(name, 0o644, content.bytesize) { it.write(content) } }
+    end
+    io.string
   end
 
 end

@@ -13,8 +13,8 @@ module Metacrunch
       USAGE = "run [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]"
       # The options that apply to jobs and transforms only, as the usage
       # error names them; -w is kept apart in @workers.
-      JOB_OPTIONS = {input: "-i", output: "-o", rejects: "--rejects", failures: "--failures", limit: "-n",
-                     on_failure: "--on-failure", max_failures: "--max-failures", stats: "--stats"}.freeze
+      JOB_OPTIONS = {input: "-i", unpack: "--unpack", output: "-o", rejects: "--rejects", failures: "--failures",
+                     limit: "-n", on_failure: "--on-failure", max_failures: "--max-failures", stats: "--stats"}.freeze
 
       def initialize(streams, lookup)
         super
@@ -32,6 +32,7 @@ module Metacrunch
                   "(gzip, tar and zip are unpacked)") do |path|
           @options[:input] = path
         end
+        define_unpack_option(parser) { @options[:unpack] = it }
         parser.on("-o", "--output PATH", "Write JSON Lines to PATH (- for stdout) instead of the job's sink") do |path|
           @options[:output] = path
         end
