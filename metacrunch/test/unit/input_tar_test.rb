@@ -32,11 +32,12 @@ class InputTarTest < Minitest::Test
     end
   end
 
+  # gzip is decompressed again, an archive in the archive is a document.
   def test_members_are_detected_again
     inner = tar("c.jsonl" => "3\n")
     path = write("outer.tar", tar("a.jsonl.gz" => Zlib.gzip("1\n"), "inner.tar" => inner))
 
-    assert_equal [["#{path}:a.jsonl.gz", "1\n"], ["#{path}:inner.tar:c.jsonl", "3\n"]], documents(path)
+    assert_equal [["#{path}:a.jsonl.gz", "1\n"], ["#{path}:inner.tar", inner]], documents(path)
   end
 
   def test_directories_links_pax_headers_and_dot_members_are_skipped

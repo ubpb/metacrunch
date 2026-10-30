@@ -41,27 +41,29 @@ class InputZipTest < Minitest::Test
     assert_equal [["#{path}:a.csv", "1"], ["#{path}:a.csv", "2"]], documents(path)
   end
 
+  # gzip is decompressed again; an archive in the archive is a document.
   def test_documents_are_detected_again
     inner_tar = tar("c.jsonl" => "3\n")
-    path = write("outer.zip", zip("a.jsonl.gz" => Zlib.gzip("1\n"), "inner.tar" => inner_tar,
-                                  "inner.zip" => zip("d.jsonl" => "4\n")))
+    inner_zip = zip("d.jsonl" => "4\n")
+    path = write("outer.zip", zip("a.jsonl.gz" => Zlib.gzip("1\n"), "inner.tar" => inner_tar, "inner.zip" => inner_zip))
 
-    assert_equal [["#{path}:a.jsonl.gz", "1\n"], ["#{path}:inner.tar:c.jsonl", "3\n"],
-                  ["#{path}:inner.zip:d.jsonl", "4\n"]], documents(path)
+    assert_equal [["#{path}:a.jsonl.gz", "1\n"], ["#{path}:inner.tar", inner_tar], ["#{path}:inner.zip", inner_zip]],
+                 documents(path)
   end
 
-  def test_zip_inside_tar_gz
-    path = write("dump.tar.gz", Zlib.gzip(tar("part.zip" => zip("a.csv" => "1\n"))))
+  def test_a_zip_inside_tar_gz_is_a_document
+    part = zip("a.csv" => "1\n")
+    path = write("dump.tar.gz", Zlib.gzip(tar("part.zip" => part)))
 
-    assert_equal [["#{path}:part.zip:a.csv", "1\n"]], documents(path)
+    assert_equal [["#{path}:part.zip", part]], documents(path)
   end
 
   def test_zip_counts_as_a_layer
-    archive = 5.times.reduce("x") { |data, level| zip("#{level}.zip" => data) }
-    path = write("deep.zip", archive)
+    archive = 4.times.reduce(zip("a.csv" => "1\n")) { |data, _| Zlib.gzip(data) }
+    path = write("deep.zip.gz", archive)
     error = assert_raises(Metacrunch::InputError) { documents(path) }
 
-    assert_match(/: more than 4 layers of gzip, tar and zip\z/, error.message)
+    assert_equal "#{path}: more than 4 layers of gzip, tar and zip", error.message
   end
 
   def test_empty_archive_gives_no_document
@@ -231,11 +233,12 @@ class InputZipTest < Minitest::Test
   def test_office_files_and_other_packages_are_archives
     xlsx = write("data.xlsx", zip("[Content_Types].xml" => "x", "xl/workbook.xml" => "w"))
     epub = write("book.epub", zip("mimetype" => "application/epub+zip", "META-INF/container.xml" => "c"))
-    tar = write("dump.tar", tar("a.xlsx" => zip("[Content_Types].xml" => "x", "xl/workbook.xml" => "w")))
+    workbook = zip("[Content_Types].xml" => "x", "xl/workbook.xml" => "w")
+    tar = write("dump.tar", tar("a.xlsx" => workbook))
 
     assert_equal ["#{xlsx}:[Content_Types].xml", "#{xlsx}:xl/workbook.xml"], documents(xlsx).map(&:first)
     assert_equal ["#{epub}:mimetype", "#{epub}:META-INF/container.xml"], documents(epub).map(&:first)
-    assert_equal ["#{tar}:a.xlsx:[Content_Types].xml", "#{tar}:a.xlsx:xl/workbook.xml"], documents(tar).map(&:first)
+    assert_equal [["#{tar}:a.xlsx", workbook]], documents(tar)
   end
 
   def test_encrypted_entries
@@ -279,13 +282,13 @@ class InputZipTest < Minitest::Test
                  error(path)
   end
 
-  def test_hints_inside_other_archives_and_on_stdin
-    tar_path = write("dump.tar", tar("a.zip" => ZipBuilder.build([{name: "x.txt", data: "x", method: 12}])))
+  def test_hints_inside_gzip_and_on_stdin
+    gz_path = write("dump.zip.gz", Zlib.gzip(ZipBuilder.build([{name: "x.txt", data: "x", method: 12}])))
     original = $stdin
     $stdin = piped(ZipBuilder.build([{name: "y.txt", data: "y", flags: 1}]))
 
-    assert_equal "#{tar_path}:a.zip:x.txt: is compressed with bzip2, which metacrunch cannot read; unpack it first, " \
-                 "e.g. with 7z", error(tar_path)
+    assert_equal "#{gz_path}:x.txt: is compressed with bzip2, which metacrunch cannot read; unpack it first, " \
+                 "e.g. with 7z", error(gz_path)
     assert_equal "-:y.txt: is encrypted, which metacrunch cannot read; decrypt it first, e.g. with 7z", error("-")
   ensure
     $stdin = original

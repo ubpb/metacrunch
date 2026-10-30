@@ -4,7 +4,8 @@ require "tempfile"
 
 module Metacrunch
   # The documents of one or more targets, for sources and other readers:
-  # gzip, tar and zip are detected by their content and unpacked, up to
+  # the formats named in unpack: are detected by their content and
+  # unpacked, gzip wherever it is, tar and zip on one level, up to
   # MAX_LAYERS deep. Not a source itself: it has each_document, not each.
   # Used from one thread; only #progress may be read from another one. See
   # docs/files.md.
@@ -143,18 +144,24 @@ module Metacrunch
     # Yields the documents of stream. file: the path, for the hint of an
     # unsupported format on the outer layer of a file, else nil; depth: the
     # layers of gzip, tar and zip around stream; seekable: the target of
-    # an outer layer, if it can seek.
-    def layers(stream, name, file, depth, seekable = nil, &)
+    # an outer layer, if it can seek; archived: stream is a file of a tar
+    # or zip archive.
+    def layers(stream, name, file, depth, seekable = nil, archived: false, &)
       format = detect(stream)
-      format = :plain if UNPACK.include?(format) && !@unpack.include?(format)
+      format = :plain if UNPACK.include?(format) && !unpack?(format, archived)
       case format
       when :plain then document(stream, name, &)
-      when :gzip then gzip(stream, name, depth, &)
+      when :gzip then gzip(stream, name, depth, archived, &)
       when :tar then tar(stream, name, depth, &)
       when :zip then zip(stream, name, file, depth, seekable, &)
       else raise InputError, format.message(name, file)
       end
     end
+
+    # gzip, which compresses one file, wherever it is; an archive only on
+    # one level, as tar -x and unzip do: an archive in an archive is a
+    # document.
+    def unpack?(format, archived) = @unpack.include?(format) && (format == :gzip || !archived)
 
     # Reads ahead block by block until the first bytes tell the format.
     def detect(stream)
@@ -171,11 +178,11 @@ module Metacrunch
       stream.close
     end
 
-    def gzip(stream, name, depth, &)
+    def gzip(stream, name, depth, archived, &)
       deeper(name, depth)
       gzip = Gzip.new(stream, name)
       begin
-        layers(Stream.new(gzip), name, nil, depth + 1, &)
+        layers(Stream.new(gzip), name, nil, depth + 1, archived:, &)
       ensure
         gzip.finish
       end
@@ -184,7 +191,7 @@ module Metacrunch
     def tar(stream, name, depth, &)
       deeper(name, depth)
       Tar.new(stream, name).each_member do |member, member_name|
-        layers(member, member_name, nil, depth + 1, &)
+        layers(member, member_name, nil, depth + 1, archived: true, &)
       end
     end
 
@@ -242,7 +249,7 @@ module Metacrunch
         next unless entry.document?
 
         member = zip.member(entry)
-        layers(Stream.new(member), "#{name}:#{entry.name}", nil, depth + 1, &)
+        layers(Stream.new(member), "#{name}:#{entry.name}", nil, depth + 1, archived: true, &)
         member.drain
       end
     end
