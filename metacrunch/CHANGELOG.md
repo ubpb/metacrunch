@@ -48,8 +48,7 @@ metacrunch-redis live in this repository and share metacrunch's version.
   and zip detected by content and unpacked; bzip2, xz and zstd named in the error; all paths checked before reading;
   progress; a closed pipe ends the run as SIGPIPE. Problems raise `Metacrunch::InputError` and
   `Metacrunch::OutputError` with the file name. `metacrunch generate source|sink` builds on them.
-- `Metacrunch::Input` reads zip archives: every file is a document, also on stdin and inside gzip or tar; Office,
-  OpenDocument and EPUB files are refused with a hint.
+- `Metacrunch::Input` reads zip archives: every file is a document, also on stdin and inside gzip or tar.
 - `run` options to replace the source and sinks (`-i`, `-o`, `--rejects`, `--failures`), `--limit`, `--on-failure`,
   `--max-failures`, `--stats` and a progress display.
 - `metacrunch trace` shows what each step does to a record; `metacrunch check` validates a job; `metacrunch new`

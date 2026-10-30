@@ -34,13 +34,18 @@ The first bytes decide, not the name, for files, stdin and IOs alike:
 | gzip | All members are read, as `zcat` reads files written with `cat a.gz b.gz` |
 | tar | Every regular member; directories, links and members whose names start with `.` (such as the `._name` files of macOS `tar`) are skipped |
 | zip | Every file, in the order of the archive's directory; directories, links and files whose names start with `.` (such as the `__MACOSX/._name` files of macOS) are skipped |
-| Excel, Word, PowerPoint, EPUB, OpenDocument | An error: they are zip archives, but their parts are no documents (`data.xlsx: is an Excel workbook, which metacrunch cannot read; save it as CSV first`) |
 | bzip2, xz, zstd | An error that names the format and the command to decompress it first, e.g. `zstd -dc dump.jsonl.zst \| metacrunch run job.rb -i -` |
 | anything else | The document as it is |
 
 Unpacked content is checked again, so `.tar.gz`, a tar of `.gz` files, a zip of `.gz` files, a zip inside a `.tar.gz`
 and gzip inside gzip work, up to 4 layers. On a slow pipe, detection does not hold back the first line of a
 line-based format such as JSON Lines.
+
+Input unpacks, but does not judge what it unpacks: whether a document suits the source is up to whoever chooses the
+input. A source reads every document in its format, so a `readme.txt` in a zip of CSV files is read as CSV, as it
+would be when given directly. Excel, Word, PowerPoint, OpenDocument and EPUB files are zip archives too, and are
+unpacked like any other: their XML parts become documents. Give a job the files it is meant for, and unpack archives
+with other files first.
 
 A zip archive keeps its directory at its end, so it is read with random access:
 - a file, or an IO that can seek (an open File, a StringIO, from its position), directly;

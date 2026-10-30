@@ -222,9 +222,9 @@ module Metacrunch
       InputError.new("#{name}: #{Files.reason(error)} for a temporary copy in #{Dir.tmpdir} (TMPDIR)")
     end
 
-    # Refuses Office files and unsupported entries before the first
-    # document. A document read only in part is read to its end afterwards,
-    # to check it, as a tar member is.
+    # Refuses unsupported entries before the first document. A document
+    # read only in part is read to its end afterwards, to check it, as a
+    # tar member is.
     def zip_documents(zip, name, file, depth, &)
       ZipCheck.check(zip, name, file)
       zip.entries.each do |entry|

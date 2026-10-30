@@ -49,5 +49,5 @@ own gems may use it, for example to read the parts of a workbook.
   first.
 - An archive needs random access, since its directory is at its end: stdin, pipes and archives inside gzip, tar or
   zip are copied into a temporary file first.
-- A ZIP-based format with parts that are no documents (Office, OpenDocument, EPUB) is refused by Input, but can be
-  read with the reader directly.
+- Input unpacks every zip archive, also a ZIP-based format such as an Office, OpenDocument or EPUB file, whose parts
+  then become documents. A reader for such a format uses the ZIP reader directly.

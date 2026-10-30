@@ -225,44 +225,17 @@ class InputZipTest < Minitest::Test
     assert_in_delta 1.0, input.progress
   end
 
-  def test_office_files_are_refused
-    path = write("data.xlsx", zip("[Content_Types].xml" => "x", "xl/workbook.xml" => "x"))
+  # Input does not judge what an archive holds: a workbook, an EPUB or a
+  # jar is a zip archive like any other, and whether its files suit the
+  # reader is up to whoever chose the input.
+  def test_office_files_and_other_packages_are_archives
+    xlsx = write("data.xlsx", zip("[Content_Types].xml" => "x", "xl/workbook.xml" => "w"))
+    epub = write("book.epub", zip("mimetype" => "application/epub+zip", "META-INF/container.xml" => "c"))
+    tar = write("dump.tar", tar("a.xlsx" => zip("[Content_Types].xml" => "x", "xl/workbook.xml" => "w")))
 
-    assert_equal "#{path}: is an Excel workbook, which metacrunch cannot read; save it as CSV first", error(path)
-    {"word/document.xml" => "is a Word document", "ppt/presentation.xml" => "is a PowerPoint presentation"}
-      .each do |part, label|
-      office = write("office.zip", zip("[Content_Types].xml" => "x", part => "x"))
-
-      assert_equal "#{office}: #{label}, which metacrunch cannot read; unpack it first, e.g. unzip #{office}",
-                   error(office)
-    end
-  end
-
-  def test_epub_and_opendocument_files_are_refused
-    epub = write("book.epub", zip("mimetype" => "application/epub+zip", "META-INF/container.xml" => "x",
-                                  "META-INF/manifest.xml" => "x"))
-    odt = write("text.odt", zip("mimetype" => "application/vnd.oasis.opendocument.text",
-                                "META-INF/manifest.xml" => "x"))
-
-    assert_equal "#{epub}: is an EPUB book, which metacrunch cannot read; unpack it first, e.g. unzip #{epub}",
-                 error(epub)
-    assert_equal "#{odt}: is an OpenDocument file, which metacrunch cannot read; unpack it first, e.g. unzip #{odt}",
-                 error(odt)
-  end
-
-  def test_other_packages_are_archives
-    nupkg = write("lib.nupkg", zip("[Content_Types].xml" => "x", "lib/a.dll" => "dll"))
-    jar = write("lib.jar", zip("META-INF/MANIFEST.MF" => "m", "a/B.class" => "c"))
-
-    assert_equal ["#{nupkg}:[Content_Types].xml", "#{nupkg}:lib/a.dll"], documents(nupkg).map(&:first)
-    assert_equal ["#{jar}:META-INF/MANIFEST.MF", "#{jar}:a/B.class"], documents(jar).map(&:first)
-  end
-
-  def test_office_files_inside_other_archives
-    path = write("dump.tar", tar("a.xlsx" => zip("[Content_Types].xml" => "x", "xl/workbook.xml" => "x")))
-
-    assert_equal "#{path}:a.xlsx: is an Excel workbook, which metacrunch cannot read; save it as CSV first",
-                 error(path)
+    assert_equal ["#{xlsx}:[Content_Types].xml", "#{xlsx}:xl/workbook.xml"], documents(xlsx).map(&:first)
+    assert_equal ["#{epub}:mimetype", "#{epub}:META-INF/container.xml"], documents(epub).map(&:first)
+    assert_equal ["#{tar}:a.xlsx:[Content_Types].xml", "#{tar}:a.xlsx:xl/workbook.xml"], documents(tar).map(&:first)
   end
 
   def test_encrypted_entries
@@ -309,11 +282,11 @@ class InputZipTest < Minitest::Test
   def test_hints_inside_other_archives_and_on_stdin
     tar_path = write("dump.tar", tar("a.zip" => ZipBuilder.build([{name: "x.txt", data: "x", method: 12}])))
     original = $stdin
-    $stdin = piped(zip("[Content_Types].xml" => "x", "word/document.xml" => "x"))
+    $stdin = piped(ZipBuilder.build([{name: "y.txt", data: "y", flags: 1}]))
 
     assert_equal "#{tar_path}:a.zip:x.txt: is compressed with bzip2, which metacrunch cannot read; unpack it first, " \
                  "e.g. with 7z", error(tar_path)
-    assert_equal "-: is a Word document, which metacrunch cannot read; unpack it first, e.g. with unzip", error("-")
+    assert_equal "-:y.txt: is encrypted, which metacrunch cannot read; decrypt it first, e.g. with 7z", error("-")
   ensure
     $stdin = original
   end
