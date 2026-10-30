@@ -99,6 +99,15 @@ class RunFlagsTest < Minitest::Test
     assert_match(/--unpack must name gzip, tar or zip, got bzip2/, stderr)
   end
 
+  # A job's own source unpacks what the job asks for; --unpack would
+  # change nothing there.
+  def test_unpack_needs_input_or_stdin_for_a_job_with_a_source
+    code, _stdout, stderr = cli("run", "--unpack", "gzip,zip", job("numbers.rb"), "1", "2")
+
+    assert_equal 2, code
+    assert_match(/--unpack applies to -i and to stdin of a job without source/, stderr)
+  end
+
   def test_invalid_option_values_are_usage_errors
     assert_match(/--limit must be at least 1/, cli("run", "--limit", "0", job("double.rb"))[2])
     assert_match(/--max-failures must not be negative/, cli("run", "--max-failures", "-1", job("double.rb"))[2])

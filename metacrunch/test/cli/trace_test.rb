@@ -65,6 +65,13 @@ class TraceCommandTest < Minitest::Test
     assert_match(/--unpack must name gzip, tar or zip, got rar/, cli("trace", "--unpack", "rar", job("double.rb"))[2])
   end
 
+  def test_unpack_needs_input_or_stdin_for_a_job_with_a_source
+    code, _stdout, stderr = cli("trace", "--unpack", "zip", job("numbers.rb"), "1")
+
+    assert_equal 2, code
+    assert_match(/--unpack applies to -i and to stdin of a job without source/, stderr)
+  end
+
   def test_ids_need_an_id_extractor
     code, _stdout, stderr = cli("trace", "--id", "1", job("double.rb"), stdin: "1\n")
 

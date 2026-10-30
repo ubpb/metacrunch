@@ -34,9 +34,11 @@ module Metacrunch
     end
 
     # Only the input: -i, or JSON Lines from stdin for a job without
-    # source (the filter default).
+    # source (the filter default). unpack: without either would change
+    # nothing, so it raises UsageError.
     def apply_input(pipeline, stdin:)
       return pipeline.with(source: reader(input == STDIO ? stdin : input)) if input
+      raise UsageError, "--unpack applies to -i and to stdin of a job without source" if unpack && pipeline.source
       return pipeline if pipeline.source
       raise NoInputError if stdin.tty?
 
