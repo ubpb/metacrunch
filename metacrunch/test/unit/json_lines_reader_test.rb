@@ -23,6 +23,14 @@ class JsonLinesReaderTest < Minitest::Test
     assert_nil reader.progress
   end
 
+  def test_unpack_is_passed_on
+    gzipped = Zlib.gzip("1\n")
+
+    assert_equal [1], read(Reader.new(StringIO.new(gzipped)))
+    assert(read(Reader.new(StringIO.new(gzipped), unpack: [])).all?(Metacrunch::InvalidRecord))
+    assert_raises(ArgumentError) { Reader.new(StringIO.new(gzipped), unpack: [:bzip2]) }
+  end
+
   def test_skips_blank_lines
     assert_equal [1, 2], read(Reader.new(StringIO.new("1\n\n  \n2\n")))
   end
