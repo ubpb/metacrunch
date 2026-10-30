@@ -22,6 +22,9 @@ end (jar, nupkg and 3mf are zip-based too), and it judged the content, which Inp
 - **The readers pass `unpack:` on, with gzip as their default.** These are `JsonLines::Reader`, `Csv::Reader` and
   `Marc::Reader`; the generator's source template names gzip itself. A job that reads tar or zip archives names them,
   and `metacrunch run -i` takes `--unpack`. A reader of a ZIP-based format leaves `:zip` out.
+- **Readers of text refuse what they do not unpack.** With `packed: :refuse`, a gzip, tar or zip document that
+  `unpack:` leaves out raises an error that names the `unpack:` to pass. Read as text, its bytes would give wrong
+  records, for CSV without any error.
 - **gzip is decompressed wherever it is.** It compresses one file and brings in nothing else: `.tar.gz` and `.zip.gz`
   files are read as `.tar` and `.zip` files are, and a `.jsonl.gz` file in an archive is decompressed.
 - **Archives are unpacked on one level, as `tar -x` and `unzip` do.** A tar or zip in an archive is a document; a
@@ -47,7 +50,7 @@ end (jar, nupkg and 3mf are zip-based too), and it judged the content, which Inp
 ## Consequences
 
 - Jobs read `.gz` files as before. A job that reads tar or zip archives says so with `unpack:`, or `--unpack` for `-i`;
-  without it, an archive comes as one document of its bytes.
+  without it, a reader stops at the archive and names the `unpack:` to pass.
 - A tar of tars or a zip in a `.tar.gz` is no longer unpacked; such deliveries are unpacked first. Nested unpacking
   on request can be added later, as a depth for `unpack:`.
 - A later reader of workbooks gets them as documents, given directly or from inside an archive.

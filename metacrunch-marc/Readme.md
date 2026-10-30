@@ -249,7 +249,8 @@ paths, `"-"` for stdin, or IOs, which it does not close. gzip (all members, as `
 (every regular file, but not those whose names start with `.`) are detected by their content, whatever their names.
 `unpack:` chooses what is unpacked, `[:gzip]` by default: a job that reads archives names them, e.g.
 `unpack: [:gzip, :tar]`, and they are unpacked on one level, so an archive inside an archive is read as a file.
-`unpack: []` reads every target as it is.
+A gzip, tar or zip file that `unpack:` leaves out stops the run with `Metacrunch::InputError` and the `unpack:` to
+pass.
 
 The format of each document (a file, the content of a gzip file, a file in a tar or zip archive) is told by its first
 bytes, after a byte order mark and whitespace: `<` is MARCXML, `{` MARC-in-JSON, a record length and a base address

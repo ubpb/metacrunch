@@ -31,7 +31,7 @@ file. The CLI does not change the working directory: relative paths are relative
 | `--params FILE` | Parameter values from FILE, the section of the environment (see [Parameter files](jobs.md#parameter-files)) |
 | `--credentials DIR` | Credentials directory (default: `METACRUNCH_CREDENTIALS`, then `.metacrunch/` above the job file or, for a name, above the `Metacrunchfile`, then `~/.metacrunch/`) |
 | `-i`, `--input PATH` | Read JSON Lines from PATH (`-` for stdin; gzip is unpacked, tar and zip with `--unpack`) instead of the job's source |
-| `--unpack LIST` | The formats `-i`, and stdin for a job without source, unpack: a comma-separated list of `gzip`, `tar` and `zip` (default `gzip`); `--unpack ""` unpacks nothing; a job with its own source and no `-i` refuses it (also for `trace`) |
+| `--unpack LIST` | The formats `-i`, and stdin for a job without source, unpack: a comma-separated list of `gzip`, `tar` and `zip` (default `gzip`); `--unpack ""` unpacks nothing; a gzip, tar or zip input it leaves out stops the run with the `--unpack` to pass; a job with its own source and no `-i` refuses it (also for `trace`) |
 | `-o`, `--output PATH` | Write JSON Lines to PATH (`-` for stdout) instead of the job's sink |
 | `--rejects PATH`, `--failures PATH` | Write rejected or failed records with their context; both may name the same file |
 | `-n`, `--limit N` | Process only the first N source records |

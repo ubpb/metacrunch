@@ -45,14 +45,22 @@ The first bytes decide, not the name, for files, stdin and IOs alike:
 | bzip2, xz, zstd | An error that names the format and the command to decompress it first, e.g. `zstd -dc dump.jsonl.zst \| metacrunch run job.rb -i -`, also without `unpack:` |
 | anything else | The document as it is |
 
-A format that is not in `unpack:` comes as a document with its bytes.
+A format that is not in `unpack:` comes as a document with its bytes. With `packed: :refuse` it raises an error
+instead, which names the `unpack:` that reads it, and the `--unpack` for `metacrunch run -i`:
+
+```
+dump.tar.gz: is a tar archive; to read its files, pass unpack: [:gzip, :tar] (--unpack gzip,tar with -i)
+```
+
+The readers and the generated source read text and refuse so: read as text, a tar gives lines that start with a
+member's name and NULs, and a CSV header named after it, without an error.
 
 gzip compresses one file and is decompressed wherever it is: `.tar.gz` and `.zip.gz` files are read as `.tar` and
 `.zip` files are, and a `.gz` file in a tar or zip archive is decompressed. Archives are unpacked on one level only,
-as `tar -x` and `unzip` do: a tar or zip in an archive is a document with its bytes, not unpacked. A gzip-compressed
-archive in an archive gives its content, e.g. the workbook of `book.xlsx.gz` in a tar. Up to 4 layers are unpacked,
-which leaves room for gzip inside gzip. On a slow pipe, detection does not hold back the first line of a line-based
-format such as JSON Lines.
+as `tar -x` and `unzip` do: a tar or zip in an archive is a document with its bytes, not unpacked, and not refused,
+since no `unpack:` reads it. A gzip-compressed archive in an archive gives its content, e.g. the workbook of
+`book.xlsx.gz` in a tar. Up to 4 layers are unpacked, which leaves room for gzip inside gzip. On a slow pipe,
+detection does not hold back the first line of a line-based format such as JSON Lines.
 
 Input unpacks, but does not judge what it unpacks: whether a document suits the source is up to whoever chooses the
 input. A source reads every document in its format, so a `readme.txt` in a zip of CSV files is read as CSV, as it
@@ -124,7 +132,7 @@ method feeds the progress display of `metacrunch run`. With stdin, an IO or a FI
 class Lines
 
   def initialize(targets)
-    @input = Metacrunch::Input.new(targets, unpack: [:gzip])  # add :tar, :zip to read archives
+    @input = Metacrunch::Input.new(targets, unpack: [:gzip], packed: :refuse)  # add :tar, :zip to read archives
   end
 
   def each

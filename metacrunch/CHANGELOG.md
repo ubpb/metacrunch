@@ -44,10 +44,12 @@ metacrunch-redis live in this repository and share metacrunch's version.
 - Unix pipes: a job without source reads JSON Lines from stdin, a job without sink writes them to stdout.
 - `Metacrunch::JsonLines` reader and writers; `Metacrunch::InvalidRecord` for records a source cannot read. The reader
   takes Arrays of files and reads gzip files whatever their names, also on stdin (`-i dump.jsonl.gz`), and tar and zip
-  archives with `unpack:` (`--unpack` for `-i`).
+  archives with `unpack:` (`--unpack` for `-i`); a gzip, tar or zip file left out stops the run with the `unpack:` to
+  pass.
 - `Metacrunch::Input` and `Metacrunch::Output` for sources and sinks: paths, `-`, IOs (and Arrays for input); gzip, tar
   and zip detected by content and unpacked as `unpack:` asks (nothing without it; the readers unpack gzip by default,
-  archives when a job asks), gzip wherever it is and archives on one level; bzip2, xz, zstd and split zip archives
+  archives when a job asks), gzip wherever it is and archives on one level; `packed: :refuse` raises an error that
+  names the `unpack:` for a format left out, instead of giving its bytes; bzip2, xz, zstd and split zip archives
   named in the error; all paths checked before reading; progress; a closed pipe ends the run as SIGPIPE. Problems
   raise `Metacrunch::InputError` and `Metacrunch::OutputError` with the file name. `metacrunch generate source|sink`
   builds on them.

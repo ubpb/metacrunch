@@ -52,7 +52,7 @@ source Metacrunch::Csv::Reader.new(params.file, headers: false)                 
 | `quote_char` | `'"'` | one character, not the separator; one byte in UTF-8 and single-byte encodings |
 | `encoding` | `"UTF-8"` | the encoding of the files; values are always UTF-8 |
 | `headers` | `true` | `true`: the first row names the columns; an Array of names; `false`: Array records |
-| `unpack` | `[:gzip]` | the formats that are unpacked: add `:tar` and `:zip` to read archives, on one level; `[]` reads every target as it is |
+| `unpack` | `[:gzip]` | the formats that are unpacked: add `:tar` and `:zip` to read archives, on one level; a gzip, tar or zip file left out raises an error that names the `unpack:` to pass |
 
 The reader reads what `Metacrunch::Input` reads (see metacrunch's
 [Files](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/files.md)): one target or an Array of them —
