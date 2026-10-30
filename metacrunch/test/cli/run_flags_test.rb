@@ -99,6 +99,12 @@ class RunFlagsTest < Minitest::Test
     assert_match(/--unpack must name gzip, tar or zip, got bzip2/, stderr)
   end
 
+  def test_unpack_names_an_empty_element
+    _code, _stdout, stderr = cli("run", "--unpack", "gzip,,tar", job("double.rb"))
+
+    assert_match(/--unpack must name gzip, tar or zip, got an empty name$/, stderr)
+  end
+
   # A job's own source unpacks what the job asks for; --unpack would
   # change nothing there.
   def test_unpack_needs_input_or_stdin_for_a_job_with_a_source

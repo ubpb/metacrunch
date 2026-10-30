@@ -38,8 +38,11 @@ module Metacrunch
       def define_unpack_option(parser)
         parser.on("--unpack LIST", Array, "Formats -i and stdin unpack, of gzip, tar and zip",
                   "(default: gzip)") do |list|
+          # OptionParser turns an empty element ("gzip,,tar") into nil.
           unknown = list - Input::UNPACK.map(&:to_s)
-          raise UsageError, "--unpack must name gzip, tar or zip, got #{unknown.first}" unless unknown.empty?
+          unless unknown.empty?
+            raise UsageError, "--unpack must name gzip, tar or zip, got #{unknown.first || "an empty name"}"
+          end
 
           yield list.map(&:to_sym)
         end
