@@ -25,10 +25,26 @@ class JsonLinesReaderTest < Minitest::Test
 
   def test_unpack_is_passed_on
     gzipped = Zlib.gzip("1\n")
+    raw = read(Reader.new(StringIO.new(gzipped), unpack: []))
 
     assert_equal [1], read(Reader.new(StringIO.new(gzipped)))
-    assert(read(Reader.new(StringIO.new(gzipped), unpack: [])).all?(Metacrunch::InvalidRecord))
-    assert_raises(ArgumentError) { Reader.new(StringIO.new(gzipped), unpack: [:bzip2]) }
+    refute_empty raw
+    assert(raw.all?(Metacrunch::InvalidRecord))
+  end
+
+  def test_an_invalid_unpack_is_refused
+    assert_raises(ArgumentError) { Reader.new(StringIO.new("1\n"), unpack: [:bzip2]) }
+  end
+
+  # Without :zip in unpack:, a zip archive is one document of its bytes,
+  # which are no JSON.
+  def test_an_archive_left_packed_is_read_as_it_is
+    archive = ZipBuilder.build({"a.jsonl" => "1\n"})
+    records = read(Reader.new(StringIO.new(archive), unpack: [:gzip]))
+
+    assert_equal [1], read(Reader.new(StringIO.new(archive)))
+    refute_empty records
+    assert(records.all?(Metacrunch::InvalidRecord))
   end
 
   def test_skips_blank_lines

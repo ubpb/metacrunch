@@ -56,10 +56,13 @@ class InputUnpackTest < Minitest::Test
   end
 
   def test_unreadable_formats_stay_errors
-    ["BZh91AY&SY", "\xFD7zXZ\x00", "\x28\xB5\x2F\xFD", "PK\x07\x08PK\x03\x04"].each do |head|
+    {"BZh91AY&SY" => "is bzip2 compressed", "\xFD7zXZ\x00" => "is xz compressed",
+     "\x28\xB5\x2F\xFD" => "is zstd compressed", "PK\x07\x08PK\x03\x04" => "is part of a split zip archive"}
+      .each do |head, label|
       path = write("data", "#{head}rest".b)
+      error = assert_raises(Metacrunch::InputError) { documents(path) }
 
-      assert_raises(Metacrunch::InputError) { documents(path) }
+      assert_match(/\A#{Regexp.escape(path)}: #{label}, which metacrunch cannot read; .+ first, e\.g\. /, error.message)
     end
   end
 

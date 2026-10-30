@@ -244,9 +244,14 @@ class ReaderTest < Minitest::Test
     path = file("data.csv.gz", Zlib.gzip("id\n1\n"))
 
     assert_equal [{"id" => "1"}], Reader.new(path).each.to_a
-    # The gzip bytes are no CSV: their first row cannot be read.
-    assert_raises(Metacrunch::InputError) { Reader.new(path, unpack: []).each.to_a }
-    assert_raises(ArgumentError) { Reader.new(path, unpack: [:bzip2]) }
+    # The gzip bytes are no CSV: the reader fails on their first row.
+    error = assert_raises(Metacrunch::InputError) { Reader.new(path, unpack: []).each.to_a }
+
+    assert_includes error.message, "the header row cannot be read"
+  end
+
+  def test_an_invalid_unpack_is_refused
+    assert_raises(ArgumentError) { Reader.new("data.csv", unpack: [:bzip2]) }
   end
 
   def test_every_member_of_a_tar_archive_has_its_own_header_row
