@@ -47,16 +47,16 @@ metacrunch-redis live in this repository and share metacrunch's version.
   archives with `unpack:` (`--unpack` for `-i`).
 - `Metacrunch::Input` and `Metacrunch::Output` for sources and sinks: paths, `-`, IOs (and Arrays for input); gzip, tar
   and zip detected by content and unpacked as `unpack:` asks (nothing without it; the readers unpack gzip by default,
-  archives when a job asks), gzip wherever it is and archives on one level; bzip2, xz and zstd named in the error;
-  all paths checked before reading; progress; a closed pipe ends the run as SIGPIPE. Problems raise
-  `Metacrunch::InputError` and `Metacrunch::OutputError` with the file name. `metacrunch generate source|sink` builds
-  on them.
+  archives when a job asks), gzip wherever it is and archives on one level; bzip2, xz, zstd and split zip archives
+  named in the error; all paths checked before reading; progress; a closed pipe ends the run as SIGPIPE. Problems
+  raise `Metacrunch::InputError` and `Metacrunch::OutputError` with the file name. `metacrunch generate source|sink`
+  builds on them.
 - `Metacrunch::Input` reads zip archives: every file is a document, also on stdin and inside gzip.
 - `run` options to replace the source and sinks (`-i`, `-o`, `--rejects`, `--failures`), `--unpack`, `--limit`,
   `--on-failure`, `--max-failures`, `--stats` and a progress display.
-- `metacrunch trace` shows what each step does to a record; `metacrunch check` validates a job; `metacrunch new`
-  creates a project, and `metacrunch generate` a job, transform, command, source or sink in it with a test, or by path
-  (a test with `--test`).
+- `metacrunch trace` shows what each step does to a record, also with `-i` and `--unpack`; `metacrunch check`
+  validates a job; `metacrunch new` creates a project, and `metacrunch generate` a job, transform, command, source or
+  sink in it with a test, or by path (a test with `--test`).
 - A closed stdout (`| head`) ends a job quietly by SIGPIPE (exit status 141).
 - `metacrunch run -w N` (`--workers N|auto`) runs the steps in N worker processes, with the results in source
   order; `Job#run`, `Testing.run` and `Engine` take workers as well. Step components are opened after the `before`

@@ -47,11 +47,12 @@ The first bytes decide, not the name, for files, stdin and IOs alike:
 
 A format that is not in `unpack:` comes as a document with its bytes.
 
-gzip compresses one file and is decompressed wherever it is: `.tar.gz`, `.zip.gz`, and `.gz` files in a tar or zip
-archive work. Archives are unpacked on one level only, as `tar -x` and `unzip` do: a tar or zip in an archive is a
-document with its bytes, not unpacked. A gzip-compressed archive in an archive gives its content, e.g. the workbook of
-`book.xlsx.gz` in a tar. Up to 4 layers are unpacked, which leaves room for gzip inside gzip. On a slow pipe,
-detection does not hold back the first line of a line-based format such as JSON Lines.
+gzip compresses one file and is decompressed wherever it is: `.tar.gz` and `.zip.gz` files are read as `.tar` and
+`.zip` files are, and a `.gz` file in a tar or zip archive is decompressed. Archives are unpacked on one level only,
+as `tar -x` and `unzip` do: a tar or zip in an archive is a document with its bytes, not unpacked. A gzip-compressed
+archive in an archive gives its content, e.g. the workbook of `book.xlsx.gz` in a tar. Up to 4 layers are unpacked,
+which leaves room for gzip inside gzip. On a slow pipe, detection does not hold back the first line of a line-based
+format such as JSON Lines.
 
 Input unpacks, but does not judge what it unpacks: whether a document suits the source is up to whoever chooses the
 input. A source reads every document in its format, so a `readme.txt` in a zip of CSV files is read as CSV, as it

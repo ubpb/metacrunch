@@ -22,8 +22,8 @@ end (jar, nupkg and 3mf are zip-based too), and it judged the content, which Inp
 - **The readers pass `unpack:` on, with gzip as their default.** These are `JsonLines::Reader`, `Csv::Reader` and
   `Marc::Reader`; the generator's source template names gzip itself. A job that reads tar or zip archives names them,
   and `metacrunch run -i` takes `--unpack`. A reader of a ZIP-based format leaves `:zip` out.
-- **gzip is decompressed wherever it is.** It compresses one file and brings in nothing else: `.tar.gz`, `.zip.gz`
-  and `.jsonl.gz` files in an archive work.
+- **gzip is decompressed wherever it is.** It compresses one file and brings in nothing else: `.tar.gz` and `.zip.gz`
+  files are read as `.tar` and `.zip` files are, and a `.jsonl.gz` file in an archive is decompressed.
 - **Archives are unpacked on one level, as `tar -x` and `unzip` do.** A tar or zip in an archive is a document; a
   gzip-compressed one gives its content.
 - **Formats are detected by their content.** What metacrunch cannot read (bzip2, xz, zstd, split zip) stays an error.

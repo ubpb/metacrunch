@@ -63,9 +63,8 @@ keeps it. A command that invokes such a job ends by the signal once the job has 
 `Metacrunch::JsonLines::Reader.new(targets)` reads JSON Lines from a path, `-` for stdin, an IO or an Array of them;
 gzip files are unpacked whatever their names; tar and zip archives when the job asks for them, e.g.
 `unpack: [:gzip, :tar]`, on one level (see [Files](files.md)); `unpack: []` reads every target as it is. A source
-can yield
-`Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines that are not
-valid JSON or not valid UTF-8. Invalid records fail like a step (the pseudo-step `source`) under the
+can yield `Metacrunch::InvalidRecord.new(raw:, error:)` for a record it cannot read; the reader does so for lines
+that are not valid JSON or not valid UTF-8. Invalid records fail like a step (the pseudo-step `source`) under the
 job's failure policy. Note that JSON objects with duplicate keys count as invalid, and numbers beyond the Float range
 (`1e400`) are read as `Infinity`, which the writer refuses.
 

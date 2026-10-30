@@ -251,12 +251,12 @@ paths, `"-"` for stdin, or IOs, which it does not close. gzip (all members, as `
 `unpack: [:gzip, :tar]`, and they are unpacked on one level, so an archive inside an archive is read as a file.
 `unpack: []` reads every target as it is.
 
-The format of each document (a file, the content of a gzip file, a tar member) is told by its first bytes, after a
-byte order mark and whitespace: `<` is MARCXML, `{` MARC-in-JSON, a record length and a base address (five digits at
-00–04 and at 12–16) ISO 2709. So one run reads all three formats, also from one tar archive. A document that starts
-otherwise stops the run with `Metacrunch::InputError` and its first bytes (`dump.dat: is neither MARCXML, ISO 2709 nor
-MARC-in-JSON: it starts with "id;title;..."`), and so does a JSON array, with a hint to convert it. An empty document
-gives no records.
+The format of each document (a file, the content of a gzip file, a file in a tar or zip archive) is told by its first
+bytes, after a byte order mark and whitespace: `<` is MARCXML, `{` MARC-in-JSON, a record length and a base address
+(five digits at 00–04 and at 12–16) ISO 2709. So one run reads all three formats, also from the files of one archive
+(with `:tar` or `:zip` in `unpack:`). A document that starts otherwise stops the run with `Metacrunch::InputError` and
+its first bytes (`dump.dat: is neither MARCXML, ISO 2709 nor MARC-in-JSON: it starts with "id;title;..."`), and so
+does a JSON array, with a hint to convert it. An empty document gives no records.
 
 A record that cannot be parsed becomes a `Metacrunch::InvalidRecord` and fails under the job's failure policy; the
 records after it are read. So does a record that the end of a file cuts off, e.g. after an interrupted download.

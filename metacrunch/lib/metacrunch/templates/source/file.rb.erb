@@ -3,9 +3,9 @@
 require "metacrunch"
 
 # A source: yields a record for each line of its targets: paths, "-" for
-# stdin, IOs or an Array of them; gzip is unpacked. The targets
-# are read in each, not in new, so that --help, check and tests with
-# another source read nothing. In a job:
+# stdin, IOs or an Array of them; gzip is unpacked. The targets are read
+# in each, not in new, so that --help, check and tests with another source
+# read nothing. In a job:
 #   source <%= target.constant %>.new(params.input)
 class <%= target.class_name %>
 

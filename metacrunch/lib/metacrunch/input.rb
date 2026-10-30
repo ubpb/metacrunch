@@ -196,8 +196,9 @@ module Metacrunch
     end
 
     # A ZIP archive's directory is at its end: a Seekable target is read
-    # directly, anything else is copied into a temporary file first, which
-    # is removed afterwards, also on errors and interrupts.
+    # directly, anything else is copied into an anonymous temporary file
+    # first (see temporary_file), which is closed afterwards, also on
+    # errors and interrupts.
     def zip(stream, name, file, depth, seekable, &)
       deeper(name, depth)
       if seekable

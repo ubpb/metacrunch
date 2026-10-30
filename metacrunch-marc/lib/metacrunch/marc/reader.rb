@@ -8,11 +8,11 @@ module Metacrunch
     # Metacrunch::Input reads (paths, "-" for stdin, IOs or an Array of them;
     # gzip is unpacked whatever its name, tar and zip when unpack: names
     # them). The format of each document is told by its first bytes (see
-    # Formats), so inputs may mix
-    # formats. Yields a Record per record, or with parse: false the record
-    # as a String in its format, which is cheaper to send to workers. A
-    # record that cannot be parsed is yielded as Metacrunch::InvalidRecord; a
-    # document in another format raises Metacrunch::InputError.
+    # Formats), so inputs may mix formats. Yields a Record per record, or
+    # with parse: false the record as a String in its format, which is
+    # cheaper to send to workers. A record that cannot be parsed is yielded
+    # as Metacrunch::InvalidRecord; a document in another format raises
+    # Metacrunch::InputError.
     class Reader
 
       # targets: what Metacrunch::Input takes. IOs are never closed.
