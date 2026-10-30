@@ -113,7 +113,6 @@ class InputZipReaderTest < Minitest::Test
     assert_equal "a.zip: broken zip archive (ends early)", error.message
   end
 
-  # A maxed value that leads nowhere needs the Zip64 end record.
   # A failing disk or network mount, as Raw names it for gzip and tar.
   def test_a_read_error_names_the_archive
     io = StringIO.new(ZipBuilder.build({"a.txt" => "a"}))
@@ -124,6 +123,7 @@ class InputZipReaderTest < Minitest::Test
     assert_equal "a.zip: input/output error", error.message
   end
 
+  # A maxed value that leads nowhere needs the Zip64 end record.
   def test_maxed_values_without_zip64
     archive = ZipBuilder.build({"a.txt" => "a"})
     archive[archive.rindex("PK\x05\x06".b) + 16, 4] = [0xFFFF_FFFF].pack("V")

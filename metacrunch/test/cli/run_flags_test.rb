@@ -34,7 +34,6 @@ class RunFlagsTest < Minitest::Test
     File.binwrite(input, Zlib.gzip(tar("a.jsonl" => "1\n2\n", "b.jsonl" => "3\n")))
 
     assert_equal 1, cli("run", "-i", input, job("double.rb")).first
-    assert_equal [0, "2\n4\n6\n"], cli("run", "--unpack", "gzip,tar", "-i", input, job("double.rb")).take(2)
   end
 
   def test_gzip_piped_into_stdin

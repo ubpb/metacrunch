@@ -42,7 +42,7 @@ class InputZipTest < Minitest::Test
   end
 
   # gzip is decompressed again; an archive in the archive is a document.
-  def test_documents_are_detected_again
+  def test_gzip_in_the_archive_is_decompressed_and_archives_are_documents
     inner_tar = tar("c.jsonl" => "3\n")
     inner_zip = zip("d.jsonl" => "4\n")
     path = write("outer.zip", zip("a.jsonl.gz" => Zlib.gzip("1\n"), "inner.tar" => inner_tar, "inner.zip" => inner_zip))
