@@ -145,27 +145,32 @@ class InputZipTest < Minitest::Test
     assert_equal "#{broken}:a.txt: broken zip archive (wrong CRC32)", error.message
   end
 
-  def test_breaking_out_removes_the_temporary_file
-    Input.new(piped(zip("a.csv" => "1\n", "b.csv" => "2\n")), unpack: Input::UNPACK).each_document { break }
+  def test_breaking_out_closes_the_temporary_file
+    copies = spying_on_temporary_files do
+      Input.new(piped(zip("a.csv" => "1\n", "b.csv" => "2\n")), unpack: Input::UNPACK).each_document { break }
+    end
 
-    assert_equal 0, temporary_files
+    assert_equal [true], copies.map(&:closed?)
   end
 
-  def test_an_interrupt_removes_the_temporary_file
+  def test_an_interrupt_closes_the_temporary_file
     queue = Queue.new
     reading = Queue.new
-    thread = Thread.new do
-      Input.new(piped(zip("a.csv" => "1\n")), unpack: Input::UNPACK).each_document do
-        reading << true
-        queue.pop
+    copies = spying_on_temporary_files do
+      thread = Thread.new do
+        Input.new(piped(zip("a.csv" => "1\n")), unpack: Input::UNPACK).each_document do
+          reading << true
+          queue.pop
+        end
       end
-    end
-    thread.report_on_exception = false
-    reading.pop(timeout: 5)
-    thread.raise(Interrupt)
+      thread.report_on_exception = false
+      reading.pop(timeout: 5)
+      thread.raise(Interrupt)
 
-    assert_raises(Interrupt) { thread.join }
-    assert_equal 0, temporary_files
+      assert_raises(Interrupt) { thread.join }
+    end
+
+    assert_equal [true], copies.map(&:closed?)
   end
 
   def test_an_error_while_copying_names_the_target
@@ -198,12 +203,13 @@ class InputZipTest < Minitest::Test
 
   # An error of the block is the block's, not one of the temporary file.
   def test_errors_of_the_block_are_not_renamed
-    error = assert_raises(Errno::EACCES) do
-      Input.new(piped(zip("a.csv" => "1\n")), unpack: Input::UNPACK).each_document { raise Errno::EACCES }
+    copies = spying_on_temporary_files do
+      assert_raises(Errno::EACCES) do
+        Input.new(piped(zip("a.csv" => "1\n")), unpack: Input::UNPACK).each_document { raise Errno::EACCES }
+      end
     end
 
-    assert_kind_of SystemCallError, error
-    assert_equal 0, temporary_files
+    assert_equal [true], copies.map(&:closed?)
   end
 
   def test_progress_of_a_zip_path
