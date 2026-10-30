@@ -55,6 +55,47 @@ class InputUnpackTest < Minitest::Test
     end
   end
 
+  def test_packed_refuse_names_what_to_unpack
+    gz = write("a.jsonl.gz", Zlib.gzip("1\n"))
+    tar_gz = write("a.tar.gz", Zlib.gzip(tar("a.jsonl" => "1\n")))
+    in_tar = write("gz.tar", tar("a.jsonl.gz" => Zlib.gzip("1\n")))
+    {[gz, []] => "#{gz}: is gzip compressed; to decompress it, pass unpack: [:gzip] (--unpack gzip with -i)",
+     [tar_gz, [:gzip]] => "#{tar_gz}: is a tar archive; to read its files, pass unpack: [:gzip, :tar] " \
+                          "(--unpack gzip,tar with -i)",
+     [tar_gz, [:tar]] => "#{tar_gz}: is gzip compressed; to decompress it, pass unpack: [:gzip, :tar] " \
+                         "(--unpack gzip,tar with -i)",
+     [zip_path, [:gzip]] => "#{zip_path}: is a zip archive; to read its files, pass unpack: [:gzip, :zip] " \
+                            "(--unpack gzip,zip with -i)",
+     [in_tar, [:tar]] => "#{in_tar}:a.jsonl.gz: is gzip compressed; to decompress it, pass unpack: [:gzip, :tar] " \
+                         "(--unpack gzip,tar with -i)"}.each do |(path, unpack), message|
+      error = assert_raises(Metacrunch::InputError) { documents(path, unpack:, packed: :refuse) }
+
+      assert_equal message, error.message
+    end
+  end
+
+  # No unpack: would read it: archives are unpacked on one level.
+  def test_packed_refuse_leaves_an_archive_in_an_archive_a_document
+    inner_tar = tar("c.jsonl" => "3\n")
+    inner_zip = ZipBuilder.build({"d.jsonl" => "4\n"})
+    path = write("outer.tar", tar("inner.tar" => inner_tar, "inner.zip" => inner_zip))
+
+    assert_equal [["#{path}:inner.tar", inner_tar], ["#{path}:inner.zip", inner_zip]],
+                 documents(path, unpack: Input::UNPACK, packed: :refuse)
+  end
+
+  def test_packed_document_is_the_default
+    assert_equal [[tar_path, File.binread(tar_path)]], documents(tar_path, packed: :document)
+  end
+
+  def test_invalid_packed
+    [:skip, "refuse", nil].each do |value|
+      error = assert_raises(ArgumentError) { Input.new("a.jsonl", packed: value) }
+
+      assert_equal "packed must be :document or :refuse, got #{value.inspect}", error.message
+    end
+  end
+
   def test_unreadable_formats_stay_errors
     {"BZh91AY&SY" => "is bzip2 compressed", "\xFD7zXZ\x00" => "is xz compressed",
      "\x28\xB5\x2F\xFD" => "is zstd compressed", "PK\x07\x08PK\x03\x04" => "is part of a split zip archive"}

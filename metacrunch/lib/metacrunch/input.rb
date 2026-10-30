@@ -14,6 +14,10 @@ module Metacrunch
     MAX_LAYERS = 4
     # The formats Input can unpack, as sources pass them to unpack:.
     UNPACK = [:gzip, :tar, :zip].freeze
+    # What packed: :refuse says a document is, and what unpacking it gives.
+    PACKED = {gzip: "is gzip compressed; to decompress it", tar: "is a tar archive; to read its files",
+              zip: "is a zip archive; to read its files"}.freeze
+    private_constant :PACKED
 
     # A target that can be read at any offset, as a ZIP archive needs it:
     # io from start; position: see Zip.
@@ -22,14 +26,19 @@ module Metacrunch
 
     # targets: a path (String or Pathname), "-" for stdin, an IO (anything
     # with readpartial or read), or a non-empty Array of these. unpack: the
-    # formats to unpack, of UNPACK; any other comes as a document with its
-    # bytes. Checks types only and touches no file.
-    def initialize(targets, unpack: [])
+    # formats to unpack, of UNPACK. packed: what becomes of a document in
+    # one of them that unpack: does not name: :document yields it with its
+    # bytes; :refuse raises an InputError that names the unpack: to pass,
+    # for readers of text, which would misread the bytes. An archive in an
+    # archive is a document either way. Checks types only and touches no
+    # file.
+    def initialize(targets, unpack: [], packed: :document)
       list = targets.is_a?(Array) ? targets : [targets]
       raise ArgumentError, "targets must not be empty" if list.empty?
 
       @targets = list.map { target(it) }.freeze
       @unpack = unpack_formats(unpack)
+      @packed = packed_handling(packed)
       @total = nil
       @done = 0
     end
@@ -72,6 +81,12 @@ module Metacrunch
       return unpack.to_set.freeze if unpack.is_a?(Array) && unpack.all? { UNPACK.include?(it) }
 
       raise ArgumentError, "unpack must be an Array of :gzip, :tar and :zip, got #{unpack.inspect}"
+    end
+
+    def packed_handling(packed)
+      return packed if [:document, :refuse].include?(packed)
+
+      raise ArgumentError, "packed must be :document or :refuse, got #{packed.inspect}"
     end
 
     # The File::Stat of every path; raises InputError for missing files,
@@ -148,7 +163,7 @@ module Metacrunch
     # or zip archive.
     def layers(stream, name, file, depth, seekable = nil, archived: false, &)
       format = detect(stream)
-      format = :plain if UNPACK.include?(format) && !unpack?(format, archived)
+      format = packed(format, name, archived) if UNPACK.include?(format)
       case format
       when :plain then document(stream, name, &)
       when :gzip then gzip(stream, name, depth, archived, &)
@@ -158,10 +173,19 @@ module Metacrunch
       end
     end
 
-    # gzip, which compresses one file, wherever it is; an archive only on
-    # one level, as tar -x and unzip do: an archive in an archive is a
-    # document.
-    def unpack?(format, archived) = @unpack.include?(format) && (format == :gzip || !archived)
+    # How a gzip, tar or zip document is read: unpacked if unpack: names
+    # it, else as a document or refused (packed:). gzip, which compresses
+    # one file, wherever it is; an archive only on one level, as tar -x and
+    # unzip do: an archive in an archive is a document.
+    def packed(format, name, archived)
+      return :plain if archived && format != :gzip
+      return format if @unpack.include?(format)
+      return :plain if @packed == :document
+
+      formats = UNPACK.select { @unpack.include?(it) || it == format }
+      raise InputError, "#{name}: #{PACKED.fetch(format)}, pass unpack: #{formats.inspect} " \
+                        "(--unpack #{formats.join(",")} with -i)"
+    end
 
     # Reads ahead block by block until the first bytes tell the format.
     def detect(stream)
