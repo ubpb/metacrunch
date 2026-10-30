@@ -30,8 +30,10 @@ in an archive.
 
 Input unpacks what `unpack:` names, of `:gzip`, `:tar` and `:zip` (`Metacrunch::Input::UNPACK` holds all three).
 Without it, nothing is unpacked: every target is one document as it is. The readers of metacrunch and its gems
-(`JsonLines::Reader`, `Csv::Reader`, `Marc::Reader`) unpack all three by default and pass their own `unpack:` on, so
-a job can narrow it.
+(`JsonLines::Reader`, `Csv::Reader`, `Marc::Reader`) unpack gzip by default and pass their own `unpack:` on: a job
+that reads tar or zip archives names them, e.g. `unpack: [:gzip, :tar]`, and `metacrunch run -i` takes
+`--unpack gzip,tar`. gzip brings in nothing but the file it compresses; an archive brings in whatever it holds, so
+reading one is the job's decision.
 
 The first bytes decide, not the name, for files, stdin and IOs alike:
 
@@ -121,7 +123,7 @@ method feeds the progress display of `metacrunch run`. With stdin, an IO or a FI
 class Lines
 
   def initialize(targets)
-    @input = Metacrunch::Input.new(targets, unpack: [:gzip, :tar, :zip])
+    @input = Metacrunch::Input.new(targets, unpack: [:gzip])  # add :tar, :zip to read archives
   end
 
   def each

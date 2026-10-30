@@ -246,10 +246,10 @@ source Metacrunch::Marc::Reader.new(params.files, normalize: :nfc), id: ->(recor
 Reads what `Metacrunch::Input` reads (see metacrunch's
 [Files](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/files.md)): one target or an Array of them —
 paths, `"-"` for stdin, or IOs, which it does not close. gzip (all members, as `zcat` reads them), tar and zip archives
-(every regular file, but not those whose names start with `.`) are detected by their content, whatever their names,
-and unpacked, archives on one level: an archive inside an archive is read as a file. `unpack:` chooses the formats,
-`[:gzip, :tar, :zip]` by default; `unpack: [:gzip]` leaves archives as they are, `unpack: []` reads every target as
-it is.
+(every regular file, but not those whose names start with `.`) are detected by their content, whatever their names.
+`unpack:` chooses what is unpacked, `[:gzip]` by default: a job that reads archives names them, e.g.
+`unpack: [:gzip, :tar]`, and they are unpacked on one level, so an archive inside an archive is read as a file.
+`unpack: []` reads every target as it is.
 
 The format of each document (a file, the content of a gzip file, a tar member) is told by its first bytes, after a
 byte order mark and whitespace: `<` is MARCXML, `{` MARC-in-JSON, a record length and a base address (five digits at

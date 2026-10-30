@@ -19,9 +19,9 @@ end (jar, nupkg and 3mf are zip-based too), and it judged the content, which Inp
 
 - **Input unpacks only what it is asked to.** `Input.new(targets, unpack: [...])` takes `:gzip`, `:tar` and `:zip`.
   Without `unpack:` nothing is unpacked, and a format that is not named comes as a document with its bytes.
-- **The readers pass `unpack:` on, with all three as their default.** These are `JsonLines::Reader`, `Csv::Reader`
-  and `Marc::Reader`; the generator's source template names all three itself. A job can narrow it; a reader of a
-  ZIP-based format leaves `:zip` out.
+- **The readers pass `unpack:` on, with gzip as their default.** These are `JsonLines::Reader`, `Csv::Reader` and
+  `Marc::Reader`; the generator's source template names gzip itself. A job that reads tar or zip archives names them,
+  and `metacrunch run -i` takes `--unpack`. A reader of a ZIP-based format leaves `:zip` out.
 - **gzip is decompressed wherever it is.** It compresses one file and brings in nothing else: `.tar.gz`, `.zip.gz`
   and `.jsonl.gz` files in an archive work.
 - **Archives are unpacked on one level, as `tar -x` and `unzip` do.** A tar or zip in an archive is a document; a
@@ -38,11 +38,16 @@ end (jar, nupkg and 3mf are zip-based too), and it judged the content, which Inp
 - **Deciding by the file name** (only `.zip` is zip): stdin and IOs have no name, downloads often have odd ones, and
   gzip and tar are detected by their content.
 - **Everything unpacked by default, with a switch to turn it off:** Input would decide for sources that do not know
-  it. Asking for each format is explicit, and the readers keep today's behaviour for jobs.
+  it. Asking for each format is explicit.
+- **Readers that unpack all three by default:** a job would read the files of an archive without ever saying so, and
+  archives are where unexpected files come from.
+- **Readers without a default, or with `unpack:` required:** explicit, but every job, also one that reads a `.gz`
+  file, would have to name gzip, which brings in nothing but the file it compresses.
 
 ## Consequences
 
-- Jobs read what they read before, through the readers' default.
+- Jobs read `.gz` files as before. A job that reads tar or zip archives says so with `unpack:`, or `--unpack` for `-i`;
+  without it, an archive comes as one document of its bytes.
 - A tar of tars or a zip in a `.tar.gz` is no longer unpacked; such deliveries are unpacked first. Nested unpacking
   on request can be added later, as a depth for `unpack:`.
 - A later reader of workbooks gets them as documents, given directly or from inside an archive.

@@ -37,7 +37,7 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
   in any of them.
 - `Metacrunch::Marc::Reader`, a source on `Metacrunch::Input`: all three formats, told by the content of each
   document; files, gzip files (also with several members), tar and zip archives recognized by their content, stdin
-  and IOs; `unpack:` chooses the formats that are unpacked. A record that cannot be read becomes a
+  and IOs; `unpack:` chooses the formats that are unpacked, gzip by default. A record that cannot be read becomes a
   `Metacrunch::InvalidRecord`; a document in another format or a truncated gzip, tar or zip file raises
   `Metacrunch::InputError`.
 - `Metacrunch::Marc::Writer`, a sink on `Metacrunch::Output` with `format:` (`:xml`, `:iso2709` or `:json`), for

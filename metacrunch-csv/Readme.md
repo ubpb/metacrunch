@@ -52,13 +52,14 @@ source Metacrunch::Csv::Reader.new(params.file, headers: false)                 
 | `quote_char` | `'"'` | one character, not the separator; one byte in UTF-8 and single-byte encodings |
 | `encoding` | `"UTF-8"` | the encoding of the files; values are always UTF-8 |
 | `headers` | `true` | `true`: the first row names the columns; an Array of names; `false`: Array records |
-| `unpack` | `[:gzip, :tar, :zip]` | the formats that are unpacked, archives on one level; `[]` reads every target as it is |
+| `unpack` | `[:gzip]` | the formats that are unpacked: add `:tar` and `:zip` to read archives, on one level; `[]` reads every target as it is |
 
 The reader reads what `Metacrunch::Input` reads (see metacrunch's
 [Files](https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/files.md)): one target or an Array of them —
-paths, `"-"` for stdin, or IOs. gzip, tar and zip archives are unpacked; every file in a tar or zip archive has its
-own header row, and an archive inside an archive is read as a file, not unpacked. A byte order mark of the encoding
-(UTF-8, UTF-16LE, UTF-16BE) is removed. The progress display shows how much of the files has been read.
+paths, `"-"` for stdin, or IOs. gzip files are unpacked, tar and zip archives with `unpack:`; every file in an
+archive has its own header row, and an archive inside an archive is read as a file, not unpacked. A byte order mark
+of the encoding (UTF-8, UTF-16LE, UTF-16BE) is removed. The progress display shows how much of the files has been
+read.
 
 ### Records
 
