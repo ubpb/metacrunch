@@ -29,6 +29,15 @@ class ExamplesTest < Minitest::Test
     assert_equal ["00124", "Cataloging, step by step", 2019, 0, false], rows(path)[2]
   end
 
+  # The workbook of the import is what the report writes from books.jsonl.
+  def test_import
+    stdout, stderr, status = metacrunch("run", example("import.rb"), example("data/books.xlsx"))
+
+    assert_predicate status, :success?, stderr
+    assert_equal(File.readlines(example("data/books.jsonl")).map { JSON.parse(it) },
+                 stdout.lines.map { JSON.parse(it) })
+  end
+
   private
 
   def example(name) = File.join(ROOT, "examples", name)

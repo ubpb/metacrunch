@@ -34,6 +34,24 @@ class JobsTest < Minitest::Test
     end
   end
 
+  def test_a_workbook_read_to_json_lines_with_and_without_workers
+    path = File.join(@dir, "books.xlsx")
+    report_job(path).run(logger: Logger.new(nil))
+    expected = [{"Nr." => "00123", "Titel" => "Metadata in practice", "Jahr" => 2004},
+                {"Nr." => "00124", "Titel" => "Cataloging, step by step", "Jahr" => 2019}]
+
+    [nil, 2].each do |workers|
+      output = StringIO.new
+      job = Metacrunch.job do
+        source Metacrunch::Xlsx::Reader.new(path)
+        sink Metacrunch::JsonLines::Writer.new(output)
+      end
+      result = job.run(workers:, logger: Logger.new(nil))
+
+      assert_equal [:ok, expected], [result.status, output.string.lines.map { JSON.parse(it) }]
+    end
+  end
+
   def test_an_aborted_run_leaves_a_file_that_opens
     path = File.join(@dir, "aborted.xlsx")
     job = Metacrunch.job do

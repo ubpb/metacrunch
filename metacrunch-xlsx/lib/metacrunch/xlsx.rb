@@ -10,6 +10,7 @@ require_relative "xlsx/number_formats"
 require_relative "xlsx/dates"
 require_relative "xlsx/workbook"
 require_relative "xlsx/rows"
+require_relative "xlsx/reader"
 require_relative "xlsx/columns"
 require_relative "xlsx/entry"
 require_relative "xlsx/cells"
@@ -18,7 +19,8 @@ require_relative "xlsx/package"
 require_relative "xlsx/writer"
 
 module Metacrunch
-  # XLSX for metacrunch: a sink (Writer) that streams one worksheet.
+  # XLSX for metacrunch: a source (Reader) that reads one worksheet of
+  # workbooks, and a sink (Writer) that streams one worksheet.
   module Xlsx
 
     # Runs the block with interrupts (Ctrl-C) held back until it returns: an
