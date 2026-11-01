@@ -6,12 +6,15 @@ module Metacrunch
     # the elements of one name, read from a stream one at a time, their
     # attributes and their text. Names match by local name, so prefixes
     # (x:row) and the Strict namespaces work. Resolves the five predefined
-    # entities and character references, nothing else. Internal.
+    # entities and character references and reads CDATA sections, nothing
+    # else. Internal.
     module Xml
 
       BLOCK = 65_536
       ENTITIES = {"amp" => "&", "lt" => "<", "gt" => ">", "quot" => '"', "apos" => "'"}.freeze
-      ENTITY = /&(?:(amp|lt|gt|quot|apos)|#(\d+)|#x(\h+));/
+      CDATA_START = "<![CDATA["
+      # A CDATA section, or a reference: an entity or a character.
+      ENTITY = /<!\[CDATA\[(.*?)\]\]>|&(?:(amp|lt|gt|quot|apos)|#(\d+)|#x(\h+));/m
       # The rest of a start tag up to its ">", which may stand in quotes.
       TAG_END = /\G(?:[^>"']|"[^"]*"|'[^']*')*>/
       ATTRIBUTE = /([A-Za-z_][\w.-]*:)?([A-Za-z_][\w.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/
@@ -72,14 +75,16 @@ module Metacrunch
       def content(raw) = decode(unescape(raw.gsub(LINE_BREAK, "\n")))
 
       # The five entities and character references; anything else stays.
+      # A CDATA section stays as it stands.
       def unescape(text)
-        return text unless text.include?("&")
+        return text unless text.include?("&") || text.include?(CDATA_START)
 
         text.gsub(ENTITY) do |match|
-          next ENTITIES.fetch(Regexp.last_match(1)) if Regexp.last_match(1)
+          found = Regexp.last_match
+          next found[1] if found[1]
+          next ENTITIES.fetch(found[2]) if found[2]
 
-          code = Regexp.last_match(2) ? Regexp.last_match(2).to_i : Regexp.last_match(3).hex
-          character(code) || match
+          character(found[3] ? found[3].to_i : found[4].hex) || match
         end
       end
 

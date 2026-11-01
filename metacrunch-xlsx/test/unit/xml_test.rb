@@ -127,6 +127,12 @@ class XmlTest < Minitest::Test
     assert_equal "a\nb", Xml.content("a\r\nb")
   end
 
+  # A CDATA section is text as it stands, without references.
+  def test_cdata_is_text
+    assert_equal "a<b & c", Xml.text("<is><t><![CDATA[a<b & c]]></t></is>")
+    assert_equal "x<&amp;>&\n", Xml.content("x<![CDATA[<&amp;>]]>&amp;\r\n")
+  end
+
   def test_character_codes_of_a_surrogate_pair_are_one_character
     assert_equal "\u{1F600}", Xml.text("<is><t>_xD83D__xDE00_</t></is>")
     assert_equal "�", Xml.text("<is><t>_xD83D_</t></is>")
