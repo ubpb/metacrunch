@@ -39,7 +39,8 @@ module Metacrunch
       # Rows without a value are skipped.
       def each
         previous = 0
-        Xml.each_element(@workbook.stream(@sheet.part), "row", part: @sheet.part, name: @name) do |row|
+        stream = @workbook.stream(@sheet.part, progress: true)
+        Xml.each_element(stream, "row", part: @sheet.part, name: @name) do |row|
           number = row_number(Xml.attributes(row)["r"], previous)
           previous = number
           values, defect = cells(row, number)

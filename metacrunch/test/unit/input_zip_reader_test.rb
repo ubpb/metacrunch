@@ -404,6 +404,17 @@ class InputZipReaderTest < Minitest::Test
     assert_equal 30 + "a.bin".bytesize + data.bytesize, offsets.last
   end
 
+  # A workbook's styles stand after its sheet; reading them first must not
+  # move the progress to the end.
+  def test_a_member_read_without_progress_reports_no_position
+    offsets = []
+    archive = ZipBuilder.build([{name: "a.bin", data: "a" * 1000, method: 0}])
+    zip = Zip.new(StringIO.new(archive), "a.zip", position: ->(offset) { offsets << offset })
+
+    assert_equal "a" * 1000, Metacrunch::Input::Stream.new(zip.member(zip.entries.first, progress: false)).read
+    assert_empty offsets
+  end
+
   # Seeking drops the IO's read buffer, so the small pieces of compressed
   # data of a member are read one after the other without one.
   def test_a_member_is_read_without_seeking_between_its_pieces

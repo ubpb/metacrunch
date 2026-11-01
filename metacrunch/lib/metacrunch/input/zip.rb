@@ -102,8 +102,10 @@ module Metacrunch
 
       # The data of entry, as the source of a Stream; raises InputError for
       # an encrypted entry or another method than stored and deflate. Its
-      # other errors are raised when it is read.
-      def member(entry)
+      # other errors are raised when it is read. progress: false for a part
+      # read out of order (a workbook's styles after its sheet), whose
+      # offsets would move the progress ahead.
+      def member(entry, progress: true)
         name = "#{@name}:#{entry.name}"
         raise InputError, "#{name}: is encrypted, which metacrunch cannot read" if entry.encrypted?
         unless READABLE.include?(entry.compression)
@@ -112,7 +114,7 @@ module Metacrunch
         end
 
         offset = data_offset(entry, name)
-        Member.new(entry, name, ->(at, length) { read_at(at, length) }, offset, @position)
+        Member.new(entry, name, ->(at, length) { read_at(at, length) }, offset, progress ? @position : nil)
       end
 
       private

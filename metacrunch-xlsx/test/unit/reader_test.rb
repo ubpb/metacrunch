@@ -133,6 +133,22 @@ class ReaderTest < Minitest::Test
     assert_in_delta 1.0, reader.progress
   end
 
+  # Excel writes the shared strings and the styles after the sheet; the
+  # progress follows the sheet, not the parts read before its first row.
+  def test_progress_follows_the_sheet
+    random = Random.new(3)
+    data = (1..20_000).map do |number|
+      %(<row r="#{number}"><c r="A#{number}" t="s"><v>#{number % 100}</v></c>) +
+        %(<c r="B#{number}"><v>#{random.rand}</v></c></row>)
+    end.join
+    path = workbook(data, strings: Array.new(100) { "<t>#{random.bytes(300).unpack1("H*")}</t>" }, xfs: [0])
+    reader = Reader.new(path, headers: false)
+    values = reader.each.map { reader.progress }
+
+    assert_operator values.first, :<, 0.5
+    assert_equal values.sort, values
+  end
+
   private
 
   def read(targets, **) = Reader.new(targets, **).each.to_a

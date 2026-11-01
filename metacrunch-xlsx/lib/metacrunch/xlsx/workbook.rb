@@ -66,19 +66,21 @@ module Metacrunch
         @shared_strings = result.freeze
       end
 
-      # The bytes of a part as a Stream.
-      def stream(part)
+      # The bytes of a part as a Stream. progress: reading it moves the
+      # progress of Input: true for the sheet, not for the parts read before
+      # its rows, which writers often put after it.
+      def stream(part, progress: false)
         entry = find(part)
         raise Xlsx.broken(@name, part, "named by the workbook, but missing") unless entry
 
-        Input::Stream.new(@zip.member(entry))
+        Input::Stream.new(@zip.member(entry, progress:))
       end
 
       private
 
       def refuse_ods
         entry = @zip.entry("mimetype")
-        return unless entry && Input::Stream.new(@zip.member(entry)).read(ODS.bytesize) == ODS
+        return unless entry && Input::Stream.new(@zip.member(entry, progress: false)).read(ODS.bytesize) == ODS
 
         raise InputError, "#{@name}: is an OpenDocument spreadsheet (.ods), #{CANNOT_READ}"
       end
