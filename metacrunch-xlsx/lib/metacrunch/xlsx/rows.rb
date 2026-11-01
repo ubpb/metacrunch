@@ -123,9 +123,14 @@ module Metacrunch
 
       def blank(text) = text.empty? ? nil : text
 
+      # Format 0 is General also when cellXfs is empty.
       def kind(attributes)
         index = attributes["s"].to_i
-        @kinds.fetch(index) { raise Defect, "format #{index}, the styles have #{@kinds.size}" }
+        @kinds.fetch(index) do
+          next :number if index.zero?
+
+          raise Defect, "format #{index}, the styles have #{@kinds.size}"
+        end
       end
 
       def number(raw, kind)

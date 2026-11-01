@@ -33,6 +33,14 @@ class RowsTest < Minitest::Test
                  rows(data, xfs: [0, 14, 22, 21, 46])
   end
 
+  # An empty cellXfs: cells without s or with s="0" are General.
+  def test_a_styles_part_without_cell_formats_is_general
+    data = row(1, cell("A1", "1"), cell("B1", "2", style: 0), cell("C1", "3", style: 1))
+
+    assert_equal [[1, [1, 2, cell("C1", "3", style: 1)], "cell C1: format 1, the styles have 0"]],
+                 rows(data, xfs: [])
+  end
+
   def test_the_1904_system
     assert_equal [[1, ["2028-11-02"], nil]], rows(row(1, cell("A1", "45597", style: 1)), xfs: [0, 14], date1904: true)
   end
