@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.name     = "metacrunch-xlsx"
   spec.version  = Metacrunch::Xlsx::VERSION
   spec.authors  = ["René Sprotte"]
-  spec.summary  = "XLSX for metacrunch: a sink that streams Excel files"
+  spec.summary  = "XLSX for metacrunch: a source and a sink for Excel files"
   spec.homepage = "https://github.com/ubpb/metacrunch"
   spec.license  = "MIT"
 

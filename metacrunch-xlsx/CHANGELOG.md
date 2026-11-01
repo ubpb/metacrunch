@@ -9,6 +9,11 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
 
 ### Added
 
+- `Metacrunch::Xlsx::Reader`, a source on `Metacrunch::Input` that reads one worksheet of workbooks as
+  `Metacrunch::Csv::Reader` reads CSV: `sheet:` (a name, or a position counted from 1), `headers:`, `skip:` and
+  `unpack:`; values as the cells store them (Integers, Floats, booleans, error texts), dates as ISO 8601 Strings; a
+  row that does not fit the header becomes a `Metacrunch::InvalidRecord`; `.xls`, `.xlsb` and OpenDocument files
+  are refused with what they are. It reads with metacrunch's ZIP reader and without an XML library.
 - `Metacrunch::Xlsx::Writer`, a sink on `Metacrunch::Output` that streams one worksheet: `columns:` (an Array of keys
   or a Hash of header name => key) or the keys of the first record, `header:`, `sheet:` and `widths:`. The header row
   is bold, frozen and filtered. Cells follow the Ruby type of their values. Excel's limits are errors with the
