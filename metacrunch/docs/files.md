@@ -164,7 +164,7 @@ end
 A regular file or a seekable IO is read directly; stdin, a pipe, a document inside gzip and a tar member go through
 an anonymous temporary file, as zip archives do above. gzip and tar around a document are unpacked as `unpack:` says;
 `:zip` in `unpack:` is an ArgumentError, since the archive is the document. A document that is no zip archive raises
-`Metacrunch::Input::NotZip`, an `InputError` whose `head` holds its first bytes, so the source can say what it is
+`Metacrunch::Input::NotZip`, an `InputError` whose `name` and `head` (its first bytes) let the source say what it is
 (`is an Excel 97-2003 workbook`).
 
 ## Writing: `Metacrunch::Output`

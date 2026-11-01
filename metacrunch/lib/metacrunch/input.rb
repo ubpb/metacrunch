@@ -24,14 +24,16 @@ module Metacrunch
     Seekable = Data.define(:io, :start, :position)
     private_constant :Seekable
 
-    # Raised by each_zip for a document that is no zip archive. head: its
-    # first bytes (up to Formats::PEEK), so a source can say what it is.
+    # Raised by each_zip for a document that is no zip archive. name: the
+    # document's name; head: its first bytes (up to Formats::PEEK), so a
+    # source can say what it is.
     class NotZip < InputError
 
-      attr_reader :head
+      attr_reader :name, :head
 
-      def initialize(message, head)
-        super(message)
+      def initialize(name, head)
+        super("#{name}: is not a zip archive")
+        @name = name
         @head = head
       end
 
@@ -231,7 +233,7 @@ module Metacrunch
     end
 
     def document(stream, name)
-      raise NotZip.new("#{name}: is not a zip archive", stream.peek(Formats::PEEK)) if @zips
+      raise NotZip.new(name, stream.peek(Formats::PEEK)) if @zips
 
       yield stream, name
     ensure

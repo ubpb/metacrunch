@@ -65,7 +65,7 @@ class InputEachZipTest < Minitest::Test
     error = assert_raises(Input::NotZip) { zips(path) }
 
     assert_equal "#{path}: is not a zip archive", error.message
-    assert_equal "id,title\n".b, error.head
+    assert_equal [path, "id,title\n".b], [error.name, error.head]
   end
 
   def test_a_tar_left_out_of_unpack_is_refused_with_packed_refuse
