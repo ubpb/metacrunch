@@ -84,13 +84,14 @@ anonymous temporary file, since a workbook is read with random access. Every wor
 
 As `Csv::Reader` gives them:
 
-| `headers:` | Record | an empty cell | a value right of the last header column |
+| `headers:` | Record | an empty cell | a value outside the header's columns |
 |---|---|---|---|
 | `true` or an Array | `{"id" => "00123", "year" => 2004, "note" => nil}`, every column | `nil` | the row is an invalid record |
 | `false` | `["00123", 2004]`, from column A to the last cell with a value | `nil` | — |
 
-- The values of the header row become Strings (`"2024"`, `"2024-11-01"`, `"TRUE"`). It ends at its last cell with a
-  value; an empty name before that, or a name used twice, stops the run.
+- The values of the header row become Strings (`"2024"`, `"2024-11-01"`, `"TRUE"`). It goes from its first to its
+  last cell with a value; an empty name between them, or a name used twice, stops the run. Empty columns left of it
+  are left out, since tables often start in column B; with `headers:` names, as with `false`, columns count from A.
 - Empty rows are skipped, also rows that only have formatting. Hidden rows and columns are read; merged cells have
   their value in the top-left cell.
 - A cell holding the empty text is empty, as Excel shows it: formulas such as `=IF(A2="","",A2)` leave it far below

@@ -14,6 +14,9 @@ module Metacrunch
       # The signature of OLE compound files: Excel 97-2003 workbooks, and
       # encrypted workbooks of any version.
       COMPOUND = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1".b
+      # The column names and the index of the column of the first one.
+      Header = Data.define(:names, :first)
+      private_constant :Header
 
       # sheet: a name, or a position counted from 1 as Excel's tabs are.
       # headers: true (the first row with a value after the skipped ones
@@ -73,30 +76,34 @@ module Metacrunch
       end
 
       def records(rows, label)
-        names = @headers.is_a?(Array) ? @headers : nil
+        header = @headers.is_a?(Array) ? Header.new(@headers, 0) : nil
         rows.each do |number, values, defect|
           next if number <= @skip
 
-          if @headers == true && names.nil?
-            names = header(values, defect, number, label)
+          if @headers == true && header.nil?
+            header = header(values, defect, number, label)
           else
-            yield record(values, defect, names, number)
+            yield record(values, defect, header, number)
           end
         end
       end
 
+      # Empty columns left of the names are left out: tables often start in
+      # column B.
       def header(values, defect, number, label)
         row = "#{label}: the header row (row #{number})"
         raise Metacrunch::InputError, "#{row} cannot be read (#{defect.message})" if defect
 
         names = values.map { name(it) }
+        first = names.index { !it.nil? }
+        names = names.drop(first)
         empty = names.index(nil)
-        raise Metacrunch::InputError, "#{row} has an empty column name (column #{Cells.column(empty)})" if empty
+        raise Metacrunch::InputError, "#{row} has an empty column name (column #{Cells.column(first + empty)})" if empty
 
         duplicate = names.find { names.count(it) > 1 }
         raise Metacrunch::InputError, "#{row} names the column #{duplicate.inspect} twice" if duplicate
 
-        names
+        Header.new(names, first)
       end
 
       def name(value)
@@ -107,15 +114,25 @@ module Metacrunch
         end
       end
 
-      def record(values, defect, names, number)
+      def record(values, defect, header, number)
         return Metacrunch::InvalidRecord.new(raw: values, error: defect) if defect
-        return values unless names
-        return names.each_with_index.to_h { |name, index| [name, values[index]] } if values.size <= names.size
+        return values unless header
 
-        error = ParseError.new("row #{number} has a value in column #{Cells.column(values.size - 1)}, " \
-                               "the header ends at column #{Cells.column(names.size - 1)}")
-        Metacrunch::InvalidRecord.new(raw: values, error:)
+        left = values.index { !it.nil? }
+        if left < header.first
+          return invalid(values, "row #{number} has a value in column #{Cells.column(left)}, " \
+                                 "the header starts at column #{Cells.column(header.first)}")
+        end
+        last = header.first + header.names.size
+        if values.size > last
+          return invalid(values, "row #{number} has a value in column #{Cells.column(values.size - 1)}, " \
+                                 "the header ends at column #{Cells.column(last - 1)}")
+        end
+
+        header.names.each_with_index.to_h { |name, index| [name, values[header.first + index]] }
       end
+
+      def invalid(values, message) = Metacrunch::InvalidRecord.new(raw: values, error: ParseError.new(message))
 
       def refusal(error)
         if error.head.start_with?(COMPOUND)

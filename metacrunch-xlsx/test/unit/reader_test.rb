@@ -55,6 +55,18 @@ class ReaderTest < Minitest::Test
     assert_equal(%(#{twice}:Sheet1: the header row (row 3) names the column "Titel" twice), error { read(twice) })
   end
 
+  # Tables often start in column B. The empty columns left of the header
+  # are left out; a value in one makes the row invalid.
+  def test_empty_columns_left_of_the_header_are_ignored
+    records = read(workbook(row(2, nil, nil, "id", "title") + row(3, nil, nil, 1, "Emma") +
+                            row(4, "x", nil, 2, "Moby") + row(5, nil, nil, 3, "Kim", "y")))
+
+    assert_equal({"id" => 1, "title" => "Emma"}, records.first)
+    assert_equal [ParseError.new("row 4 has a value in column A, the header starts at column C"),
+                  ParseError.new("row 5 has a value in column E, the header ends at column D")],
+                 records.drop(1).map(&:error)
+  end
+
   def test_a_header_row_that_cannot_be_read_stops_the_run
     path = workbook(%(<row r="1"><c r="A1" t="s"><v>7</v></c></row>))
 
