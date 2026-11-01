@@ -105,7 +105,7 @@ does not change them.
 | Cell | Value |
 |---|---|
 | text | `String`; rich text is joined, line breaks are kept |
-| number | `Integer` when it is whole (`9783161484100`, `2004`), else `Float` |
+| number | `Integer` when it is whole: written with digits only, or below 10^15 (`9783161484100`, `2004`); else `Float` (`1.5`, `1.0e20`) |
 | number with a date or time format | an ISO 8601 String without zone: `"2024-11-01"`, `"2024-11-01T14:30:00"`, `"14:30:00"` |
 | number with a duration format (`[h]:mm`) | the number of days |
 | TRUE, FALSE | `true`, `false` |

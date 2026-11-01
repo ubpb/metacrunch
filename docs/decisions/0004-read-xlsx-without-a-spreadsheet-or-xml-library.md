@@ -19,6 +19,9 @@ Measured on 100,000 rows of 10 cells:
 | Nokogiri::XML::Reader, parsing only, no values converted | 1.3 s | |
 | a scanner of our own with all conversion, as released | 2.2 s | 51 MB |
 
+roo and Nokogiri were measured on the workbook of a first prototype, the released reader on the workbook of
+`bench/reader.rb` (shared strings, styles, dates): the rows compare orders of magnitude, not exact times.
+
 ## Decision
 
 The reader is pure Ruby. It opens a workbook with `Metacrunch::Input::Zip` (through `Input#each_zip`) and reads a sheet
