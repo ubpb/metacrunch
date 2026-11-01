@@ -65,6 +65,8 @@ module Metacrunch
         result = []
         each(@strings, "si") { result << Xml.text(it).freeze } if @strings
         @shared_strings = result.freeze
+      rescue Xml::Unclosed => e
+        raise Xlsx.broken(@name, @strings, e.message)
       end
 
       # The bytes of a part as a Stream. progress: reading it moves the

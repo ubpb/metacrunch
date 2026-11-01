@@ -106,7 +106,10 @@ class RowsTest < Minitest::Test
      row(1, cell("B1", "1"), cell("A1", "1")) => "cell A1 after B1",
      row(1_048_577, cell("A1048577", "1")) => "row 1048577 beyond Excel's last row",
      row(1, cell("XFE1", "1")) => "cell XFE1 beyond Excel's last column",
-     row(1, cell("11", "1")) => %(cell reference "11")}.each do |data, reason|
+     row(1, cell("11", "1")) => %(cell reference "11"),
+     %(<row r="1"><c r="A1"><v>1</v><c r="B1"><v>2</v></c></row>) => "unclosed element c in row 1",
+     %(<row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></row>) => "unclosed element c in row 1",
+     %(<row r="1"><c r="A1" t="inlineStr"><is><t>x</is></c></row>) => "unclosed element t"}.each do |data, reason|
       error = assert_raises(Metacrunch::InputError) { rows(data) }
 
       assert_equal "a.xlsx: broken XLSX workbook (#{SHEET}: #{reason})", error.message

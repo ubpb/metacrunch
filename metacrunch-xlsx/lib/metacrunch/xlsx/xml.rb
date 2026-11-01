@@ -17,12 +17,16 @@ module Metacrunch
       ATTRIBUTE = /([A-Za-z_][\w.-]*:)?([A-Za-z_][\w.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/
       PREFIX = /(?:[A-Za-z_][\w.-]*:)?/
       TEXT = %r{<#{PREFIX}t(?=[\s>/])[^>]*?(?:/>|>(.*?)</#{PREFIX}t\s*>)}m
+      TEXT_START = %r{<#{PREFIX}t(?=[\s>/])}
       PHONETIC = %r{<#{PREFIX}rPh(?=[\s>/]).*?</#{PREFIX}rPh\s*>}m
       LINE_BREAK = /\r\n?/
       # Excel's code for a character, e.g. _x000D_ for a carriage return.
       CHARACTER_CODES = /(?:_x\h{4}_)+/
       ENCODING = /\A\s*<\?xml[^>]*?encoding\s*=\s*["']([^"']+)/
       DOCTYPE = /\A\s*(?:<\?.*?\?>\s*|<!--.*?-->\s*)*<!DOCTYPE/m
+
+      # An element whose end is missing inside a fragment. Internal.
+      class Unclosed < StandardError; end
 
       module_function
 
@@ -51,9 +55,15 @@ module Metacrunch
 
       # The text of the t elements in fragment (a shared string, an inline
       # string), without phonetic runs, decoded.
+      # Raises Unclosed for a t element without its end.
       def text(fragment)
         raw = fragment.dup.force_encoding(Encoding::UTF_8).gsub(PHONETIC, "")
-        content(raw.scan(TEXT).join)
+        texts = raw.scan(TEXT)
+        starts = 0
+        raw.scan(TEXT_START) { starts += 1 }
+        raise Unclosed, "unclosed element t" unless starts == texts.size
+
+        content(texts.join)
       end
 
       # The text of an element's content as XML reads it: line breaks as

@@ -12,6 +12,7 @@ module Metacrunch
       LAST_COLUMN = 16_384
       PREFIX = Xml::PREFIX
       CELL = %r{<#{PREFIX}c(?=[\s>/])((?:[^>"']|"[^"]*"|'[^']*')*?)(?:/>|>(.*?)</#{PREFIX}c\s*>)}m
+      CELL_START = %r{<#{PREFIX}c(?=[\s>/])}
       VALUE = %r{<#{PREFIX}v(?:\s[^>]*)?>(.*?)</#{PREFIX}v\s*>}m
       INLINE = %r{<#{PREFIX}is(?=[\s>/]).*?</#{PREFIX}is\s*>}m
       REFERENCE = /\A([A-Z]{1,3})\d*\z/
@@ -63,8 +64,12 @@ module Metacrunch
         values = []
         defect = nil
         column = -1
+        last = 0
         row.scan(CELL) do |attributes_xml, content|
           match = Regexp.last_match
+          raise unclosed(number) if content&.match?(CELL_START)
+
+          last = match.end(0)
           attributes = Xml.pairs(attributes_xml)
           column = column(attributes["r"], column, number)
           begin
@@ -75,8 +80,13 @@ module Metacrunch
           end
           values[column] = value unless value.nil?
         end
+        raise unclosed(number) if row.index(CELL_START, last)
+
         [values, defect]
       end
+
+      # A cell that starts inside another, or after the last whole one.
+      def unclosed(number) = broken("unclosed element c in row #{number}")
 
       # The index of the cell's column; the names in messages are built
       # only for them, as this runs for every cell.
@@ -106,7 +116,7 @@ module Metacrunch
       # The value of a cell, nil for none; raises Defect.
       def value(attributes, content)
         type = attributes["t"]
-        return blank(Xml.text(content[INLINE].to_s)) if type == "inlineStr"
+        return blank(inline(content)) if type == "inlineStr"
 
         raw = content[VALUE, 1]
         return if raw.nil?
@@ -123,6 +133,12 @@ module Metacrunch
       end
 
       def blank(text) = text.empty? ? nil : text
+
+      def inline(content)
+        Xml.text(content[INLINE].to_s)
+      rescue Xml::Unclosed => e
+        raise broken(e.message)
+      end
 
       # Format 0 is General also when cellXfs is empty.
       def kind(attributes)

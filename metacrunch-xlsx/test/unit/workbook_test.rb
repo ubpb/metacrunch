@@ -83,6 +83,13 @@ class WorkbookTest < Minitest::Test
     assert_empty open_workbook.shared_strings
   end
 
+  def test_an_unclosed_text_in_the_shared_strings_is_a_broken_workbook
+    workbook = open_workbook(strings: ["<t>Moby", "<t>Emma</t>"])
+
+    assert_equal("a.xlsx: broken XLSX workbook (xl/sharedStrings.xml: unclosed element t)",
+                 error { workbook.shared_strings })
+  end
+
   def test_an_ods_an_xlsb_and_a_zip_without_workbook_are_refused
     ods = WorkbookBuilder.zip("mimetype" => "application/vnd.oasis.opendocument.spreadsheet")
     xlsb = WorkbookBuilder.build(extra: {"_rels/.rels" => rels(["rId1", "officeDocument", "xl/workbook.bin"])})
