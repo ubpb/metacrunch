@@ -67,6 +67,7 @@ class WorkbookTest < Minitest::Test
 
   def test_no_styles_part_is_general
     assert_equal [:number], open_workbook.kinds
+    assert_equal [:number], open_workbook(xfs: [0, 14], extra: {"xl/styles.xml" => nil}).kinds
   end
 
   def test_date1904

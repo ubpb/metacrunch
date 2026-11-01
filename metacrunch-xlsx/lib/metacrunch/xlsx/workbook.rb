@@ -52,9 +52,10 @@ module Metacrunch
       end
 
       # The kind of each cell format (see NumberFormats), by its index in
-      # cellXfs; General alone without a styles part.
+      # cellXfs; General alone without a styles part, also when the workbook
+      # names one the archive lacks.
       def kinds
-        @kinds ||= @styles ? styles : [:number]
+        @kinds ||= @styles && find(@styles) ? styles : [:number]
       end
 
       # The texts of the shared-strings table, read on the first call.
