@@ -121,12 +121,16 @@ module Metacrunch
 
       # Callers keep offset and length within the archive; an IO that
       # gives less than its size said (a file that shrank) ends early. A
-      # system error is named as Raw names it for gzip and tar.
+      # system error is named as Raw names it for gzip and tar. Reads that
+      # follow each other, as the pieces of a member do, need no seek,
+      # which would drop the IO's read buffer.
       def read_at(offset, length)
-        @io.seek(@start + offset)
+        @io.seek(@start + offset) unless @at == offset
+        @at = nil
         data = @io.read(length)
         raise broken("ends early") unless data && data.bytesize == length
 
+        @at = offset + length
         data.b
       rescue SystemCallError => e
         raise InputError, "#{@name}: #{Files.reason(e)}"

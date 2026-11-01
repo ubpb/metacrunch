@@ -404,6 +404,20 @@ class InputZipReaderTest < Minitest::Test
     assert_equal 30 + "a.bin".bytesize + data.bytesize, offsets.last
   end
 
+  # Seeking drops the IO's read buffer, so the small pieces of compressed
+  # data of a member are read one after the other without one.
+  def test_a_member_is_read_without_seeking_between_its_pieces
+    random = Random.new(7)
+    data = Array.new(20_000) { "<row><c><v>#{random.rand}</v></c></row>" }.join
+    io = StringIO.new(ZipBuilder.build({"a.xml" => data}))
+    zip = Zip.new(io, "a.zip")
+    seeks = 0
+    io.define_singleton_method(:seek) { |*args| (seeks += 1) && super(*args) }
+
+    assert_equal data, read_all(zip, zip.entries.first)
+    assert_operator seeks, :<=, 2
+  end
+
   private
 
   def reader(bytes) = Zip.new(StringIO.new(bytes), "a.zip")
