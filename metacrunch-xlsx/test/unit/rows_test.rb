@@ -90,6 +90,8 @@ class RowsTest < Minitest::Test
       cell("B1", "2", type: "b") => %(cell B1: boolean "2"),
       cell("B1", "1", type: "z") => %(cell B1: type "z"),
       cell("B1", "1", style: 9) => "cell B1: format 9, the styles have 1",
+      cell("B1", "1", style: -1) => "cell B1: format -1, the styles have 1",
+      cell("B1", "1", style: "x") => %(cell B1: format "x", the styles have 1),
       cell("B1", "yesterday", type: "d") => %(cell B1: date "yesterday")
     }
 

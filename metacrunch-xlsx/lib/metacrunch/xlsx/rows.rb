@@ -140,14 +140,16 @@ module Metacrunch
         raise broken(e.message)
       end
 
-      # Format 0 is General also when cellXfs is empty.
+      # Format 0 is General also when cellXfs is empty. An index that is
+      # negative or no number is a defect, not counted from the end.
       def kind(attributes)
-        index = attributes["s"].to_i
-        @kinds.fetch(index) do
-          next :number if index.zero?
+        style = attributes["s"]
+        index = style ? Integer(style, 10, exception: false) : 0
+        format = index || style.inspect
+        return @kinds[index] if index && !index.negative? && index < @kinds.size
+        return :number if index&.zero?
 
-          raise Defect, "format #{index}, the styles have #{@kinds.size}"
-        end
+        raise Defect, "format #{format}, the styles have #{@kinds.size}"
       end
 
       def number(raw, kind)
