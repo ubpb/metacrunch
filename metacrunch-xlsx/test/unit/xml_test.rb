@@ -1,0 +1,114 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class XmlTest < Minitest::Test
+
+  Xml = Metacrunch::Xlsx::Xml
+  SHEET = "xl/worksheets/sheet1.xml"
+
+  def test_each_element_yields_rows_across_block_boundaries
+    xml = [%(<?xml version="1.0" encoding="UTF-8"?><worksheet><sheetData>),
+           %(<row r="1"><c r="A1" t="inlineStr"><is><t>Moby &amp; Dick</t></is></c></row>),
+           %(<row r="2" spans="1:1"><c r="A2"><v>2</v></c></row></sheetData></worksheet>)].join
+
+    assert_equal elements(xml, "row"), elements(xml, "row", block: 7)
+    assert_equal [%(<row r="2" spans="1:1"><c r="A2"><v>2</v></c></row>)], elements(xml, "row").drop(1)
+  end
+
+  def test_prefixed_elements_are_found
+    xml = %(<x:worksheet xmlns:x="ns"><x:sheetData><x:row r="1"><x:c r="A1"/></x:row></x:sheetData></x:worksheet>)
+
+    assert_equal [%(<x:row r="1"><x:c r="A1"/></x:row>)], elements(xml, "row")
+  end
+
+  def test_a_self_closing_element_and_a_longer_name_that_starts_alike
+    xml = %(<sheetData><rows/><row r="2"/><row r="3">x</row></sheetData>)
+
+    assert_equal [%(<row r="2"/>), %(<row r="3">x</row>)], elements(xml, "row", block: 3)
+  end
+
+  def test_a_greater_than_sign_in_an_attribute_does_not_end_the_tag
+    xml = %(<sheetData><row r="1" x="a>b"><c/></row></sheetData>)
+
+    assert_equal [%(<row r="1" x="a>b"><c/></row>)], elements(xml, "row")
+  end
+
+  def test_doctype_is_refused
+    error = broken(%(<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "b">]><worksheet/>))
+
+    assert_equal "a.xlsx: broken XLSX workbook (#{SHEET}: has a DOCTYPE)", error.message
+  end
+
+  # A source may hand out fewer bytes than the prolog has.
+  def test_the_prolog_is_checked_also_in_small_blocks
+    error = assert_raises(Metacrunch::InputError) do
+      elements(%(<?xml version="1.0" encoding="UTF-16"?><worksheet/>), "row", block: 7)
+    end
+
+    assert_equal "a.xlsx: broken XLSX workbook (#{SHEET}: encoding UTF-16)", error.message
+  end
+
+  def test_an_encoding_other_than_utf8_is_refused
+    error = broken(%(<?xml version="1.0" encoding="UTF-16"?><worksheet/>))
+
+    assert_equal "a.xlsx: broken XLSX workbook (#{SHEET}: encoding UTF-16)", error.message
+    assert_empty elements(%(<?xml version="1.0" encoding="utf-8"?><worksheet/>), "row")
+  end
+
+  def test_an_unclosed_element_is_refused
+    error = broken(%(<sheetData><row r="1"><c r="A1"/>))
+
+    assert_equal "a.xlsx: broken XLSX workbook (#{SHEET}: unclosed element row)", error.message
+  end
+
+  def test_invalid_utf8_is_refused
+    error = broken("<row>\xFF</row>".b)
+
+    assert_equal "a.xlsx: broken XLSX workbook (#{SHEET}: not valid UTF-8)", error.message
+  end
+
+  def test_attributes_drop_prefixes_and_namespace_declarations_and_unescape
+    tag = %(<x:row r="A1" t='s' x14ac:dyDescent="0.25" xmlns:r="ns" xmlns="ns" v="&lt;&amp;&#65;"><c/></x:row>)
+
+    assert_equal({"r" => "A1", "t" => "s", "dyDescent" => "0.25", "v" => "<&A"}, Xml.attributes(tag))
+  end
+
+  def test_text_joins_rich_runs_and_skips_phonetic_runs
+    xml = "<si><r><rPr><b/></rPr><t>Mo</t></r><r><t>by</t></r><rPh sb=\"0\" eb=\"1\"><t>x</t></rPh><tab/></si>"
+
+    assert_equal "Moby", Xml.text(xml)
+    assert_equal "", Xml.text("<is><t/></is>")
+    assert_equal "a", Xml.text("<x:is><x:t>a</x:t></x:is>")
+  end
+
+  def test_text_keeps_space_and_line_breaks
+    assert_equal " a\nb ", Xml.text(%(<is><t xml:space="preserve"> a\nb </t></is>))
+  end
+
+  def test_text_decodes_entities_and_character_codes
+    xml = "<si><t>&amp;&#38;&#x41;&apos;&quot;&gt;_x000D__x005F_x0041_&#xD800;&#1114112;&bogus;</t></si>"
+
+    assert_equal "&&A'\">\r_x0041_&#xD800;&#1114112;&bogus;", Xml.text(xml)
+  end
+
+  def test_character_codes_of_a_surrogate_pair_are_one_character
+    assert_equal "\u{1F600}", Xml.text("<is><t>_xD83D__xDE00_</t></is>")
+    assert_equal "�", Xml.text("<is><t>_xD83D_</t></is>")
+  end
+
+  def test_text_is_utf8
+    assert_equal Encoding::UTF_8, Xml.text("<is><t>é</t></is>".b).encoding
+  end
+
+  private
+
+  def elements(xml, local_name, **)
+    result = []
+    Xml.each_element(StringIO.new(xml.b), local_name, part: SHEET, name: "a.xlsx", **) { result << it }
+    result
+  end
+
+  def broken(xml) = assert_raises(Metacrunch::InputError) { elements(xml, "row") }
+
+end
