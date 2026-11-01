@@ -14,6 +14,8 @@ module Metacrunch
       # The signature of OLE compound files: Excel 97-2003 workbooks, and
       # encrypted workbooks of any version.
       COMPOUND = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1".b
+      # What the reader may unpack around a workbook.
+      UNPACK = [:gzip, :tar].freeze
       # The column names and the index of the column of the first one.
       Header = Data.define(:names, :first)
       private_constant :Header
@@ -27,11 +29,7 @@ module Metacrunch
         @sheet = check_sheet(sheet)
         @headers = check_headers(headers)
         @skip = check_skip(skip)
-        if unpack.is_a?(Array) && unpack.include?(:zip)
-          raise ArgumentError, "unpack must not name :zip: a workbook is a zip archive, which is read as one"
-        end
-
-        @input = Metacrunch::Input.new(targets, unpack:, packed: :refuse)
+        @input = Metacrunch::Input.new(targets, unpack: check_unpack(unpack), packed: :refuse)
       end
 
       # Without a block an Enumerator.
@@ -67,6 +65,15 @@ module Metacrunch
       def names?(headers)
         headers.is_a?(Array) && !headers.empty? && headers.all? { it.is_a?(String) && !it.empty? } &&
           headers.uniq.size == headers.size
+      end
+
+      def check_unpack(unpack)
+        if unpack.is_a?(Array) && unpack.include?(:zip)
+          raise ArgumentError, "unpack must not name :zip: a workbook is a zip archive, which is read as one"
+        end
+        return unpack if unpack.is_a?(Array) && unpack.all? { UNPACK.include?(it) }
+
+        raise ArgumentError, "unpack must be an Array of :gzip and :tar, got #{unpack.inspect}"
       end
 
       def check_skip(skip)

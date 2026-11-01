@@ -110,7 +110,8 @@ class ReaderTest < Minitest::Test
      {headers: ["a", "a"]} => %(headers must be true, false or an Array of unique, non-empty Strings, got ["a", "a"]),
      {skip: -1} => "skip must be an Integer of 0 or more, got -1",
      {unpack: [:gzip, :zip]} => "unpack must not name :zip: a workbook is a zip archive, which is read as one",
-     {unpack: [:bzip2]} => "unpack must be an Array of :gzip, :tar and :zip, got [:bzip2]"}.each do |options, message|
+     {unpack: [:bzip2]} => "unpack must be an Array of :gzip and :tar, got [:bzip2]",
+     {unpack: "gzip"} => %(unpack must be an Array of :gzip and :tar, got "gzip")}.each do |options, message|
       assert_equal message, assert_raises(ArgumentError) { Reader.new("a.xlsx", **options) }.message
     end
   end
