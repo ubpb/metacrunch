@@ -56,6 +56,17 @@ class XmlTest < Minitest::Test
     assert_empty elements(%(<?xml version="1.0" encoding="utf-8"?><worksheet/>), "row")
   end
 
+  # UTF-16 parts, with or without a byte order mark, are refused, not read
+  # as no rows; a UTF-8 byte order mark is allowed.
+  def test_utf16_parts_are_refused_and_a_utf8_bom_is_allowed
+    ["\xFF\xFE<\0r\0o\0w\0/\0>\0", "\xFE\xFF\0<\0r\0o\0w\0/\0>", "<\0r\0o\0w\0/\0>\0"].each do |xml|
+      assert_equal "a.xlsx: broken XLSX workbook (#{SHEET}: encoding UTF-16)", broken(xml.b).message
+    end
+    assert_equal ["<row/>"], elements("\xEF\xBB\xBF<row/>".b, "row")
+    assert_equal "a.xlsx: broken XLSX workbook (#{SHEET}: has a DOCTYPE)",
+                 broken("\xEF\xBB\xBF<!DOCTYPE x><row/>".b).message
+  end
+
   def test_an_unclosed_element_is_refused
     error = broken(%(<sheetData><row r="1"><c r="A1"/>))
 

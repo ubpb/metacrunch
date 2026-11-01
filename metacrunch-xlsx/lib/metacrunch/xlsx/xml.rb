@@ -96,6 +96,8 @@ module Metacrunch
 
         # Bytes read before the XML declaration and DOCTYPE are checked.
         PROLOG = 1024
+        BOM = "\xEF\xBB\xBF".b
+        UTF16 = ["\xFF\xFE", "\xFE\xFF", "<\0", "\0<"].map(&:b).freeze
         TAG_LIMIT = 65_536
         # Room for an end tag that a block cuts in two.
         CLOSE_LIMIT = 256
@@ -180,10 +182,15 @@ module Metacrunch
           false
         end
 
+        # A UTF-16 part starts with its byte order mark or with "<" and a
+        # NUL; a UTF-8 byte order mark is passed over.
         def check_prolog
-          encoding = @buffer.match(ENCODING)&.[](1)
+          raise broken("encoding UTF-16") if UTF16.include?(@buffer.byteslice(0, 2))
+
+          prolog = @buffer.start_with?(BOM) ? @buffer.byteslice(BOM.bytesize..) : @buffer
+          encoding = prolog.match(ENCODING)&.[](1)
           raise broken("encoding #{encoding}") if encoding && !encoding.casecmp?("UTF-8")
-          raise broken("has a DOCTYPE") if @buffer.match?(DOCTYPE)
+          raise broken("has a DOCTYPE") if prolog.match?(DOCTYPE)
         end
 
         def utf8(bytes)
