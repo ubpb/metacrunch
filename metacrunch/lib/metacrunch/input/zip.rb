@@ -10,7 +10,8 @@ module Metacrunch
     # unzip, Python, Go and libarchive elsewhere (bytes after the end
     # record, padding in extra fields, more than 65,535 entries without
     # Zip64). Internal; metacrunch's own gems may use it, e.g. to read the
-    # parts of a workbook.
+    # parts of a workbook. A Zip must be the only reader of its IO while it
+    # is read: a read that follows its last one reads on without seeking.
     class Zip
 
       END_RECORD = "PK\x05\x06".b
