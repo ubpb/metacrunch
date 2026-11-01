@@ -142,7 +142,7 @@ is the row's values from column A; the job's failure policy decides, as for a ro
 - Formulas are not computed: a formula gives the value its writer stored, and none if it stored none, as some
   libraries do.
 - Formats, comments, hyperlinks, charts and tables are left out. `.xlsm` and `.xltx` files are read like `.xlsx`.
-- Reading 100,000 rows of 10 cells takes about 2.2 s and 51 MB (`bundle exec ruby --yjit bench/reader.rb`).
+- Reading 100,000 rows of 10 cells takes about 2.5 s and 51 MB (`bundle exec ruby --yjit bench/reader.rb`).
 
 ## The writer
 
