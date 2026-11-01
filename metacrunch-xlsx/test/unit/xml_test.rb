@@ -62,6 +62,23 @@ class XmlTest < Minitest::Test
     assert_equal "a.xlsx: broken XLSX workbook (#{SHEET}: unclosed element row)", error.message
   end
 
+  # The search for the end of an element does not start over with every
+  # block, so a huge element costs time in proportion to its size.
+  def test_a_huge_element_is_read_in_linear_time
+    xml = "<sheetData><row r=\"1\">#{"<c><v>1</v></c>" * 2_200_000}</row></sheetData>"
+    seconds = timed { assert_equal 1, elements(xml, "row").size }
+
+    assert_operator seconds, :<, 2
+  end
+
+  # A start tag whose quote is never closed is given up after a limit.
+  def test_an_unclosed_start_tag_is_refused_in_linear_time
+    xml = "<sheetData><row r=\"1\" x=\"#{"a>" * 8_000_000}"
+    seconds = timed { broken(xml) }
+
+    assert_operator seconds, :<, 2
+  end
+
   def test_invalid_utf8_is_refused
     error = broken("<row>\xFF</row>".b)
 
@@ -117,5 +134,11 @@ class XmlTest < Minitest::Test
   end
 
   def broken(xml) = assert_raises(Metacrunch::InputError) { elements(xml, "row") }
+
+  def timed
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    yield
+    Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+  end
 
 end

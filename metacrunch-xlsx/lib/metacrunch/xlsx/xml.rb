@@ -96,6 +96,9 @@ module Metacrunch
 
         # Bytes read before the XML declaration and DOCTYPE are checked.
         PROLOG = 1024
+        TAG_LIMIT = 65_536
+        # Room for an end tag that a block cuts in two.
+        CLOSE_LIMIT = 256
 
         def initialize(source, local_name, part, name, block)
           @source = source
@@ -107,6 +110,7 @@ module Metacrunch
           @ends = {}
           @buffer = "".b
           @eof = false
+          @searched = 0
         end
 
         def each
@@ -128,6 +132,7 @@ module Metacrunch
 
               next
             end
+            @searched = 0
             yield utf8(@buffer.byteslice(start, stop - start))
             position = stop
           end
@@ -137,14 +142,25 @@ module Metacrunch
 
         # The offset after the element starting at start, or nil when the
         # buffer does not hold all of it yet.
+        # The search for the end tag goes on where the last one stopped
+        # (@searched, from start), so a huge element is searched once. A
+        # start tag longer than TAG_LIMIT is broken: rows and cells have few
+        # attributes.
         def element_end(start, prefix)
           tag = @buffer.match(TAG_END, start)
-          return unless tag
+          unless tag
+            raise broken("unclosed element #{@local_name}") if @buffer.bytesize - start > TAG_LIMIT
+
+            return
+          end
           return tag.end(0) if @buffer.getbyte(tag.end(0) - 2) == 47 # "/>"
 
           close = @ends[prefix] ||= %r{</#{Regexp.escape(prefix)}#{Regexp.escape(@local_name)}\s*>}
-          found = @buffer.index(close, tag.end(0))
-          found && @buffer.match(close, found).end(0)
+          found = @buffer.index(close, [tag.end(0), start + @searched].max)
+          return @buffer.match(close, found).end(0) if found
+
+          @searched = [@buffer.bytesize - start - CLOSE_LIMIT, 0].max
+          nil
         end
 
         # Drops the bytes before offset; returns 0, the new position.
