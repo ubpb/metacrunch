@@ -127,15 +127,18 @@ class ReaderTest < Minitest::Test
     assert_equal("#{csv}: is not an XLSX workbook", error { read(csv) })
   end
 
-  def test_stdin_gzip_and_tar
+  def test_stdin_a_pipe_an_io_gzip_and_tar
     bytes = File.binread(xlsx(RECORDS))
     gz = File.join(@dir, "books.xlsx.gz")
     File.binwrite(gz, Zlib.gzip(bytes))
     tar = File.join(@dir, "books.tar")
     File.binwrite(tar, tar_of("books.xlsx" => bytes))
+    $stdin = piped(bytes)
 
-    assert_equal RECORDS * 3, read([StringIO.new(bytes), gz, tar], unpack: [:gzip, :tar])
+    assert_equal RECORDS * 5, read(["-", piped(bytes), StringIO.new(bytes), gz, tar], unpack: [:gzip, :tar])
     assert_match(/is a tar archive; to read its files, pass unpack: \[:gzip, :tar\]/, error { read(tar) })
+  ensure
+    $stdin = STDIN
   end
 
   def test_progress
@@ -185,6 +188,19 @@ class ReaderTest < Minitest::Test
       %(<c r="#{ref}" t="inlineStr"><is><t>#{value}</t></is></c>)
     end
     %(<row r="#{number}">#{cells.join}</row>)
+  end
+
+  # The reading end of a pipe that a thread fills with bytes.
+  def piped(bytes)
+    reader, writer = IO.pipe
+    Thread.new do
+      writer.write(bytes)
+    rescue Errno::EPIPE, IOError
+      nil
+    ensure
+      writer.close
+    end
+    reader
   end
 
   def tar_of(entries)
