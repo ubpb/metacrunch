@@ -63,33 +63,43 @@ module Metacrunch
         defect = nil
         column = -1
         row.scan(CELL) do |attributes_xml, content|
-          xml = Regexp.last_match(0)
-          attributes = Xml.attributes("<c#{attributes_xml}>")
+          match = Regexp.last_match
+          attributes = Xml.pairs(attributes_xml)
           column = column(attributes["r"], column, number)
           begin
             value = value(attributes, content.to_s)
           rescue Defect => e
             defect ||= ParseError.new("cell #{Cells.column(column)}#{number}: #{e.message}")
-            value = xml
+            value = match[0]
           end
           values[column] = value unless value.nil?
         end
         [values, defect]
       end
 
+      # The index of the cell's column; the names in messages are built
+      # only for them, as this runs for every cell.
       def column(reference, previous, number)
-        index = previous + 1
-        if reference
-          letters = reference[REFERENCE, 1]
-          raise broken("cell reference #{reference.inspect}") unless letters
+        index = reference ? reference_index(reference) : previous + 1
+        return index if index > previous && index < LAST_COLUMN
 
-          index = letters.each_char.reduce(0) { |sum, letter| (sum * 26) + letter.ord - 64 } - 1
-        end
         name = "#{Cells.column(index)}#{number}"
         raise broken("cell #{name} beyond Excel's last column") if index >= LAST_COLUMN
-        raise broken("cell #{name} after #{Cells.column(previous)}#{number}") if index <= previous
 
-        index
+        raise broken("cell #{name} after #{Cells.column(previous)}#{number}")
+      end
+
+      # The letters of a reference such as "AB12" as an index from 0.
+      def reference_index(reference)
+        raise broken("cell reference #{reference.inspect}") unless reference.match?(REFERENCE)
+
+        index = 0
+        reference.each_byte do |byte|
+          break if byte < 65 # a digit
+
+          index = (index * 26) + byte - 64
+        end
+        index - 1
       end
 
       # The value of a cell, nil for none; raises Defect.

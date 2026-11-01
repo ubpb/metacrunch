@@ -14,7 +14,7 @@ module Metacrunch
       ENTITY = /&(?:(amp|lt|gt|quot|apos)|#(\d+)|#x(\h+));/
       # The rest of a start tag up to its ">", which may stand in quotes.
       TAG_END = /\G(?:[^>"']|"[^"]*"|'[^']*')*>/
-      ATTRIBUTE = /([A-Za-z_][\w.:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/
+      ATTRIBUTE = /([A-Za-z_][\w.-]*:)?([A-Za-z_][\w.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/
       PREFIX = /(?:[A-Za-z_][\w.-]*:)?/
       TEXT = %r{<#{PREFIX}t(?=[\s>/])[^>]*?(?:/>|>(.*?)</#{PREFIX}t\s*>)}m
       PHONETIC = %r{<#{PREFIX}rPh(?=[\s>/]).*?</#{PREFIX}rPh\s*>}m
@@ -35,13 +35,18 @@ module Metacrunch
 
       # The attributes of an element's start tag, by local name; namespace
       # declarations are left out.
-      def attributes(element)
-        tag = element.match(TAG_END, 0)&.to_s || element
-        tag.scan(ATTRIBUTE).each_with_object({}) do |(key, double, single), result|
-          next if key == "xmlns" || key.start_with?("xmlns:")
+      def attributes(element) = pairs(element.match(TAG_END, 0)&.to_s || element)
 
-          result[key.split(":").last] = unescape(double || single)
+      # The attributes written in text (the inside of a start tag), by
+      # local name; namespace declarations are left out.
+      def pairs(text)
+        result = {}
+        text.scan(ATTRIBUTE) do |prefix, key, double, single|
+          next if prefix == "xmlns:" || (prefix.nil? && key == "xmlns")
+
+          result[key] = unescape(double || single)
         end
+        result
       end
 
       # The text of the t elements in fragment (a shared string, an inline
