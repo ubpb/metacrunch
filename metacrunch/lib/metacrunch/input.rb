@@ -24,6 +24,19 @@ module Metacrunch
     Seekable = Data.define(:io, :start, :position)
     private_constant :Seekable
 
+    # Raised by each_zip for a document that is no zip archive. head: its
+    # first bytes (up to Formats::PEEK), so a source can say what it is.
+    class NotZip < InputError
+
+      attr_reader :head
+
+      def initialize(message, head)
+        super(message)
+        @head = head
+      end
+
+    end
+
     # targets: a path (String or Pathname), "-" for stdin, an IO (anything
     # with readpartial or read), or a non-empty Array of these. unpack: the
     # formats to unpack, of UNPACK. packed: what becomes of a document in
@@ -48,11 +61,20 @@ module Metacrunch
     def each_document(&)
       return enum_for(:each_document) unless block_given?
 
-      @done = 0
-      @total = total(check_paths)
-      @targets.each { read_target(it, &) }
-      @done = @total if @total
-      nil
+      read_all(zips: false, &)
+    end
+
+    # Yields an Input::Zip and its name for every document, for sources of
+    # ZIP-based formats (a workbook), which need random access to their
+    # parts: a regular file or a seekable IO is read directly, anything
+    # else through an anonymous temporary file (see open_zip). gzip and tar
+    # around it are unpacked as unpack: says; a document that is no zip
+    # archive raises NotZip. Without a block an Enumerator.
+    def each_zip(&)
+      return enum_for(:each_zip) unless block_given?
+      raise ArgumentError, "each_zip opens zip archives itself; leave :zip out of unpack" if @unpack.include?(:zip)
+
+      read_all(zips: true, &)
     end
 
     # The share of the files read so far, from 0.0 to 1.0 (compressed bytes
@@ -67,6 +89,16 @@ module Metacrunch
     end
 
     private
+
+    # zips: each_zip, which yields every document as a Zip.
+    def read_all(zips:, &)
+      @zips = zips
+      @done = 0
+      @total = total(check_paths)
+      @targets.each { read_target(it, &) }
+      @done = @total if @total
+      nil
+    end
 
     def target(target)
       return target.to_s if target.is_a?(Pathname)
@@ -163,6 +195,8 @@ module Metacrunch
     # or zip archive.
     def layers(stream, name, file, depth, seekable = nil, archived: false, &)
       format = detect(stream)
+      return open_zip(stream, name, seekable) { yield it, name } if @zips && format == :zip
+
       format = packed(format, name, archived) if UNPACK.include?(format)
       case format
       when :plain then document(stream, name, &)
@@ -197,6 +231,8 @@ module Metacrunch
     end
 
     def document(stream, name)
+      raise NotZip.new("#{name}: is not a zip archive", stream.peek(Formats::PEEK)) if @zips
+
       yield stream, name
     ensure
       stream.close
@@ -219,21 +255,22 @@ module Metacrunch
       end
     end
 
-    # A ZIP archive's directory is at its end: a Seekable target is read
-    # directly, anything else is copied into an anonymous temporary file
-    # first (see temporary_file), which is closed afterwards, also on
-    # errors and interrupts.
     def zip(stream, name, file, depth, seekable, &)
       deeper(name, depth)
-      if seekable
-        archive = Zip.new(seekable.io, name, start: seekable.start, position: seekable.position)
-        return zip_documents(archive, name, file, depth, &)
-      end
+      open_zip(stream, name, seekable) { zip_documents(it, name, file, depth, &) }
+    end
+
+    # Yields the Zip of stream. A ZIP archive's directory is at its end: a
+    # Seekable target is read directly, anything else is copied into an
+    # anonymous temporary file first (see temporary_file), which is closed
+    # afterwards, also on errors and interrupts.
+    def open_zip(stream, name, seekable)
+      return yield Zip.new(seekable.io, name, start: seekable.start, position: seekable.position) if seekable
 
       copy = temporary_file(name)
       begin
         spool(stream, copy, name)
-        zip_documents(Zip.new(copy, name), name, file, depth, &)
+        yield Zip.new(copy, name)
       ensure
         copy.close
       end

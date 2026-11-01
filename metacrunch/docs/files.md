@@ -146,6 +146,27 @@ class Lines
 end
 ```
 
+### A source for a ZIP-based format
+
+A workbook (`.xlsx`) and other ZIP-based formats are read from their parts, with random access, not as one stream of
+documents. `each_zip` opens every document as a zip archive and yields a `Metacrunch::Input::Zip` (internal; for
+metacrunch's own gems) and its name:
+
+```ruby
+input = Metacrunch::Input.new(targets, unpack: [:gzip], packed: :refuse)
+input.each_zip do |zip, name|
+  entry = zip.entry("xl/workbook.xml")
+  stream = Metacrunch::Input::Stream.new(zip.member(entry))
+  ...
+end
+```
+
+A regular file or a seekable IO is read directly; stdin, a pipe, a document inside gzip and a tar member go through
+an anonymous temporary file, as zip archives do above. gzip and tar around a document are unpacked as `unpack:` says;
+`:zip` in `unpack:` is an ArgumentError, since the archive is the document. A document that is no zip archive raises
+`Metacrunch::Input::NotZip`, an `InputError` whose `head` holds its first bytes, so the source can say what it is
+(`is an Excel 97-2003 workbook`).
+
 ## Writing: `Metacrunch::Output`
 
 ```ruby
