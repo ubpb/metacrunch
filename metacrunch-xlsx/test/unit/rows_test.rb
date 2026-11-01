@@ -18,6 +18,10 @@ class RowsTest < Minitest::Test
                  rows(data, strings: ["<t>shared</t>"])
   end
 
+  def test_line_breaks_in_formula_strings_are_normalized
+    assert_equal [[1, ["a\nb"], nil]], rows(row(1, cell("A1", "a\r\nb", type: "str")))
+  end
+
   def test_dates_by_format
     data = row(1, cell("A1", "45597", style: 1), cell("B1", "45597.6041666667", style: 2),
                cell("C1", "0.6041666667", style: 3),

@@ -92,6 +92,13 @@ class XmlTest < Minitest::Test
     assert_equal "&&A'\">\r_x0041_&#xD800;&#1114112;&bogus;", Xml.text(xml)
   end
 
+  # XML reads a line break in the text as "\n"; a carriage return that is
+  # meant comes as a reference or as Excel's code.
+  def test_line_breaks_are_normalized_as_xml_does
+    assert_equal "a\nb\nc\rd\re", Xml.text("<is><t>a\r\nb\rc&#13;d_x000D_e</t></is>")
+    assert_equal "a\nb", Xml.content("a\r\nb")
+  end
+
   def test_character_codes_of_a_surrogate_pair_are_one_character
     assert_equal "\u{1F600}", Xml.text("<is><t>_xD83D__xDE00_</t></is>")
     assert_equal "�", Xml.text("<is><t>_xD83D_</t></is>")

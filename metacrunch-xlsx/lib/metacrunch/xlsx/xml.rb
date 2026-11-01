@@ -18,6 +18,7 @@ module Metacrunch
       PREFIX = /(?:[A-Za-z_][\w.-]*:)?/
       TEXT = %r{<#{PREFIX}t(?=[\s>/])[^>]*?(?:/>|>(.*?)</#{PREFIX}t\s*>)}m
       PHONETIC = %r{<#{PREFIX}rPh(?=[\s>/]).*?</#{PREFIX}rPh\s*>}m
+      LINE_BREAK = /\r\n?/
       # Excel's code for a character, e.g. _x000D_ for a carriage return.
       CHARACTER_CODES = /(?:_x\h{4}_)+/
       ENCODING = /\A\s*<\?xml[^>]*?encoding\s*=\s*["']([^"']+)/
@@ -47,8 +48,13 @@ module Metacrunch
       # string), without phonetic runs, decoded.
       def text(fragment)
         raw = fragment.dup.force_encoding(Encoding::UTF_8).gsub(PHONETIC, "")
-        decode(unescape(raw.scan(TEXT).join))
+        content(raw.scan(TEXT).join)
       end
+
+      # The text of an element's content as XML reads it: line breaks as
+      # "\n" (a carriage return that is meant comes as &#13; or _x000D_),
+      # references and Excel's character codes decoded.
+      def content(raw) = decode(unescape(raw.gsub(LINE_BREAK, "\n")))
 
       # The five entities and character references; anything else stays.
       def unescape(text)

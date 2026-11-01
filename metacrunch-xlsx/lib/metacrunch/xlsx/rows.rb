@@ -103,7 +103,7 @@ module Metacrunch
         case type
         when nil, "n" then number(raw, kind(attributes))
         when "s" then shared_string(raw)
-        when "str" then blank(Xml.decode(Xml.unescape(raw)))
+        when "str" then blank(Xml.content(raw))
         when "b" then boolean(raw)
         when "e" then Xml.unescape(raw)
         when "d" then iso_date(Xml.unescape(raw), kind(attributes))
