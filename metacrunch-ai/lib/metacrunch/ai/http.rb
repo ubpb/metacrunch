@@ -55,6 +55,9 @@ module Metacrunch
         @connection = nil
       end
 
+      # Without the headers, which may hold a key.
+      def inspect = "#<#{self.class.name} #{@name} url=#{location("").inspect}>"
+
       # POSTs body as JSON to the base path plus path and returns the answer,
       # a Hash.
       def post_json(path, body)

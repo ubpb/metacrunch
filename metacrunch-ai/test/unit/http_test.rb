@@ -183,6 +183,13 @@ class HttpTest < Minitest::Test
     end
   end
 
+  def test_inspect_hides_the_headers
+    http = Metacrunch::Ai::Http.new(url: "https://user:pw@api.example.org/v1", name: "embeddings",
+                                    headers: {"Authorization" => "Bearer s3"})
+
+    assert_equal %(#<Metacrunch::Ai::Http embeddings url="https://api.example.org:443/v1">), http.inspect
+  end
+
   def test_close_without_a_connection_and_twice
     http = Metacrunch::Ai::Http.new(url: @api.url)
     http.close
