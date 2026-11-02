@@ -25,6 +25,13 @@ jobs:
         working-directory: ${{ matrix.gem }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # pg comes precompiled for released Rubies only; building it needs libpq, which macOS runners lack.
+      - run: |
+          brew install libpq
+          echo "$(brew --prefix libpq)/bin" >> "$GITHUB_PATH"
+        if: matrix.gem == 'metacrunch-db' && runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
       - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
         with:
           ruby-version: ${{ matrix.ruby }}
