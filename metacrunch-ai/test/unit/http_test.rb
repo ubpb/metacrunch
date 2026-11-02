@@ -142,6 +142,21 @@ class HttpTest < Minitest::Test
     assert_equal 1, @api.requests.size
   end
 
+  def test_a_refusal_without_a_body
+    @api.on("POST", "/v1/things") { [404, ""] }
+    error = assert_raises(Metacrunch::Ai::ApiError) { http.post_json("/things", {}) }
+
+    assert_equal ["things at #{@api.url("/v1/things")}: 404", nil], [error.message, error.body]
+  end
+
+  def test_retries_without_a_logger
+    @api.on("POST", "/v1/things") { [200, {"ok" => true}] }
+    @api.on("POST", "/v1/things", times: 1) { [502, "", {"Retry-After" => "0"}] }
+    @http = Metacrunch::Ai::Http.new(url: @api.url("/v1"))
+
+    assert_equal({"ok" => true}, @http.post_json("/things", {}))
+  end
+
   def test_malformed_json_is_an_api_error
     @api.on("POST", "/v1/things") { [200, "<html>"] }
     error = assert_raises(Metacrunch::Ai::ApiError) { http.post_json("/things", {}) }

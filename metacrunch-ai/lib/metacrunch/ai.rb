@@ -8,6 +8,7 @@ require "metacrunch"
 require_relative "ai/version"
 require_relative "ai/errors"
 require_relative "ai/http"
+require_relative "ai/open_ai"
 require_relative "ai/fake_embedder"
 
 module Metacrunch
@@ -21,6 +22,11 @@ module Metacrunch
 
       raise ArgumentError, "#{name} must be a positive Integer, got #{value.inspect}"
     end
+
+    def self.text?(value) = value.is_a?(String) && !value.empty?
+
+    # A non-empty Array of numbers.
+    def self.vector?(value) = value.is_a?(Array) && !value.empty? && value.all?(Numeric)
 
     # Raises ArgumentError if texts are more than max_inputs.
     def self.max_inputs!(texts, max_inputs)
