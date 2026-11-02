@@ -1,9 +1,9 @@
 # metacrunch-marc
 
 MARC for [metacrunch](https://github.com/ubpb/metacrunch): one ordered record model with a plain Ruby API, parsers
-that keep the data as written and serializers for MARCXML, ISO 2709 and MARC-in-JSON, and a source and a sink for
-metacrunch jobs. MARC 21 is the format of the records; ISO 2709 ("binary MARC", `.mrc`) is its traditional exchange
-syntax, and MARCXML and MARC-in-JSON carry the same records as XML and JSON.
+that keep the data as written and serializers for MARCXML, binary MARC (ISO 2709) and MARC-in-JSON, and a source and
+a sink for metacrunch jobs. MARC 21 is the format of the records; binary MARC (ISO 2709, the `.mrc` files) is its
+traditional exchange syntax, and MARCXML and MARC-in-JSON carry the same records as XML and JSON.
 
 ```ruby
 require "metacrunch/marc"
@@ -114,7 +114,7 @@ record.remove { it.equal?(field) }
 
 - `record.to_xml` returns the record as MARCXML; `namespace: false` leaves out `xmlns`.
 - `record.to_iso2709` returns it as ISO 2709, binary MARC as in `.mrc` files (ruby-marc's `to_marc`), a String in
-  UTF-8 (see [ISO 2709](#iso-2709)).
+  UTF-8 (see [ISO 2709](#iso-2709-binary-marc)).
 - `record.to_json` returns it as one line of MARC-in-JSON (see [MARC-in-JSON](#marc-in-json)); `JSON.generate` uses it
   for records inside other values.
 - `record.to_h` returns MARC-in-JSON: `{"leader" => "...", "fields" => [{"001" => "..."}, {"245" => {"ind1" => "1",
@@ -155,7 +155,7 @@ Serializers transcode Strings in other encodings and take binary Strings as UTF-
 
 What each format can hold:
 
-| | MARCXML | ISO 2709 | MARC-in-JSON |
+| | MARCXML | ISO 2709 (binary MARC) | MARC-in-JSON |
 |---|---|---|---|
 | Tags | any | 3 ASCII characters | any |
 | Indicators and codes | any | 1 ASCII character | any |
@@ -186,7 +186,7 @@ there. Elements are matched by their local name, whatever their namespace. Forma
 their own called `record`, such as OAI-PMH responses (`ListRecords`), are therefore not read correctly yet; take the
 MARC records out of the wrapper first.
 
-### ISO 2709
+### ISO 2709 (binary MARC)
 
 ISO 2709 is the exchange format of MARC 21 known as binary MARC: the `.mrc` files, which ruby-marc writes with
 `to_marc` and this gem with `to_iso2709`. It is read and written in UTF-8. Parsing takes about 12 µs and writing about
@@ -329,8 +329,9 @@ All" 2016, part 1: 241 MB as ISO 2709, 700 MB as MARCXML). Time per record, Ruby
 | Memory per record held | 9.0 KB | 10.0 KB |
 
 Both read the same records: `to_h` equals ruby-marc's `to_hash` for every record but 8, whose 001 in the ISO 2709 file
-ends with a stray subfield delimiter that metacrunch-marc rejects (see [ISO 2709](#iso-2709)). metacrunch-marc checks
-while it parses and writes that values are valid UTF-8 that XML 1.0 can represent; ruby-marc does not check either.
+ends with a stray subfield delimiter that metacrunch-marc rejects (see [ISO 2709](#iso-2709-binary-marc)).
+metacrunch-marc checks while it parses and writes that values are valid UTF-8 that XML 1.0 can represent; ruby-marc
+does not check either.
 
 ## Upgrading from metacrunch-marcxml 4.x
 
