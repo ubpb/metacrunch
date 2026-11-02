@@ -106,7 +106,11 @@ module Metacrunch
       end
 
       # The elements of one name in a stream, read in blocks; only the
-      # unread rest and an unfinished element are kept.
+      # unread rest and an unfinished element are kept. The content of an
+      # element that a block does not finish is held apart from the buffer,
+      # so a huge element costs time in proportion to its size: a regexp
+      # search checks the encoding of the whole String it searches, and
+      # appending to a String drops what was checked.
       class Elements
 
         # Bytes read before the XML declaration and DOCTYPE are checked.
@@ -127,7 +131,7 @@ module Metacrunch
           @ends = {}
           @buffer = "".b
           @eof = false
-          @searched = 0
+          @held = nil
         end
 
         def each
@@ -149,8 +153,7 @@ module Metacrunch
 
               next
             end
-            @searched = 0
-            yield utf8(@buffer.byteslice(start, stop - start))
+            yield utf8(element(start, stop))
             position = stop
           end
         end
@@ -158,9 +161,7 @@ module Metacrunch
         private
 
         # The offset after the element starting at start, or nil when the
-        # buffer does not hold all of it yet.
-        # The search for the end tag goes on where the last one stopped
-        # (@searched, from start), so a huge element is searched once. A
+        # buffer does not hold all of it yet; then its content is held. A
         # start tag longer than TAG_LIMIT is broken: rows and cells have few
         # attributes.
         def element_end(start, prefix)
@@ -173,11 +174,36 @@ module Metacrunch
           return tag.end(0) if @buffer.getbyte(tag.end(0) - 2) == 47 # "/>"
 
           close = @ends[prefix] ||= %r{</#{Regexp.escape(prefix)}#{Regexp.escape(@local_name)}\s*>}
-          found = @buffer.index(close, [tag.end(0), start + @searched].max)
-          return @buffer.match(close, found).end(0) if found
+          found = @buffer.match(close, tag.end(0))
+          return found.end(0) if found
 
-          @searched = [@buffer.bytesize - start - CLOSE_LIMIT, 0].max
+          hold(start, tag.end(0))
           nil
+        end
+
+        # Moves the content of the element starting at start out of the
+        # buffer, from the end of its start tag (tag_end) up to the last
+        # CLOSE_LIMIT bytes, where its end tag may begin. The start tag
+        # stays, so the element is found again after the next block; the
+        # search for its end then covers those last bytes and the new block.
+        def hold(start, tag_end)
+          stop = @buffer.bytesize - CLOSE_LIMIT
+          return if stop <= tag_end
+
+          @held ||= [tag_end - start, "".b]
+          @held.last << @buffer.byteslice(tag_end, stop - tag_end)
+          @buffer = @buffer.byteslice(0, tag_end) << @buffer.byteslice(stop..)
+        end
+
+        # The bytes of the element from start to stop, with its held content
+        # put back after the start tag.
+        def element(start, stop)
+          bytes = @buffer.byteslice(start, stop - start)
+          return bytes unless @held
+
+          tag_size, content = @held
+          @held = nil
+          bytes.byteslice(0, tag_size) << content << bytes.byteslice(tag_size..)
         end
 
         # Drops the bytes before offset; returns 0, the new position.
