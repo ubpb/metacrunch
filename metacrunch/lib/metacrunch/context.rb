@@ -19,8 +19,13 @@ module Metacrunch
     # step cannot swallow the rejection.
     class Rejected < Exception; end # rubocop:disable Lint/InheritException
 
+    IN_BATCH = "reject! is not available in batch steps; drop records with filter or reject and a reason"
+
     attr_reader :id, :position, :marks, :store, :rejection
     attr_accessor :step, :failure
+    # Set by the engine while a batch step runs; reject! then breaks the
+    # contract, since it would end the call for the whole batch.
+    attr_writer :in_batch
 
     # Reasons are counted and reported as Strings. Symbols are converted;
     # nil and empty reasons break the contract.
@@ -54,12 +59,15 @@ module Metacrunch
       @failure = nil
       @step = nil
       @sealed = false
+      @in_batch = false
     end
 
     # Stops processing of this record: records the rejection and ends the
     # current step by raising Rejected. The engine sends the record to the
     # rejects sink.
     def reject!(reason, value: nil)
+      raise ContractError, IN_BATCH if @in_batch
+
       record_rejection(reason, value:)
       raise Rejected, @rejection.reason
     end

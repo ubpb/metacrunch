@@ -11,6 +11,31 @@ module Metacrunch
     # Returned by map/filter/reject evaluation when the record goes no further.
     DROPPED = Object.new.freeze
 
+    # The records and contexts a batch step holds until it runs: when it
+    # holds size of them, and on flush. run gets the pairs taken out.
+    class Batch
+
+      def initialize(size, run)
+        @size = size
+        @run = run
+        @pairs = []
+      end
+
+      def add(record, ctx)
+        @pairs << [record, ctx]
+        flush if @pairs.size >= @size
+      end
+
+      def flush
+        return if @pairs.empty?
+
+        pairs = @pairs
+        @pairs = []
+        @run.call(pairs)
+      end
+
+    end
+
     # Wraps errors from later steps and sinks while a flat_map streams its
     # children, so they are not counted as failures of the flat_map step.
     # It inherits from Exception on purpose: the flat_map's Enumerable runs
@@ -36,7 +61,9 @@ module Metacrunch
       @observer = observer
       @on_mark = stats.method(:mark)
       @opened = []
+      @batches = []
       @chain = build_chain
+      @batches.reverse!
     end
 
     # Opens the step callables, each object once, in step order.
@@ -63,6 +90,13 @@ module Metacrunch
       @chain.call(record, Context.new(id:, position:, logger: @pipeline.logger, on_mark: @on_mark))
     end
 
+    # Runs the batch steps on the records they hold, in step order: what a
+    # step passes on may fill the buffer of a later one, which runs after it.
+    def flush
+      @batches.each(&:flush)
+      nil
+    end
+
     private
 
     # A record the source could not read fails as the pseudo-step "source".
@@ -87,6 +121,8 @@ module Metacrunch
     # policy; errors raised further down (later steps, sinks) pass through.
     def link(step, downstream)
       counter = @stats.counter(step.name)
+      return batch_link(step, counter, downstream) if step.batch
+
       step.kind == :flat_map ? flat_map_link(step, counter, downstream) : single_link(step, counter, downstream)
     end
 
@@ -122,31 +158,107 @@ module Metacrunch
         ctx.step = step.name
         counter.input += 1
         @observer&.step_in(step.name, record, ctx)
-        children = @observer ? [] : nil
-        begin
-          result = timed(step) { step.call(record, ctx) }
-          unless ctx.rejected?
-            flat_map_contract!(step, result)
-            result.each do |child|
-              break if ctx.rejected?
-
-              children&.push(child)
-              counter.output += 1
-              forward_child(downstream, child, ctx)
-            end
-          end
-        rescue DownstreamFailure => e
-          raise e.original, cause: e.original.cause
-        rescue Context::Rejected
-          next fail_record(step, record, ctx, foreign_rejection) unless ctx.rejected?
-        rescue *Engine::RECOVERABLE => e
-          next fail_record(step, record, ctx, e)
-        ensure
-          @observer&.step_out(step.name, children, ctx)
-        end
-        reject_record(record, ctx) if ctx.rejected?
+        stream_children(step, counter, downstream, record, ctx) { timed(step) { step.call(record, ctx) } }
       end
     end
+
+    # Streams the children of the Enumerable the block returns (see
+    # flat_map_link); flat_map batch steps hand in a record's result.
+    def stream_children(step, counter, downstream, record, ctx)
+      children = @observer ? [] : nil
+      begin
+        result = yield
+        unless ctx.rejected?
+          flat_map_contract!(step, result)
+          result.each do |child|
+            break if ctx.rejected?
+
+            children&.push(child)
+            counter.output += 1
+            forward_child(downstream, child, ctx)
+          end
+        end
+      rescue DownstreamFailure => e
+        raise e.original, cause: e.original.cause
+      rescue Context::Rejected
+        return fail_record(step, record, ctx, foreign_rejection) unless ctx.rejected?
+      rescue *Engine::RECOVERABLE => e
+        return fail_record(step, record, ctx, e)
+      ensure
+        @observer&.step_out(step.name, children, ctx)
+      end
+      reject_record(record, ctx) if ctx.rejected?
+    end
+
+    # A step with batch: buffers records with their contexts (Batch) and
+    # runs the batch function on them; with an observer one at a time.
+    def batch_link(step, counter, downstream)
+      batch = Batch.new(@observer ? 1 : step.batch, ->(pairs) { run_batch(step, counter, downstream, pairs) })
+      @batches << batch
+      batch.method(:add)
+    end
+
+    # Calls the batch function once for the pairs and applies each result
+    # to its record, in order. If the call raises or breaks the contract,
+    # every record of the batch fails with that error.
+    def run_batch(step, counter, downstream, pairs)
+      pairs.each do |record, ctx|
+        ctx.step = step.name
+        @observer&.step_in(step.name, record, ctx)
+      end
+      counter.input += pairs.size
+      begin
+        results = call_batch(step, pairs)
+      rescue *Engine::RECOVERABLE => e
+        return pairs.each { |record, ctx| fail_observed(step, record, ctx, e) }
+      end
+      pairs.each_with_index do |(record, ctx), index|
+        apply_result(step, counter, downstream, record, ctx, results[index])
+      end
+    end
+
+    # reject! raises while the contexts are in a batch call.
+    def call_batch(step, pairs)
+      ctxs = pairs.map(&:last)
+      ctxs.each { it.in_batch = true }
+      results = timed(step) { step.call_batch(pairs.map(&:first), ctxs) }
+      batch_contract!(step, results, pairs.size)
+      results
+    ensure
+      ctxs.each { it.in_batch = false }
+    end
+
+    # Applies one result of a batch to its record, as single_link and
+    # flat_map_link apply what a step returns. An Exception fails it.
+    def apply_result(step, counter, downstream, record, ctx, result)
+      return fail_observed(step, record, ctx, result) if result.is_a?(Exception)
+      return stream_children(step, counter, downstream, record, ctx) { result } if step.kind == :flat_map
+
+      begin
+        output = outcome(step, record, ctx, result)
+      rescue *Engine::RECOVERABLE => e
+        return fail_observed(step, record, ctx, e)
+      end
+      @observer&.step_out(step.name, output.equal?(DROPPED) ? [] : [output], ctx)
+      if ctx.rejected?
+        reject_record(record, ctx)
+      elsif output.equal?(DROPPED)
+        counter.filtered += 1
+      else
+        counter.output += 1
+        downstream.call(output, ctx)
+      end
+    end
+
+    def batch_contract!(step, results, size)
+      return if results.is_a?(Array) && results.size == size
+
+      got = results.is_a?(Array) ? count(results.size, "result") : results.class
+      raise ContractError, "#{step.kind} step #{step.name} returned #{got} for a batch of #{count(size, "record")}; " \
+                           "return an Array with one result per record"
+    end
+
+    def count(number, noun) = "#{number} #{number == 1 ? noun : "#{noun}s"}"
 
     def forward_child(downstream, child, ctx)
       downstream.call(child, ctx.copy)
@@ -162,15 +274,21 @@ module Metacrunch
       result = timed(step) { step.call(record, ctx) }
       return DROPPED if ctx.rejected?
 
+      outcome(step, record, ctx, result)
+    rescue Context::Rejected
+      raise foreign_rejection unless ctx.rejected?
+
+      DROPPED
+    end
+
+    # The output record or DROPPED for what a map, filter or reject step
+    # returned.
+    def outcome(step, record, ctx, result)
       case step.kind
       when :map then map_result(step, result)
       when :filter then kept(step, record, ctx, result)
       else kept(step, record, ctx, !result)
       end
-    rescue Context::Rejected
-      raise foreign_rejection unless ctx.rejected?
-
-      DROPPED
     end
 
     # A Rejected for a record that is not rejected comes from the context

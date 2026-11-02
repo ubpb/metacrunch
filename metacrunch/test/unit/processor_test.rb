@@ -4,24 +4,7 @@ require "test_helper"
 
 class ProcessorTest < Minitest::Test
 
-  include PipelineHelper
-
-  # Notes what leaves the chain.
-  class RecordingOutlet
-
-    attr_reader :events
-
-    def initialize
-      @events = []
-    end
-
-    def deliver(record, ctx) = @events << [:deliver, record, ctx.position]
-
-    def reject(record, ctx) = @events << [:reject, record, ctx.rejection.reason]
-
-    def fail(record, ctx) = @events << [:fail, record, ctx.failure.step]
-
-  end
+  include ProcessorHelper
 
   # A step callable that notes open and close.
   class Lifecycle
@@ -86,14 +69,6 @@ class ProcessorTest < Minitest::Test
     processor.open
 
     assert_equal "close broke", processor.close.message
-  end
-
-  private
-
-  def build_processor(outlet, stats: nil, &)
-    pipeline = build_pipeline(&)
-    stats ||= Metacrunch::StatsCollector.new(pipeline.steps.map(&:name))
-    Metacrunch::Processor.new(pipeline, stats:, outlet:)
   end
 
 end
