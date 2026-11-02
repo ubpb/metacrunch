@@ -187,6 +187,31 @@ jobs:
           working-directory: metacrunch-redis
       - run: bundle exec rake test
 
+  # metacrunch-ai against Ollama with the embedding model all-minilm: service containers exist on Linux only, and
+  # take no command, so the model is pulled in a step.
+  ai:
+    name: Embeddings (Ollama)
+    runs-on: ubuntu-latest
+    services:
+      ollama:
+        image: ollama/ollama:0.40.13
+        ports: ["11435:11434"]
+        options: --health-cmd "ollama list" --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      EMBEDDINGS_URL: http://127.0.0.1:11435/v1
+    defaults:
+      run:
+        working-directory: metacrunch-ai
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: metacrunch-ai
+      - run: docker exec ${{ job.services.ollama.id }} ollama pull all-minilm
+      - run: bundle exec rake test
+
   tooling:
     name: Tooling
     runs-on: ubuntu-latest

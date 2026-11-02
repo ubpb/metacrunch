@@ -8,4 +8,17 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
 
 ### Added
 
-- `Metacrunch::Ai::FakeEmbedder`: deterministic unit vectors without network, for tests and dry runs.
+- `Metacrunch::Ai::Embed`, a step that adds a vector per record from a field, several fields or a callable; with
+  `batch:` it sends a batch's texts in as few requests as the service takes. It probes the service when it opens, so
+  a wrong key, model or URL stops the job before records are read; isolates the texts a service refuses; leaves
+  records without text unchanged, with a mark; logs texts, calls and tokens when it closes.
+- `Metacrunch::Ai::OpenAi`, an embedder for the OpenAI embeddings API and the servers that offer it (Azure OpenAI,
+  Voyage AI, Mistral, Hugging Face Text Embeddings Inference, Ollama, vLLM), with further headers and request fields,
+  `max_inputs`, timeouts and retries with a growing delay and `Retry-After`, over one persistent connection per
+  process, without dependencies besides metacrunch.
+- `Metacrunch::Ai::EMBEDDINGS_PARAMS`, a group of parameters (`embeddings_url`, `embeddings_model`, the secret
+  `embeddings_api_key`), and `Metacrunch::Ai.embedder(params)`.
+- `Metacrunch::Ai::FakeEmbedder`, deterministic unit vectors without network, for tests and dry runs:
+  `embeddings_url` `fake` or `fake:DIMS`.
+- Errors `Metacrunch::Ai::InvalidInput`, `Unavailable` and `ApiError` with the HTTP status and an excerpt of the
+  answer.

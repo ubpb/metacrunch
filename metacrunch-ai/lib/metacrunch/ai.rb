@@ -64,6 +64,9 @@ module Metacrunch
 
     def self.text?(value) = value.is_a?(String) && !value.empty?
 
+    # "1 text", "2 texts"
+    def self.count(number, noun) = "#{number} #{number == 1 ? noun : "#{noun}s"}"
+
     # A non-empty Array of numbers.
     def self.vector?(value) = value.is_a?(Array) && !value.empty? && value.all?(Numeric)
 

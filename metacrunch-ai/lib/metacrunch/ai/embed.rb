@@ -125,8 +125,7 @@ module Metacrunch
         vectors = @provider.embed(texts)
         unless vectors.is_a?(Array) && vectors.size == texts.size
           count = vectors.is_a?(Array) ? vectors.size : 0
-          raise Error, "the provider returned #{count} #{count == 1 ? "vector" : "vectors"} for #{texts.size} " \
-                       "#{texts.size == 1 ? "text" : "texts"}"
+          raise Error, "the provider returned #{Ai.count(count, "vector")} for #{Ai.count(texts.size, "text")}"
         end
 
         @calls += 1
@@ -145,7 +144,7 @@ module Metacrunch
 
       def summary
         tokens = @provider.stats["tokens"] if @provider.respond_to?(:stats)
-        "embedded #{@texts} texts in #{@calls} calls#{", #{tokens} tokens" if tokens}"
+        "embedded #{Ai.count(@texts, "text")} in #{Ai.count(@calls, "call")}#{", #{tokens} tokens" if tokens}"
       end
 
     end

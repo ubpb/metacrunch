@@ -65,10 +65,7 @@ module Metacrunch
       def vectors(answer, count)
         data = answer["data"]
         malformed("no data") unless data.is_a?(Array)
-        unless data.size == count
-          malformed("#{data.size} #{data.size == 1 ? "vector" : "vectors"} for #{count} " \
-                    "#{count == 1 ? "text" : "texts"}")
-        end
+        malformed("#{Ai.count(data.size, "vector")} for #{Ai.count(count, "text")}") unless data.size == count
 
         by_index = data.filter_map { [it["index"], it["embedding"]] if it.is_a?(Hash) }.to_h
         Array.new(count) { vector(by_index[it]) }

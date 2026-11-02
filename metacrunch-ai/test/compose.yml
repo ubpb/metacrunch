@@ -1,0 +1,23 @@
+# Ollama for the integration tests, with the embedding model all-minilm (46 MB, 384 dimensions):
+#
+#   docker compose -f test/compose.yml up -d --wait
+#   docker compose -f test/compose.yml exec ollama ollama pull all-minilm
+#   EMBEDDINGS_URL=http://localhost:11435/v1 bundle exec rake test
+#   docker compose -f test/compose.yml down
+#
+# The model stays in the volume ollama, so the pull is quick the next time. EMBEDDINGS_MODEL names another model.
+name: metacrunch-ai
+
+services:
+  ollama:
+    image: ollama/ollama:0.40.13
+    ports: ["11435:11434"]
+    volumes: ["ollama:/root/.ollama"]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  ollama:
