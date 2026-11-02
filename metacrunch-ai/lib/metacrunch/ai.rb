@@ -2,9 +2,12 @@
 
 require "digest"
 require "json"
+require "net/http"
+require "time"
 require "metacrunch"
 require_relative "ai/version"
 require_relative "ai/errors"
+require_relative "ai/http"
 require_relative "ai/fake_embedder"
 
 module Metacrunch
