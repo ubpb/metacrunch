@@ -13,13 +13,14 @@ module Metacrunch
     def path?(target) = (target.is_a?(String) && target != STDIO) || target.is_a?(Pathname)
 
     # The name of a target in messages: a path as given, "-" for stdin and
-    # stdout, an IO's path, or else the name of its class.
+    # stdout, an IO's path, or else the name of its class (of the nearest
+    # superclass with a name; a module the class includes names nothing).
     def name(target)
       return target.to_s if path?(target) || target == STDIO
       return STDIO if target.equal?($stdin) || target.equal?($stdout)
 
       path = target.path if target.respond_to?(:path)
-      path.is_a?(String) ? path : target.class.ancestors.find(&:name).name
+      path.is_a?(String) ? path : target.class.ancestors.grep(Class).find(&:name).name
     end
 
     # The system's text of a system error, lower case first, without

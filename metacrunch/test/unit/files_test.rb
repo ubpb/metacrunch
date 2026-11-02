@@ -33,6 +33,13 @@ class FilesTest < Minitest::Test
     assert_equal "StringIO", Files.name(Class.new(StringIO).new)
   end
 
+  # io-console 0.9.5 prepends a module IO::platform_tty to IO.
+  def test_a_prepended_module_does_not_name_an_io
+    prepended = Module.new.set_temporary_name("platform_tty")
+
+    assert_equal "StringIO", Files.name(Class.new(StringIO) { prepend prepended }.new)
+  end
+
   def test_reasons_are_the_system_text_in_lower_case
     assert_equal "no such file or directory", Files.reason(Errno::ENOENT.new("a.jsonl"))
     assert_equal "no space left on device", Files.reason(Errno::ENOSPC.new)
