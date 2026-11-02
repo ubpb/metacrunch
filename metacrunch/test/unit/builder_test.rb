@@ -42,6 +42,21 @@ class BuilderTest < Minitest::Test
     assert_same target, pipeline.sink.sink
   end
 
+  def test_every_step_statement_takes_batch
+    callable = ->(records) { records }
+    pipeline = build_pipeline do
+      source []
+      map(batch: 3) { it }
+      filter("Odd", callable, batch: 2)
+      reject(batch: 4) { it }
+      flat_map(callable, name: "explode", batch: 5)
+      map { it }
+    end
+
+    assert_equal [3, 2, 4, 5, nil], pipeline.steps.map(&:batch)
+    assert_equal "Odd", pipeline.steps[1].reason
+  end
+
   def test_accepts_a_reason_or_a_callable_as_first_argument
     callable = ->(record) { record }
     pipeline = build_pipeline do

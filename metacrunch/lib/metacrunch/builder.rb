@@ -56,24 +56,24 @@ module Metacrunch
       nil
     end
 
-    def map(callable = nil, name: nil, &block)
-      add_step(:map, nil, callable, block, name)
+    def map(callable = nil, name: nil, batch: nil, &block)
+      add_step(:map, nil, callable, block, name, batch)
     end
 
-    def flat_map(callable = nil, name: nil, &block)
-      add_step(:flat_map, nil, callable, block, name)
+    def flat_map(callable = nil, name: nil, batch: nil, &block)
+      add_step(:flat_map, nil, callable, block, name, batch)
     end
 
     # filter { ... }, filter(callable), filter("reason") { ... }, filter("reason", callable)
-    def filter(reason_or_callable = nil, callable = nil, name: nil, &block)
+    def filter(reason_or_callable = nil, callable = nil, name: nil, batch: nil, &block)
       reason, callable = split_reason(reason_or_callable, callable)
-      add_step(:filter, reason, callable, block, name)
+      add_step(:filter, reason, callable, block, name, batch)
     end
 
     # Same arguments as filter.
-    def reject(reason_or_callable = nil, callable = nil, name: nil, &block)
+    def reject(reason_or_callable = nil, callable = nil, name: nil, batch: nil, &block)
       reason, callable = split_reason(reason_or_callable, callable)
-      add_step(:reject, reason, callable, block, name)
+      add_step(:reject, reason, callable, block, name, batch)
     end
 
     # Inserts the steps and hooks of a transform here. target: a Transform,
@@ -179,7 +179,7 @@ module Metacrunch
     # included, so a transform that gains a step renames no step of the
     # job. / is reserved for the prefixes of transforms, "source" and "sink"
     # for the failures of source and sink.
-    def add_step(kind, reason, callable, block, name)
+    def add_step(kind, reason, callable, block, name, batch)
       use!
       raise ArgumentError, "#{kind}: pass a callable or a block, not both" if callable && block
 
@@ -194,7 +194,7 @@ module Metacrunch
       end
       raise ArgumentError, "duplicate step name #{name}" if @steps.any? { |step| step.name == name }
 
-      @steps << Step.build(kind, implementation, name:, reason:)
+      @steps << Step.build(kind, implementation, name:, reason:, batch:)
       nil
     end
 

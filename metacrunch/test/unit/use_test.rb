@@ -40,6 +40,16 @@ class UseTest < Minitest::Test
     assert_equal [19, 29], records(pipeline)
   end
 
+  def test_keeps_the_batch_of_transform_steps
+    batched = Metacrunch.transform("batched") { map(batch: 4) { it } }
+    pipeline = build_job do
+      source [1]
+      use batched
+    end
+
+    assert_equal([["batched/map#1", 4]], pipeline.steps.map { [it.name, it.batch] })
+  end
+
   def test_takes_transform_objects_with_their_defaults
     pipeline = build_job do
       source [1]
