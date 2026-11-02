@@ -81,6 +81,18 @@ class EngineStopTest < Minitest::Test
     assert_equal ["ok", [1, 2]], [outcome["status"], outcome["records"]]
   end
 
+  def test_sigterm_runs_the_batch_steps_on_the_records_read
+    outcome = run_and_terminate(batch: 10)
+
+    assert_equal ["ok", [1, 2]], [outcome["status"], outcome["records"]]
+  end
+
+  def test_with_workers_sigterm_runs_the_batch_steps_too
+    outcome = run_and_terminate(executor: Metacrunch::Executor::Fork.new(workers: 2, batch_size: 3), batch: 10)
+
+    assert_equal ["ok", [1, 2]], [outcome["status"], outcome["records"]]
+  end
+
   def test_a_second_sigterm_stops_at_once
     outcome = run_and_terminate(ignore_stop: true, signals: 2)
 
@@ -188,19 +200,19 @@ class EngineStopTest < Minitest::Test
   # Runs a job with a Stoppable source in a child process, sends it SIGTERM (signals times, 0.3 s apart) once the
   # source is ready, and returns what the child reports: status, records and log, or the signal that ended the run,
   # and its exit status.
-  def run_and_terminate(executor: Metacrunch::Executor::Inline.new, ignore_stop: false, signals: 1)
+  def run_and_terminate(executor: Metacrunch::Executor::Inline.new, ignore_stop: false, signals: 1, batch: nil)
     skip "needs Process.fork" unless Process.respond_to?(:fork)
 
-    terminated(executor, ignore_stop, signals)
+    terminated(executor, ignore_stop, signals, batch)
   end
 
-  def terminated(executor, ignore_stop, signals)
+  def terminated(executor, ignore_stop, signals, batch)
     ready_reader, ready = IO.pipe
     report_reader, report = IO.pipe
     pid = Process.fork do
       ready_reader.close
       report_reader.close
-      report.puts(JSON.generate(child_run(executor, ready, ignore_stop)))
+      report.puts(JSON.generate(child_run(executor, ready, ignore_stop, batch)))
       report.close
       Process.exit!(0)
     end
@@ -252,11 +264,13 @@ class EngineStopTest < Minitest::Test
     Process.waitpid(pid) if pid
   end
 
-  def child_run(executor, ready, ignore_stop)
+  # batch: a batch step with that batch, or none.
+  def child_run(executor, ready, ignore_stop, batch)
     target = StoppableSink.new
     log = StringIO.new
     pipeline = build_pipeline(logger: Logger.new(log)) do
       source Stoppable.new(ready, ignore_stop:)
+      map(batch:) { |records| records } if batch
       sink target
     end
     result = Metacrunch::Engine.new(pipeline, executor:).run

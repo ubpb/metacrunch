@@ -3,9 +3,12 @@
 module Metacrunch
   # Writes the records that leave the chain of steps to the pipeline's
   # sinks: delivered ones to the sink, rejected ones to rejects and failed
-  # ones to failures. Enforces max_failures, so a run stops at the same record
-  # whether its steps run inline or in workers. Applies the failure policy to
-  # the records the sink reports as not written (SinkFailures).
+  # ones to failures. The sink gets its records in source order; rejects,
+  # failures and the log get them in the order they leave the steps, which
+  # differs only where a record waits in a batch step. Enforces
+  # max_failures, so a run stops at the same record whether its steps run
+  # inline or in workers. Applies the failure policy to the records the sink
+  # reports as not written (SinkFailures).
   class SinkOutlet
 
     def initialize(pipeline, stats:)

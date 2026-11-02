@@ -155,12 +155,15 @@ module Metacrunch
           nil
         end
 
-        # records: one Marshal dump per record (see Run#add). Returns the
-        # exception that stopped the batch, or nil. Signals pass.
+        # records: one Marshal dump per record (see Run#add). A batch is a
+        # segment: the batch steps run on what they hold at its end, so its
+        # records come back with it. Returns the exception that stopped the
+        # batch, or nil. Signals pass.
         def process(positions, records)
           positions.each_with_index do |position, index|
             @processor.call(load_record(records[index], position), position)
           end
+          @processor.flush
           nil
         rescue SignalException
           raise

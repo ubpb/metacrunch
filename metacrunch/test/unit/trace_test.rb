@@ -55,6 +55,26 @@ class TraceTest < Minitest::Test
     TEXT
   end
 
+  def test_shows_batch_steps_one_record_at_a_time
+    output = trace_run do
+      source [1, 2]
+      map(batch: 5) { |records| records.map { it * 10 } }
+      filter(&:positive?)
+    end
+
+    assert_equal <<~TEXT, output
+      #1
+        map#1     1 → 10
+        filter#2  pass
+        sink      1 record (not written)
+      #2
+        map#1     2 → 20
+        filter#2  pass
+        sink      1 record (not written)
+      traced 2 records: 2 to sink
+    TEXT
+  end
+
   def test_shows_flat_map_children_and_their_way_through_later_steps
     output = trace_run do
       source [{"id" => 17, "isbns" => ["a", "b"]}]

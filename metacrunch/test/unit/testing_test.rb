@@ -36,6 +36,13 @@ class TestingTest < Minitest::Test
     assert_equal([[0, "zero"]], result.failures.map { |record, failure| [record, failure.error.message] })
   end
 
+  def test_runs_batch_steps_with_workers
+    job = Metacrunch.job { map(batch: 2) { |records| records.map { it * 2 } } }
+    result = Metacrunch::Testing.run(job, source: (1..5).to_a, workers: 2)
+
+    assert_equal [2, 4, 6, 8, 10], result.records
+  end
+
   def test_jobs_without_a_source_need_one
     job = Metacrunch.job { map { it * 2 } }
     error = assert_raises(ArgumentError) { Metacrunch::Testing.run(job) }
