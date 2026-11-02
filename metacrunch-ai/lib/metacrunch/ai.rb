@@ -17,6 +17,44 @@ module Metacrunch
   # and the servers that offer it.
   module Ai
 
+    # The params of an embedder for jobs and commands, a group of
+    # parameters: params { use Metacrunch::Ai::EMBEDDINGS_PARAMS } and
+    # Metacrunch::Ai.embedder(params). The prefix keeps them apart from the
+    # url and api_key of other groups; the key is a secret.
+    EMBEDDINGS_PARAMS = proc do
+      param :embeddings_url, String,
+            desc: "embeddings API base URL (default: #{OpenAi::DEFAULT_URL}); fake or fake:DIMS for a fake embedder"
+      param :embeddings_model, String, desc: "embedding model, e.g. text-embedding-3-small"
+      secret :embeddings_api_key, String, desc: "API key, sent as a bearer token"
+    end
+
+    # The params that embedder reads, as EMBEDDINGS_PARAMS declares them.
+    EMBEDDINGS_PARAM_NAMES = [:embeddings_url, :embeddings_model, :embeddings_api_key].freeze
+
+    # embeddings_url fake or fake:DIMS
+    FAKE = /\Afake(?::(\d+))?\z/
+
+    # An embedder from the bound params of a job or command: an OpenAi, or
+    # with embeddings_url fake a FakeEmbedder, which needs no network.
+    # options go to OpenAi.new; the fake takes only max_inputs.
+    def self.embedder(params, **options)
+      url, model, api_key = EMBEDDINGS_PARAM_NAMES.map { params.public_send(it) if params.respond_to?(it) }
+      return fake(url, options) if url&.start_with?("fake")
+      unless text?(model)
+        raise ArgumentError, "embeddings_model is required (or embeddings_url fake for a fake embedder)"
+      end
+
+      OpenAi.new(model:, url: url || OpenAi::DEFAULT_URL, api_key:, **options)
+    end
+
+    def self.fake(url, options)
+      match = FAKE.match(url)
+      raise ArgumentError, "embeddings_url #{url} is no fake; use fake or fake:DIMS, e.g. fake:384" unless match
+
+      FakeEmbedder.new(dims: Integer(match[1] || "8", 10), **options.slice(:max_inputs))
+    end
+    private_class_method :fake
+
     # Returns value if it is a positive Integer, else raises ArgumentError.
     def self.positive!(value, name)
       return value if value.is_a?(Integer) && value.positive?
