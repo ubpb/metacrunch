@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         gem: [metacrunch, metacrunch-csv, metacrunch-xlsx, metacrunch-marc, metacrunch-elasticsearch, metacrunch-db,
-              metacrunch-redis]
+              metacrunch-redis, metacrunch-ai]
         ruby: ["4.0", head]
     defaults:
       run:
@@ -38,7 +38,7 @@ jobs:
       fail-fast: false
       matrix:
         gem: [metacrunch, metacrunch-csv, metacrunch-xlsx, metacrunch-marc, metacrunch-elasticsearch, metacrunch-db,
-              metacrunch-redis]
+              metacrunch-redis, metacrunch-ai]
     defaults:
       run:
         working-directory: ${{ matrix.gem }}

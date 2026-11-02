@@ -22,6 +22,7 @@ This repository holds metacrunch and its extension gems. Start with [metacrunch'
 | `metacrunch-elasticsearch` | [`metacrunch-elasticsearch/`](metacrunch-elasticsearch) | a source, a bulk sink and index commands for Elasticsearch 8 and 9 |
 | `metacrunch-db` | [`metacrunch-db/`](metacrunch-db) | a source and a sink for SQLite, PostgreSQL, MySQL and MariaDB |
 | `metacrunch-redis` | [`metacrunch-redis/`](metacrunch-redis) | a queue between jobs, and a source and a sink for keys, on Redis and Valkey |
+| `metacrunch-ai` | [`metacrunch-ai/`](metacrunch-ai) | embeddings through the OpenAI embeddings API and compatible servers |
 
 ## Installation
 
@@ -81,9 +82,10 @@ A gem may have further Gemfiles in `gemfiles/`: metacrunch-elasticsearch tests t
 (mysql2 needs the MySQL client library). `rake bundle`, `rake test` and `rake version` take them along; Dependabot
 updates only `Gemfile.lock`, so after its updates `bundle exec rake bundle` brings the further lockfiles up to date.
 
-Gems that talk to a server, such as metacrunch-elasticsearch, metacrunch-db and metacrunch-redis, have integration
-tests that need the server: the gem's `test/compose.yml` starts it with Docker, and the gem's Readme shows how to run
-them. Without the server they are skipped. [AGENTS.md](AGENTS.md#integration-tests) says when they have to run before a merge.
+Gems that talk to a server, such as metacrunch-elasticsearch, metacrunch-db, metacrunch-redis and metacrunch-ai, have
+integration tests that need the server: the gem's `test/compose.yml` starts it with Docker, and the gem's Readme shows
+how to run them. Without the server they are skipped. [AGENTS.md](AGENTS.md#integration-tests) says when they have to
+run before a merge.
 
 ## License
 
