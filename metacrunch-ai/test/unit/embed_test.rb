@@ -157,6 +157,23 @@ class EmbedTest < Minitest::Test
                  [error.class, error.message]
   end
 
+  def test_an_error_of_the_callable_fails_only_its_record
+    shout = ->(book) { book["title"].upcase }
+    books = (1..5).map { {"title" => it == 3 ? nil : "Book #{it}"} }
+    result = Metacrunch::Testing.run(job(Fake.new, text: shout), source: books)
+
+    assert_equal(["Book 1", "Book 2", "Book 4", "Book 5"], result.records.map { it["title"] })
+    assert_equal([[nil, NoMethodError]], result.failures.map { [it.first["title"], it.last.error.class] })
+  end
+
+  def test_a_field_with_invalid_utf8_fails_only_its_record
+    books = [{"t" => "a"}, {"t" => (+"\xFF \xFE").force_encoding(Encoding::UTF_8)}, {"t" => "c"}]
+    result = Metacrunch::Testing.run(job(Fake.new, text: "t"), source: books)
+
+    assert_equal(["a", "c"], result.records.map { it["t"] })
+    assert_equal 1, result.failures.size
+  end
+
   def test_a_callable_must_return_a_string_or_nil
     error = failure_of(Fake.new, text: ->(_record) { 42 })
 

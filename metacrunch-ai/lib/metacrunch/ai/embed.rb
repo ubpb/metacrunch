@@ -56,13 +56,15 @@ module Metacrunch
       end
 
       # One result per record: the record with its vector, the record
-      # unchanged (no text, with a mark), or the error it fails with.
+      # unchanged (no text, with a mark), or the error it fails with. An
+      # error while taking the text of a record (from the callable, or a
+      # value with invalid UTF-8) fails only that record.
       def call_batch(records, ctxs)
         results = Array.new(records.size)
         pending = []
         records.each_with_index do |record, index|
           text = text_of(record)
-        rescue ContractError => e
+        rescue StandardError => e
           results[index] = e
         else
           text ? pending << [index, text] : results[index] = unmarked(record, ctxs[index])
