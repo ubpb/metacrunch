@@ -16,8 +16,10 @@ module JobTests
 
   end
 
+  # More rows than the workers take at once, so the reader still reads when the writer commits; on SQLite, where
+  # reader and writer share the test's file, that needs WAL.
   def test_copies_a_table_with_workers
-    from = create_books((1..500).map { {isbn: format("%04d", it), title: "Book #{it}", year: 2000 + (it % 20)} })
+    from = create_books((1..10_000).map { {isbn: format("%05d", it), title: "Book #{it}", year: 2000 + (it % 20)} })
     to = create_books(name: table("copy"))
     result = copy(from, to).run(workers: 2, logger: Logger.new(StringIO.new))
 

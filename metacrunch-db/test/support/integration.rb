@@ -42,7 +42,8 @@ module Integration
     end
   end
 
-  # The test's tables have a prefix of their own and are dropped afterwards.
+  # The test's tables have a prefix of their own and are dropped afterwards. The SQLite file is in WAL mode, as a
+  # job that reads and writes one file needs (see Metacrunch::Db::Writer::LOCKED).
   module Helpers
 
     attr_reader :database
@@ -52,6 +53,7 @@ module Integration
       @prefix = "metacrunch_test_#{SecureRandom.hex(3)}_"
       @url = target.url || "sqlite://#{@dir}/test.db"
       @database = connection.connect
+      @database.run("PRAGMA journal_mode=WAL") if type == :sqlite
       super
     end
 
