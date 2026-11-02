@@ -138,6 +138,8 @@ map { |hit| hit["_source"].merge("id" => hit["_id"]) }
 sink Metacrunch::Elasticsearch::Writer.new(es, index: "books-new", id: "id"), batch: 1000
 ```
 
+From Elasticsearch 9.2 such a reader gets no vectors; see [Vectors](#vectors).
+
 ### Lookups in steps
 
 `Search` finds documents for a step, e.g. the id of a record that comes without one:
@@ -213,6 +215,68 @@ $ metacrunch run --params examples/params.yml examples/load.rb --index books exa
 
 The run then ends with `ok_with_failures` (exit status 3), and `stats.written` counts the documents written. Without
 `id:`, a request that is sent again after a lost answer may index a document twice; give ids where that matters.
+
+## Vectors
+
+Vectors from an embedding model make semantic search possible, and with the text fields beside them hybrid search.
+They go into a field of type `dense_vector`, whose `dims` is the dimension of the model's vectors:
+
+```jsonc
+// config/books.mappings.jsonc
+{
+  "properties": {
+    "title": {"type": "text"},
+    "embedding": {"type": "dense_vector", "dims": 384, "similarity": "cosine"}
+  }
+}
+```
+
+The writer writes vectors as it writes any Array of numbers. [metacrunch-ai](../metacrunch-ai) computes them in a
+step:
+
+```ruby
+require "metacrunch/ai"
+require "metacrunch/elasticsearch"
+
+Metacrunch.job do
+  params do
+    use Metacrunch::Ai::EMBEDDINGS_PARAMS
+    use Metacrunch::Elasticsearch::CONNECTION_PARAMS
+    args :files, min: 1
+  end
+
+  source Metacrunch::JsonLines::Reader.new(params.files)
+  map Metacrunch::Ai::Embed.new(Metacrunch::Ai.embedder(params), text: ["title", "abstract"]), batch: 100
+  sink Metacrunch::Elasticsearch::Writer.new(Metacrunch::Elasticsearch::Connection.from_params(params),
+                                             index: "books", id: "isbn"), batch: 500
+end
+```
+
+- Size: a vector of 1024 floats is about 10 KB of JSON, so a bulk request of `max_bytes` (10 MB) holds about a
+  thousand documents; the writer cuts batches into requests of that size.
+- Elasticsearch quantizes vectors in its index: from 9.1 a field of 384 or more dimensions is indexed as `bbq_hnsw`,
+  a smaller one as `int8_hnsw` (`index_options` in the mapping chooses another).
+- Reading: from 9.2 Elasticsearch leaves vectors out of `_source` in its answers. A reader that is to keep them asks
+  for them: `Reader.new(es, index: "books", source: {exclude_vectors: false})`. Before 9.2 this option is unknown,
+  and vectors come like any other field.
+- A step finds the nearest documents with the `knn` query (8.12 or later), for example similar books or likely
+  duplicates:
+
+  ```ruby
+  search = Metacrunch::Elasticsearch::Search.new(es, index: "books")
+  map do |book|
+    query = {knn: {field: "embedding", query_vector: book["embedding"], k: 5, num_candidates: 50}}
+    book.merge("similar" => search.ids(query, size: 5) - [book["isbn"]])
+  end
+  ```
+
+- A new embedding model gives vectors that do not mix with the old ones: load everything into a new index and switch
+  the alias, as below.
+
+Elasticsearch can compute vectors itself: a field of type `semantic_text` with an inference endpoint embeds the text
+the writer sends, and the job stays as it is. Inference endpoints of other services (OpenAI, Cohere, …) need an
+Enterprise license on a self-managed cluster, as far as Elastic's documentation says; check yours. Vectors computed
+by metacrunch work with every license and every vector store, and a job controls their batches, retries and costs.
 
 ## Indices and aliases
 

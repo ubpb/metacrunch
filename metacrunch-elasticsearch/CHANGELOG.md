@@ -24,6 +24,9 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
   with comments.
 - The commands `es:create-index`, `es:finish-load`, `es:switch-alias`, `es:prune`, `es:delete-index`,
   `es:update-settings` and `es:list`, which a project loads with `Metacrunch::Elasticsearch::COMMANDS`.
+- Vectors: the Readme shows `dense_vector` fields filled by metacrunch-ai, reading vectors back from 9.2
+  (`source: {exclude_vectors: false}`), `knn` lookups with `Search`, and `semantic_text` as an alternative;
+  integration tests cover them on Elasticsearch 8 and 9.
 
 ### Changes from metacrunch-elasticsearch 5.0.0
 
