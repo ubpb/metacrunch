@@ -128,7 +128,7 @@ class InvokerTest < Minitest::Test
   # A command from a gem: its file lives outside the project.
   GEM_COMMAND = <<~RUBY
     Metacrunch.command "secret:show" do
-      params { secret :api_key, String, default: {credential: "catalog.api_key"} }
+      params { secret :api_key, String, default: {credential: "es.api_key"} }
 
       run do
         invoke "secret"
@@ -139,7 +139,7 @@ class InvokerTest < Minitest::Test
 
   NAMED_SECRET_JOB = <<~RUBY
     Metacrunch.job "secret" do
-      params { secret :api_key, String, default: {credential: "catalog.api_key"} }
+      params { secret :api_key, String, default: {credential: "es.api_key"} }
 
       source [params.api_key.reverse]
     end
@@ -147,7 +147,7 @@ class InvokerTest < Minitest::Test
 
   REVEAL = <<~RUBY
     Metacrunch.transform "reveal" do
-      params { secret :api_key, String, default: {credential: "catalog.api_key"} }
+      params { secret :api_key, String, default: {credential: "es.api_key"} }
 
       map { params.api_key.reverse }
     end
@@ -367,7 +367,7 @@ class InvokerTest < Minitest::Test
       write_ruby(dir, "gem/commands/secret.rb", GEM_COMMAND)
       write_ruby(root, "Metacrunchfile", "Metacrunch.load_files #{glob.inspect}, \"jobs/*.rb\"\n")
       write_ruby(root, "jobs/secret.rb", NAMED_SECRET_JOB)
-      write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
+      write_credentials(root, {"es" => {"api_key" => SECRET}}, environment: "production")
       out = StringIO.new
       invoker = invoker_for(Metacrunch.load_project(root), stdout: out, environment: "production")
 
@@ -422,7 +422,7 @@ class InvokerTest < Minitest::Test
       write_ruby(root, "Metacrunchfile", "Metacrunch.load_files \"jobs/*.rb\", \"transforms/*.rb\"\n")
       write_ruby(root, "transforms/reveal.rb", REVEAL)
       write_ruby(root, "jobs/revealed.rb", "Metacrunch.job(\"revealed\") do\n  source [1]\n  use \"reveal\"\nend\n")
-      write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
+      write_credentials(root, {"es" => {"api_key" => SECRET}}, environment: "production")
       out = StringIO.new
       invoker_for(Metacrunch.load_project(root), stdout: out, environment: "production").invoke("revealed")
 

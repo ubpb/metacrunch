@@ -48,11 +48,11 @@ class ParamsFileTest < Minitest::Test
   end
 
   def test_lists_and_references
-    selection = load("default: {tags: [a, b], api_key: {credential: catalog.api_key}, es_url: {env: ES_URL}}\n")
+    selection = load("default: {tags: [a, b], api_key: {credential: es.api_key}, es_url: {env: ES_URL}}\n")
                 .select(nil)
 
     assert_equal ["a", "b"], selection["tags"]
-    assert_equal Metacrunch::Params::Reference.new(source: :credential, key: "catalog.api_key"),
+    assert_equal Metacrunch::Params::Reference.new(source: :credential, key: "es.api_key"),
                  selection["api_key"]
     assert_equal Metacrunch::Params::Reference.new(source: :env, key: "ES_URL"), selection["es_url"]
   end
@@ -95,7 +95,7 @@ class ParamsFileTest < Minitest::Test
       "default: {api_key: {credential: x.y, other: 1}}\n" =>
         "FILE: default.api_key: a value must be text, a list, {credential: PATH} or {env: NAME}",
       "default: {api_key: {credential: a..b}}\n" =>
-        %(FILE: default.api_key: credential must be a path like "catalog.api_key", got "a..b"),
+        %(FILE: default.api_key: credential must be a path like "es.api_key", got "a..b"),
       "default: {es_url: {env: 1X}}\n" => "FILE: default.es_url: a reference is {credential: PATH} or {env: NAME}",
       "default: [\n" => "invalid YAML in FILE at line 2, column 1"
     }.each do |content, message|

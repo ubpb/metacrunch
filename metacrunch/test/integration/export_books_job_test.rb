@@ -7,11 +7,11 @@ require "tmpdir"
 require "metacrunch/cli"
 require "metacrunch/testing"
 
-class CatalogJobTest < Minitest::Test
+class ExportBooksJobTest < Minitest::Test
 
   ROOT = File.expand_path("../..", __dir__)
-  JOB = File.join(ROOT, "test", "fixtures", "jobs", "catalog.rb")
-  INPUT = File.join(ROOT, "test", "fixtures", "catalog.json")
+  JOB = File.join(ROOT, "test", "fixtures", "jobs", "export_books.rb")
+  INPUT = File.join(ROOT, "test", "fixtures", "books.json")
 
   EXPECTED_FILES = {
     "records.jsonl" => [

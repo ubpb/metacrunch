@@ -7,7 +7,7 @@ class TraceCommandTest < Minitest::Test
 
   include CliHelper
 
-  CATALOG = File.expand_path("../fixtures/catalog.json", __dir__)
+  BOOKS = File.expand_path("../fixtures/books.json", __dir__)
 
   # stdout whose reader went away (`| head`, quitting less).
   class ClosedPipe < StringIO
@@ -18,7 +18,7 @@ class TraceCommandTest < Minitest::Test
 
   def test_traces_the_first_records_without_writing
     Dir.mktmpdir do |dir|
-      code, stdout, = cli("trace", "-n", "2", job("catalog.rb"), "--output", dir, CATALOG)
+      code, stdout, = cli("trace", "-n", "2", job("export_books.rb"), "--output", dir, BOOKS)
 
       assert_equal [0, []], [code, Dir.children(dir)]
       assert_match(/\A#1  id=1\n  reject#1    pass\n/, stdout)
@@ -27,7 +27,7 @@ class TraceCommandTest < Minitest::Test
   end
 
   def test_traces_selected_positions
-    code, stdout, = cli("trace", "--position", "5", job("catalog.rb"), "--output", "unused", CATALOG)
+    code, stdout, = cli("trace", "--position", "5", job("export_books.rb"), "--output", "unused", BOOKS)
 
     assert_equal 0, code
     assert_match(/\A#5  id=5\n/, stdout)

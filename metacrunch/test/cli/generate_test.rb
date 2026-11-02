@@ -16,7 +16,7 @@ class GenerateTest < Minitest::Test
     ["model", "x"] => "unknown kind model (job, transform, command, source or sink)",
     ["job"] => "no name or path given",
     ["job", "a", "b"] => "unexpected arguments: b",
-    ["job", "Catalog"] => '"Catalog" is not a valid job name; use a-z, 0-9, _ and -, in parts separated by :',
+    ["job", "Books"] => '"Books" is not a valid job name; use a-z, 0-9, _ and -, in parts separated by :',
     ["job", "help"] => '"help" is the name of a built-in command; choose another name',
     ["source", "lines", "--desc", "x"] => "--desc is for jobs, transforms and commands",
     ["job", "x", "--desc", "a\nb"] => "desc must be one line of text",
@@ -26,24 +26,24 @@ class GenerateTest < Minitest::Test
   def test_a_name_goes_below_the_project_root
     in_project do |root|
       FileUtils.mkdir_p(File.join(root, "lib"))
-      code, stdout, stderr = Dir.chdir(File.join(root, "lib")) { cli("generate", "job", "catalog:ids") }
+      code, stdout, stderr = Dir.chdir(File.join(root, "lib")) { cli("generate", "job", "books:ids") }
 
-      assert_equal [0, "created ../jobs/catalog/ids.rb\ncreated ../test/jobs/catalog/ids_test.rb\n", ""],
+      assert_equal [0, "created ../jobs/books/ids.rb\ncreated ../test/jobs/books/ids_test.rb\n", ""],
                    [code, stdout, stderr]
-      refute File.executable?(File.join(root, "jobs/catalog/ids.rb"))
+      refute File.executable?(File.join(root, "jobs/books/ids.rb"))
     end
   end
 
   def test_every_kind_by_name_has_its_place
     in_project do |root|
-      ["transform catalog:clean", "command es:create-index", "source marc:dump", "sink files:json"].each do |args|
+      ["transform books:clean", "command es:create-index", "source marc:dump", "sink files:json"].each do |args|
         cli("generate", *args.split)
       end
 
       assert_equal ["commands/es/create_index.rb", "lib/files/json.rb", "lib/marc/dump.rb",
                     "test/commands/es/create_index_test.rb", "test/lib/files/json_test.rb",
-                    "test/lib/marc/dump_test.rb", "test/transforms/catalog/clean_test.rb",
-                    "transforms/catalog/clean.rb"],
+                    "test/lib/marc/dump_test.rb", "test/transforms/books/clean_test.rb",
+                    "transforms/books/clean.rb"],
                    Dir.glob("**/*.rb", base: root).sort
     end
   end
@@ -75,9 +75,9 @@ class GenerateTest < Minitest::Test
   # Under LANG=C the shell's arguments arrive as binary strings.
   def test_desc_in_utf_8_bytes_stays_readable
     in_project do |root|
-      cli("generate", "job", "--desc", "Größe".b, "catalog:ids")
+      cli("generate", "job", "--desc", "Größe".b, "books:ids")
 
-      assert_includes File.read(File.join(root, "jobs/catalog/ids.rb")), %(desc: "Größe" do\n)
+      assert_includes File.read(File.join(root, "jobs/books/ids.rb")), %(desc: "Größe" do\n)
     end
   end
 
@@ -86,18 +86,18 @@ class GenerateTest < Minitest::Test
     in_project do |root|
       exe = File.expand_path("../../exe/metacrunch", __dir__)
       Open3.capture3({"LC_ALL" => "C", "LANG" => "C"}, RbConfig.ruby, "-I", File.expand_path("../../lib", __dir__),
-                     exe, "generate", "job", "--desc", "Größe", "catalog:ids")
+                     exe, "generate", "job", "--desc", "Größe", "books:ids")
 
-      assert_includes File.read(File.join(root, "jobs/catalog/ids.rb")), %(desc: "Größe" do\n)
+      assert_includes File.read(File.join(root, "jobs/books/ids.rb")), %(desc: "Größe" do\n)
     end
   end
 
   def test_desc_goes_into_the_declaration
     in_project do |root|
-      cli("generate", "job", "--desc", "Extract the ids", "catalog:ids")
+      cli("generate", "job", "--desc", "Extract the ids", "books:ids")
 
-      assert_includes File.read(File.join(root, "jobs/catalog/ids.rb")),
-                      %(Metacrunch.job "catalog:ids", desc: "Extract the ids" do\n)
+      assert_includes File.read(File.join(root, "jobs/books/ids.rb")),
+                      %(Metacrunch.job "books:ids", desc: "Extract the ids" do\n)
     end
   end
 
@@ -110,7 +110,7 @@ class GenerateTest < Minitest::Test
 
   def test_a_name_needs_a_project
     in_tmpdir do |dir|
-      code, _stdout, stderr = cli("generate", "job", "catalog:ids")
+      code, _stdout, stderr = cli("generate", "job", "books:ids")
 
       assert_equal [2, "Error: no Metacrunchfile found in #{dir} or above; give a path (./ids.rb) or create a " \
                        "project with metacrunch new"], [code, stderr.lines.first.chomp]
@@ -119,7 +119,7 @@ class GenerateTest < Minitest::Test
 
   def test_a_name_needs_a_metacrunchfile_that_loads
     in_project("Metacrunchfile" => "raise \"broken\"\n") do |root|
-      code, _stdout, stderr = cli("generate", "job", "catalog:ids")
+      code, _stdout, stderr = cli("generate", "job", "books:ids")
 
       assert_equal [2, "Error: could not load #{root}/Metacrunchfile: RuntimeError: broken"],
                    [code, stderr.lines.first.chomp]
@@ -127,33 +127,33 @@ class GenerateTest < Minitest::Test
   end
 
   def test_refuses_a_name_declared_in_another_file
-    in_project("commands/x.rb" => %(Metacrunch.command("catalog:ids") { run { nil } }\n)) do |root|
-      code, _stdout, stderr = cli("generate", "job", "catalog:ids")
+    in_project("commands/x.rb" => %(Metacrunch.command("books:ids") { run { nil } }\n)) do |root|
+      code, _stdout, stderr = cli("generate", "job", "books:ids")
 
-      assert_equal [2, "Error: catalog:ids is already declared in commands/x.rb"], [code, stderr.lines.first.chomp]
-      refute_path_exists File.join(root, "jobs/catalog/ids.rb")
+      assert_equal [2, "Error: books:ids is already declared in commands/x.rb"], [code, stderr.lines.first.chomp]
+      refute_path_exists File.join(root, "jobs/books/ids.rb")
     end
   end
 
   def test_force_regenerates_the_file_that_declares_the_name
     in_project do
-      cli("generate", "job", "catalog:ids")
-      code, stdout, stderr = cli("generate", "job", "catalog:ids", "--force")
+      cli("generate", "job", "books:ids")
+      code, stdout, stderr = cli("generate", "job", "books:ids", "--force")
 
       assert_equal [0, ""], [code, stderr]
-      assert_includes stdout, "created jobs/catalog/ids.rb\n"
+      assert_includes stdout, "created jobs/books/ids.rb\n"
     end
   end
 
   # Two test classes of one name would merge, and one test would replace
   # the other without a failure.
   def test_refuses_a_test_class_that_another_test_defines
-    in_project("test/jobs/catalog_ids_test.rb" => "class CatalogIdsJobTest < Minitest::Test; end\n") do |root|
-      code, _stdout, stderr = cli("generate", "job", "catalog:ids")
+    in_project("test/jobs/books_ids_test.rb" => "class BooksIdsJobTest < Minitest::Test; end\n") do |root|
+      code, _stdout, stderr = cli("generate", "job", "books:ids")
 
-      assert_equal [2, "Error: test/jobs/catalog_ids_test.rb defines CatalogIdsJobTest already; choose another name"],
+      assert_equal [2, "Error: test/jobs/books_ids_test.rb defines BooksIdsJobTest already; choose another name"],
                    [code, stderr.lines.first.chomp]
-      refute_path_exists File.join(root, "jobs/catalog/ids.rb")
+      refute_path_exists File.join(root, "jobs/books/ids.rb")
     end
   end
 
@@ -165,28 +165,28 @@ class GenerateTest < Minitest::Test
   end
 
   def test_without_test_the_test_classes_do_not_matter
-    in_project("test/jobs/catalog_ids_test.rb" => "class CatalogIdsJobTest < Minitest::Test; end\n") do
-      assert_equal 0, cli("generate", "job", "catalog:ids", "--no-test").first
+    in_project("test/jobs/books_ids_test.rb" => "class BooksIdsJobTest < Minitest::Test; end\n") do
+      assert_equal 0, cli("generate", "job", "books:ids", "--no-test").first
     end
   end
 
   def test_refuses_to_overwrite_without_force
     in_project do |root|
-      FileUtils.mkdir_p(File.join(root, "test/jobs/catalog"))
-      File.write(File.join(root, "test/jobs/catalog/ids_test.rb"), "mine")
-      code, _stdout, stderr = cli("generate", "job", "catalog:ids")
+      FileUtils.mkdir_p(File.join(root, "test/jobs/books"))
+      File.write(File.join(root, "test/jobs/books/ids_test.rb"), "mine")
+      code, _stdout, stderr = cli("generate", "job", "books:ids")
 
-      assert_equal [2, "Error: test/jobs/catalog/ids_test.rb already exists; use --force to overwrite"],
+      assert_equal [2, "Error: test/jobs/books/ids_test.rb already exists; use --force to overwrite"],
                    [code, stderr.lines.first.chomp]
-      refute_path_exists File.join(root, "jobs/catalog/ids.rb")
+      refute_path_exists File.join(root, "jobs/books/ids.rb")
     end
   end
 
   def test_notes_a_name_the_metacrunchfile_does_not_load
     in_project("Metacrunchfile" => %(Metacrunch.load_files "jobs/*.rb"\n)) do
-      code, _stdout, stderr = cli("generate", "job", "catalog:ids")
+      code, _stdout, stderr = cli("generate", "job", "books:ids")
 
-      assert_equal [0, "note: jobs/catalog/ids.rb is not loaded by the Metacrunchfile; it runs by path only\n"],
+      assert_equal [0, "note: jobs/books/ids.rb is not loaded by the Metacrunchfile; it runs by path only\n"],
                    [code, stderr]
     end
   end
@@ -209,10 +209,10 @@ class GenerateTest < Minitest::Test
     in_project do
       broken = ->(target, **) { Metacrunch::Generators::Plan.new.add(target.file, "raise \"broken\"\n") }
       _code, _stdout, stderr = override(Metacrunch::Generators::Files, :plan, broken) do
-        cli("generate", "job", "catalog:ids")
+        cli("generate", "job", "books:ids")
       end
 
-      assert_equal "warning: jobs/catalog/ids.rb: RuntimeError: broken\n", stderr
+      assert_equal "warning: jobs/books/ids.rb: RuntimeError: broken\n", stderr
     end
   end
 

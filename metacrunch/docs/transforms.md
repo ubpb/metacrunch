@@ -25,7 +25,7 @@ Metacrunch.job "export", desc: "Write the public titles, tidied, as JSON Lines" 
   end
 
   source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }
-  use "catalog:public", params: {fields: ["id", "title"]}
+  use "books:public", params: {fields: ["id", "title"]}
   use "normalize", params: {max_length: params.max_length}
   sink Metacrunch::JsonLines::Writer.new(params.output), batch: 1000
 end
@@ -53,7 +53,7 @@ end
 - A transform may `use` other transforms; a cycle raises an `ArgumentError`.
 - Transforms share their names with jobs and commands, so a transform and a job that runs it with a source of its own
   need two names. Name the transform after what it does and the job after what it produces, for example the transform
-  `catalog:public` and the job `catalog`, as in [`examples/project`](../examples/project).
+  `books:public` and the job `books:export`, as in [`examples/project`](../examples/project).
 - Alone, a transform runs like a job without source and sink, from stdin to stdout:
   `metacrunch run normalize --max-length 20 < data/titles.jsonl`. `trace` and `check` take it, and
   `Metacrunch::Testing.run(transform, source: [...])` tests it (see [Testing](testing.md#testing-jobs-and-transforms)).

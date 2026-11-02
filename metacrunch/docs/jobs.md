@@ -4,7 +4,7 @@ A job is a recipe: `Metacrunch.job` declares where records come from, what happe
 sections below describe each statement:
 
 ```ruby
-Metacrunch.job "catalog", desc: "Write the public titles" do
+Metacrunch.job "books:export", desc: "Write the public titles" do
   params do                                       # Parameters: first, if any
     param :output, String, required: true
   end
@@ -211,7 +211,7 @@ params do
   param  :dry,     :bool, default: false
   param  :tags,    Array
   param  :es_url,  String, default: {env: "ES_URL"}
-  secret :api_key, String, default: {credential: "catalog.api_key"}
+  secret :api_key, String, default: {credential: "es.api_key"}
   args   :files, min: 1
 end
 ```
@@ -229,13 +229,13 @@ A value is text, a list, or a reference that the run resolves when it needs the 
 |---|---|---|
 | Text, a list | command line, params file, `default:` of the declaration, `params:` | the value, converted to the type (`"1000"` → 1000, `"no"` → false) |
 | `{env: "ES_URL"}` | params file, `default:` of the declaration | the environment variable; an empty one counts as unset |
-| `{credential: "catalog.api_key"}` | params file, `default:` of the declaration | the value in the [credentials](credentials.md) of the run's [environment](environments.md); only for a `secret` |
+| `{credential: "es.api_key"}` | params file, `default:` of the declaration | the value in the [credentials](credentials.md) of the run's [environment](environments.md); only for a `secret` |
 
 A reference that finds nothing is an error, also for an optional parameter: `es_url: environment variable ES_URL from
 default: is not set`. A value that exists in only some environments belongs into their sections of the params file,
 not into the `default:` of the declaration. Plain defaults are converted and checked when declared
 (`Integer, default: "1000"` gives 1000), references for their form. `--help` shows where a default comes from, never a
-value: `(default: env ES_URL)`, `(secret, default: credential catalog.api_key)`.
+value: `(default: env ES_URL)`, `(secret, default: credential es.api_key)`.
 
 A value from code (`use`, `invoke`, `Job#run`, `Metacrunch::Testing`) is given as `params: {...}`, in the declared
 type or as a String; a Pathname counts as its path, and `nil` means not given. A params file never applies to them.
@@ -251,24 +251,24 @@ Parameters that several jobs, transforms and commands share go into a group: a p
 `args` statements. `use` declares them where it stands, so they show up there in `--help`:
 
 ```ruby
-# lib/catalog_params.rb
-CATALOG_PARAMS = proc do
-  param  :catalog_url, String, default: {env: "CATALOG_URL"}, desc: "URL of the catalog API"
-  secret :api_key,     String, default: {credential: "catalog.api_key"}
+# lib/es_params.rb
+ES_PARAMS = proc do
+  param  :es_url,  String, default: {env: "ES_URL"}, desc: "URL of the Elasticsearch server"
+  secret :api_key, String, default: {credential: "es.api_key"}
 end
 ```
 
 ```ruby
-# jobs/catalog.rb
-require_relative "../lib/catalog_params"
+# jobs/books/export.rb
+require_relative "../../lib/es_params"
 
-Metacrunch.job "catalog" do
+Metacrunch.job "books:export" do
   params do
-    use CATALOG_PARAMS
+    use ES_PARAMS
     param :output, String, required: true
   end
 
-  # params.catalog_url, params.api_key, params.output
+  # params.es_url, params.api_key, params.output
 end
 ```
 
@@ -306,13 +306,13 @@ not recognized.
 default: &default
   batch: 1000
   index: titles-dev
-  tags: [catalog, nightly]
+  tags: [books, nightly]
 
 production:
   <<: *default
   index: titles-prod
   es_url: http://es-prod:9200
-  api_key: {credential: catalog.api_key}
+  api_key: {credential: es.api_key}
 ```
 
 ```

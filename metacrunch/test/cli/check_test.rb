@@ -7,14 +7,14 @@ class CheckTest < Minitest::Test
   include CliHelper
   include CredentialsHelper
 
-  CATALOG = File.expand_path("../fixtures/catalog.json", __dir__)
+  BOOKS = File.expand_path("../fixtures/books.json", __dir__)
 
   def test_describes_a_valid_job
-    code, stdout, = cli("check", job("catalog.rb"), "--output", "/secret/dir", CATALOG)
+    code, stdout, = cli("check", job("export_books.rb"), "--output", "/secret/dir", BOOKS)
 
     assert_equal 0, code
     assert_equal <<~TEXT, stdout
-      #{job("catalog.rb")}: job "catalog" OK
+      #{job("export_books.rb")}: job "export_books" OK
         input      JsonArrayFile (id extractor)
         steps      reject#1 "Not public", filter#2, map#3, flat_map#4
         output     JsonLinesFile, batch 2

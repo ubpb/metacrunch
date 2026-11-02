@@ -118,7 +118,7 @@ module Metacrunch
       path = value["credential"]
       raise ParamError, "#{where}: #{Params::REFERENCE_FORMS}" unless value.key?("credential")
 
-      raise ParamError, %(#{where}: credential must be a path like "catalog.api_key", got #{path.inspect})
+      raise ParamError, %(#{where}: credential must be a path like "es.api_key", got #{path.inspect})
     end
 
   end

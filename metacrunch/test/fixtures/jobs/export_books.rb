@@ -3,7 +3,7 @@
 require_relative "lib/json_files"
 
 # Example job that uses the whole DSL.
-Metacrunch.job "catalog" do
+Metacrunch.job "export_books" do
   params do
     param :output, String, required: true, desc: "Directory for the output files"
     param :min_year, Integer, default: 1900, desc: "Oldest year to keep"
@@ -28,5 +28,5 @@ Metacrunch.job "catalog" do
   failures JsonLinesFile.new(File.join(params.output, "failures.jsonl"))
   on_failure :skip, max_failures: 5
 
-  after { |result| logger.info("catalog finished: #{result.status}") }
+  after { |result| logger.info("export_books finished: #{result.status}") }
 end

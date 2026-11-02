@@ -12,7 +12,7 @@ class ParamsCredentialsTest < Minitest::Test
   SECRET = "sk-123-geheim"
 
   def test_the_command_line_wins_over_the_credentials
-    with_credentials({"catalog" => {"api_key" => "from-credentials"}}) do |credentials|
+    with_credentials({"es" => {"api_key" => "from-credentials"}}) do |credentials|
       params = api_key_schema
 
       assert_equal ["from-cli", "from-credentials"],
@@ -61,7 +61,7 @@ class ParamsCredentialsTest < Minitest::Test
   end
 
   def test_a_hash_is_no_value
-    with_credentials({"catalog" => {"api_key" => {"nested" => SECRET}}}) do |credentials|
+    with_credentials({"es" => {"api_key" => {"nested" => SECRET}}}) do |credentials|
       error = assert_raises(Metacrunch::ParamError) { api_key_schema.bind_argv([], env: {}, credentials:) }
 
       assert_match(/\(hidden\) is not a String/, error.message)
@@ -73,17 +73,17 @@ class ParamsCredentialsTest < Minitest::Test
     with_credentials({"other" => 1}, environment: "production") do |credentials, dir|
       error = assert_raises(Metacrunch::ParamError) { api_key_schema.bind_argv([], env: {}, credentials:) }
 
-      assert_equal "api_key: credential catalog.api_key from default: not in #{dir}/credentials.production.yml.enc",
+      assert_equal "api_key: credential es.api_key from default: not in #{dir}/credentials.production.yml.enc",
                    error.message
     end
   end
 
   def test_a_missing_environment_file_is_named
-    with_credentials({"catalog" => {"api_key" => SECRET}}) do |_credentials, dir|
+    with_credentials({"es" => {"api_key" => SECRET}}) do |_credentials, dir|
       credentials = Metacrunch::Credentials.store(job_file: nil, env: {}, directory: dir, environment: "production")
       error = assert_raises(Metacrunch::ParamError) { api_key_schema.bind_argv([], env: {}, credentials:) }
 
-      assert_equal "api_key: credential catalog.api_key from default: no credentials for environment production " \
+      assert_equal "api_key: credential es.api_key from default: no credentials for environment production " \
                    "in #{dir}", error.message
     end
   end
@@ -97,10 +97,10 @@ class ParamsCredentialsTest < Minitest::Test
   end
 
   def test_help_shows_the_sources_of_a_secret_but_no_value
-    required = schema { secret :api_key, String, required: true, desc: "Catalog API key" }.help
+    required = schema { secret :api_key, String, required: true, desc: "Elasticsearch API key" }.help
 
-    assert_includes required, "Catalog API key (required, secret)"
-    assert_includes api_key_schema.help, "(secret, default: credential catalog.api_key)"
+    assert_includes required, "Elasticsearch API key (required, secret)"
+    assert_includes api_key_schema.help, "(secret, default: credential es.api_key)"
   end
 
   def test_invalid_values_of_a_secret_are_hidden_from_every_source
@@ -148,11 +148,11 @@ class ParamsCredentialsTest < Minitest::Test
   end
 
   def test_no_warning_for_other_parameters_and_for_values_from_the_credentials
-    with_credentials({"catalog" => {"api_key" => SECRET}}) do |credentials|
+    with_credentials({"es" => {"api_key" => SECRET}}) do |credentials|
       warnings = []
       params = schema do
         param :index, String
-        secret :api_key, String, default: {credential: "catalog.api_key"}
+        secret :api_key, String, default: {credential: "es.api_key"}
       end
       params.bind_argv(["--index", "x"], env: {}, credentials:, warn: ->(message) { warnings << message })
 
@@ -188,7 +188,7 @@ class ParamsCredentialsTest < Minitest::Test
 
   def schema(&) = Metacrunch::Params.new.tap { |params| params.instance_exec(&) }
 
-  def api_key_schema = schema { secret :api_key, String, default: {credential: "catalog.api_key"} }
+  def api_key_schema = schema { secret :api_key, String, default: {credential: "es.api_key"} }
 
   # Yields a store over credentials with data (a Hash or YAML text), and
   # the credentials directory.

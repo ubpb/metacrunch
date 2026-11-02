@@ -11,7 +11,7 @@ class EnvironmentTest < Minitest::Test
 
   JOB = <<~RUBY
     Metacrunch.job do
-      params { secret :api_key, default: {credential: "catalog.api_key"} }
+      params { secret :api_key, default: {credential: "es.api_key"} }
 
       source [1]
       map { params.api_key.reverse }
@@ -102,7 +102,7 @@ class EnvironmentTest < Minitest::Test
 
   def test_project_invoke_takes_an_environment
     in_tmpdir do |root|
-      write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
+      write_credentials(root, {"es" => {"api_key" => SECRET}}, environment: "production")
       write_file(root, "Metacrunchfile", "Metacrunch.load_files \"*.rb\"\n")
       write_file(root, "secret.rb", JOB.sub("Metacrunch.job do", "Metacrunch.job(\"secret\") do"))
       result = Metacrunch.load_project(root).invoke("secret", environment: "production", env: {},
@@ -117,8 +117,8 @@ class EnvironmentTest < Minitest::Test
   # A job that needs a credential, whose production value is SECRET;
   # returns its file.
   def project(root)
-    write_credentials(root, {"catalog" => {"api_key" => "not the production key"}})
-    write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
+    write_credentials(root, {"es" => {"api_key" => "not the production key"}})
+    write_credentials(root, {"es" => {"api_key" => SECRET}}, environment: "production")
     write_file(root, "jobs/secret.rb", JOB)
   end
 

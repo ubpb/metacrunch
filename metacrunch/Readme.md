@@ -116,11 +116,11 @@ A project gives jobs, transforms and commands names, and `metacrunch run` runs t
 directories:
 
 ```
-$ metacrunch new catalog
-$ cd catalog
+$ metacrunch new book-data
+$ cd book-data
 $ bundle install
-$ metacrunch generate job catalog:ids
-$ printf '{"id":1,"title":"A"}\n{"title":"B"}\n' | metacrunch run catalog:ids
+$ metacrunch generate job books:ids
+$ printf '{"id":1,"title":"A"}\n{"title":"B"}\n' | metacrunch run books:ids
 {"id":1,"title":"A"}
 INFO  ok: read 2, written 1, rejected 1 (No id: 1) in 0.00s (...)
 $ rake test
@@ -139,8 +139,8 @@ in Practice", "public": true}`.
 ### Sources, steps and sinks
 
 ```ruby
-# jobs/catalog.rb
-Metacrunch.job "catalog", desc: "Write the public titles" do
+# jobs/books/export.rb
+Metacrunch.job "books:export", desc: "Write the public titles" do
   params do
     param :input, String, default: root.join("data/titles.jsonl"), desc: "JSON Lines with title records"
     param :output, String, required: true, desc: "JSON Lines file for the public titles"
@@ -183,22 +183,22 @@ params do
   param  :output, String, required: true
   param  :limit, Integer, default: 1000
   param  :es_url, String, default: {env: "ES_URL"}
-  secret :api_key, String, default: {credential: "catalog.api_key"}
+  secret :api_key, String, default: {credential: "es.api_key"}
   args   :files, min: 1
 end
 ```
 
 ```yaml
-# config/catalog.yml: the values of each environment
+# config/books.yml: the values of each environment
 default:
   limit: 100
 production:
   es_url: http://es-prod:9200
-  api_key: {credential: catalog.api_key}
+  api_key: {credential: es.api_key}
 ```
 
 ```
-$ metacrunch run -e production --params config/catalog.yml catalog --output out.jsonl records.jsonl
+$ metacrunch run -e production --params config/books.yml books:export --output out.jsonl records.jsonl
 ```
 
 A value comes from the command line (`--output out.jsonl`), else from the section of the environment in the params
@@ -238,14 +238,14 @@ Metacrunch.load_files "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 A command is a Ruby body with parameters; `invoke` runs jobs, transforms and other commands and returns their result:
 
 ```ruby
-# commands/catalog/release.rb
+# commands/books/release.rb
 require "fileutils"
 
-Metacrunch.command "catalog:release", desc: "Write a new release and switch out/current to it" do
+Metacrunch.command "books:release", desc: "Write a new release and switch out/current to it" do
   run do
     release = root.join("out/releases", Time.now.strftime("%Y%m%d-%H%M%S"))
     FileUtils.mkdir_p(release)
-    result = invoke "catalog", params: {output: release.join("titles.jsonl")}
+    result = invoke "books:export", params: {output: release.join("titles.jsonl")}
     next logger.warn("out/current not switched: #{result.status}") unless result.ok?
 
     link = root.join("out/current.new")
@@ -257,7 +257,7 @@ end
 ```
 
 ```
-$ metacrunch run catalog:release
+$ metacrunch run books:release
 $ metacrunch --help                  # lists the jobs, transforms and commands
 ```
 
@@ -267,14 +267,14 @@ transforms and commands from gems.
 ### Testing
 
 ```ruby
-# test/jobs/catalog_test.rb
-require_relative "../test_helper"
+# test/jobs/books/export_test.rb
+require_relative "../../test_helper"
 
-class CatalogTest < Minitest::Test
+class BooksExportJobTest < Minitest::Test
 
   def test_writes_the_public_titles
     records = [{"id" => "t1", "title" => "A", "public" => true}, {"id" => "t2", "title" => "B", "public" => false}]
-    result = Metacrunch::Testing.run(PROJECT, "catalog", params: {output: "unused"}, source: records)
+    result = Metacrunch::Testing.run(PROJECT, "books:export", params: {output: "unused"}, source: records)
 
     assert_equal [{"id" => "t1", "title" => "A"}], result.records
   end
@@ -288,11 +288,11 @@ end
 ### Running, checking and tracing
 
 ```
-$ metacrunch run catalog --output out.jsonl            # by name, from any directory of the project
-$ metacrunch run jobs/catalog.rb --output out.jsonl    # by path
-$ metacrunch run -n 100 -w 4 catalog --output out.jsonl
-$ metacrunch check catalog --output out.jsonl          # build the job, run nothing
-$ metacrunch trace -n 2 catalog --output out.jsonl     # what each step does to the first 2 records
+$ metacrunch run books:export --output out.jsonl          # by name, from any directory of the project
+$ metacrunch run jobs/books/export.rb --output out.jsonl  # by path
+$ metacrunch run -n 100 -w 4 books:export --output out.jsonl
+$ metacrunch check books:export --output out.jsonl        # build the job, run nothing
+$ metacrunch trace -n 2 books:export --output out.jsonl   # what each step does to the first 2 records
 ```
 
 See [The command line](docs/cli.md) for all options, pipes and exit codes, and [Workers](docs/workers.md) for `-w`.

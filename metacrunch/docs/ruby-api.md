@@ -4,7 +4,7 @@ Jobs, transforms and commands also run from Ruby code, for example from a Rake t
 parameters as on the command line, given as `params: {...}`. For tests, see [Testing](testing.md).
 
 ```ruby
-job = Metacrunch.load_job("jobs/catalog.rb")    # name: "catalog" selects one of several jobs
+job = Metacrunch.load_job("jobs/books/export.rb")    # name: "books:export" selects one of several jobs
 result = job.run(params: {output: "out"}, workers: 4, limit: 1000)
 
 result.status    # :ok, :ok_with_failures or :aborted
@@ -30,8 +30,8 @@ once and passes it.
 
 ```ruby
 project = Metacrunch.load_project                          # the nearest Metacrunchfile above Dir.pwd
-project.names                                              # ["catalog", "catalog:ids", "catalog:public", ...]
-project.invoke("catalog:release", params: {out: "tmp"})    # a CommandResult, like invoke in a command
+project.names                                              # ["books:export", "books:ids", "books:public", ...]
+project.invoke("books:release", params: {out: "tmp"})      # a CommandResult, like invoke in a command
 ```
 
 `project.invoke` returns a job's `Result` or a command's `CommandResult` (`status`, `ok?`, `value`) and raises

@@ -15,9 +15,9 @@ module Metacrunch
       GITIGNORE = "master*.key*\n"
       TEMPLATE = <<~YAML
         # Credentials for metacrunch jobs%<environment>s. They are encrypted when you save.
-        # A secret reads a value with default: {credential: "catalog.api_key"}:
+        # A secret reads a value with default: {credential: "es.api_key"}:
         #
-        # catalog:
+        # es:
         #   api_key: secret
         #
         # Values are read as text and converted like command-line values; no quotes needed.

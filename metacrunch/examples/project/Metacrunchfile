@@ -2,14 +2,14 @@
 
 # The project file: it names the jobs, transforms and commands of this
 # directory, so that `metacrunch run NAME` runs them from any directory
-# below it. The files are where `metacrunch generate` puts them: catalog:ids in
-# jobs/catalog/ids.rb, its test in test/jobs/catalog/ids_test.rb. The
+# below it. The files are where `metacrunch generate` puts them: books:ids in
+# jobs/books/ids.rb, its test in test/jobs/books/ids_test.rb. The
 # project has no Gemfile, so that it runs with metacrunch from this
 # repository.
 #
 #   cd examples/project
 #   bundle exec metacrunch --help
-#   bundle exec metacrunch run catalog:release
-#   bundle exec metacrunch run catalog:ids
+#   bundle exec metacrunch run books:release
+#   bundle exec metacrunch run books:ids
 #   bundle exec rake
 Metacrunch.load_files "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"

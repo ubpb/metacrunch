@@ -11,14 +11,14 @@ class GeneratorsSkeletonTest < Minitest::Test
   ROOT = File.expand_path("../..", __dir__)
 
   def test_lists_the_files_of_a_project
-    paths = Skeleton.plan("/work/catalog").entries.map { it.path.delete_prefix("/work/catalog/") }
+    paths = Skeleton.plan("/work/book-data").entries.map { it.path.delete_prefix("/work/book-data/") }
 
     assert_equal ["Metacrunchfile", "Gemfile", "Rakefile", "jobs/.keep", "transforms/.keep", "commands/.keep",
                   "lib/.keep", "test/test_helper.rb", "test/project_test.rb"], paths
   end
 
   def test_every_file_is_ruby_without_warnings
-    entries = Skeleton.plan("/work/catalog").entries.reject { it.path.end_with?(".keep") }
+    entries = Skeleton.plan("/work/book-data").entries.reject { it.path.end_with?(".keep") }
     problems = entries.flat_map do |entry|
       result = Prism.parse(entry.content)
       (result.errors + result.warnings).map { "#{entry.path}: #{it.message}" }

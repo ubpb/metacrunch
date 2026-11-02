@@ -16,17 +16,17 @@ Metacrunch.load_files "jobs/**/*.rb", "transforms/**/*.rb", "commands/**/*.rb"
 project/
 ├── Metacrunchfile
 ├── .metacrunch/                   credentials
-├── jobs/catalog.rb                Metacrunch.job "catalog", desc: "..."
-├── transforms/catalog/public.rb   Metacrunch.transform "catalog:public", desc: "..."
-├── commands/catalog/release.rb    Metacrunch.command "catalog:release", desc: "..."
+├── jobs/books/export.rb           Metacrunch.job "books:export", desc: "..."
+├── transforms/books/public.rb     Metacrunch.transform "books:public", desc: "..."
+├── commands/books/release.rb      Metacrunch.command "books:release", desc: "..."
 ├── lib/
 └── test/
 ```
 
 ```
-$ metacrunch run catalog --output out                # from any directory of the project
-$ metacrunch run catalog:release
-$ metacrunch run catalog:release --help
+$ metacrunch run books:export --output out           # from any directory of the project
+$ metacrunch run books:release
+$ metacrunch run books:release --help
 $ metacrunch --help                                  # lists the jobs, transforms and commands
 ```
 
@@ -51,9 +51,9 @@ matching file once, in sorted order.
 
 ```
 $ metacrunch generate command --test tools/release.rb      # a single file, no project needed
-$ metacrunch new catalog
-$ cd catalog
-$ metacrunch generate job catalog:ids
+$ metacrunch new book-data
+$ cd book-data
+$ metacrunch generate job books:ids
 $ metacrunch generate transform normalize --desc "Tidy the titles"
 $ metacrunch generate source files:lines
 ```
@@ -68,9 +68,9 @@ into a new or empty directory, or next to other files, which it leaves alone; ex
 
 | Command | Creates | What it is |
 |---|---|---|
-| `generate job catalog:ids` | `jobs/catalog/ids.rb`, `test/jobs/catalog/ids_test.rb` | a job that filters JSON Lines from stdin to stdout |
+| `generate job books:ids` | `jobs/books/ids.rb`, `test/jobs/books/ids_test.rb` | a job that filters JSON Lines from stdin to stdout |
 | `generate transform normalize` | `transforms/normalize.rb`, `test/transforms/normalize_test.rb` | steps for `use`; alone a filter like the job |
-| `generate command catalog:publish` | `commands/catalog/publish.rb`, `test/commands/catalog/publish_test.rb` | a body that logs a line, with `invoke` as a comment |
+| `generate command books:publish` | `commands/books/publish.rb`, `test/commands/books/publish_test.rb` | a body that logs a line, with `invoke` as a comment |
 | `generate source files:lines` | `lib/files/lines.rb` (`Files::Lines`), `test/lib/files/lines_test.rb` | a class that yields a record for each line of a file |
 | `generate sink json_array` | `lib/json_array.rb` (`JsonArray`), `test/lib/json_array_test.rb` | a class that writes each record as a line of JSON |
 
@@ -93,10 +93,10 @@ into a new or empty directory, or next to other files, which it leaves alone; ex
 A command is a named recipe like a job, with parameters and a body instead of a pipeline:
 
 ```ruby
-# commands/catalog/release.rb
+# commands/books/release.rb
 require "fileutils"
 
-Metacrunch.command "catalog:release", desc: "Write a new release and switch out/current to it" do
+Metacrunch.command "books:release", desc: "Write a new release and switch out/current to it" do
   params do
     param :input, String, desc: "JSON Lines with title records (default: the job's)"
     param :out, String, desc: "Directory for releases/ and current (default: out/ in the project)"
@@ -106,8 +106,8 @@ Metacrunch.command "catalog:release", desc: "Write a new release and switch out/
     out = params.out ? Pathname(params.out) : root.join("out")
     release = out.join("releases", Time.now.strftime("%Y%m%d-%H%M%S-%L"))
     FileUtils.mkdir_p(release)
-    result = invoke "catalog", params: {output: release, input: params.input}
-    next logger.warn("catalog:release: #{result.status}; out/current not switched") unless result.ok?
+    result = invoke "books:export", params: {output: release, input: params.input}
+    next logger.warn("books:release: #{result.status}; out/current not switched") unless result.ok?
 
     # A new link renamed over the old one: the switch is atomic.
     link = out.join("current.new")
@@ -119,7 +119,7 @@ Metacrunch.command "catalog:release", desc: "Write a new release and switch out/
 end
 ```
 
-The command writes a release of the job `catalog` and switches `out/current` to it only after a clean run, so
+The command writes a release of the job `books:export` and switches `out/current` to it only after a clean run, so
 readers of `out/current` never see a half-written or failed release.
 
 Parameters, secrets, `-e`, `--params`, `--help` and logging work as for jobs. `params` comes first; `run { ... }`
@@ -132,10 +132,10 @@ parameters](jobs.md#groups-of-parameters) (`params { use COMMON_PARAMS }`) in a 
 `invoke NAME, params: {...}, workers:, limit:` runs a job, transform or command. `params` are bound as for
 `Job#run` (see [Parameters](jobs.md#parameters)): in the declared type or as a String, a Pathname as its path, `nil`
 as not given, so `input: params.input` passes an optional value on. An invoked job runs like
-`metacrunch run NAME`: it logs its summary as `catalog: ok: read ...`, reads stdin if it has no source and writes
+`metacrunch run NAME`: it logs its summary as `books:export: ok: read ...`, reads stdin if it has no source and writes
 stdout if it has no sink. All jobs and commands of a chain share `-e`, `--credentials`, the environment variables,
 the log level and the progress setting. A params file (`--params`) applies to the command named on the command line
-only: the command passes values on, e.g. `invoke "catalog", params: {index: params.index}`. A secret of the command
+only: the command passes values on, e.g. `invoke "books:export", params: {index: params.index}`. A secret of the command
 stays hidden in the target only if the target declares it with `secret`; passing it unchanged to a `param` fails
 (see [Secrets](jobs.md#secrets)).
 

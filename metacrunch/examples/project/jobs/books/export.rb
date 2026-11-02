@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
 # Writes the public titles of a JSON Lines file to DIR/titles.jsonl, with
-# the steps of the transform catalog:public. A record without a title
+# the steps of the transform books:public. A record without a title
 # fails; on_failure :skip lets the run go on, and it ends with failed records
 # (exit status 3).
 #
 #   cd examples/project
-#   bundle exec metacrunch run catalog --help
-#   mkdir -p ../../tmp && bundle exec metacrunch run catalog --output ../../tmp
-Metacrunch.job "catalog", desc: "Write the public titles into a directory" do
+#   bundle exec metacrunch run books:export --help
+#   mkdir -p ../../tmp && bundle exec metacrunch run books:export --output ../../tmp
+Metacrunch.job "books:export", desc: "Write the public titles into a directory" do
   params do
     param :output, String, required: true, desc: "Directory for titles.jsonl; must exist"
     param :input, String, default: root.join("data/titles.jsonl"), desc: "JSON Lines with title records"
   end
 
   source Metacrunch::JsonLines::Reader.new(params.input), id: ->(record) { record["id"] }
-  use "catalog:public"
+  use "books:public"
   sink Metacrunch::JsonLines::Writer.new(File.join(params.output, "titles.jsonl"))
   on_failure :skip
 end

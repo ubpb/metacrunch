@@ -18,20 +18,20 @@ class NewTest < Minitest::Test
 
   def test_creates_a_project_that_loads
     in_tmpdir do |dir|
-      code, stdout, stderr = cli("new", "catalog")
-      project = Metacrunch.load_project(File.join(dir, "catalog"))
+      code, stdout, stderr = cli("new", "book-data")
+      project = Metacrunch.load_project(File.join(dir, "book-data"))
 
       assert_equal [0, ""], [code, stderr]
-      assert_equal SKELETON.map { "created catalog/#{it}" }, stdout.lines(chomp: true).first(SKELETON.size)
+      assert_equal SKELETON.map { "created book-data/#{it}" }, stdout.lines(chomp: true).first(SKELETON.size)
       assert_equal [[], []], [project.names, project.load_errors]
     end
   end
 
   def test_prints_the_next_steps
     in_tmpdir do
-      _code, stdout, = cli("new", "my catalog")
+      _code, stdout, = cli("new", "my books")
 
-      assert_equal ["Next steps:", "  cd my\\ catalog", "  bundle install",
+      assert_equal ["Next steps:", "  cd my\\ books", "  bundle install",
                     "  bundle exec metacrunch generate job NAME",
                     "  bundle exec rake"], stdout.lines(chomp: true).last(5)
     end
@@ -48,34 +48,36 @@ class NewTest < Minitest::Test
 
   def test_keeps_other_files_of_the_directory
     in_tmpdir do
-      FileUtils.mkdir_p("catalog/jobs")
-      File.write("catalog/jobs/old.rb", "x")
-      code, = cli("new", "catalog")
+      FileUtils.mkdir_p("book-data/jobs")
+      File.write("book-data/jobs/old.rb", "x")
+      code, = cli("new", "book-data")
 
-      assert_equal [0, "x"], [code, File.read("catalog/jobs/old.rb")]
+      assert_equal [0, "x"], [code, File.read("book-data/jobs/old.rb")]
     end
   end
 
   def test_refuses_existing_files_of_the_skeleton_without_force
     in_tmpdir do
-      FileUtils.mkdir_p("catalog")
-      ["Gemfile", "Rakefile"].each { File.write("catalog/#{it}", "mine") }
-      code, _stdout, stderr = cli("new", "catalog")
+      FileUtils.mkdir_p("book-data")
+      ["Gemfile", "Rakefile"].each { File.write("book-data/#{it}", "mine") }
+      code, _stdout, stderr = cli("new", "book-data")
 
-      assert_equal [2, "Error: catalog/Gemfile, catalog/Rakefile already exist; use --force to overwrite"],
+      assert_equal [2, "Error: book-data/Gemfile, book-data/Rakefile already exist; use --force to overwrite"],
                    [code, stderr.lines.first.chomp]
-      refute_path_exists "catalog/Metacrunchfile"
+      refute_path_exists "book-data/Metacrunchfile"
     end
   end
 
   def test_force_overwrites_the_skeleton_only
     in_tmpdir do
-      FileUtils.mkdir_p("catalog")
-      ["Gemfile", "notes.txt"].each { File.write("catalog/#{it}", "mine") }
-      code, = cli("new", "catalog", "--force")
+      FileUtils.mkdir_p("book-data")
+      ["Gemfile", "notes.txt"].each { File.write("book-data/#{it}", "mine") }
+      code, = cli("new", "book-data", "--force")
 
       assert_equal 0, code
-      assert_equal ["mine", true], [File.read("catalog/notes.txt"), File.read("catalog/Gemfile").include?("metacrunch")]
+      gemfile = File.read("book-data/Gemfile")
+
+      assert_equal ["mine", true], [File.read("book-data/notes.txt"), gemfile.include?("metacrunch")]
     end
   end
 
@@ -91,9 +93,9 @@ class NewTest < Minitest::Test
 
   def test_a_file_is_no_directory
     in_tmpdir do
-      File.write("catalog", "")
+      File.write("book-data", "")
 
-      assert_equal "Error: catalog is a file", cli("new", "catalog")[2].lines.first.chomp
+      assert_equal "Error: book-data is a file", cli("new", "book-data")[2].lines.first.chomp
     end
   end
 

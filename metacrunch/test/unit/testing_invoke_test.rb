@@ -15,7 +15,7 @@ class TestingInvokeTest < Minitest::Test
       Metacrunch.job "a2c" do
         params do
           param :index, String
-          secret :api_key, String, default: {credential: "catalog.api_key"}
+          secret :api_key, String, default: {credential: "es.api_key"}
           args :files
         end
 
@@ -41,9 +41,9 @@ class TestingInvokeTest < Minitest::Test
     RUBY
     "commands/wrong.rb" => "Metacrunch.command(\"wrong\") { run { invoke(\"es:switch-alias\", params: {from: 1}) } }\n",
     "commands/reindex.rb" => <<~RUBY,
-      Metacrunch.command "catalog:reindex" do
+      Metacrunch.command "books:reindex" do
         params do
-          param :alias, String, default: "catalog"
+          param :alias, String, default: "books"
           secret :api_key, String
           args :files, min: 1
         end
@@ -85,23 +85,23 @@ class TestingInvokeTest < Minitest::Test
   end
 
   def test_records_invokes_without_running_them
-    run = invoke("catalog:reindex", params: {files: ["a.xml"]})
+    run = invoke("books:reindex", params: {files: ["a.xml"]})
 
     assert_equal [:switched, :ok, nil], [run.value, run.status, run.error]
     assert_equal [Invocation.new(name: "a2c", params: {index: "new", files: ["a.xml"]}, options: {workers: 4}),
-                  Invocation.new(name: "es:switch-alias", params: {to: "new", alias: "catalog"}, options: {})],
+                  Invocation.new(name: "es:switch-alias", params: {to: "new", alias: "books"}, options: {})],
                  run.invoked
   end
 
   def test_a_status_stub_changes_what_the_command_does
-    run = invoke("catalog:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => :ok_with_failures})
+    run = invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => :ok_with_failures})
 
     assert_equal [:kept, :ok_with_failures, ["a2c"]], [run.value, run.status, run.invoked.map(&:name)]
   end
 
   def test_result_stubs
     result = Metacrunch::Result.new(status: :ok_with_failures, error: nil, stats: Metacrunch::Testing::EMPTY_STATS)
-    run = invoke("catalog:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => result})
+    run = invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => result})
 
     assert_equal :kept, run.value
   end
@@ -112,14 +112,14 @@ class TestingInvokeTest < Minitest::Test
       seen << params
       :ok
     end
-    run = invoke("catalog:reindex", params: {files: ["a.xml"]},
-                                    stubs: {"a2c" => record, "es:switch-alias" => ->(_params) { :ignored }})
+    run = invoke("books:reindex", params: {files: ["a.xml"]},
+                                  stubs: {"a2c" => record, "es:switch-alias" => ->(_params) { :ignored }})
 
     assert_equal [:switched, [{index: "new", files: ["a.xml"]}]], [run.value, seen]
   end
 
   def test_a_stubbed_abort_raises_like_a_real_one
-    run = invoke("catalog:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => :aborted})
+    run = invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => :aborted})
 
     assert_equal [:aborted, Metacrunch::InvokeError], [run.status, run.error.class]
     assert_equal "a2c aborted: RuntimeError: stubbed abort", run.error.message
@@ -166,7 +166,7 @@ class TestingInvokeTest < Minitest::Test
   # test that expects an abort cannot pass by it.
   def test_stubs_for_jobs_must_give_a_status_or_a_result
     errors = [:abort, ->(_params) { "ok" }].map do |stub|
-      assert_raises(ArgumentError) { invoke("catalog:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => stub}) }
+      assert_raises(ArgumentError) { invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => stub}) }
     end
 
     assert_equal ["the stub for a2c must give a status Symbol or a Result, got :abort",
@@ -174,11 +174,11 @@ class TestingInvokeTest < Minitest::Test
   end
 
   def test_params_are_bound_from_a_hash
-    assert_raises(Metacrunch::ParamError) { invoke("catalog:reindex") }
+    assert_raises(Metacrunch::ParamError) { invoke("books:reindex") }
   end
 
   def test_results_answer_ok
-    assert_predicate invoke("catalog:reindex", params: {files: ["a.xml"]}), :ok?
+    assert_predicate invoke("books:reindex", params: {files: ["a.xml"]}), :ok?
   end
 
   def test_command_stubs_give_a_value_or_a_command_result

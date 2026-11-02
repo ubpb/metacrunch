@@ -77,12 +77,12 @@ the params file refers to them, and the container needs neither a key nor a cred
 # config/export.yml
 container:
   es_url: {env: ES_URL}
-  api_key: {env: CATALOG_API_KEY}
+  api_key: {env: ES_API_KEY}
 ```
 
 ```
 $ metacrunch run -e container --params config/export.yml export.rb
 ```
 
-With Kamal, list `ES_URL` and `CATALOG_API_KEY` under `env: secret:` and provide them in `.kamal/secrets`. A
+With Kamal, list `ES_URL` and `ES_API_KEY` under `env: secret:` and provide them in `.kamal/secrets`. A
 container that should read the encrypted credentials instead gets `METACRUNCH_MASTER_KEY` that way.

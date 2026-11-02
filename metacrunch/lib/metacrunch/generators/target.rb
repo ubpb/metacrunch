@@ -162,7 +162,7 @@ module Metacrunch
 
         def camel(part) = part.split("_").map(&:capitalize).join
 
-        # "CatalogIdsJobTest"; "Job2goTest", since a constant starts with a
+        # "BooksIdsJobTest"; "Job2goTest", since a constant starts with a
         # letter; "MarcDumpTest" for a source or sink.
         def test_class(kind, name, constants)
           return "#{constants.join}Test" if constants.any?

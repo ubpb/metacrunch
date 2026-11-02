@@ -60,30 +60,30 @@ class ParamsSecretTest < Minitest::Test
 
   def test_default_references_resolve
     params = schema do
-      secret :api_key, default: {credential: "catalog.api_key"}
+      secret :api_key, default: {credential: "es.api_key"}
       param :es_url, default: {"env" => "ES_URL"}
       param :port, Integer, default: {env: "PORT"}
     end
     bound = params.bind_argv([], env: {"ES_URL" => "http://es", "PORT" => "9200"},
-                                 credentials: FakeCredentials.new("catalog.api_key" => "sk"))
+                                 credentials: FakeCredentials.new("es.api_key" => "sk"))
 
     assert_equal({api_key: "sk", es_url: "http://es", port: 9200}, bound.to_h)
   end
 
   def test_a_reference_that_finds_nothing_fails
-    credential = schema { secret :api_key, default: {credential: "catalog.api_key"} }
+    credential = schema { secret :api_key, default: {credential: "es.api_key"} }
     variable = schema { param :es_url, default: {env: "ES_URL"} }
     messages = [
       assert_raises(Metacrunch::ParamError) { credential.bind_argv([], env: {}, credentials: FakeCredentials.new({})) },
       assert_raises(Metacrunch::ParamError) { variable.bind_argv([], env: {"ES_URL" => ""}) }
     ].map(&:message)
 
-    assert_equal ["api_key: credential catalog.api_key from default: not in test",
+    assert_equal ["api_key: credential es.api_key from default: not in test",
                   "es_url: environment variable ES_URL from default: is not set"], messages
   end
 
   def test_testing_reads_no_credentials_or_variables
-    credential = schema { secret :api_key, default: {credential: "catalog.api_key"} }
+    credential = schema { secret :api_key, default: {credential: "es.api_key"} }
     variable = schema { param :es_url, default: {env: "ES_URL"} }
     messages = [
       assert_raises(Metacrunch::ParamError) { credential.bind_values({}, env: nil, credentials: nil) },
@@ -95,27 +95,27 @@ class ParamsSecretTest < Minitest::Test
   end
 
   def test_an_invalid_value_from_a_reference_is_named_by_its_source
-    params = schema { secret :port, Integer, default: {credential: "catalog.port"} }
+    params = schema { secret :port, Integer, default: {credential: "es.port"} }
     error = assert_raises(Metacrunch::ParamError) do
-      params.bind_argv([], env: {}, credentials: FakeCredentials.new("catalog.port" => "x"))
+      params.bind_argv([], env: {}, credentials: FakeCredentials.new("es.port" => "x"))
     end
 
-    assert_equal "invalid value for port from credential catalog.port in test via default: (hidden) is not an Integer",
+    assert_equal "invalid value for port from credential es.port in test via default: (hidden) is not an Integer",
                  error.message
   end
 
   def test_help_shows_sources_not_values
     help = schema do
-      secret :api_key, default: {credential: "catalog.api_key"}
+      secret :api_key, default: {credential: "es.api_key"}
       param :es_url, default: {env: "ES_URL"}
     end.help
 
-    assert_match(/--api-key VALUE +\(secret, default: credential catalog.api_key\)/, help)
+    assert_match(/--api-key VALUE +\(secret, default: credential es.api_key\)/, help)
     assert_match(/--es-url VALUE +\(default: env ES_URL\)/, help)
   end
 
   def test_the_command_line_wins_without_reading_the_reference
-    params = schema { secret :api_key, default: {credential: "catalog.api_key"} }
+    params = schema { secret :api_key, default: {credential: "es.api_key"} }
 
     assert_equal "cli", params.bind_argv(["--api-key", "cli"], env: {}, credentials: UnreadCredentials.new).api_key
   end

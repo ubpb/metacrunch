@@ -102,7 +102,7 @@ class ParamsFileBindingTest < Minitest::Test
       param :api_key
       param :index
     end
-    messages = ["api_key: {credential: catalog.api_key}\n", "index:\n"].map do |content|
+    messages = ["api_key: {credential: es.api_key}\n", "index:\n"].map do |content|
       file = params_file(content)
       assert_raises(Metacrunch::ParamError) { params.bind_argv([], env: {}, file:) }.message.sub(file.path, "FILE")
     end
@@ -165,8 +165,8 @@ class ParamsFileBindingTest < Minitest::Test
   end
 
   def test_a_reference_reads_the_credentials
-    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
-    credentials = FakeCredentials.new("catalog.api_key" => "sk")
+    file = params_file("default: {api_key: {credential: es.api_key}}\n")
+    credentials = FakeCredentials.new("es.api_key" => "sk")
     bound = schema { secret :api_key }.bind_argv([], env: {}, credentials:, file:)
 
     assert_equal "sk", bound.api_key
@@ -174,23 +174,23 @@ class ParamsFileBindingTest < Minitest::Test
   end
 
   def test_an_invalid_value_from_the_credentials_is_hidden
-    file = params_file("default: {port: {credential: catalog.port}}\n")
-    credentials = FakeCredentials.new("catalog.port" => "x")
+    file = params_file("default: {port: {credential: es.port}}\n")
+    credentials = FakeCredentials.new("es.port" => "x")
     error = assert_raises(Metacrunch::ParamError) do
       schema { secret :port, Integer }.bind_argv([], env: {}, credentials:, file:)
     end
 
-    assert_equal "invalid value for port from credential catalog.port in test via #{file.path} (default): (hidden) " \
+    assert_equal "invalid value for port from credential es.port in test via #{file.path} (default): (hidden) " \
                  "is not an Integer", error.message
   end
 
   def test_a_missing_reference_fails
-    file = params_file("default: {api_key: {credential: catalog.api_key}}\n")
+    file = params_file("default: {api_key: {credential: es.api_key}}\n")
     error = assert_raises(Metacrunch::ParamError) do
       schema { secret :api_key }.bind_argv([], env: {}, credentials: FakeCredentials.new({}), file:)
     end
 
-    assert_equal "api_key: credential catalog.api_key from #{file.path} (default): not in test", error.message
+    assert_equal "api_key: credential es.api_key from #{file.path} (default): not in test", error.message
   end
 
   def test_a_reference_converts_lists
@@ -211,7 +211,7 @@ class ParamsFileBindingTest < Minitest::Test
   end
 
   def test_a_credential_reference_for_a_param_in_the_file_fails
-    file = params_file("default: {index: x}\nstaging: {index: {credential: catalog.index}}\n")
+    file = params_file("default: {index: x}\nstaging: {index: {credential: es.index}}\n")
     error = assert_raises(Metacrunch::ParamError) { schema { param :index }.bind_argv([], env: {}, file:) }
 
     assert_equal "#{file.path}: staging.index: a value from the credentials needs secret, not param", error.message
@@ -235,8 +235,8 @@ class ParamsFileBindingTest < Minitest::Test
   end
 
   def test_references_resolve_only_in_the_selected_section
-    file = params_file("production: {api_key: {credential: catalog.api_key}}\nstaging: {api_key: {credential: nope}}\n")
-    credentials = FakeCredentials.new("catalog.api_key" => "sk")
+    file = params_file("production: {api_key: {credential: es.api_key}}\nstaging: {api_key: {credential: nope}}\n")
+    credentials = FakeCredentials.new("es.api_key" => "sk")
     bound = schema { secret :api_key }.bind_argv([], env: {}, credentials:, file:, environment: "production")
 
     assert_equal "sk", bound.api_key

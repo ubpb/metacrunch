@@ -96,7 +96,7 @@ class ExeProjectTest < Minitest::Test
   # and invokes a job of the project that reads the same credential.
   GEM_COMMAND = <<~'RUBY'
     Metacrunch.command "secret:check" do
-      params { secret :api_key, String, default: {credential: "catalog.api_key"} }
+      params { secret :api_key, String, default: {credential: "es.api_key"} }
 
       run do
         logger.info("command: #{params.api_key.reverse}")
@@ -135,7 +135,7 @@ class ExeProjectTest < Minitest::Test
       write_ruby(dir, "gem/commands/secret.rb", GEM_COMMAND)
       write_ruby(root, "Metacrunchfile", "Metacrunch.load_files #{glob.inspect}, \"jobs/*.rb\"\n")
       write_file(root, "jobs/secret.rb", SECRET_JOB.sub("Metacrunch.job do", "Metacrunch.job \"secret\" do"))
-      write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
+      write_credentials(root, {"es" => {"api_key" => SECRET}}, environment: "production")
       jobs = File.join(root, "jobs")
       stdout, stderr, status = metacrunch("run", "-e", "production", "secret:check", chdir: jobs, home: dir)
 

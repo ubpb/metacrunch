@@ -20,8 +20,8 @@ class ExeGeneratorsTest < Minitest::Test
   RECORDS = %({"id":1,"title":"A"}\n{"title":"B"}\n)
   KEPT = [{"id" => 1, "title" => "A"}].freeze
   # The sections of metacrunch --help, each with what was generated.
-  HELP = /^Jobs .*\n  catalog:ids.*^Transforms .*\n  catalog:clean.*^Project commands .*\n  catalog:re-index/m
-  BY_NAME = [["job", "catalog:ids"], ["transform", "catalog:clean"], ["command", "catalog:re-index"],
+  HELP = /^Jobs .*\n  books:ids.*^Transforms .*\n  books:clean.*^Project commands .*\n  books:re-index/m
+  BY_NAME = [["job", "books:ids"], ["transform", "books:clean"], ["command", "books:re-index"],
              ["source", "files:lines"], ["sink", "files:json"]].freeze
   BY_PATH = [["job", "tools/fix"], ["transform", "tools/tidy"], ["command", "tools/publish"],
              ["source", "tools/lines"], ["sink", "tools/json_file"]].freeze
@@ -30,12 +30,12 @@ class ExeGeneratorsTest < Minitest::Test
     in_tmpdir do |dir|
       root = generate_project(dir)
       help, = metacrunch("--help", chdir: root)
-      outputs = ["catalog:ids", "catalog:clean"].map { metacrunch("run", it, stdin: RECORDS, chdir: root).first }
-      _stdout, log, status = metacrunch("run", "catalog:re-index", chdir: root)
+      outputs = ["books:ids", "books:clean"].map { metacrunch("run", it, stdin: RECORDS, chdir: root).first }
+      _stdout, log, status = metacrunch("run", "books:re-index", chdir: root)
 
       assert_match HELP, help
       assert_equal([KEPT, KEPT], outputs.map { |out| out.lines.map { JSON.parse(it) } })
-      assert_equal [true, true], [status.success?, log.include?("catalog:re-index: nothing to do yet")]
+      assert_equal [true, true], [status.success?, log.include?("books:re-index: nothing to do yet")]
     end
   end
 
@@ -44,9 +44,9 @@ class ExeGeneratorsTest < Minitest::Test
   def test_the_generated_tests_of_a_project_pass_in_one_run
     in_tmpdir do |dir|
       root = generate_project(dir)
-      job = File.join(root, "jobs/catalog/ids.rb")
-      comment = %(  # use "catalog:clean", params: {lang: "en"}\n)
-      File.write(job, File.read(job).sub(comment, %(  use "catalog:clean"\n)))
+      job = File.join(root, "jobs/books/ids.rb")
+      comment = %(  # use "books:clean", params: {lang: "en"}\n)
+      File.write(job, File.read(job).sub(comment, %(  use "books:clean"\n)))
       stdout, stderr, status = run_tests(root, from: dir)
 
       assert_equal [true, ""], [status.success?, stderr], stdout
@@ -80,11 +80,11 @@ class ExeGeneratorsTest < Minitest::Test
 
   private
 
-  # catalog/ in dir with the five kinds by name, generated from
-  # catalog/jobs/, a directory below the root. Returns the root.
+  # book-data/ in dir with the five kinds by name, generated from
+  # book-data/jobs/, a directory below the root. Returns the root.
   def generate_project(dir)
-    Dir.chdir(dir) { generate("new", "catalog") }
-    root = File.join(dir, "catalog")
+    Dir.chdir(dir) { generate("new", "book-data") }
+    root = File.join(dir, "book-data")
     Dir.chdir(File.join(root, "jobs")) { BY_NAME.each { |kind, name| generate("generate", kind, name) } }
     root
   end

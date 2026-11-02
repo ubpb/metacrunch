@@ -17,7 +17,7 @@ class JobCredentialsTest < Minitest::Test
 
   def test_run_reads_credentials_above_the_job_file
     in_tmpdir do |root|
-      write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
+      write_credentials(root, {"es" => {"api_key" => SECRET}}, environment: "production")
       job = Metacrunch.load_job(write_file(root, "jobs/x.rb", SECRET_JOB))
       output = File.join(root, "out.jsonl")
       result = job.run(params: {output:}, env: {"METACRUNCH_ENV" => "production"}, logger: Logger.new(nil))
@@ -29,7 +29,7 @@ class JobCredentialsTest < Minitest::Test
 
   def test_run_takes_the_key_from_the_environment
     in_tmpdir do |root|
-      key = write_credentials(root, {"catalog" => {"api_key" => SECRET}}, key_file: false)
+      key = write_credentials(root, {"es" => {"api_key" => SECRET}}, key_file: false)
       job = Metacrunch.load_job(write_file(root, "jobs/x.rb", SECRET_JOB))
       output = File.join(root, "out.jsonl")
       job.run(params: {output:}, env: {"METACRUNCH_MASTER_KEY" => key.hex}, logger: Logger.new(nil))

@@ -354,7 +354,7 @@ module Metacrunch
       resolve(definition, raw, origin: "#{origin} via #{from.delete_suffix(":")}", keyword: true)
     end
 
-    # "api_key: credential catalog.api_key from default: not in FILE",
+    # "api_key: credential es.api_key from default: not in FILE",
     # "es_url: environment variable ES_URL from FILE (production) is not set"
     def missing_reference(name, reference, from, credentials)
       return "#{name}: environment variable #{reference.key} from #{from} is not set" if reference.source == :env

@@ -47,12 +47,12 @@ for every run; a test class loads its project once:
 ```ruby
 PROJECT = Metacrunch.load_project(File.expand_path("..", __dir__))
 
-result = Metacrunch::Testing.run(PROJECT, "catalog:public", params: {fields: ["id"]},
+result = Metacrunch::Testing.run(PROJECT, "books:public", params: {fields: ["id"]},
                                  source: [{"id" => "t1", "title" => "A", "public" => true}])
 result.records            # [{"id" => "t1"}]
 
-result = Metacrunch::Testing.run(PROJECT, "catalog", params: {output: "unused"})
-result.stats.steps.keys   # ["catalog:public/reject#1", "catalog:public/map#2"]
+result = Metacrunch::Testing.run(PROJECT, "books:export", params: {output: "unused"})
+result.stats.steps.keys   # ["books:public/reject#1", "books:public/map#2"]
 ```
 
 The parameters of transforms get the values of `use` and their defaults; `Testing.run` reads neither
@@ -74,10 +74,10 @@ class ReleaseTest < Minitest::Test
 
   def test_keeps_current_when_records_failed
     Dir.mktmpdir do |out|
-      run = Metacrunch::Testing.invoke(PROJECT, "catalog:release", params: {out:},
-                                       stubs: {"catalog" => :ok_with_failures})
+      run = Metacrunch::Testing.invoke(PROJECT, "books:release", params: {out:},
+                                       stubs: {"books:export" => :ok_with_failures})
 
-      assert_equal [:ok_with_failures, ["catalog"]], [run.status, run.invoked.map(&:name)]
+      assert_equal [:ok_with_failures, ["books:export"]], [run.status, run.invoked.map(&:name)]
       refute_path_exists File.join(out, "current")
     end
   end

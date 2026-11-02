@@ -26,9 +26,10 @@ class ExamplesTest < Minitest::Test
     assert_equal ["Hello, Ada!", "Hello, Grace!", "Hello, Linus!"], greetings
   end
 
-  def test_catalog_writes_records_rejects_and_errors
+  def test_export_books_writes_records_rejects_and_errors
     Dir.mktmpdir do |dir|
-      _stdout, stderr, status = metacrunch("run", example("catalog.rb"), "--output", dir, example("data/catalog.json"))
+      _stdout, stderr, status = metacrunch("run", example("export_books.rb"), "--output", dir,
+                                           example("data/books.json"))
       counts = ["records", "rejects", "failures"].map { File.readlines(File.join(dir, "#{it}.jsonl")).size }
 
       assert_equal 3, status.exitstatus, stderr
@@ -36,10 +37,10 @@ class ExamplesTest < Minitest::Test
     end
   end
 
-  def test_catalog_can_be_traced
+  def test_export_books_can_be_traced
     Dir.mktmpdir do |dir|
-      stdout, stderr, status = metacrunch("trace", "-n", "2", example("catalog.rb"), "--output", dir,
-                                          example("data/catalog.json"))
+      stdout, stderr, status = metacrunch("trace", "-n", "2", example("export_books.rb"), "--output", dir,
+                                          example("data/books.json"))
 
       assert_predicate status, :success?, stderr
       assert_match(/^#2 /, stdout)
@@ -110,7 +111,7 @@ class ExamplesTest < Minitest::Test
   end
 
   def test_the_example_tests_pass
-    arguments = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), example("test/catalog_test.rb")]
+    arguments = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), example("test/export_books_test.rb")]
     stdout, stderr, status = Open3.capture3(*arguments)
 
     assert_predicate status, :success?, stdout + stderr
@@ -121,10 +122,10 @@ class ExamplesTest < Minitest::Test
     Dir.mktmpdir do |dir|
       project = File.join(dir, "project")
       FileUtils.cp_r(example("project"), project)
-      _stdout, stderr, status = metacrunch("run", "catalog:release", chdir: File.join(project, "jobs"))
+      _stdout, stderr, status = metacrunch("run", "books:release", chdir: File.join(project, "jobs"))
       current = File.join(project, "out", "current", "titles.jsonl")
       released = File.readlines(current).size
-      failed = metacrunch("run", "catalog:release", "--input", File.join(project, "data", "broken.jsonl"),
+      failed = metacrunch("run", "books:release", "--input", File.join(project, "data", "broken.jsonl"),
                           chdir: project)
 
       assert_equal [0, 4], [status.exitstatus, released], stderr
@@ -137,19 +138,19 @@ class ExamplesTest < Minitest::Test
     stdout, stderr, status = metacrunch("--help", chdir: example("project"))
 
     assert_predicate status, :success?, stderr
-    assert_match(/^  catalog +Write the public titles into a directory$/, stdout)
-    assert_match(%r{^  catalog:release +Write a new release and switch out/current to it$}, stdout)
+    assert_match(/^  books:export +Write the public titles into a directory$/, stdout)
+    assert_match(%r{^  books:release +Write a new release and switch out/current to it$}, stdout)
   end
 
   def test_project_help_lists_the_transform
     stdout, stderr, status = metacrunch("--help", chdir: example("project"))
 
     assert_predicate status, :success?, stderr
-    assert_match(/^Transforms \(.*\):\n  catalog:public +Keep the public titles, reduced to some fields$/, stdout)
+    assert_match(/^Transforms \(.*\):\n  books:public +Keep the public titles, reduced to some fields$/, stdout)
   end
 
   def test_project_jobs_share_the_transform_with_other_values
-    stdout, stderr, status = metacrunch("run", "catalog:ids", chdir: example("project"))
+    stdout, stderr, status = metacrunch("run", "books:ids", chdir: example("project"))
 
     assert_predicate status, :success?, stderr
     assert_equal([{"id" => "t1"}, {"id" => "t2"}, {"id" => "t4"}, {"id" => "t5"}], stdout.lines.map { JSON.parse(it) })

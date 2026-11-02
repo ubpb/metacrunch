@@ -26,7 +26,7 @@ class GeneratorsTemplateTest < Minitest::Test
       path = File.join(dir, "x.rb.erb")
       File.write(path, "<%- if loud -%>\nputs <%= name.inspect %>\n<%- end -%>\n")
 
-      assert_equal %(puts "catalog:ids"\n), Template.render(path, name: "catalog:ids", loud: true)
+      assert_equal %(puts "books:ids"\n), Template.render(path, name: "books:ids", loud: true)
     end
   end
 

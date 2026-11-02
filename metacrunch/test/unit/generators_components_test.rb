@@ -10,8 +10,8 @@ require "metacrunch/generators"
 class GeneratorsComponentsTest < Minitest::Test
 
   Generators = Metacrunch::Generators
-  ROOT = Pathname("/work/catalog")
-  CWD = "/work/catalog"
+  ROOT = Pathname("/work/book-data")
+  CWD = "/work/book-data"
 
   def test_a_source_by_name_is_a_class_in_its_modules_with_a_test
     entries = plan("source", "a:b:lines").entries

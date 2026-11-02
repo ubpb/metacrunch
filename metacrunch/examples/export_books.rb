@@ -2,20 +2,20 @@
 
 require_relative "lib/json_array_file"
 
-# A catalog export: reads a JSON array of title records, drops what must not
+# A book export: reads a JSON array of title records, drops what must not
 # be published, writes one record per ISBN as JSON Lines. Shows the whole
 # DSL: parameters, reject with a reason, filter, marks, flat_map, the
 # rejects and failures sinks, the failure policy and an after hook.
 #
 #   mkdir -p tmp
-#   bundle exec metacrunch run examples/catalog.rb --output tmp examples/data/catalog.json
-#   bundle exec metacrunch trace -n 3 examples/catalog.rb --output tmp examples/data/catalog.json
-#   bundle exec metacrunch run examples/catalog.rb --help
+#   bundle exec metacrunch run examples/export_books.rb --output tmp examples/data/books.json
+#   bundle exec metacrunch trace -n 3 examples/export_books.rb --output tmp examples/data/books.json
+#   bundle exec metacrunch run examples/export_books.rb --help
 #
-# examples/data/catalog.json gives 7 records, 2 rejects (not public) and 1
+# examples/data/books.json gives 7 records, 2 rejects (not public) and 1
 # error (a year that is not a number); the exit status is 3, "finished, but
 # records failed".
-Metacrunch.job "catalog" do
+Metacrunch.job "export_books" do
   params do
     param :output, String, required: true, desc: "Directory for records.jsonl, rejects.jsonl and failures.jsonl"
     param :min_year, Integer, default: 1900, desc: "Oldest year to keep"
@@ -40,5 +40,5 @@ Metacrunch.job "catalog" do
   failures Metacrunch::JsonLines::ContextWriter.new(File.join(params.output, "failures.jsonl"))
   on_failure :skip, max_failures: 10
 
-  after { |result| logger.info("catalog: #{result.stats.written} records in #{params.output}") }
+  after { |result| logger.info("export_books: #{result.stats.written} records in #{params.output}") }
 end

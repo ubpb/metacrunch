@@ -15,11 +15,11 @@
 
 ```
 $ metacrunch run [OPTIONS] NAME|FILE [PARAMS...] [ARGS...]
-$ metacrunch run jobs/catalog.rb --help                     # the job's parameters
-$ metacrunch run catalog --help                             # the same, by name in a project
+$ metacrunch run jobs/books/export.rb --help                # the job's parameters
+$ metacrunch run books:export --help                        # the same, by name in a project
 ```
 
-A job, transform or command always runs with `run`; `metacrunch catalog` alone is an unknown command. Options of
+A job, transform or command always runs with `run`; `metacrunch books:export` alone is an unknown command. Options of
 `run` go before the job; everything after it belongs to the job. Use `--` before job arguments that
 start with `-`. A job is given by its file or, in a project, by its name; an argument with `/` or `.` is always a
 file. The CLI does not change the working directory: relative paths are relative to where you start it.
@@ -60,10 +60,10 @@ quietly by SIGPIPE. A job without source refuses to read a terminal: run from a 
 ## Checking and tracing
 
 ```
-$ metacrunch trace -n 2 catalog --output out
-$ metacrunch trace --position 3 catalog --output out
-$ metacrunch check catalog --output out
-$ metacrunch check -e production --params config/release.yml catalog:release
+$ metacrunch trace -n 2 books:export --output out
+$ metacrunch trace --position 3 books:export --output out
+$ metacrunch check books:export --output out
+$ metacrunch check -e production --params config/release.yml books:release
 ```
 
 `trace` shows what every step does to the first records (or to the records at `--position`, or with `--id`): the

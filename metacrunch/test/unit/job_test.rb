@@ -80,15 +80,15 @@ class JobTest < Minitest::Test
   end
 
   def test_names_follow_the_name_rules
-    error = assert_raises(ArgumentError) { Metacrunch.job("Catalog") { source [] } }
+    error = assert_raises(ArgumentError) { Metacrunch.job("Books") { source [] } }
 
-    assert_match(/invalid job name "Catalog"/, error.message)
+    assert_match(/invalid job name "Books"/, error.message)
   end
 
   def test_jobs_have_a_description
-    job = Metacrunch.job("catalog", desc: "Export the catalog") { source [] }
+    job = Metacrunch.job("export_books", desc: "Export the books") { source [] }
 
-    assert_equal ["catalog", "Export the catalog"], [job.name, job.desc]
+    assert_equal ["export_books", "Export the books"], [job.name, job.desc]
   end
 
   def test_jobs_may_stay_unnamed

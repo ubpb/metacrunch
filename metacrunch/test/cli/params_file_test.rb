@@ -41,7 +41,7 @@ class ParamsFileCliTest < Minitest::Test
     RUBY
     "params.yml" => "default: {index: f}\nproduction: {index: p}\n",
     "typo.yml" => "default: {indx: f}\n",
-    "secret.yml" => "production: {token: {credential: catalog.api_key}}\n"
+    "secret.yml" => "production: {token: {credential: es.api_key}}\n"
   }.freeze
 
   def test_run_takes_values_from_the_file
@@ -81,7 +81,7 @@ class ParamsFileCliTest < Minitest::Test
   def test_keys_of_other_targets_keep_the_rules_of_secrets
     in_project do |root|
       write_file(root, "plain.yml", "default: {token: abc}\n")
-      write_file(root, "credential.yml", "default: {index: {credential: catalog.index}}\n")
+      write_file(root, "credential.yml", "default: {index: {credential: es.index}}\n")
       errors = [cli_in(root, "check", "--params", "plain.yml", "show"),
                 cli_in(root, "check", "--params", "credential.yml", "token")].map { it[2].lines.first.chomp }
 
@@ -150,7 +150,7 @@ class ParamsFileCliTest < Minitest::Test
 
   def test_a_reference_reads_the_environments_credentials
     in_project do |root|
-      write_credentials(root, {"catalog" => {"api_key" => SECRET}}, environment: "production")
+      write_credentials(root, {"es" => {"api_key" => SECRET}}, environment: "production")
       code, stdout, stderr = cli_in(root, "run", "-v", "-e", "production", "--params", "secret.yml", "token")
 
       assert_equal [0, "\"#{SECRET.reverse}\"\n"], [code, stdout], stderr

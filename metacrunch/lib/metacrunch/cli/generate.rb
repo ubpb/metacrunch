@@ -19,7 +19,7 @@ module Metacrunch
           source     lib/NAME.rb: a class that yields records
           sink       lib/NAME.rb: a class that writes records
 
-        A NAME (catalog:ids) places the file in the project of the working directory,
+        A NAME (books:ids) places the file in the project of the working directory,
         with a test in test/. A PATH (tools/fix.rb) places it there, without a test
         unless --test is given.
 

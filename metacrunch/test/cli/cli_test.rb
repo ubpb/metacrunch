@@ -80,7 +80,7 @@ class CliTest < Minitest::Test
   def test_help_for_a_name_in_a_broken_project
     in_tmpdir do |root|
       write_file(root, "Metacrunchfile", "raise \"broken\"\n")
-      code, _stdout, stderr = Dir.chdir(root) { cli("help", "catalog") }
+      code, _stdout, stderr = Dir.chdir(root) { cli("help", "books:export") }
 
       assert_equal 2, code
       assert_includes stderr, "broken"

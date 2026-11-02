@@ -54,10 +54,10 @@ class ProjectTest < Minitest::Test
   def test_loads_jobs_and_commands_from_relative_globs
     in_tmpdir do |root|
       project = load_project(root, "Metacrunchfile" => LOAD_ALL, "jobs/a2c.rb" => job("a2c"),
-                                   "jobs/sub/b.rb" => job("b"), "commands/release.rb" => command("catalog:release"))
+                                   "jobs/sub/b.rb" => job("b"), "commands/release.rb" => command("books:release"))
 
-      assert_equal ["a2c", "b", "catalog:release"], project.names
-      assert_instance_of Metacrunch::Command, project.fetch("catalog:release")
+      assert_equal ["a2c", "b", "books:release"], project.names
+      assert_instance_of Metacrunch::Command, project.fetch("books:release")
       assert_equal [Pathname(root), File.join(root, "Metacrunchfile")], [project.root, project.file]
     end
   end

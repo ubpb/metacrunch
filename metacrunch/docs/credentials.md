@@ -5,7 +5,7 @@ in its default or in a [params file](jobs.md#parameter-files):
 
 ```ruby
 params do
-  secret :api_key, String, default: {credential: "catalog.api_key"}
+  secret :api_key, String, default: {credential: "es.api_key"}
 end
 ```
 
@@ -17,8 +17,8 @@ $ metacrunch credentials rotate -e production
 ```
 
 `edit` creates `.metacrunch/credentials.yml.enc`, which you commit, and the key `.metacrunch/master.key`, which you
-never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `{credential: "catalog.api_key"}` reads
-`api_key` below `catalog`. Every value is read as its text and converted like a command-line value, so `0123`, `no`
+never commit (`.metacrunch/.gitignore` excludes it). The file holds YAML: `{credential: "es.api_key"}` reads
+`api_key` below `es`. Every value is read as its text and converted like a command-line value, so `0123`, `no`
 or `on` need no quotes; an empty value, `~` and `null` mean "not set". `edit` refuses to save invalid YAML and, on a
 terminal, offers to edit again.
 
@@ -44,7 +44,7 @@ not hold the production key. [`examples/credentials`](../examples/credentials) h
   command line or in the params file wins without reading them, and a container whose params file takes every secret
   from `{env: ...}` needs neither key nor file (see [Environments](environments.md#examples)).
 - **Missing values:** a reference that finds nothing fails and names the file:
-  `api_key: credential catalog.api_key from default: not in /srv/catalog/.metacrunch/credentials.production.yml.enc`.
+  `api_key: credential es.api_key from default: not in /srv/book-data/.metacrunch/credentials.production.yml.enc`.
 - **Secrets:** only a `secret` may refer to the credentials. It is hidden in `--help`, messages and `params.inspect`,
   and a plain value on the command line, where `ps` and the shell history show it, gives a warning (see
   [Secrets](jobs.md#secrets)). What a job does with the value, such as logging it or putting it into an exception, is

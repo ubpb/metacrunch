@@ -8,12 +8,12 @@ require "metacrunch/generators"
 class GeneratorsTargetTest < Minitest::Test
 
   Target = Metacrunch::Generators::Target
-  ROOT = Pathname("/work/catalog")
-  CWD = "/work/catalog/jobs"
+  ROOT = Pathname("/work/book-data")
+  CWD = "/work/book-data/jobs"
 
   # kind, name => file, test, test class (below ROOT)
   NAMES = {
-    ["job", "catalog:ids"] => ["jobs/catalog/ids.rb", "test/jobs/catalog/ids_test.rb", "CatalogIdsJobTest"],
+    ["job", "books:ids"] => ["jobs/books/ids.rb", "test/jobs/books/ids_test.rb", "BooksIdsJobTest"],
     ["transform", "clean"] => ["transforms/clean.rb", "test/transforms/clean_test.rb", "CleanTransformTest"],
     ["command", "es:create-index"] => ["commands/es/create_index.rb", "test/commands/es/create_index_test.rb",
                                        "EsCreateIndexCommandTest"],
@@ -31,8 +31,8 @@ class GeneratorsTargetTest < Minitest::Test
 
   # kind, argument, root => message
   ERRORS = {
-    ["job", "Catalog", ROOT] =>
-      '"Catalog" is not a valid job name; use a-z, 0-9, _ and -, in parts separated by :',
+    ["job", "Books", ROOT] =>
+      '"Books" is not a valid job name; use a-z, 0-9, _ and -, in parts separated by :',
     ["command", "run", ROOT] => '"run" is the name of a built-in command; choose another name',
     ["job", "jobs/MyJob.rb", nil] => 'MyJob.rb: "MyJob" is not a valid job name; use a-z, 0-9, _ and -',
     ["transform", "x/check.rb", nil] =>
@@ -52,8 +52,8 @@ class GeneratorsTargetTest < Minitest::Test
     ["source", "yaml", ROOT] => '"yaml" would shadow require "yaml"; choose another name',
     ["source", "rake:lines", ROOT] => '"rake:lines" would shadow require "rake/lines"; choose another name',
     ["job", "jobs/", nil] => "jobs/ is a directory; give a file name",
-    ["job", "catalog:ids", nil] => "no Metacrunchfile found in /work/catalog/jobs or above; give a path " \
-                                   "(./ids.rb) or create a project with metacrunch new"
+    ["job", "books:ids", nil] => "no Metacrunchfile found in /work/book-data/jobs or above; give a path " \
+                                 "(./ids.rb) or create a project with metacrunch new"
   }.freeze
 
   NAMES.each do |(kind, name), (file, test, test_class)|
@@ -102,7 +102,7 @@ class GeneratorsTargetTest < Minitest::Test
   end
 
   def test_jobs_transforms_and_commands_have_no_constant
-    target = Target.for("command", "catalog:release", cwd: CWD, root: ROOT)
+    target = Target.for("command", "books:release", cwd: CWD, root: ROOT)
 
     assert_equal [[], nil], [target.modules, target.class_name]
     assert_predicate target, :declared?

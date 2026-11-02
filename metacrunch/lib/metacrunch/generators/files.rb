@@ -23,7 +23,7 @@ module Metacrunch
 
       # target, and for the templates:
       # - desc: the literal of desc, or nil
-      # - run: what follows `metacrunch` to run it ("run catalog:ids", "run tools/fix.rb")
+      # - run: what follows `metacrunch` to run it ("run books:ids", "run tools/fix.rb")
       # - helper: test/test_helper relative to the test (name form)
       # - file: the file relative to the test
       # - library: the file to require from a test, below lib/ (name form)

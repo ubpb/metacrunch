@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-# Tests the catalog example without files: Metacrunch::Testing.run replaces
-# the source by the given records and every sink by a memory sink.
+# Tests the example export_books.rb without files: Metacrunch::Testing.run
+# replaces the source by the given records and every sink by a memory sink.
 #
-#   bundle exec ruby -Ilib examples/test/catalog_test.rb
+#   bundle exec ruby -Ilib examples/test/export_books_test.rb
 
 require "minitest/autorun"
 require "metacrunch"
 require "metacrunch/testing"
 
-class CatalogTest < Minitest::Test
+class ExportBooksTest < Minitest::Test
 
-  JOB = Metacrunch.load_job(File.expand_path("../catalog.rb", __dir__))
+  JOB = Metacrunch.load_job(File.expand_path("../export_books.rb", __dir__))
   PARAMS = {output: "unused", input: ["unused.json"]}.freeze
 
   def test_writes_one_record_per_isbn
