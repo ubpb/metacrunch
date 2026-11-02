@@ -10,6 +10,7 @@ require_relative "ai/errors"
 require_relative "ai/http"
 require_relative "ai/open_ai"
 require_relative "ai/fake_embedder"
+require_relative "ai/embed"
 
 module Metacrunch
   # AI steps for metacrunch: embeddings through the OpenAI embeddings API
