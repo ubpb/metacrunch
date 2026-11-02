@@ -92,7 +92,7 @@ metacrunch-redis live in this repository and share metacrunch's version.
   as a job's error is, in one line with the command's name and one for its cause; `-v` adds the backtrace, for jobs
   too. `Metacrunch::Testing.invoke` tests a command without running what it invokes. `Metacrunch.load_command` loads a
   command file, and `Testing.invoke` takes such a command, too.
-- Names and descriptions for jobs: `Metacrunch.job "a2c", desc: "..."`. Names are parts of `a-z`, `0-9`, `_` and
+- Names and descriptions for jobs: `Metacrunch.job "marc2json", desc: "..."`. Names are parts of `a-z`, `0-9`, `_` and
   `-`, separated by `:`; `Metacrunch.job` raises for other names, and `metacrunch generate` for names and file
   names that would give one or the name of a built-in command.
 - Transforms: `Metacrunch.transform "normalize" do params { ... }; map { ... } end` holds steps, hooks and parameters

@@ -48,13 +48,13 @@ class CommandTest < Minitest::Test
     invoker = FakeInvoker.new
     command = Metacrunch.command("chain") do
       run do
-        invoke "a2c", params: {index: "test"}, workers: 2
+        invoke "books:load", params: {index: "test"}, workers: 2
         root.join("etc")
       end
     end
     value = call(command, [], invoker:)
 
-    assert_equal [["a2c", {index: "test"}, {workers: 2}]], invoker.calls
+    assert_equal [["books:load", {index: "test"}, {workers: 2}]], invoker.calls
     assert_equal Pathname("/srv/data/etc"), value
   end
 

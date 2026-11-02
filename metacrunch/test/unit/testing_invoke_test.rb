@@ -11,15 +11,15 @@ class TestingInvokeTest < Minitest::Test
 
   FILES = {
     "Metacrunchfile" => "Metacrunch.load_files \"jobs/*.rb\", \"commands/*.rb\"\n",
-    "jobs/a2c.rb" => <<~RUBY,
-      Metacrunch.job "a2c" do
+    "jobs/load.rb" => <<~RUBY,
+      Metacrunch.job "books:load" do
         params do
           param :index, String
           secret :api_key, String, default: {credential: "es.api_key"}
           args :files
         end
 
-        source raise("a2c must not run")
+        source raise("books:load must not run")
       end
     RUBY
     "commands/es.rb" => <<~RUBY,
@@ -49,7 +49,7 @@ class TestingInvokeTest < Minitest::Test
         end
 
         run do
-          result = invoke "a2c", params: {index: "new", files: params.files}, workers: 4
+          result = invoke "books:load", params: {index: "new", files: params.files}, workers: 4
           next :kept unless result.ok?
 
           invoke "es:switch-alias", params: {to: "new", alias: params.alias}
@@ -60,7 +60,7 @@ class TestingInvokeTest < Minitest::Test
     "commands/tolerant.rb" => <<~RUBY,
       Metacrunch.command "tolerant" do
         run do
-          invoke "a2c"
+          invoke "books:load"
         rescue Metacrunch::InvokeError
           :rescued
         end
@@ -70,7 +70,7 @@ class TestingInvokeTest < Minitest::Test
     "commands/typo.rb" => "Metacrunch.command(\"typo\") { run { invoke \"a2x\" } }\n"
   }.freeze
   # A command outside the project's globs that invokes a name.
-  CHAIN = "# frozen_string_literal: true\n\nMetacrunch.command(\"chain\") { run { invoke(\"a2c\").status } }\n"
+  CHAIN = "# frozen_string_literal: true\n\nMetacrunch.command(\"chain\") { run { invoke(\"books:load\").status } }\n"
 
   def setup
     @root = File.realpath(Dir.mktmpdir("metacrunch-test"))
@@ -88,20 +88,20 @@ class TestingInvokeTest < Minitest::Test
     run = invoke("books:reindex", params: {files: ["a.xml"]})
 
     assert_equal [:switched, :ok, nil], [run.value, run.status, run.error]
-    assert_equal [Invocation.new(name: "a2c", params: {index: "new", files: ["a.xml"]}, options: {workers: 4}),
+    assert_equal [Invocation.new(name: "books:load", params: {index: "new", files: ["a.xml"]}, options: {workers: 4}),
                   Invocation.new(name: "es:switch-alias", params: {to: "new", alias: "books"}, options: {})],
                  run.invoked
   end
 
   def test_a_status_stub_changes_what_the_command_does
-    run = invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => :ok_with_failures})
+    run = invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"books:load" => :ok_with_failures})
 
-    assert_equal [:kept, :ok_with_failures, ["a2c"]], [run.value, run.status, run.invoked.map(&:name)]
+    assert_equal [:kept, :ok_with_failures, ["books:load"]], [run.value, run.status, run.invoked.map(&:name)]
   end
 
   def test_result_stubs
     result = Metacrunch::Result.new(status: :ok_with_failures, error: nil, stats: Metacrunch::Testing::EMPTY_STATS)
-    run = invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => result})
+    run = invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"books:load" => result})
 
     assert_equal :kept, run.value
   end
@@ -113,20 +113,20 @@ class TestingInvokeTest < Minitest::Test
       :ok
     end
     run = invoke("books:reindex", params: {files: ["a.xml"]},
-                                  stubs: {"a2c" => record, "es:switch-alias" => ->(_params) { :ignored }})
+                                  stubs: {"books:load" => record, "es:switch-alias" => ->(_params) { :ignored }})
 
     assert_equal [:switched, [{index: "new", files: ["a.xml"]}]], [run.value, seen]
   end
 
   def test_a_stubbed_abort_raises_like_a_real_one
-    run = invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => :aborted})
+    run = invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"books:load" => :aborted})
 
     assert_equal [:aborted, Metacrunch::InvokeError], [run.status, run.error.class]
-    assert_equal "a2c aborted: RuntimeError: stubbed abort", run.error.message
+    assert_equal "books:load aborted: RuntimeError: stubbed abort", run.error.message
   end
 
   def test_a_rescued_abort_finishes_with_failures
-    run = invoke("tolerant", stubs: {"a2c" => :aborted})
+    run = invoke("tolerant", stubs: {"books:load" => :aborted})
 
     assert_equal [:rescued, :ok_with_failures], [run.value, run.status]
   end
@@ -141,12 +141,12 @@ class TestingInvokeTest < Minitest::Test
     assert_equal [[], []], runs.map(&:invoked)
   end
 
-  # The target does not run, so the credential default of a2c's api_key
-  # is not resolved; the credentials of the project are unreadable.
+  # The target does not run, so the credential default of the api_key of
+  # books:load is not resolved; the credentials of the project are unreadable.
   def test_references_in_the_defaults_of_an_invoked_target_are_not_resolved
     run = invoke("tolerant")
 
-    assert_equal [:ok, ["a2c"]], [run.status, run.invoked.map(&:name)]
+    assert_equal [:ok, ["books:load"]], [run.status, run.invoked.map(&:name)]
   end
 
   def test_unknown_names_in_the_body_fail_the_run
@@ -166,11 +166,13 @@ class TestingInvokeTest < Minitest::Test
   # test that expects an abort cannot pass by it.
   def test_stubs_for_jobs_must_give_a_status_or_a_result
     errors = [:abort, ->(_params) { "ok" }].map do |stub|
-      assert_raises(ArgumentError) { invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"a2c" => stub}) }
+      assert_raises(ArgumentError) do
+        invoke("books:reindex", params: {files: ["a.xml"]}, stubs: {"books:load" => stub})
+      end
     end
 
-    assert_equal ["the stub for a2c must give a status Symbol or a Result, got :abort",
-                  "the stub for a2c must give a status Symbol or a Result, got \"ok\""], errors.map(&:message)
+    assert_equal ["the stub for books:load must give a status Symbol or a Result, got :abort",
+                  "the stub for books:load must give a status Symbol or a Result, got \"ok\""], errors.map(&:message)
   end
 
   def test_params_are_bound_from_a_hash
@@ -199,22 +201,22 @@ class TestingInvokeTest < Minitest::Test
   end
 
   def test_jobs_are_tested_with_testing_run
-    error = assert_raises(ArgumentError) { invoke("a2c") }
+    error = assert_raises(ArgumentError) { invoke("books:load") }
 
-    assert_equal "a2c is a job; test it with Testing.run", error.message
+    assert_equal "books:load is a job; test it with Testing.run", error.message
   end
 
   def test_invokes_a_command_object_in_the_given_project
-    run = Metacrunch::Testing.invoke(@project.fetch("tolerant"), project: @project, stubs: {"a2c" => :aborted})
+    run = Metacrunch::Testing.invoke(@project.fetch("tolerant"), project: @project, stubs: {"books:load" => :aborted})
 
     assert_equal [:rescued, :ok_with_failures], [run.value, run.status]
   end
 
   def test_a_command_object_resolves_names_from_the_working_directory
     command = Metacrunch.load_command(write("tools/chain.rb", CHAIN))
-    run = Dir.chdir(@root) { Metacrunch::Testing.invoke(command, stubs: {"a2c" => :ok_with_failures}) }
+    run = Dir.chdir(@root) { Metacrunch::Testing.invoke(command, stubs: {"books:load" => :ok_with_failures}) }
 
-    assert_equal [:ok_with_failures, ["a2c"]], [run.value, run.invoked.map(&:name)]
+    assert_equal [:ok_with_failures, ["books:load"]], [run.value, run.invoked.map(&:name)]
   end
 
   def test_a_command_object_without_project_invokes_no_names
@@ -222,11 +224,11 @@ class TestingInvokeTest < Minitest::Test
     Dir.mktmpdir do |dir|
       run = Dir.chdir(dir) { Metacrunch::Testing.invoke(command) }
       error = assert_raises(ArgumentError) do
-        Dir.chdir(dir) { Metacrunch::Testing.invoke(command, stubs: {"a2c" => :ok}) }
+        Dir.chdir(dir) { Metacrunch::Testing.invoke(command, stubs: {"books:load" => :ok}) }
       end
 
       assert_equal [:aborted, Metacrunch::InvokeError], [run.status, run.error.class]
-      assert_equal "stub for unknown job, transform or command: a2c", error.message
+      assert_equal "stub for unknown job, transform or command: books:load", error.message
     end
   end
 

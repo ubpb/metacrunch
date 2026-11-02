@@ -2,7 +2,7 @@
 
 module Metacrunch
   # Names of jobs, transforms and commands, and their descriptions. A name
-  # is one or more parts of a-z, 0-9, _ and -, separated by ":" ("a2c",
+  # is one or more parts of a-z, 0-9, _ and -, separated by ":" ("marc2json",
   # "es:create-index"). In a project, jobs, transforms, commands and the
   # built-in commands share one namespace.
   module Names

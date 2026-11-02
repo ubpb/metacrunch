@@ -6,8 +6,8 @@ class NamesTest < Minitest::Test
 
   Names = Metacrunch::Names
 
-  VALID = ["a2c", "books:reindex", "es:create-index", "marc_to_json", "2go", "a:b:c"].freeze
-  INVALID = ["", "A2c", "-a", "_a", "a:", ":a", "a::b", "a b", "a.b", "a/b", "ä", "a:-b"].freeze
+  VALID = ["marc2json", "books:reindex", "es:create-index", "marc_to_json", "2go", "a:b:c"].freeze
+  INVALID = ["", "Marc2json", "-a", "_a", "a:", ":a", "a::b", "a b", "a.b", "a/b", "ä", "a:-b"].freeze
 
   def test_accepts_valid_names
     assert_equal(VALID, VALID.map { Names.check!(it, "job") })
@@ -25,7 +25,7 @@ class NamesTest < Minitest::Test
   end
 
   def test_symbols_are_names_too
-    assert_equal "a2c", Names.check!(:a2c, "job")
+    assert_equal "marc2json", Names.check!(:marc2json, "job")
   end
 
   def test_the_message_names_the_kind_and_the_rule
@@ -39,7 +39,7 @@ class NamesTest < Minitest::Test
   end
 
   def test_valid_takes_strings_only
-    assert_equal([true, false, false], ["es:create-index", "Es", :a2c].map { Names.valid?(it) })
+    assert_equal([true, false, false], ["es:create-index", "Es", :marc2json].map { Names.valid?(it) })
   end
 
   def test_reserved_names_are_the_builtin_commands
@@ -49,7 +49,9 @@ class NamesTest < Minitest::Test
   end
 
   def test_paths_contain_a_slash_or_a_dot
-    assert_equal([true, true, true, false], ["jobs/a2c", "a2c.rb", "./a2c", "a2c"].map { Names.path?(it) })
+    paths = ["jobs/marc2json", "marc2json.rb", "./marc2json", "marc2json"]
+
+    assert_equal([true, true, true, false], paths.map { Names.path?(it) })
   end
 
   def test_descriptions_are_one_line_or_nil
