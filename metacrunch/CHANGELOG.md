@@ -32,6 +32,10 @@ metacrunch-redis live in this repository and share metacrunch's version.
   `sink` and follow the failure policy. `sink` and `source` are reserved step names.
 - Run results with stats per step and reason; `profile` for step timing.
 - `flat_map` streams its children; batched sinks are flushed after an abort, on Ctrl-C and on SIGTERM.
+- Batch steps: `map`, `filter`, `reject` and `flat_map` take `batch: N` and then get up to N records per call (a
+  block, or an object with `call_batch`) and return one result per record; an Exception in the results fails its
+  record. They run at the end of every segment (a worker's batch, or as many records inline), at `FLUSH` and at the
+  end, so a job gives the same results with and without workers.
 - A source that waits for data yields `Metacrunch::FLUSH` to have the records it yielded written at once: the workers
   get their partial batch, the sinks write what they buffer for `batch:`, and sinks with `flush` (the JSON Lines
   writers, `Metacrunch::Output#flush`) write their own buffers.

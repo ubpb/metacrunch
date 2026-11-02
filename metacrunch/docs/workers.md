@@ -1,8 +1,9 @@
 # Workers
 
 `-w N` (`--workers N`) runs the steps in N worker processes; the source and the sinks stay in the main process.
-`-w auto` uses one worker per core but one. Records reach the sinks, the `rejects` and `failures` sinks and the log in
-source order, so a job gives the same results with and without workers.
+`-w auto` uses one worker per core but one. A job gives the same results with and without workers: records reach the
+sinks, the `rejects` and `failures` sinks and the log in the same order, which is source order unless a batch step
+holds records back (see [Batch steps](jobs.md#batch-steps)).
 
 ```
 $ metacrunch run -w 8 -i examples/data/publications.jsonl examples/sanitize.rb --issues tmp/issues.tsv
@@ -35,7 +36,9 @@ than it saves: 8 workers handled 0.5 M records/s, inline 2.8 M records/s.
 - Records are sent in batches of 100, so a slow source (records trickling in through a pipe) delays a record until
   its batch is full, unless the source yields `Metacrunch::FLUSH` (see [Sources](jobs.md#sources)), which sends the
   batch at once. Each process holds a few batches: with records of 1 MB, the main process needs several hundred
-  MB more than without workers.
+  MB more than without workers. A job with [batch steps](jobs.md#batch-steps) sends batches of the smallest multiple
+  of its largest `batch:` that is at least 100, and each worker runs its batch steps at the end of every batch, as a
+  run without workers does after as many records; a batch step holds up to one such batch.
 - The source is read in a thread of its own. A source that relies on thread-local state (`Thread.current[...]`,
   e.g. a database connection per thread) or that continues an external enumerator (`Enumerator#next`) begun in
   `open` behaves differently than without workers.

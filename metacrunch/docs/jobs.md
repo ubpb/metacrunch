@@ -94,6 +94,45 @@ use one around `yield`.
 reject("Not public") { !it["public"] }
 ```
 
+### Batch steps
+
+A step that calls a service pays for each request: an embedding API, a lookup in a database or a search index.
+With `batch: N` a step gets up to N records at once and answers for all of them with one request:
+
+```ruby
+map(batch: 500) do |records|
+  titles = db[:titles].where(isbn: records.map { it["isbn"] }).to_h { [it[:isbn], it[:title]] }
+  records.map { it.merge("title" => titles[it["isbn"]]) }
+end
+filter("Not relevant", judge, batch: 50)   # judge.call_batch(records) or judge.call_batch(records, ctxs)
+```
+
+A block with `batch:` gets the Array of records, and the Array of their contexts if it takes a second required
+parameter. Any other object needs `call_batch`; without `batch:` it runs per record with `call`, so an object with
+both works either way.
+
+The batch function returns an Array with one result per record, in the same order: what the step returns for one
+record (see the table above). The engine then treats each record as in a step without `batch:`: reasons, counts and
+marks work as usual.
+
+- An Exception in the results fails its record; the other results stand.
+- If the batch function raises, or returns something else than an Array of that length, every record of the batch
+  fails with that error.
+- `ctx.reject!` would end the call for all records of the batch: in a batch step it breaks the contract (a
+  `ContractError`). Drop records with `filter` or `reject` and a reason. `ctx.mark` works.
+
+A batch step keeps the records that reach it until it holds N of them. It also runs on fewer at the end of every
+*segment*: after the records of a segment, when the source yields `Metacrunch::FLUSH` (before the sinks flush) and
+when the source ends, also by `--limit` or SIGTERM. A segment is 100 source records, or the smallest multiple of the
+largest `batch:` of the job that is at least 100; with workers it is the batch a worker gets (see
+[Workers](workers.md)). Records a batch step holds when the job aborts are dropped: they are neither written nor
+counted as failed.
+
+The sink gets its records in source order. The `rejects` and `failures` sinks and the log get them in the order they
+leave the steps: a record that waits in a batch step arrives there after later records that an earlier step rejected.
+`max_failures` counts in that order. The order is the same with and without workers. `trace` shows one record at a
+time: there, batch steps get batches of one.
+
 ## The record context
 
 A step that takes a second **required** parameter gets the record's context:
