@@ -1,12 +1,14 @@
-# Ollama with the embedding model all-minilm (46 MB, 384 dimensions) and Apache Tika for the integration tests:
+# Ollama with the embedding model all-minilm (46 MB, 384 dimensions), Apache Tika and a web server (nginx serving
+# fixtures/web/site) for the integration tests:
 #
 #   docker compose -f test/compose.yml up -d --wait
 #   docker compose -f test/compose.yml exec ollama ollama pull all-minilm
-#   EMBEDDINGS_URL=http://localhost:11435/v1 TIKA_URL=http://localhost:9997 bundle exec rake test
+#   EMBEDDINGS_URL=http://localhost:11435/v1 TIKA_URL=http://localhost:9997 WEB_URL=http://127.0.0.1:8089 \
+#     bundle exec rake test
 #   docker compose -f test/compose.yml down
 #
 # The model stays in the volume ollama, so the pull is quick the next time. EMBEDDINGS_MODEL names another model.
-# Tests that need one server skip without its variable.
+# Tests that need one server skip without its variable. The test site names itself http://127.0.0.1:8089.
 name: metacrunch-ai
 
 services:
@@ -26,6 +28,18 @@ services:
     ports: ["9997:9998"]
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9998"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  web:
+    image: nginx:1.30.6-alpine
+    ports: ["8089:80"]
+    volumes:
+      - ./fixtures/web/site:/usr/share/nginx/html:ro
+      - ./fixtures/web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
       interval: 2s
       timeout: 5s
       retries: 30

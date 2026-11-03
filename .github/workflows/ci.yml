@@ -187,11 +187,12 @@ jobs:
           working-directory: metacrunch-redis
       - run: bundle exec rake test
 
-  # metacrunch-ai against Ollama with the embedding model all-minilm and against Apache Tika: service containers exist
-  # on Linux only, and take no command, so the model is pulled in a step. The Tika image has neither curl nor wget, so
-  # its health check waits for the port.
+  # metacrunch-ai against Ollama with the embedding model all-minilm, against Apache Tika and against nginx serving a
+  # test website: service containers exist on Linux only, and take no command, so the model is pulled in a step. The
+  # Tika image has neither curl nor wget, so its health check waits for the port. nginx serves files of the checkout,
+  # so it starts in a step after the checkout, from the gem's compose file.
   ai:
-    name: Embeddings and documents (Ollama, Tika)
+    name: Embeddings and documents (Ollama, Tika, nginx)
     runs-on: ubuntu-latest
     services:
       ollama:
@@ -207,6 +208,7 @@ jobs:
     env:
       EMBEDDINGS_URL: http://127.0.0.1:11435/v1
       TIKA_URL: http://127.0.0.1:9997
+      WEB_URL: http://127.0.0.1:8089
     defaults:
       run:
         working-directory: metacrunch-ai
@@ -218,6 +220,7 @@ jobs:
           bundler-cache: true
           working-directory: metacrunch-ai
       - run: docker exec ${{ job.services.ollama.id }} ollama pull all-minilm
+      - run: docker compose -f test/compose.yml up -d --wait web
       - run: bundle exec rake test
 
   tooling:
