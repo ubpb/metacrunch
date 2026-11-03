@@ -61,6 +61,12 @@ class MarkdownTest < Minitest::Test
     assert_equal "Opening hours\n\n| Day |\n| --- |\n| Mon |", md(html)
   end
 
+  def test_inline_elements_in_cells_add_no_spaces
+    html = "<table><tr><th>When</th></tr><tr><td>9<sup>th</sup> <b>Mon</b>day<br>to <i>Fri</i>day</td></tr></table>"
+
+    assert_equal "| When |\n| --- |\n| 9th Monday to Friday |", md(html)
+  end
+
   def test_an_empty_table
     assert_equal "a", md("<table></table><p>a</p>")
   end

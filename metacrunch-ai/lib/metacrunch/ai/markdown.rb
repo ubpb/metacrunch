@@ -96,9 +96,19 @@ module Metacrunch
         end
       end
 
-      def cell_text(cell)
-        texts = cell.xpath(".//text()").reject { skip_ancestor?(it, cell) }.map(&:text)
-        squeeze(texts.join(" ")).gsub("|", "\\|")
+      def cell_text(cell) = squeeze(flat_text(cell)).gsub("|", "\\|")
+
+      # The text of node on one line: inline elements joined as they are,
+      # blocks, cells and line breaks set apart by spaces.
+      def flat_text(node)
+        node.children.map do |child|
+          if child.text? then child.text
+          elsif skip?(child) || !child.element? then ""
+          elsif child.name == "br" then " "
+          elsif block?(child) || CELLS.include?(child.name) || child.name == "tr" then " #{flat_text(child)} "
+          else flat_text(child)
+          end
+        end.join
       end
 
       def code(text)
@@ -137,8 +147,6 @@ module Metacrunch
       def squeeze(text) = text.gsub(/\s+/, " ").strip
 
       def skip?(node) = node.comment? || (node.element? && SKIP.include?(node.name))
-
-      def skip_ancestor?(text, root) = text.ancestors.take_while { it != root }.any? { SKIP.include?(it.name) }
 
       # A known block element, or another element that holds one.
       def block?(node)
