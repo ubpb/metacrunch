@@ -113,6 +113,13 @@ class WebTest < Minitest::Test
     assert_equal [@a.url("/1"), other(@b.url("/2")), other(@b.url("/3"))], urls
   end
 
+  def test_a_fragment_in_a_relative_location_is_dropped
+    @a.on("GET", "/old") { [301, "", {"Location" => "/1#top"}] }
+    page = client.get(@a.url("/old"))
+
+    assert_equal [200, @a.url("/1")], [page.status, page.url]
+  end
+
   def test_each_hop_is_checked
     @b.on("GET", "/robots.txt") { [200, "User-agent: *\nDisallow: /x\n"] }
     @a.on("GET", "/old") { [301, "", {"Location" => other(@b.url("/x"))}] }

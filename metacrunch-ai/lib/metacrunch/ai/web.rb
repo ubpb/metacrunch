@@ -48,7 +48,7 @@ module Metacrunch
 
       # The URL a Location header names, relative to base, normalized.
       def self.resolve(base, location)
-        location = location.strip
+        location = location.strip.sub(/#.*\z/m, "")
         return normalize(location) if location.match?(%r{\Ahttps?://}i)
         return normalize("#{URI(base).scheme}:#{location}") if location.start_with?("//")
 
