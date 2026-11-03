@@ -39,7 +39,7 @@ module Metacrunch
 
       # Takes type: as every extractor does; the text is the same for both.
       def extract(content, **)
-        text = utf8(content.to_s).scrub.delete_prefix("﻿").gsub("\r\n", "\n")
+        text = utf8(content.to_s).scrub.delete_prefix("\uFEFF").gsub("\r\n", "\n")
         fields, text, mark = front_matter(text)
         text = text.split(@pages, -1) if text.match?(@pages)
         {text:, title: present(fields.delete("title")), lang: present(fields.delete("lang")), fields:, mark:}

@@ -49,7 +49,7 @@ module Metacrunch
       def read(text)
         groups = []
         agents_open = false
-        text.delete_prefix("﻿").each_line do |line|
+        text.delete_prefix("\uFEFF").each_line do |line|
           field, value = line.sub(/#.*/, "").split(":", 2).map(&:strip)
           next if value.nil?
 
