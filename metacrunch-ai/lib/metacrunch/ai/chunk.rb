@@ -70,6 +70,28 @@ module Metacrunch
         @keep = keep
       end
 
+      # The chunk records of a document, for flat_map: "id" ("#{parent_id}#n",
+      # n from 1), "parent_id", "chunk" (n), "headings", "pages" (for pages
+      # only) and the text in into:, over the document's fields (all but its
+      # text, or those of keep:). A document without text gives none and
+      # gets the mark "No text to chunk".
+      def call(record, ctx)
+        raise ContractError, "Chunk needs Hash records, got #{record.class}" unless record.is_a?(Hash)
+
+        parent = record[@id]
+        raise ContractError, "Chunk needs the id of the document in field #{@id}" if parent.nil? || parent == ""
+
+        text = record[@text]
+        unless text.nil? || text.is_a?(String) || text.is_a?(Array)
+          raise ContractError, "Chunk needs a String or an Array of pages in field #{@text}, got #{text.class}"
+        end
+
+        pieces = split(text)
+        ctx.mark(NO_TEXT) if pieces.empty?
+        fields = @keep ? record.slice(*@keep) : record.except(@text)
+        pieces.each_with_index.map { |piece, index| fields.merge(chunk_fields(parent, index + 1, piece)) }
+      end
+
       # The chunks of a String or an Array of pages (nil counts as blank).
       def split(input)
         pages = input.is_a?(Array) ? input.map(&:to_s) : [input.to_s]
@@ -80,6 +102,12 @@ module Metacrunch
       end
 
       private
+
+      def chunk_fields(parent, number, piece)
+        fields = {"id" => "#{parent}##{number}", "parent_id" => parent, "chunk" => number, "headings" => piece.headings}
+        fields["pages"] = piece.pages if piece.pages
+        fields.merge(@into => piece.text)
+      end
 
       # Paragraphs, fenced code blocks, tables and headings of one page; a
       # page's end ends a block.
