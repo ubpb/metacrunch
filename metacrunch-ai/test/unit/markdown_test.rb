@@ -62,6 +62,20 @@ class MarkdownTest < Minitest::Test
                   "| a | b |\n| --- | --- |\n| c |  |\n| d |  |\n| e | f |"], [md(first), md(middle), md(last)]
   end
 
+  def test_rowspan_after_a_short_row
+    html = %(<table><tr><td>a</td><td>b</td><td rowspan="2">c</td></tr><tr><td>d</td></tr></table>)
+
+    assert_equal "| a | b | c |\n| --- | --- | --- |\n| d |  |  |", md(html)
+  end
+
+  def test_comments_and_scripts_in_cells_give_nothing
+    assert_equal "| ab |\n| --- |", md("<table><tr><td>a<!-- note --><script>x()</script>b</td></tr></table>")
+  end
+
+  def test_an_empty_heading_gives_nothing
+    assert_equal "x", md("<h2> <br> </h2><p>x</p>")
+  end
+
   def test_short_rows_are_padded
     assert_equal "| a | b |\n| --- | --- |\n| c |  |",
                  md("<table><tr><td>a</td><td>b</td></tr><tr><td>c</td></tr></table>")
