@@ -134,10 +134,11 @@ end
   the step sends the texts of that request again one by one, and only the records it refuses fail, with
   `Metacrunch::Ai::InvalidInput`.
 - The service is overloaded or away (429, 500, 502, 503, 504, timeouts, lost connections, garbled answers, TLS
-  errors): the request goes again after 1, 2, 4, … up to 60 seconds, or after the time `Retry-After` names. If it
-  still fails after `retries`, the records of the request fail with `Metacrunch::Ai::Unavailable`, whose message gives
-  the last answer or error. A certificate the client does not trust is a TLS error too, so it stops a job only after
-  the retries.
+  errors): the request goes again after 1, 2, 4, … up to 60 seconds, each cut by a random amount of up to half so
+  that processes do not retry in step, or after the time `Retry-After` names, at most 60 seconds. If it still fails
+  after `retries`, the records of the request fail with `Metacrunch::Ai::Unavailable`, whose message gives the last
+  answer or error. A certificate the client does not trust is a TLS error too, so it stops a job only after the
+  retries.
 - Other refusals (a wrong key or model, 401, 403, 404) fail the records with `Metacrunch::Ai::ApiError`; when the step
   opens, they stop the job.
 
