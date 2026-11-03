@@ -40,7 +40,34 @@ class ExamplesTest < Minitest::Test
                                 "--embeddings-model", ENV.fetch("EMBEDDINGS_MODEL", "all-minilm")))
   end
 
+  def test_the_website_example_runs
+    skip WebServer::HINT unless ENV["WEB_URL"]
+    skip TikaServer::HINT unless ENV["TIKA_URL"]
+
+    site = ENV.fetch("WEB_URL").chomp("/")
+    chunks = run_website!(site)
+    pages = ["/docs/rules.pdf", "/handbook/loans.html", "/latin1/hours.html", "/old-loans"].map { "#{site}#{it}" }
+
+    assert_equal pages, chunks.map { it["parent_id"] }.uniq.sort
+    assert(chunks.all? { it["embedding"]&.size == 384 })
+    assert_includes chunks.find { it["parent_id"].end_with?("/old-loans") }["location"], "/handbook/loans.html"
+  end
+
   private
+
+  # The website example against the test site; the private page (robots.txt) and the missing one give no chunks, the
+  # moved page gives chunks under its listed URL.
+  def run_website!(site)
+    Dir.mktmpdir do |dir|
+      output = File.join(dir, "chunks.jsonl")
+      _stdout, stderr, status = Open3.capture3(RbConfig.ruby, Integration::BIN, "run", "website.rb", "--site", site,
+                                               "--delay", "0", "--tika-url", ENV.fetch("TIKA_URL"),
+                                               "--embeddings-url", "fake:384", "--output", output, chdir: EXAMPLES)
+
+      assert_predicate status, :success?, stderr
+      File.readlines(output).map { JSON.parse(it) }
+    end
+  end
 
   def check_chunks(chunks)
     documents = chunks.map { it["parent_id"] }.uniq.sort

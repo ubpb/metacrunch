@@ -64,6 +64,8 @@ The parts, by gem:
 | Part | Gem | What it does |
 |---|---|---|
 | `FileList::Reader` | metacrunch | a source: one record per file of directories or glob patterns |
+| [`Sitemap::Reader`](#sitemaps) | metacrunch-ai | a source: one record per page of a website's sitemaps |
+| [`Fetch`](#fetching-documents) | metacrunch-ai | a step that downloads the URL of a record politely: robots.txt, a delay per host |
 | [`Extract`](#extracting-text) | metacrunch-ai | a step that picks an extractor by MIME type |
 | [`Html`](#html) | metacrunch-ai | web pages: the main content as Markdown, without navigation, headers and footers |
 | [`Text`](#text) | metacrunch-ai | Markdown and text as they are, with front matter as fields and page markers as pages |
@@ -71,6 +73,13 @@ The parts, by gem:
 | [`Chunk`](#chunking) | metacrunch-ai | a step that cuts Markdown into chunks by its headings, with their pages |
 | [`Embed`](#the-embed-step), [`OpenAi`](#embedders) | metacrunch-ai | vectors through the OpenAI embeddings API (OpenAI, Ollama, vLLM, …) |
 | `Writer`, `Search` | [metacrunch-elasticsearch](../metacrunch-elasticsearch#chunk-indices) | writes the chunks; a `knn` search finds passages |
+
+Documents on the web take the same way after two other first steps, without crawling (see [Web pages](#web-pages)):
+
+```
+website ──▶ Sitemap::Reader ──▶ Fetch ──▶ Extract ──▶ Chunk ──▶ Embed ──▶ sink        (the pages a site lists)
+records with URLs ────────────▶ Fetch ──▶ Extract ──▶ …                                 (e.g. linked full texts)
+```
 
 The text can also be extracted before the job, by another tool such as Docling, into Markdown files that the job
 reads; see [Two ways to the Markdown](#two-ways-to-the-markdown).
@@ -220,6 +229,124 @@ The same runs a job end to end without cost, for example to check the mappings o
 
 ```
 $ metacrunch run jobs/embed.rb --embeddings-url fake:1024 --url https://es.example.org:9200 books.jsonl
+```
+
+## Web pages
+
+metacrunch-ai does not crawl: following links, rendering JavaScript and keeping track of a crawl is what crawlers do
+well (see [ADR 0008](../docs/decisions/0008-leave-crawling-to-crawlers.md)). Documents on the web come in three
+ways:
+
+- the pages a website lists in its sitemaps: [`Sitemap::Reader`](#sitemaps), then [`Fetch`](#fetching-documents);
+- URLs that records already hold, such as links to full texts in catalog records: `Fetch`;
+- the files a crawler leaves: [Web pages with a crawler](#web-pages-with-a-crawler).
+
+```ruby
+source Metacrunch::Ai::Sitemap::Reader.site("https://www.example.org", matching: %r{/handbook/}),
+       id: ->(page) { page["id"] }
+map Metacrunch::Ai::Fetch.new
+map Metacrunch::Ai::Extract.new(Metacrunch::Ai::Html.new(content: "main"), Metacrunch::Ai.tika(params))
+flat_map Metacrunch::Ai::Chunk.new
+```
+
+[`examples/website.rb`](examples/website.rb) runs this end to end.
+
+### Sitemaps
+
+`Metacrunch::Ai::Sitemap::Reader.new(targets, matching: nil, since: nil, **options)` reads sitemaps, URLs or local
+files; `Sitemap::Reader.site(url, …)` reads those a website names in its robots.txt (`Sitemap:` lines), else
+`/sitemap.xml`, which is also tried when all named ones fail.
+
+- One record per page: `{"id" => url, "url" => url, "lastmod" => "2026-10-30"}`, `lastmod` only when listed.
+- Sitemap indexes are followed (up to 3 levels), gzip is unpacked, sitemaps with and without namespace are read, large
+  ones in a stream. A URL listed twice comes once.
+- `matching:` (a Regexp) keeps the URLs that match; `since:` (an ISO 8601 String, a `Date` or a `Time`) skips pages
+  whose `lastmod` is earlier and keeps those without one: a nightly run with yesterday's date takes what changed.
+- A sitemap that cannot be read is an invalid record under the job's failure policy; when none can be read, the job
+  stops.
+- Sitemaps are read as politely as `Fetch` reads pages (user agent, delay, retries; the same options except
+  `robots`), without asking robots.txt: sitemaps are published for crawlers.
+
+### Fetching documents
+
+```ruby
+map Metacrunch::Ai::Fetch.new                                      # the URL in "url"
+map Metacrunch::Ai::Fetch.new(from: "fulltext_url", delay: 2)
+```
+
+| Option | Default | |
+|---|---|---|
+| `from` | `"url"` | the field with the URL |
+| `user_agent` | `metacrunch/VERSION (+https://github.com/ubpb/metacrunch)` | how the requests introduce themselves |
+| `delay` | `1` | seconds between two requests to one host; a longer `Crawl-delay` in robots.txt wins |
+| `robots` | `true` | `false` asks no robots.txt, for servers of your own |
+| `max_size` | 50 MB | bytes; a larger document fails its record |
+| `redirects` | `5` | redirects to follow |
+| `timeout`, `retries` | `30`, `2` | as for the embedders |
+
+`Fetch` adds the fields of a [`FileList::Reader`](../metacrunch/docs/jobs.md#sources) record, so `Extract` follows
+as for files: `content` (the bytes; for a text type with a `charset`, a String in that encoding), `type`, `size`,
+`sha256`, `modified` (from `Last-Modified`), and also `etag`, `fetched` (when it was fetched) and `location` (the URL
+after redirects; `url` stays as it was).
+
+What does not come passes without content and with a mark, so `Extract` marks it "No text extracted":
+
+| Mark | When |
+|---|---|
+| "No URL to fetch" | the field is missing or blank |
+| "Not an http(s) URL" | `mailto:`, `ftp:` or no URL at all |
+| "Host name not supported" | a host name with other than ASCII letters (IDN), not supported yet |
+| "Disallowed by robots.txt" | the site's robots.txt forbids the URL (also after a redirect) |
+| "Not found (404)", "Not found (410)" | the document is gone |
+| "Refused (403)" and other 4xx | the server refuses it |
+
+A server that is overloaded or away (429, 5xx, timeouts, after the retries), a robots.txt that cannot be read, more
+redirects than `redirects` and a document over `max_size` fail the record under the job's failure policy; with
+`on_failure :skip` it can be fed again later.
+
+- robots.txt (RFC 9309) is read once per host and process; the group for `metacrunch` applies, else `*`. Rules that
+  write unreserved characters as escapes (`%41` for `A`) do not match the plain letters.
+- URLs are sent as browsers send them: spaces and other characters percent-encoded (UTF-8), the fragment dropped.
+- The delay holds per host within one `Fetch` (or `Sitemap::Reader`) and one process. With `-w N`, N processes fetch
+  at the same time; choose N and `delay` so that a site gets no more than it should.
+- **Caution:** `Fetch` requests any http(s) URL in the data, also addresses in your own network (`localhost`, servers
+  of the intranet). With URLs from data of others, keep only those of the hosts you mean, for example
+  `filter("Not an allowed host") { it["url"].to_s.start_with?("https://www.example.org/") }` before it.
+
+### Web pages with a crawler
+
+When a site has no sitemap, or its pages need JavaScript, a crawler fetches them first and metacrunch reads its
+files.
+
+With wget, a mirror of a part of a site:
+
+```
+$ wget --mirror --no-parent --adjust-extension --wait=1 --directory-prefix=mirror https://www.example.org/handbook/
+```
+
+- `--mirror` follows the links recursively and keeps the server's `Last-Modified` as the file time
+  (`--timestamping`), which `FileList::Reader` reads as `modified`; a second run fetches only what changed.
+  `--no-parent` stays below the start path. wget honours robots.txt; `--wait=1` waits between requests.
+- `--adjust-extension` gives pages without an extension `.html`, so `Html` takes them.
+
+```ruby
+source Metacrunch::FileList::Reader.new("mirror/www.example.org"), id: ->(file) { file["id"] }
+map { it.merge("url" => "https://www.example.org/#{it["id"]}") }   # the path as wget saved it
+map Metacrunch::Ai::Extract.new(Metacrunch::Ai::Html.new(content: "main"), Metacrunch::Ai.tika(params))
+```
+
+The id is the path as wget saved it; `--adjust-extension` may have added `.html` that the real URL lacks.
+
+Crawl4AI and Firecrawl crawl sites that need JavaScript and give each page as Markdown with its URL and title. Write
+the pages as Markdown files with that in front matter, and [`Text`](#text) turns it into fields:
+
+```markdown
+---
+url: https://www.example.org/handbook/loans
+title: Loans
+---
+# Loans
+…
 ```
 
 ## Extracting text
@@ -436,13 +563,15 @@ map Metacrunch::Ai::Embed.new(embedder, text: ->(record) {
 ## Running the tests of this gem
 
 The unit tests need no server. The integration tests run against the embeddings server at `EMBEDDINGS_URL` with the
-model `EMBEDDINGS_MODEL` (`all-minilm` by default) and against the Tika server at `TIKA_URL`, and those that need a
-server are skipped without its variable; [`test/compose.yml`](test/compose.yml) starts Ollama and Tika with Docker:
+model `EMBEDDINGS_MODEL` (`all-minilm` by default), the Tika server at `TIKA_URL` and a web server at `WEB_URL` that
+serves the test site in `test/fixtures/web` (it names itself `http://127.0.0.1:8089`). Those that need a server are
+skipped without its variable; [`test/compose.yml`](test/compose.yml) starts Ollama, Tika and nginx with Docker:
 
 ```
 $ docker compose -f test/compose.yml up -d --wait
 $ docker compose -f test/compose.yml exec ollama ollama pull all-minilm
-$ EMBEDDINGS_URL=http://localhost:11435/v1 TIKA_URL=http://localhost:9997 bundle exec rake
+$ EMBEDDINGS_URL=http://localhost:11435/v1 TIKA_URL=http://localhost:9997 WEB_URL=http://127.0.0.1:8089 \
+    bundle exec rake
 $ docker compose -f test/compose.yml down
 ```
 
