@@ -119,8 +119,45 @@ class HttpTest < Minitest::Test
     no_sleep(http(url:, retries: 1))
     error = assert_raises(Metacrunch::Ai::Unavailable) { @http.post_json("/things", {}) }
 
-    assert_match(/still Errno::ECONNREFUSED after 1 retries\z/, error.message)
+    assert_match(/still Errno::ECONNREFUSED after 1 retries: Failed to open TCP connection to 127\.0\.0\.1/,
+                 error.message)
     @api = FakeApi.new
+  end
+
+  def test_retries_errors_of_the_network
+    @api.on("POST", "/v1/things") { [200, {"ok" => true}] }
+    errors = [Errno::ETIMEDOUT, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::ECONNABORTED, IOError,
+              OpenSSL::SSL::SSLError]
+    failing = errors.dup
+    client = http(retries: errors.size)
+    delays = no_sleep(client)
+    client.define_singleton_method(:post) { |path, json| failing.empty? ? super(path, json) : raise(failing.shift) }
+
+    assert_equal({"ok" => true}, client.post_json("/things", {}))
+    assert_equal errors.size, delays.size
+    assert_includes @log.string, "things: Errno::EHOSTUNREACH, retry 2/6"
+  end
+
+  def test_retries_a_garbled_answer
+    @api.on("POST", "/v1/things") { [200, {"ok" => true}] }
+    @api.on("POST", "/v1/things", times: 1) { ["xyz", ""] }
+    no_sleep(http)
+
+    assert_equal({"ok" => true}, @http.post_json("/things", {}))
+    assert_includes @log.string, "things: Net::HTTPBadResponse, retry 1/5"
+  end
+
+  def test_names_the_last_error_after_the_retries
+    server = TCPServer.new("127.0.0.1", 0)
+    thread = Thread.new { loop { not_tls(server.accept) } }
+    no_sleep(http(url: "https://127.0.0.1:#{server.addr[1]}/v1", retries: 1))
+    error = assert_raises(Metacrunch::Ai::Unavailable) { @http.post_json("/things", {}) }
+
+    assert_match(/: still OpenSSL::SSL::SSLError after 1 retries: SSL_connect returned/, error.message)
+    assert_nil error.body
+  ensure
+    thread&.kill&.join
+    server&.close
   end
 
   def test_invalid_input_statuses
@@ -211,6 +248,15 @@ class HttpTest < Minitest::Test
   def http(url: @api.url("/v1"), **)
     @http&.close
     @http = Metacrunch::Ai::Http.new(url:, name: "things", **).open(Logger.new(@log))
+  end
+
+  # Reads the client's TLS hello and answers in plain text, as a server
+  # without TLS would.
+  def not_tls(client)
+    client.readpartial(16_384)
+    client.write("HTTP/1.1 400 Bad Request\r\n\r\n")
+  ensure
+    client.close
   end
 
   def no_sleep(http, rand: 1.0)

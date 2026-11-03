@@ -3,6 +3,7 @@
 require "digest"
 require "json"
 require "net/http"
+require "openssl"
 require "time"
 require "metacrunch"
 require_relative "ai/version"

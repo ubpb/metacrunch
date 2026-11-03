@@ -10,9 +10,12 @@ module Metacrunch
 
       RETRYABLE = [429, 500, 502, 503, 504].freeze
       INVALID_INPUT = [400, 413, 422].freeze
+      # Lost connections, garbled answers and TLS errors, which may pass;
+      # those of a certificate do not, but cannot be told apart.
       NETWORK_ERRORS = [
-        Net::OpenTimeout, Net::ReadTimeout, Net::WriteTimeout, EOFError, Errno::ECONNRESET, Errno::ECONNREFUSED,
-        Errno::EPIPE
+        Net::OpenTimeout, Net::ReadTimeout, Net::WriteTimeout, Net::HTTPBadResponse, IOError, OpenSSL::SSL::SSLError,
+        Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPIPE, Errno::ETIMEDOUT,
+        Errno::EHOSTUNREACH, Errno::ENETUNREACH
       ].freeze
       MAX_DELAY = 60
       EXCERPT = 300
@@ -67,7 +70,7 @@ module Metacrunch
           response = post(path, json)
         rescue *NETWORK_ERRORS => e
           close
-          retries = retry_later(path, retries, e.class.name)
+          retries = retry_later(path, retries, e.class.name, error: e)
         else
           status = response.code.to_i
           return parse(path, response) if status.between?(200, 299)
@@ -120,13 +123,15 @@ module Metacrunch
       end
 
       # Waits before the next try and returns the number of retries so far,
-      # or raises Unavailable when no retry is left. what: the status or the
-      # error class.
-      def retry_later(path, retries, what, response = nil)
+      # or raises Unavailable when no retry is left, with the last answer or
+      # the message of the last error, unless that only repeats its class.
+      # what: the status or the error class.
+      def retry_later(path, retries, what, response = nil, error: nil)
         if retries >= @retries
           body = response && excerpt(response.body)
+          reason = body || (error.message unless error.nil? || error.message.start_with?(what))
           raise Unavailable.new("#{@name} at #{location(path)}: still #{what} after #{@retries} retries" \
-                                "#{": #{body}" if body}", status: response&.code&.to_i, body:)
+                                "#{": #{reason}" if reason}", status: response&.code&.to_i, body:)
         end
 
         delay = retry_after(response) || ([2**retries, MAX_DELAY].min * (0.5 + (rand / 2)))
