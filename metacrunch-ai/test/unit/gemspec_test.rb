@@ -18,8 +18,11 @@ class GemspecTest < Minitest::Test
     assert_equal Gem::Requirement.new("= #{SPEC.version}"), metacrunch.requirement
   end
 
-  def test_has_no_other_dependency
-    assert_equal ["metacrunch"], SPEC.runtime_dependencies.map(&:name)
+  def test_depends_on_nokogiri_besides
+    nokogiri = SPEC.runtime_dependencies.find { it.name == "nokogiri" }
+
+    assert_equal ["metacrunch", "nokogiri"], SPEC.runtime_dependencies.map(&:name).sort
+    assert_equal Gem::Requirement.new("~> 1.19"), nokogiri.requirement
   end
 
   def test_homepage_and_issues_are_the_repository

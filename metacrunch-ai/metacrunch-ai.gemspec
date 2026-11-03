@@ -22,4 +22,5 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*.rb", "CHANGELOG.md", "License.txt", "Readme.md"]
 
   spec.add_dependency "metacrunch", Metacrunch::Ai::VERSION
+  spec.add_dependency "nokogiri", "~> 1.19"
 end
