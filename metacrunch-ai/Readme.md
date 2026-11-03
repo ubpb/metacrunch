@@ -300,9 +300,9 @@ What does not come passes without content and with a mark, so `Extract` marks it
 | "Not found (404)", "Not found (410)" | the document is gone |
 | "Refused (403)" and other 4xx | the server refuses it |
 
-A server that is overloaded or away (429, 5xx, timeouts, after the retries), a robots.txt that cannot be read, more
-redirects than `redirects` and a document over `max_size` fail the record under the job's failure policy; with
-`on_failure :skip` it can be fed again later.
+A server that is overloaded or away (429, 5xx, timeouts, a host name that cannot be looked up, after the retries), a
+robots.txt that cannot be read, more redirects than `redirects` and a document over `max_size` fail the record under
+the job's failure policy; with `on_failure :skip` it can be fed again later.
 
 - robots.txt (RFC 9309) is read once per host and process; the group for `metacrunch` applies, else `*`. Rules that
   write unreserved characters as escapes (`%41` for `A`) do not match the plain letters.

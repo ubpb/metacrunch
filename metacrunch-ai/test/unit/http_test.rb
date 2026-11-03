@@ -220,7 +220,7 @@ class HttpTest < Minitest::Test
   def test_retries_errors_of_the_network
     @api.on("POST", "/v1/things") { [200, {"ok" => true}] }
     errors = [Errno::ETIMEDOUT, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::ECONNABORTED, IOError,
-              OpenSSL::SSL::SSLError]
+              OpenSSL::SSL::SSLError, Socket::ResolutionError]
     failing = errors.dup
     client = http(retries: errors.size)
     delays = no_sleep(client)
@@ -228,7 +228,7 @@ class HttpTest < Minitest::Test
 
     assert_equal({"ok" => true}, client.post_json("/things", {}))
     assert_equal errors.size, delays.size
-    assert_includes @log.string, "things: Errno::EHOSTUNREACH, retry 2/6"
+    assert_includes @log.string, "things: Errno::EHOSTUNREACH, retry 2/#{errors.size}"
   end
 
   def test_retries_a_garbled_answer

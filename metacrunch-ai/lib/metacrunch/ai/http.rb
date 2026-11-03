@@ -10,11 +10,12 @@ module Metacrunch
 
       RETRYABLE = [429, 500, 502, 503, 504].freeze
       INVALID_INPUT = [400, 413, 422].freeze
-      # Lost connections, garbled answers and TLS errors, which may pass;
-      # those of a certificate do not, but cannot be told apart.
+      # Lost connections, garbled answers, failed name lookups and TLS
+      # errors, which may pass; an unknown host name or a certificate error
+      # does not, but cannot be told apart.
       NETWORK_ERRORS = [
         Net::OpenTimeout, Net::ReadTimeout, Net::WriteTimeout, Net::HTTPBadResponse, IOError, OpenSSL::SSL::SSLError,
-        Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPIPE, Errno::ETIMEDOUT,
+        SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPIPE, Errno::ETIMEDOUT,
         Errno::EHOSTUNREACH, Errno::ENETUNREACH
       ].freeze
       MAX_DELAY = 60
