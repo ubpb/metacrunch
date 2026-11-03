@@ -69,6 +69,44 @@ class TextTest < Minitest::Test
     end
   end
 
+  def test_page_break_markers_give_pages
+    markdown = "---\ntitle: Rules\n---\n# Using\n\nOne.\n\n<!-- page break -->\n\nTwo.\n  <!-- page break -->  \nThree."
+
+    assert_equal ["# Using\n\nOne.\n\n", "\nTwo.\n", "Three."], extract(markdown)[:text]
+  end
+
+  def test_form_feeds_give_pages_and_blank_pages_keep_their_numbers
+    assert_equal ["One", "Two", "", "Four", ""], extract("One\fTwo\f\fFour\f")[:text]
+  end
+
+  def test_another_marker
+    text = Metacrunch::Ai::Text.new(page_break: "=== page ===").extract("One\n=== page ===\nTwo\n<!-- page break -->")
+
+    assert_equal ["One\n", "Two\n<!-- page break -->"], text[:text]
+  end
+
+  def test_no_marker
+    text = Metacrunch::Ai::Text.new(page_break: nil).extract("One\n<!-- page break -->\nTwo\fThree")
+
+    assert_equal ["One\n<!-- page break -->\nTwo", "Three"], text[:text]
+  end
+
+  def test_a_marker_inside_a_line_is_text
+    assert_equal "See <!-- page break --> here", extract("See <!-- page break --> here")[:text]
+  end
+
+  def test_pages_reach_the_chunks
+    chunk = Metacrunch::Ai::Chunk.new(size: 12, overlap: 0)
+    markdown = "# Rules\n\nOne.\n<!-- page break -->\nTwo.\n<!-- page break -->\n\n## Fees\n\nThree."
+    pieces = chunk.split(extract(markdown)[:text])
+
+    assert_equal([[["Rules"], [1, 2]], [["Rules", "Fees"], [3]]], pieces.map { [it.headings, it.pages] })
+  end
+
+  def test_validates_the_marker
+    [1, "", " "].each { |marker| assert_raises(ArgumentError) { Metacrunch::Ai::Text.new(page_break: marker) } }
+  end
+
   def test_types
     assert_equal ["text/plain", "text/markdown"], Metacrunch::Ai::Text.new.types
   end

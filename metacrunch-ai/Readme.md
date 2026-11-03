@@ -236,6 +236,11 @@ source: https://www.example.org/rules.pdf
 # Using the library
 ```
 
+A line that holds only `<!-- page break -->`, the marker Docling writes with
+`export_to_markdown(page_break_placeholder="<!-- page break -->")`, or a form feed (as `pdftotext` writes) ends a
+page: the text becomes an Array of pages, and the chunks know their pages as with Tika. `Text.new(page_break: "…")`
+names another marker, `page_break: nil` leaves form feeds only.
+
 ### Tika
 
 `Metacrunch::Ai::Tika` sends PDF, office (Word, Excel, PowerPoint, OpenDocument) and many other formats to an
