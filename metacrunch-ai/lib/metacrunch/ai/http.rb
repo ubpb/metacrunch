@@ -135,17 +135,23 @@ module Metacrunch
         connection.request(request, &)
       end
 
-      # Reads the body of response in chunks, as bytes, up to max_size.
+      # Reads the body of response in chunks, as bytes, up to max_size. An
+      # uncompressed body whose Content-Length is larger is not read at all.
       def read_limited(path, response, max_size)
+        if max_size && !response.key?("content-encoding") && response.content_length.to_i > max_size
+          raise too_large(path, response, max_size)
+        end
+
         body = +"".b
         response.read_body do |chunk|
           body << chunk
-          next unless max_size && body.bytesize > max_size
-
-          raise InvalidInput.new("#{@name} at #{location(path)}: larger than #{max_size} bytes",
-                                 status: response.code.to_i)
+          raise too_large(path, response, max_size) if max_size && body.bytesize > max_size
         end
         response.body = body
+      end
+
+      def too_large(path, response, max_size)
+        InvalidInput.new("#{@name} at #{location(path)}: larger than #{max_size} bytes", status: response.code.to_i)
       end
 
       def connection

@@ -100,6 +100,33 @@ class HttpTest < Minitest::Test
     assert_match(/larger than 10 bytes/, error.message)
   end
 
+  def test_get_raw_refuses_a_larger_content_length_before_reading
+    server = TCPServer.new("127.0.0.1", 0)
+    thread = Thread.new do
+      client = server.accept
+      client.readpartial(16_384)
+      client.write("HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\n")
+      sleep
+    end
+    error = assert_raises(Metacrunch::Ai::InvalidInput) do
+      http(url: "http://127.0.0.1:#{server.addr[1]}/v1", timeout: 1, retries: 0).get_raw("/big", max_size: 10)
+    end
+
+    assert_match(/larger than 10 bytes/, error.message)
+  ensure
+    thread&.kill&.join
+    server&.close
+  end
+
+  def test_get_raw_limits_the_unpacked_size_of_a_compressed_body
+    packed = Zlib.gzip("x" * 10)
+    @api.on("GET", "/v1/packed") { [200, packed, {"Content-Encoding" => "gzip"}] }
+    raw = http.get_raw("/packed", max_size: 10)
+
+    assert_operator packed.bytesize, :>, 10
+    assert_equal "x" * 10, raw.body
+  end
+
   def test_get_raw_retries_like_get
     @api.on("GET", "/v1/page") { [200, "ok"] }
     @api.on("GET", "/v1/page", times: 1) { [503, ""] }
