@@ -97,9 +97,13 @@ module Metacrunch
       def fields_text(record)
         raise ContractError, "Embed needs Hash records for text: fields, got #{record.class}" unless record.is_a?(Hash)
 
-        parts = @text.flat_map { Array(record[it]) }.map(&:to_s).reject { it.strip.empty? }
+        parts = @text.flat_map { values(record[it]) }.map(&:to_s).reject { it.strip.empty? }
         parts.join("\n") unless parts.empty?
       end
+
+      # The elements of an Array, any other value as one; Array() would
+      # split a Hash into its pairs.
+      def values(value) = value.is_a?(Array) ? value : [value]
 
       def unmarked(record, ctx)
         ctx.mark(NO_TEXT)

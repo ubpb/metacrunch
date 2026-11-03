@@ -54,6 +54,13 @@ class EmbedTest < Minitest::Test
     assert_equal ["a\nx\n1851"], recorder.calls.last
   end
 
+  def test_a_hash_in_a_field_is_one_value
+    recorder = Recorder.new
+    run_embed([{"t" => {"lang" => "en"}}], provider: recorder, text: "t")
+
+    assert_equal [{"lang" => "en"}.to_s], recorder.calls.last
+  end
+
   def test_takes_a_callable
     recorder = Recorder.new
     run_embed([{"t" => "a"}], provider: recorder, text: ->(record) { record["t"].upcase })
