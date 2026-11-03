@@ -14,13 +14,14 @@ require_relative "ai/markdown"
 require_relative "ai/html"
 require_relative "ai/text"
 require_relative "ai/extract"
+require_relative "ai/tika"
 require_relative "ai/open_ai"
 require_relative "ai/fake_embedder"
 require_relative "ai/embed"
 
 module Metacrunch
-  # AI steps for metacrunch: embeddings through the OpenAI embeddings API
-  # and the servers that offer it.
+  # AI steps for metacrunch: text from documents, and embeddings through
+  # the OpenAI embeddings API and the servers that offer it.
   module Ai
 
     # The params of an embedder for jobs and commands, a group of
@@ -60,6 +61,21 @@ module Metacrunch
       FakeEmbedder.new(dims: Integer(match[1] || "8", 10), **options.slice(:max_inputs))
     end
     private_class_method :fake
+
+    # The params of a Tika server: params { use Metacrunch::Ai::TIKA_PARAMS }
+    # and Metacrunch::Ai.tika(params).
+    TIKA_PARAMS = proc do
+      param :tika_url, String, desc: "Apache Tika server URL, e.g. http://localhost:9998"
+    end
+
+    # A Tika from the bound params of a job or command; options go to
+    # Tika.new.
+    def self.tika(params, **)
+      url = params.tika_url if params.respond_to?(:tika_url)
+      raise ArgumentError, "tika_url is required" unless text?(url)
+
+      Tika.new(url:, **)
+    end
 
     # Returns value if it is a positive Integer, else raises ArgumentError.
     def self.positive!(value, name)
