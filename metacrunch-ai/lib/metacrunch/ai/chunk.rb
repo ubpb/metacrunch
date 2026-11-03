@@ -32,7 +32,7 @@ module Metacrunch
 
       Block = Data.define(:text, :page, :level, :title)
       Section = Struct.new(:path, :line, :page, :blocks)
-      Atom = Data.define(:text, :separator, :page, :length)
+      Atom = Data.define(:text, :separator, :separator_length, :page, :length)
       Group = Struct.new(:path, :text, :pages)
       private_constant :Block, :Section, :Atom, :Group
 
@@ -224,7 +224,7 @@ module Metacrunch
         section.blocks.each_with_object([]) do |block, atoms|
           fit(block.text).each_with_index do |(text, separator, length), index|
             separator = atoms.empty? ? "" : BLOCK if index.zero?
-            atoms << Atom.new(text:, separator:, page: block.page, length:)
+            atoms << Atom.new(text:, separator:, separator_length: measure(separator), page: block.page, length:)
           end
         end
       end
@@ -292,27 +292,47 @@ module Metacrunch
       # first of a section starts with the overlap of the one before.
       def pack(atoms)
         chunks = []
-        current = []
-        total = 0
-        atoms.each do |atom|
-          if current.any? && !fits?(current, total, atom)
-            chunks << current
-            current = tail(current)
-            current = current.drop(1) while current.any? && !fits?(current, joined_length(current), atom)
-            total = joined_length(current)
-          end
-          total += current.empty? ? atom.length : measure(atom.separator) + atom.length
-          current += [atom]
-        end
-        chunks << current if current.any?
+        queue = atoms.dup
+        chunks << fill(chunks.empty? ? [] : tail(chunks.last), queue) until queue.empty?
         chunks
       end
 
-      def fits?(current, total, atom)
-        return measure(join(current + [atom])) <= @size if @length
+      # A chunk of the overlap and as many atoms from queue as fit by the sum
+      # of their lengths, at least one; the overlap shrinks from the front
+      # where the first atom would not fit. With length:, the chunk is
+      # measured once and settled.
+      def fill(overlap, queue)
+        chunk = overlap.dup
+        first = queue.first
+        chunk.shift while chunk.any? && estimate(chunk) + first.separator_length + first.length > @size
+        kept = chunk.size
+        total = estimate(chunk)
+        while (atom = queue.first)
+          grown = chunk.empty? ? atom.length : total + atom.separator_length + atom.length
+          break if chunk.size > kept && grown > @size
 
-        total + atom.separator.length + atom.length <= @size
+          chunk << queue.shift
+          total = grown
+        end
+        @length ? settle(chunk, kept, queue) : chunk
       end
+
+      # For a length: whose result for a joined text exceeds the sum of its
+      # parts: gives trailing atoms back to queue, then drops the overlap
+      # (kept atoms at the front), while the chunk is too long.
+      def settle(chunk, kept, queue)
+        while chunk.size > 1 && measure(join(chunk)) > @size
+          if chunk.size > kept + 1
+            queue.unshift(chunk.pop)
+          else
+            chunk.shift
+            kept -= 1
+          end
+        end
+        chunk
+      end
+
+      def estimate(atoms) = atoms.sum(&:length) + atoms.drop(1).sum(&:separator_length)
 
       # The last atoms of chunk whose joined length is at most overlap.
       def tail(chunk)
@@ -326,11 +346,7 @@ module Metacrunch
         kept
       end
 
-      def joined_length(atoms)
-        return measure(join(atoms)) if @length
-
-        atoms.sum(&:length) + atoms.drop(1).sum { it.separator.length }
-      end
+      def joined_length(atoms) = @length ? measure(join(atoms)) : estimate(atoms)
 
       def join(atoms)
         return "" if atoms.empty?

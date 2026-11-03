@@ -143,6 +143,28 @@ class ChunkSplitTest < Minitest::Test
     assert_equal ["one two three", "four five"], texts(words, "one two three four five")
   end
 
+  def test_a_length_function_measures_each_chunk_once
+    measured = 0
+    counting = chunk(size: 200, overlap: 20, length: ->(text) { (measured += text.length) && text.length })
+    text = (["word"] * 1000).join(" ")
+    pieces = counting.split(text)
+
+    assert(pieces.all? { it.text.length <= 200 })
+    assert_operator measured, :<, 8 * text.length
+  end
+
+  def test_a_length_that_grows_faster_than_its_parts_is_checked_per_chunk
+    squares = chunk(size: 4, overlap: 0, length: ->(text) { text.split.size**2 })
+
+    assert_equal ["a b", "c d"], texts(squares, "a b c d")
+  end
+
+  def test_such_a_length_drops_overlap_that_does_not_fit
+    squares = chunk(size: 5, overlap: 4, length: ->(text) { text.split.size**2 })
+
+    assert_equal ["a b", "b c", "c d", "d e", "e f"], texts(squares, "a b c d e f")
+  end
+
   def test_a_long_word_is_cut_by_the_length_function
     pairs = chunk(size: 2, overlap: 0, length: ->(text) { (text.length + 1) / 2 })
 
