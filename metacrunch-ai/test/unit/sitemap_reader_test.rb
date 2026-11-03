@@ -200,7 +200,8 @@ class SitemapReaderTest < Minitest::Test
   end
 
   def test_validates_options
-    [[[], {}], [42, {}], ["x", {matching: "/a/"}], ["x", {since: "soon"}], ["x", {since: 1}]].each do |targets, options|
+    [[[], {}], [42, {}], ["x", {matching: "/a/"}], ["x", {since: "soon"}], ["x", {since: 1}],
+     ["x", {robots: true}]].each do |targets, options|
       assert_raises(ArgumentError, [targets, options].inspect) { Reader.new(targets, **options) }
     end
   end

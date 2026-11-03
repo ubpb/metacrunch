@@ -36,7 +36,10 @@ module Metacrunch
         # pages with an earlier lastmod are skipped, pages without one kept.
         # Other options go to the web client (user_agent, delay, max_size,
         # redirects, timeout, retries).
-        def initialize(targets, matching: nil, since: nil, **)
+        def initialize(targets, matching: nil, since: nil, **web)
+          raise ArgumentError, "Sitemap::Reader takes no robots: it reads sitemaps, which are for crawlers" if
+            web.key?(:robots)
+
           @targets = targets.is_a?(Array) ? targets : [targets]
           valid = !@targets.empty? && @targets.all? { it.is_a?(String) || it.is_a?(Pathname) || it.is_a?(Site) }
           raise ArgumentError, "targets must be URLs or paths, got #{targets.inspect}" unless valid
@@ -47,7 +50,7 @@ module Metacrunch
           @since = since.nil? ? nil : time(since)
           raise ArgumentError, "since must be a time, got #{since.inspect}" if since && @since.nil?
 
-          @web = Web.new(**, robots: false)
+          @web = Web.new(**web, robots: false)
         end
 
         def open(context) = @web.open(context.logger)
