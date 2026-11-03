@@ -258,8 +258,10 @@ files; `Sitemap::Reader.site(url, …)` reads those a website names in its robot
 `/sitemap.xml`, which is also tried when all named ones fail.
 
 - One record per page: `{"id" => url, "url" => url, "lastmod" => "2026-10-30"}`, `lastmod` only when listed.
-- Sitemap indexes are followed (up to 3 levels), gzip is unpacked, sitemaps with and without namespace are read, large
-  ones in a stream. A URL listed twice comes once.
+- Sitemap indexes are followed (up to 3 levels), gzip is unpacked, sitemaps with and without namespace are read: each
+  one whole, up to `max_size`, and parsed as a stream. A URL listed twice comes once.
+- The sitemaps an index or a `Sitemap:` line names are URLs, relative ones resolved against the index or robots.txt;
+  a local index may also name files beside it.
 - `matching:` (a Regexp) keeps the URLs that match; `since:` (an ISO 8601 String, a `Date` or a `Time`) skips pages
   whose `lastmod` is earlier and keeps those without one: a nightly run with yesterday's date takes what changed.
 - A sitemap that cannot be read is an invalid record under the job's failure policy; when none can be read, the job
@@ -308,7 +310,8 @@ the job's failure policy; with `on_failure :skip` it can be fed again later.
 
 - robots.txt (RFC 9309) is read once per host and process; the group for `metacrunch` applies, else `*`. Rules that
   write unreserved characters as escapes (`%41` for `A`) do not match the plain letters.
-- URLs are sent as browsers send them: spaces and other characters percent-encoded (UTF-8), the fragment dropped.
+- URLs are sent as browsers send them: the host in lower case and without the default port, spaces and other
+  characters percent-encoded (UTF-8), the fragment dropped.
 - The delay holds per host within one `Fetch` (or `Sitemap::Reader`) and one process. With `-w N`, N processes fetch
   at the same time; choose N and `delay` so that a site gets no more than it should.
 - **Caution:** `Fetch` requests any http(s) URL in the data, also addresses in your own network (`localhost`, servers
