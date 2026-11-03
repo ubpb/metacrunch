@@ -31,7 +31,7 @@ module Metacrunch
       }.freeze
 
       # from: the field with the URL; the other options go to Web (user_agent,
-      # delay, robots, max_size, redirects, timeout, retries).
+      # delay, max_delay, robots, max_size, redirects, timeout, retries).
       def initialize(from: "url", **)
         raise ArgumentError, "from must be a non-empty String, got #{from.inspect}" unless Ai.text?(from)
 

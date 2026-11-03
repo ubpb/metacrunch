@@ -279,6 +279,7 @@ map Metacrunch::Ai::Fetch.new(from: "fulltext_url", delay: 2)
 | `from` | `"url"` | the field with the URL |
 | `user_agent` | `metacrunch/VERSION (+https://github.com/ubpb/metacrunch)` | how the requests introduce themselves |
 | `delay` | `1` | seconds between two requests to one host; a longer `Crawl-delay` in robots.txt wins |
+| `max_delay` | `60` | the longest `Crawl-delay` followed; a longer one is cut to it, with a warning in the log |
 | `robots` | `true` | `false` asks no robots.txt, for servers of your own |
 | `max_size` | 50 MB | bytes; a larger document fails its record |
 | `redirects` | `5` | redirects to follow |

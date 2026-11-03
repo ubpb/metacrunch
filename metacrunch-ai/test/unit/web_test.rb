@@ -103,6 +103,17 @@ class WebTest < Minitest::Test
     assert_equal([3.0], @slept.map { it.round(1) })
   end
 
+  def test_max_delay_cuts_the_crawl_delay
+    [@a, @b].each { it.on("GET", "/robots.txt") { [200, "User-agent: *\nCrawl-delay: 86400\n"] } }
+    client(delay: 1, max_delay: 30).get(@a.url("/1"))
+    log = StringIO.new
+    client.open(Logger.new(log)).get(@b.url("/1"))
+
+    assert_equal([30.0, 60.0], @slept.map { it.round(1) })
+    assert_includes log.string, "robots.txt of 127.0.0.1:#{@b.url[/\d+\z/]} asks for a Crawl-delay of 86400.0 s; " \
+                                "max_delay cuts it to 60 s"
+  end
+
   def test_follows_redirects
     @a.on("GET", "/old") { [301, "", {"Location" => "/1"}] }
     @a.on("GET", "/away") { [302, "", {"Location" => other(@b.url("/2"))}] }
@@ -198,7 +209,7 @@ class WebTest < Minitest::Test
 
   def test_validates_options
     [{delay: -1}, {delay: "1"}, {redirects: -1}, {redirects: 1.5}, {max_size: 0}, {user_agent: ""}, {robots: nil},
-     {timeout: 0}, {retries: -1}].each do |options|
+     {timeout: 0}, {retries: -1}, {max_delay: -1}, {max_delay: nil}].each do |options|
       assert_raises(ArgumentError, options.inspect) { Web.new(**options) }
     end
   end

@@ -34,8 +34,8 @@ module Metacrunch
         # targets: URLs or local paths, one or an Array. matching: a Regexp
         # the URL must match. since: a time (ISO 8601 String, Date, Time);
         # pages with an earlier lastmod are skipped, pages without one kept.
-        # Other options go to the web client (user_agent, delay, max_size,
-        # redirects, timeout, retries).
+        # Other options go to the web client (user_agent, delay, max_delay,
+        # max_size, redirects, timeout, retries).
         def initialize(targets, matching: nil, since: nil, **web)
           raise ArgumentError, "Sitemap::Reader takes no robots: it reads sitemaps, which are for crawlers" if
             web.key?(:robots)

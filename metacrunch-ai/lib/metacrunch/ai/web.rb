@@ -93,14 +93,16 @@ module Metacrunch
       end
       private_class_method :encode
 
-      # delay: seconds between two requests to one host; robots: false checks
-      # no robots.txt; max_size: bytes; redirects: how many to follow. clock
+      # delay: seconds between two requests to one host, raised by a
+      # Crawl-delay in robots.txt up to max_delay; robots: false checks no
+      # robots.txt; max_size: bytes; redirects: how many to follow. clock
       # (monotonic seconds) and sleeper are for tests.
-      def initialize(user_agent: USER_AGENT, delay: 1, robots: true, max_size: 50 * 1024 * 1024, redirects: 5,
-                     timeout: 30, retries: 2, clock: nil, sleeper: nil)
-        validate(user_agent:, delay:, robots:, max_size:, redirects:, timeout:, retries:)
+      def initialize(user_agent: USER_AGENT, delay: 1, max_delay: 60, robots: true, max_size: 50 * 1024 * 1024,
+                     redirects: 5, timeout: 30, retries: 2, clock: nil, sleeper: nil)
+        validate(user_agent:, delay:, max_delay:, robots:, max_size:, redirects:, timeout:, retries:)
         @user_agent = user_agent
         @delay = delay
+        @max_delay = max_delay
         @robots_on = robots
         @max_size = max_size
         @redirects = redirects
@@ -141,7 +143,7 @@ module Metacrunch
       # The robots.txt of origin ("https://host:port"): cached when read (2xx)
       # or missing (4xx); raises Unavailable when unreachable, uncached.
       def robots(origin)
-        @robots[origin] ||= read_robots(origin)
+        @robots[origin] ||= read_robots(origin).tap { cut_delay(origin, it) }
       end
 
       private
@@ -196,7 +198,15 @@ module Metacrunch
 
       def delay(host)
         crawl = @robots.find { |origin, _| URI(origin).host == host }&.last&.crawl_delay
-        [@delay, crawl || 0].max
+        [@delay, (crawl || 0).clamp(..@max_delay)].max
+      end
+
+      def cut_delay(origin, robots)
+        return unless robots.crawl_delay && robots.crawl_delay > @max_delay
+
+        uri = URI(origin)
+        @logger&.warn("robots.txt of #{uri.host}:#{uri.port} asks for a Crawl-delay of #{robots.crawl_delay} s; " \
+                      "max_delay cuts it to #{@max_delay} s")
       end
 
       def client(uri)
@@ -206,11 +216,13 @@ module Metacrunch
 
       def origin(uri) = "#{uri.scheme}://#{uri.host}:#{uri.port}"
 
-      def validate(user_agent:, delay:, robots:, max_size:, redirects:, timeout:, retries:)
+      def validate(user_agent:, delay:, max_delay:, robots:, max_size:, redirects:, timeout:, retries:)
         raise ArgumentError, "user_agent must be a non-empty String, got #{user_agent.inspect}" unless
           Ai.text?(user_agent)
         raise ArgumentError, "delay must be seconds, 0 or more, got #{delay.inspect}" unless
           delay.is_a?(Numeric) && !delay.negative?
+        raise ArgumentError, "max_delay must be seconds, 0 or more, got #{max_delay.inspect}" unless
+          max_delay.is_a?(Numeric) && !max_delay.negative?
         raise ArgumentError, "robots must be true or false, got #{robots.inspect}" unless [true, false].include?(robots)
         raise ArgumentError, "redirects must be an Integer of 0 or more, got #{redirects.inspect}" unless
           redirects.is_a?(Integer) && !redirects.negative?

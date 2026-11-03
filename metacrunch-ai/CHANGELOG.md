@@ -32,7 +32,7 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
   recursively, with `size`, `overlap` and an optional length function such as a tokenizer; each chunk has the id of
   its document, its number, its heading path and its pages.
 - `Metacrunch::Ai::Fetch`, a step that downloads the document whose URL a record holds and adds the fields of a file
-  record, politely: a user agent, a delay per host, robots.txt (RFC 9309) with `Crawl-delay`, a bounded number of
-  redirects and a size limit; dead and refused links pass with a mark. It follows no links.
+  record, politely: a user agent, a delay per host, robots.txt (RFC 9309) with `Crawl-delay` (up to `max_delay`), a
+  bounded number of redirects and a size limit; dead and refused links pass with a mark. It follows no links.
 - `Metacrunch::Ai::Sitemap::Reader`, a source of the pages a website lists in its sitemaps, with sitemap indexes,
   gzip, discovery through robots.txt and filters by URL and date.
