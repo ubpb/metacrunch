@@ -72,10 +72,11 @@ class ChunkTest < Minitest::Test
     assert_equal({"No text to chunk" => 3}, result.stats.marked)
   end
 
-  def test_headings_only_is_no_text
+  def test_headings_only_give_a_chunk_of_their_text
     result = run_chunk([{"id" => 1, "text" => "# A\n\n## B"}])
 
-    assert_equal [[], {"No text to chunk" => 1}], [result.records, result.stats.marked]
+    assert_equal([[["A"], "## B"]], result.records.map { it.values_at("headings", "text") })
+    assert_empty result.stats.marked
   end
 
   def test_a_missing_id_fails

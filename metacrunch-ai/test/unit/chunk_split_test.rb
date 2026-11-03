@@ -36,6 +36,22 @@ class ChunkSplitTest < Minitest::Test
     assert_equal([[["A"], "x\n\n# B\n\n## C\n\ny"]], pieces.map { [it.headings, it.text] })
   end
 
+  def test_a_heading_without_body_or_subsections_stays_in_the_text
+    pieces = chunk(size: 5, overlap: 0).split("# A\n\nx\n\n# B\n\n# C\n\ny")
+
+    assert_equal([[["A"], "x"], [[], "# B"], [["C"], "y"]], pieces.map { [it.headings, it.text] })
+  end
+
+  def test_a_first_heading_without_body_stays_in_the_text
+    pieces = chunk(size: 100, overlap: 0).split("# A\n\n# B\n\nx")
+
+    assert_equal([[[], "# A\n\n# B\n\nx"]], pieces.map { [it.headings, it.text] })
+  end
+
+  def test_headings_only_give_their_text
+    assert_equal([[["Only"], "## Headings"]], chunk.split("# Only\n\n## Headings").map { [it.headings, it.text] })
+  end
+
   def test_headings_with_closing_hashes_and_indent
     assert_equal [["Loans", "Renewals"]], chunk.split("# Loans #\n\n  ## Renewals ##\n\nx").map(&:headings)
   end
@@ -127,9 +143,9 @@ class ChunkSplitTest < Minitest::Test
   end
 
   def test_nothing_gives_no_piece
-    inputs = ["", " \n\n ", [nil, ""], "# Only\n\n## Headings"]
+    inputs = ["", " \n\n ", [nil, ""]]
 
-    assert_equal([[]] * 4, inputs.map { chunk.split(it) })
+    assert_equal([[]] * 3, inputs.map { chunk.split(it) })
   end
 
   def test_validates_options
@@ -149,8 +165,8 @@ class ChunkSplitTest < Minitest::Test
         pieces = chunk(size:, overlap:).split(doc)
         message = "in #{doc.inspect}"
 
-        assert(pieces.all? { it.text.length <= size && !it.text.strip.empty? }, message)
-        assert(pieces.none? { own_heading_line?(it) }, message)
+        assert(pieces.all? { it.text.length <= size && !it.text.strip.empty? && !own_heading_line?(it) }, message)
+        assert_empty lost_headings(doc, pieces), message
         if overlap.zero?
           assert_equal body, squeeze(without_heading_lines(pieces.map(&:text).join("\n"))), message
         else
@@ -198,6 +214,18 @@ class ChunkSplitTest < Minitest::Test
     end.join
   end
 
+  # The titles of heading lines (outside fenced code) that are neither in a heading path nor in a text.
+  def lost_headings(doc, pieces)
+    fenced = false
+    titles = doc.lines.filter_map do |line|
+      fenced = !fenced if line.start_with?("```")
+      line.sub(/\A\s*#+\s*/, "").strip if !fenced && line.match?(HEADING)
+    end
+    paths = pieces.flat_map(&:headings)
+    texts = squeeze(pieces.map(&:text).join("\n"))
+    titles.reject { paths.include?(it) || texts.include?(squeeze(it)) }
+  end
+
   def own_heading_line?(piece)
     first = piece.text.lines.first.to_s
     first.match?(HEADING) && piece.headings.include?(first.sub(/\A\s*#+\s*/, "").strip)
@@ -206,7 +234,8 @@ class ChunkSplitTest < Minitest::Test
   def generated_markdown(random)
     blocks = Array.new(random.rand(1..12)) do
       case random.rand(6)
-      when 0 then "#{"#" * random.rand(1..4)} #{words(random, 1..4)}"
+      # Headings shorter than the smallest size, so the comparison above can strip their lines.
+      when 0 then "#{"#" * random.rand(1..4)} #{Array.new(random.rand(1..2)) { word(random, 1..6) }.join(" ")}"
       when 1 then Array.new(random.rand(1..3)) { "- #{words(random, 1..6)}" }.join("\n")
       when 2 then Array.new(random.rand(1..3)) { "| #{words(random, 1..2)} | #{words(random, 1..2)} |" }.join("\n")
       when 3 then "```\n#{Array.new(random.rand(1..3)) { words(random, 1..5) }.join("\n")}\n```"
@@ -217,10 +246,9 @@ class ChunkSplitTest < Minitest::Test
   end
 
   def words(random, count)
-    Array.new(random.rand(count)) do
-      length = random.rand(10).zero? ? random.rand(20..60) : random.rand(1..9)
-      Array.new(length) { ("a".."z").to_a.sample(random:) }.join
-    end.join(" ")
+    Array.new(random.rand(count)) { word(random, random.rand(10).zero? ? 20..60 : 1..9) }.join(" ")
   end
+
+  def word(random, length) = Array.new(random.rand(length)) { ("a".."z").to_a.sample(random:) }.join
 
 end

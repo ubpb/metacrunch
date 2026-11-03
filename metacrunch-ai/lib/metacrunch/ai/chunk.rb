@@ -152,21 +152,30 @@ module Metacrunch
         index
       end
 
+      # Sections with their heading paths. A heading without body and without
+      # subsections is no section: its line stays text, under its parent's
+      # path, so that it is not lost.
       def sections(blocks)
         stack = []
         sections = [Section.new([], nil, nil, [])]
-        blocks.each do |block|
+        blocks.each_with_index do |block, index|
           next sections.last.blocks << block unless block.level
 
           stack.pop while stack.any? && stack.last.first >= block.level
-          stack << [block.level, block.title]
-          sections << Section.new(stack.map(&:last), block.text, block.page, [])
+          following = blocks[index + 1]
+          if following.nil? || (following.level && following.level <= block.level)
+            sections << Section.new(stack.map(&:last), nil, block.page, [block.with(level: nil, title: nil)])
+          else
+            stack << [block.level, block.title]
+            sections << Section.new(stack.map(&:last), block.text, block.page, [])
+          end
         end
         sections
       end
 
       # The chunks of every section, with small consecutive ones merged; a
-      # section without body adds only its heading line to a merged chunk.
+      # section without body (whose heading is in the next path) adds only
+      # its heading line to a merged chunk.
       def merge(sections)
         pieces = []
         group = nil
@@ -178,7 +187,7 @@ module Metacrunch
             next
           end
           if group && chunks.one?
-            text = [group.text, *pending.map(&:line), section.line, join(chunks.first)].join(BLOCK)
+            text = [group.text, *pending.map(&:line), section.line, join(chunks.first)].compact.join(BLOCK)
             if measure(text) <= @size
               group.text = text
               group.pages.concat(pending.map(&:page), [section.page], chunks.first.map(&:page))

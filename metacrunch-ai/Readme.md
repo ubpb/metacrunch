@@ -290,6 +290,8 @@ Unstructured's `by_title`):
   text comes from. Its text is at most `size` long, is not blank and does not begin with the headings of its path.
 - `Embed` with `text: ["title", "headings", "text"]` puts the document's title and the heading path before the
   chunk's text, which helps a search find the right passage.
+- A heading without text of its own and without subsections stays in the text as a line, under its parent's path,
+  so that no heading is lost.
 - A document without text gives no chunk and gets the mark "No text to chunk".
 - `Chunk#split(text)` returns the chunks of a String or an Array of pages as `Chunk::Piece` (`text`, `headings`,
   `pages`), for use outside a step.
