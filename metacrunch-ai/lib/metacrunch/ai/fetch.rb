@@ -7,15 +7,16 @@ module Metacrunch
     # Extract follows: content, type, size, sha256, modified; and etag,
     # fetched and location (the URL after redirects). It follows no links.
     #
-    # A record without a URL, with a URL that is no http(s) URL or has an
-    # IDN host, one robots.txt disallows, and one the server answers with
-    # 4xx passes without content and with a mark. 429, 5xx and network
+    # A record without a URL, with a URL that is no http(s) URL, redirects
+    # to none or has an IDN host, one robots.txt disallows, and one the
+    # server answers with 4xx passes without content and with a mark. 429, 5xx and network
     # errors after the retries, too many redirects and a body over max_size
     # fail the record.
     class Fetch
 
       NO_URL = "No URL to fetch"
       NOT_HTTP = "Not an http(s) URL"
+      REDIRECTED = "Redirected to no http(s) URL"
       IDN = "Host name not supported"
       DISALLOWED = "Disallowed by robots.txt"
       TEXT = ["application/xhtml+xml", "application/xml", "application/json"].freeze
@@ -48,6 +49,19 @@ module Metacrunch
         url = record[@from]
         return marked(record, ctx, NO_URL) if url.nil? || url.to_s.strip.empty?
 
+        Web.normalize(url)
+        download(record, ctx, url)
+      rescue Web::NotHttp
+        marked(record, ctx, NOT_HTTP)
+      rescue Web::Idn
+        marked(record, ctx, IDN)
+      end
+
+      private
+
+      # The record's URL is an http(s) URL here, so NotHttp comes from a
+      # redirect.
+      def download(record, ctx, url)
         fetched = Time.now.utc.iso8601
         page = @web.get(url)
         return marked(record, ctx, refusal(page.status)) if page.status.between?(400, 499)
@@ -55,14 +69,10 @@ module Metacrunch
 
         record.merge(fields(page, fetched))
       rescue Web::NotHttp
-        marked(record, ctx, NOT_HTTP)
-      rescue Web::Idn
-        marked(record, ctx, IDN)
+        marked(record, ctx, REDIRECTED)
       rescue Web::Disallowed
         marked(record, ctx, DISALLOWED)
       end
-
-      private
 
       def marked(record, ctx, reason)
         ctx.mark(reason)

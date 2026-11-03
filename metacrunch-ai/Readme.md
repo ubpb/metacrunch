@@ -295,6 +295,7 @@ What does not come passes without content and with a mark, so `Extract` marks it
 |---|---|
 | "No URL to fetch" | the field is missing or blank |
 | "Not an http(s) URL" | `mailto:`, `ftp:` or no URL at all |
+| "Redirected to no http(s) URL" | the server redirects to such a URL |
 | "Host name not supported" | a host name with other than ASCII letters (IDN), not supported yet |
 | "Disallowed by robots.txt" | the site's robots.txt forbids the URL (also after a redirect) |
 | "Not found (404)", "Not found (410)" | the document is gone |

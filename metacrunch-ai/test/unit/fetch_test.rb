@@ -63,14 +63,16 @@ class FetchTest < Minitest::Test
     [[404, "/missing"], [410, "/gone"], [403, "/secret"], [400, "/bad"]].each do |status, path|
       @site.on("GET", path) { [status, ""] }
     end
+    @site.on("GET", "/away") { [301, "", {"Location" => "ftp://www.example.org/a"}] }
     urls = [nil, "  ", "mailto:desk@example.org", "https://bücher.example/a", "/private/x", "/missing", "/gone",
-            "/secret", "/bad"].map { it&.start_with?("/") ? @site.url(it) : it }
+            "/secret", "/bad", "/away"].map { it&.start_with?("/") ? @site.url(it) : it }
     result = run_fetch([{}] + urls.map { {"url" => it} })
 
     assert_equal({"No URL to fetch" => 3, "Not an http(s) URL" => 1, "Host name not supported" => 1,
                   "Disallowed by robots.txt" => 1, "Not found (404)" => 1, "Not found (410)" => 1,
-                  "Refused (403)" => 1, "Refused (400)" => 1}, result.stats.marked)
-    assert_equal(10, result.records.count { !it.key?("content") })
+                  "Refused (403)" => 1, "Refused (400)" => 1, "Redirected to no http(s) URL" => 1},
+                 result.stats.marked)
+    assert_equal(11, result.records.count { !it.key?("content") })
   end
 
   def test_failures
