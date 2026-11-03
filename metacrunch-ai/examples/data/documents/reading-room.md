@@ -1,3 +1,7 @@
+---
+title: Reading room
+source: https://www.example.org/reading-room
+---
 # Reading room
 
 The reading room on the second floor has 120 desks, each with a power outlet and a lamp. Quiet is kept at all

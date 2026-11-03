@@ -50,6 +50,8 @@ class ExamplesTest < Minitest::Test
     assert(chunks.all? { it["chunk"].is_a?(Integer) && it["embedding"]&.size == 384 })
     assert_equal [1, 2], chunks.select { it["parent_id"] == "rules.pdf" }.flat_map { it["pages"] }.uniq.sort
     refute_match(/Menu|Imprint/, loans)
+    assert_equal([["Reading room", "https://www.example.org/reading-room"]],
+                 chunks.select { it["parent_id"] == "reading-room.md" }.map { it.values_at("title", "source") }.uniq)
   end
 
   def run_documents!(*)

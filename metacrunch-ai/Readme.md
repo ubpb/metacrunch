@@ -33,6 +33,48 @@ The API key comes from a params file, the credentials or the environment, as any
 Lines into JSON Lines; [`examples/documents.rb`](examples/documents.rb) turns a directory of documents into chunks
 with vectors (see [From documents to a RAG index](#from-documents-to-a-rag-index)).
 
+## Overview
+
+From a directory of documents to passages with vectors in a search index, in one job:
+
+```
+ files                    a metacrunch job
+                    ① read             ② extract text         ③ chunk         ④ embed         ⑤ write
+┌──────────────┐  ┌──────────────┐   ┌──────────────────┐   ┌───────────┐   ┌───────────┐   ┌───────────────┐
+│ *.html       │  │ FileList::   │   │ Extract          │   │ Chunk     │   │ Embed     │   │ Elasticsearch │
+│ *.md, *.txt  │─▶│ Reader       │──▶│  ├ Html  (Ruby)  │──▶│ 1 docu-   │──▶│ (batch)   │──▶│ JSON Lines    │
+│ *.pdf        │  │ one record   │   │  ├ Text  (Ruby)  │   │ ment → n  │   │ a vector  │   │ a database …  │
+│ *.docx, …    │  │ per file     │   │  └ Tika          │   │ chunks    │   │ per chunk │   │               │
+└──────────────┘  └──────────────┘   └───────┬──────────┘   └───────────┘   └─────┬─────┘   └───────────────┘
+                                             └─HTTP─▶ Tika server                 └─HTTP─▶ embeddings service
+                                                      (PDF, Word, …)                       (Ollama, OpenAI, …)
+```
+
+What a record looks like after each step, for `handbook/loans.html`:
+
+| After | The record |
+|---|---|
+| ① `FileList::Reader` | `id: "handbook/loans.html"`, `type: "text/html"`, `sha256`, `modified`, `content`: the bytes |
+| ② `Extract` (`Html`) | `content` is gone; `text: "# Loans\n\nBooks can be …"` (the main content as Markdown), `title`, `lang` |
+| ③ `Chunk` | one record per chunk: `id: "handbook/loans.html#2"`, `parent_id`, `chunk`, `headings: ["Loans", "Loan periods"]`, `text`; for PDFs `pages` |
+| ④ `Embed` | each chunk gets `embedding: [0.12, …]`, from its title, headings and text |
+
+The parts, by gem:
+
+| Part | Gem | What it does |
+|---|---|---|
+| `FileList::Reader` | metacrunch | a source: one record per file of directories or glob patterns |
+| [`Extract`](#extracting-text) | metacrunch-ai | a step that picks an extractor by MIME type |
+| [`Html`](#html) | metacrunch-ai | web pages: the main content as Markdown, without navigation, headers and footers |
+| [`Text`](#text) | metacrunch-ai | Markdown and text as they are, with front matter as fields and page markers as pages |
+| [`Tika`](#tika) | metacrunch-ai | PDF, Word, Excel, PowerPoint and more through an Apache Tika server, PDFs page by page |
+| [`Chunk`](#chunking) | metacrunch-ai | a step that cuts Markdown into chunks by its headings, with their pages |
+| [`Embed`](#the-embed-step), [`OpenAi`](#embedders) | metacrunch-ai | vectors through the OpenAI embeddings API (OpenAI, Ollama, vLLM, …) |
+| `Writer`, `Search` | [metacrunch-elasticsearch](../metacrunch-elasticsearch#chunk-indices) | writes the chunks; a `knn` search finds passages |
+
+The text can also be extracted before the job, by another tool such as Docling, into Markdown files that the job
+reads; see [Two ways to the Markdown](#two-ways-to-the-markdown).
+
 ## Installation
 
 metacrunch 5 and this gem are not released yet; until then they come from Git with Bundler, metacrunch from the
@@ -342,6 +384,40 @@ $ bundle exec metacrunch run examples/documents.rb --tika-url http://localhost:9
     --embeddings-url http://localhost:11435/v1 --embeddings-model all-minilm \
     --output tmp/chunks.jsonl examples/data/documents
 ```
+
+### Two ways to the Markdown
+
+**In the job:** the job reads the original files and extracts their text on every run, as above. One job does
+everything; `Html` takes the main content of web pages, `Tika` reads PDFs and office files.
+
+**Before the job:** another tool turns the originals into Markdown files once, and the job reads those:
+
+```
+originals ──▶ Docling, Tika, … (once) ──▶ *.md ──▶ FileList::Reader ─▶ Extract(Text) ─▶ Chunk ─▶ Embed ─▶ sink
+```
+
+This pays when extraction is expensive or best done by a special tool: Docling, for example, recognizes headings,
+tables and reading order in PDFs better than Tika, but takes seconds per page. A job that changes only the chunk size
+or the model then chunks and embeds again without extracting again. So that the chunks know as much as in the job's
+own extraction, the Markdown files carry what the original's text alone does not:
+
+- front matter with the title and the source, which `Text` turns into fields;
+- page markers, which `Text` turns into pages.
+
+```python
+# Docling, in Python
+from docling.document_converter import DocumentConverter
+
+document = DocumentConverter().convert("rules.pdf").document
+markdown = document.export_to_markdown(page_break_placeholder="<!-- page break -->")
+front_matter = f"---\ntitle: {document.name}\nsource: https://www.example.org/rules.pdf\n---\n"
+open("markdown/rules.md", "w").write(front_matter + markdown)
+```
+
+The job then reads the Markdown directory with `Extract.new(Metacrunch::Ai::Text.new)`; a chunk of `rules.md` gets
+`title`, `source` and `pages` as one of `rules.pdf` read through Tika would.
+
+### Changed documents and short records
 
 Each chunk is a record of its own (see [ADR 0007](../docs/decisions/0007-store-chunks-as-records-of-their-own.md)).
 When documents change, the chunks of a changed or deleted document must go: build a new index from all documents and
