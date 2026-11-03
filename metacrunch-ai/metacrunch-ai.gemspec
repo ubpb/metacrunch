@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.name     = "metacrunch-ai"
   spec.version  = Metacrunch::Ai::VERSION
   spec.authors  = ["René Sprotte"]
-  spec.summary  = "AI steps for metacrunch: embeddings through the OpenAI embeddings API and compatible servers"
+  spec.summary  = "AI steps for metacrunch: text extraction, chunking and embeddings"
   spec.homepage = "https://github.com/ubpb/metacrunch"
   spec.license  = "MIT"
 

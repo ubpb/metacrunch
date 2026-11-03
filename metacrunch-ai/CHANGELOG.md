@@ -15,10 +15,18 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
 - `Metacrunch::Ai::OpenAi`, an embedder for the OpenAI embeddings API and the servers that offer it (Azure OpenAI,
   Voyage AI, Mistral, Hugging Face Text Embeddings Inference, Ollama, vLLM), with further headers and request fields,
   `max_inputs`, timeouts and retries with a growing delay and `Retry-After`, over one persistent connection per
-  process, without dependencies besides metacrunch.
+  process, with Ruby's `net/http`.
 - `Metacrunch::Ai::EMBEDDINGS_PARAMS`, a group of parameters (`embeddings_url`, `embeddings_model`, the secret
   `embeddings_api_key`), and `Metacrunch::Ai.embedder(params)`.
 - `Metacrunch::Ai::FakeEmbedder`, deterministic unit vectors without network, for tests and dry runs:
   `embeddings_url` `fake` or `fake:DIMS`.
 - Errors `Metacrunch::Ai::InvalidInput`, `Unavailable` and `ApiError` with the HTTP status and an excerpt of the
   answer.
+- `Metacrunch::Ai::Extract`, a step that turns a document's content into Markdown text with exchangeable extractors,
+  chosen by MIME type: `Html` (the main content of a page, in Ruby with Nokogiri, the gem's new dependency), `Text`
+  (plain text and Markdown as they are) and `Tika` (PDF, office and many other formats through an Apache Tika server,
+  a PDF's text page by page), with `Metacrunch::Ai::TIKA_PARAMS` and `Metacrunch::Ai.tika(params)`. It writes title
+  and language, drops the raw content, and marks documents without text.
+- `Metacrunch::Ai::Chunk`, a step for `flat_map` that cuts a document's text into chunk records by its structure,
+  recursively, with `size`, `overlap` and an optional length function such as a tokenizer; each chunk has the id of
+  its document, its number, its heading path and its pages.
