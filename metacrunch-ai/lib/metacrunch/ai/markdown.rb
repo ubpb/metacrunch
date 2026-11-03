@@ -22,6 +22,14 @@ module Metacrunch
 
       module_function
 
+      # Parses HTML with Nokogiri's HTML5 parser; a document nested deeper
+      # than the parser allows raises InvalidInput.
+      def parse(html)
+        Nokogiri::HTML5(html)
+      rescue ArgumentError => e
+        raise InvalidInput, "the HTML cannot be parsed: #{e.message}"
+      end
+
       # node: a Nokogiri node, e.g. a document or its body.
       def convert(node) = blocks(node).join("\n\n")
 

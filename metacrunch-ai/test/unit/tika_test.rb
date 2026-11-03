@@ -82,6 +82,12 @@ class TikaTest < Minitest::Test
     assert_equal({text: ["Page one."], title: nil, lang: nil, mark: "Text partly extracted"}, tika.extract("x"))
   end
 
+  def test_too_deeply_nested_xhtml_is_invalid_input
+    answer(content("#{"<div>" * 500}x"))
+
+    assert_raises(Metacrunch::Ai::InvalidInput) { tika.extract("x") }
+  end
+
   def test_no_content_is_no_text
     answer({"Content-Type" => "image/png"})
 

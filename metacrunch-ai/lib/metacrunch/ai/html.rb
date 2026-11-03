@@ -27,7 +27,7 @@ module Metacrunch
       # content: the page as bytes (charset from a BOM or <meta charset>) or
       # as a String (its encoding). Takes type: as every extractor does.
       def extract(content, **)
-        document = Nokogiri::HTML5(content.to_s)
+        document = Markdown.parse(content.to_s)
         roots, page = main(document)
         roots.each { clean(it, page) }
         text = roots.map { Markdown.convert(it) }.reject(&:empty?).join("\n\n")

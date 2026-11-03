@@ -64,7 +64,7 @@ module Metacrunch
       def text(xhtml)
         return "" if xhtml.strip.empty?
 
-        document = Nokogiri::HTML5(xhtml)
+        document = Markdown.parse(xhtml)
         pages = document.css("div.page")
         pages.empty? ? Markdown.convert(document.at_css("body") || document) : pages.map { Markdown.convert(it) }
       end

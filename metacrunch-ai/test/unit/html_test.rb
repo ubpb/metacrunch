@@ -94,6 +94,12 @@ class HtmlTest < Minitest::Test
     assert_equal "�ffnungszeiten", result
   end
 
+  def test_too_deeply_nested_html_is_invalid_input
+    error = assert_raises(Metacrunch::Ai::InvalidInput) { text("#{"<div>" * 500}x") }
+
+    assert_match(/\Athe HTML cannot be parsed: .*depth/, error.message)
+  end
+
   def test_an_empty_body
     assert_equal "", text("<html><body></body></html>")
     assert_equal "", text("")
