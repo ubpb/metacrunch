@@ -52,6 +52,12 @@ class OpenAiTest < Minitest::Test
     assert_equal [[1.0], [2.0]], embedder.embed(["a", "b"])
   end
 
+  def test_takes_the_order_of_the_answer_without_index
+    @api.on("POST", "/v1/embeddings") { [200, {"data" => [{"embedding" => [1.0]}, {"embedding" => [2]}]}] }
+
+    assert_equal [[1.0], [2.0]], embedder.embed(["a", "b"])
+  end
+
   def test_sums_usage_into_stats
     @api.on("POST", "/v1/embeddings") { [200, answer([[1.0]], usage: {"prompt_tokens" => 4, "total_tokens" => 4})] }
     @api.on("POST", "/v1/embeddings", times: 1) { [200, answer([[1.0]], usage: {"total_tokens" => 3})] }
@@ -74,6 +80,8 @@ class OpenAiTest < Minitest::Test
       {"data" => [{"index" => 0, "embedding" => ["x"]}, {"index" => 1, "embedding" => [1.0]}]},
       {"data" => [{"index" => 0, "embedding" => [1.0]}, {"index" => 0, "embedding" => [1.0]}]},
       {"data" => [1, {"index" => 1, "embedding" => [1.0]}]},
+      {"data" => [1, {"embedding" => [1.0]}]},
+      {"data" => [{"index" => 0, "embedding" => [1.0]}, {"embedding" => [1.0]}]},
       {"vectors" => []}
     ].each do |body|
       @api.on("POST", "/v1/embeddings", times: 1) { [200, body] }

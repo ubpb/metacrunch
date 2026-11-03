@@ -67,8 +67,16 @@ module Metacrunch
         malformed("no data") unless data.is_a?(Array)
         malformed("#{Ai.count(data.size, "vector")} for #{Ai.count(count, "text")}") unless data.size == count
 
+        embeddings(data, count).map { vector(it) }
+      end
+
+      # The embeddings by index, or in the order of the answer where no
+      # entry has an index, as some servers send them.
+      def embeddings(data, count)
+        return data.map { it["embedding"] if it.is_a?(Hash) } if data.none? { it.is_a?(Hash) && it.key?("index") }
+
         by_index = data.filter_map { [it["index"], it["embedding"]] if it.is_a?(Hash) }.to_h
-        Array.new(count) { vector(by_index[it]) }
+        Array.new(count) { by_index[it] }
       end
 
       def vector(embedding)
