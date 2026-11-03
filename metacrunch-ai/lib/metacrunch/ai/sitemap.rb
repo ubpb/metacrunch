@@ -64,18 +64,20 @@ module Metacrunch
             next attempt(target, run, &) unless target.is_a?(Site)
 
             named = site_maps(target.url)
+            robots = "#{Web.origin(target.url)}/robots.txt"
             fallback = "#{Web.origin(target.url)}/sitemap.xml"
-            read = named.map { attempt(it, run, &) }.any?
-            attempt(fallback, run, &) unless read || named.any? { same?(it, fallback) }
+            read = named.map { attempt(it, run, robots, &) }.any?
+            attempt(fallback, run, &) unless read || named.any? { same?(it, robots, fallback) }
           end
           raise InputError, "no sitemap could be read: #{run.failures.join(", ")}" unless run.read
         end
 
         private
 
-        # Reads a top-level sitemap; true when it could be read.
-        def attempt(target, run, &)
-          read(target, 1, run.seen, &)
+        # Reads a top-level sitemap, one named in the document at base
+        # relative to it; true when it could be read.
+        def attempt(target, run, base = nil, &)
+          read(base ? locate(target, base) : target, 1, run.seen, &)
           run.read = true
           run.waiting.each(&)
           run.waiting.clear
@@ -93,8 +95,8 @@ module Metacrunch
           []
         end
 
-        def same?(url, normalized)
-          Web.normalize(url) == normalized
+        def same?(url, base, normalized)
+          Web.resolve(base, url) == normalized
         rescue Error
           false
         end
