@@ -10,6 +10,8 @@ and the development commands; this file describes the process and the rules on t
 - `master` holds metacrunch 5, a redesign that is not released yet. It need not stay compatible with 4.x, and 4.x
   names and concepts are no design criterion: weigh them on their own merits and against current tools. The released
   4.x code is maintained in the branch `4.x`.
+- `site/` holds the project website: one static page, `site/index.html`, with its fonts and script in `site/assets`.
+  It has no build step and loads nothing from other hosts; open it in a browser to see it.
 
 ## Sizing the work
 
@@ -114,8 +116,11 @@ Gems that talk to a server (Elasticsearch, databases) test against real servers,
   and plans.
 - Examples, docs, ADRs, templates, messages and comments are generic. Do not name internal tools, projects or
   institutions; library metadata (catalog records, MARC, ISBNs) is welcome. Specs and plans, which are not committed,
-  are the exception: they may name the real projects a design was checked against.
-- Docs change with the code, in the same branch: the gem's Readme and `docs/`, its examples and its `CHANGELOG.md`.
+  are the exception: they may name the real projects a design was checked against. So is the website in `site/`: it
+  may name the institution that develops metacrunch, where it tells where metacrunch comes from and in the links to
+  the imprint and the privacy policy.
+- Docs change with the code, in the same branch: the gem's Readme and `docs/`, its examples and its `CHANGELOG.md`,
+  and the website where it shows what changed.
 - A changed dependency in a gemspec changes lockfiles: run `bundle exec rake bundle` and commit every changed
   `Gemfile.lock`.
 - One commit per topic. The subject is a sentence in the imperative that says what changes, without a type prefix or

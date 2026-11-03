@@ -1,0 +1,1072 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>metacrunch</title>
+<meta name="description" content="metacrunch is a small Ruby toolkit for data processing and ETL: jobs read records from a source, pass them through steps and write them to a sink.">
+<style>
+/* Layout: one 1160px column on cool index-card paper. The single loud object is a library catalog card
+   (ruby head rule, blue ruled lines, punched hole) holding a MARC record; code sits in ink panels. */
+/* Fonts: the latin subsets from Google Fonts, served from assets/fonts with their licenses. */
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 400; font-display: swap; src: url("assets/fonts/atkinson-hyperlegible/atkinson-hyperlegible-latin-400.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: italic; font-weight: 400; font-display: swap; src: url("assets/fonts/atkinson-hyperlegible/atkinson-hyperlegible-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 700; font-display: swap; src: url("assets/fonts/atkinson-hyperlegible/atkinson-hyperlegible-latin-700.woff2") format("woff2"); }
+@font-face { font-family: "Bricolage Grotesque"; font-style: normal; font-weight: 500 800; font-display: swap; src: url("assets/fonts/bricolage-grotesque/bricolage-grotesque-latin-variable.woff2") format("woff2"); }
+@font-face { font-family: "Courier Prime"; font-style: normal; font-weight: 400; font-display: swap; src: url("assets/fonts/courier-prime/courier-prime-latin-400.woff2") format("woff2"); }
+@font-face { font-family: "Courier Prime"; font-style: normal; font-weight: 700; font-display: swap; src: url("assets/fonts/courier-prime/courier-prime-latin-700.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 400 600; font-display: swap; src: url("assets/fonts/jetbrains-mono/jetbrains-mono-latin-variable.woff2") format("woff2"); }
+:root {
+  --paper: #F4F7FB;
+  --surface: #FFFFFF;
+  --ink: #14203A;
+  --ink-2: #46536E;
+  --ink-3: #5F6B85;
+  --line: #DAE2EC;
+  --line-strong: #B5C2D4;
+  --ruby: #B3123B;
+  --ruby-ink: #A0102F;
+  --ruby-wash: #FBEAEE;
+  --on-ruby: #FFFFFF;
+  --focus: #2F6FB3;
+  --shadow: rgba(20, 32, 58, 0.22);
+
+  --card-paper: #FFFFFF;
+  --card-ink: #1C2131;
+  --card-dim: #6A7186;
+  --card-rule: #C41E3F;
+  --card-lines: #C3D5EC;
+  --card-mark: #FFE59A;
+
+  --code-bg: #131E36;
+  --code-fg: #E3E9F2;
+  --code-dim: #8794AE;
+  --code-out: #C3CDDD;
+  --code-line: #26355A;
+  --syn-kw: #FF8DA4;
+  --syn-str: #A6CDF7;
+  --syn-const: #F2C979;
+  --syn-com: #7F8DA8;
+  --code-mark: #2B3D66;
+
+  --chart-a: #B3123B;
+  --chart-b: #2F6FB3;
+
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --f-type: "Courier Prime", "Courier New", Courier, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0B1221;
+    --surface: #121B2E;
+    --ink: #E4EAF3;
+    --ink-2: #A6B2C7;
+    --ink-3: #8C99B0;
+    --line: #1E2A41;
+    --line-strong: #34435F;
+    --ruby: #F0506E;
+    --ruby-ink: #FF7D95;
+    --ruby-wash: #34131F;
+    --on-ruby: #1A0710;
+    --focus: #6EA9EC;
+    --shadow: rgba(0, 0, 0, 0.55);
+    --card-paper: #E9EEF5;
+    --card-lines: #B4C8E3;
+    --code-bg: #0E1628;
+    --code-line: #22304E;
+    --chart-a: #F0506E;
+    --chart-b: #4F8FD6;
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--paper);
+}
+a { color: var(--ruby-ink); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+code { font-family: var(--f-mono); font-size: 0.9em; }
+p code, li code, td code, dd code { background: var(--ruby-wash); color: var(--ink); padding: 0.08em 0.32em; border-radius: 4px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+p { margin: 0; }
+
+.wrap {
+  max-width: 1160px;
+  margin-inline: auto;
+  padding-left: max(clamp(16px, 4vw, 32px), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(16px, 4vw, 32px), env(safe-area-inset-right, 0px));
+}
+
+/* Header */
+.top {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 9;
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.top .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
+.brand { display: inline-flex; align-items: center; color: var(--ink); text-decoration: none; font: 750 1.3rem/1 var(--f-display); letter-spacing: -0.02em; }
+.nav { display: flex; gap: 22px; margin-left: auto; }
+.nav a { color: var(--ink-2); text-decoration: none; font-size: 0.95rem; }
+.nav a:hover { color: var(--ink); }
+.gh {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px; border: 1px solid var(--line-strong); border-radius: 999px;
+  color: var(--ink); text-decoration: none; font-size: 0.92rem; font-weight: 700;
+}
+.gh:hover { border-color: var(--ink-3); }
+@media (max-width: 880px) { .nav { display: none; } .gh { margin-left: auto; } }
+
+/* Hero */
+.hero .wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(36px, 5vw, 76px);
+  align-items: center;
+  padding-block: clamp(44px, 7vw, 96px) clamp(56px, 7vw, 96px);
+}
+@media (max-width: 940px) { .hero .wrap { grid-template-columns: minmax(0, 1fr); } }
+.hero-text { display: grid; gap: 24px; min-width: 0; }
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 0.9rem; color: var(--ink-2); }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 12px 4px 10px; border-radius: 999px;
+  background: var(--ruby-wash); color: var(--ink); font-weight: 700; font-size: 0.85rem;
+}
+.pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ruby); }
+h1 {
+  font: 760 clamp(2.6rem, 1.5rem + 4vw, 4.6rem)/1.0 var(--f-display);
+  letter-spacing: -0.03em;
+}
+h1 em { font-style: normal; color: var(--ruby-ink); }
+.lead { font-size: clamp(1.1rem, 1rem + 0.4vw, 1.25rem); color: var(--ink-2); max-width: 36em; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 1rem;
+  border: 1px solid transparent;
+}
+.btn-primary { background: var(--ruby); color: var(--on-ruby); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-quiet { border-color: var(--line-strong); color: var(--ink); }
+.btn-quiet:hover { border-color: var(--ink-3); }
+.install { display: flex; align-items: stretch; background: var(--code-bg); border: 1px solid var(--code-line); border-radius: 10px; min-width: 0; max-width: 36rem; }
+.install pre { margin: 0; padding: 13px 16px; overflow-x: auto; color: var(--code-fg); font: 400 0.88rem/1.5 var(--f-mono); flex: 1; min-width: 0; }
+.install .copy { margin: 8px; }
+.fine { font-size: 0.88rem; color: var(--ink-3); }
+
+/* The catalog card */
+.demo { display: grid; gap: 14px; min-width: 0; justify-items: stretch; }
+.cc {
+  --lh: 27px;
+  position: relative;
+  background-color: var(--card-paper);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--lh) - 1px), var(--card-lines) calc(var(--lh) - 1px) var(--lh));
+  background-origin: content-box;
+  color: var(--card-ink);
+  border-radius: 6px;
+  padding: 14px 24px 46px 30px;
+  font: 400 15.5px/var(--lh) var(--f-type);
+  box-shadow: 0 1px 0 var(--line-strong), 0 22px 44px -22px var(--shadow);
+  transform: rotate(-1deg);
+  min-width: 0;
+}
+.cc::after {
+  content: ""; position: absolute; left: 50%; bottom: 14px;
+  width: 16px; height: 16px; margin-left: -8px; border-radius: 50%;
+  background: var(--paper);
+  box-shadow: inset 0 1px 3px var(--shadow);
+}
+.cc-head { position: relative; display: flex; justify-content: space-between; gap: 12px; height: var(--lh); color: var(--card-dim); font-size: 13.5px; }
+.cc-head::after { content: ""; position: absolute; left: -30px; right: -24px; bottom: -1px; height: 2px; background: var(--card-rule); }
+.ln { white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 3px; transition: background-color 0.25s; }
+.ln .t { font-weight: 700; }
+.ln b { color: var(--card-rule); font-weight: 700; }
+.ln.on { background: linear-gradient(transparent 14%, var(--card-mark) 14% 86%, transparent 86%); }
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 500 0.82rem/1 var(--f-mono); color: var(--ink-3); padding-left: 4px; }
+.flow code { font-size: 1em; padding: 5px 8px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--ink); background: var(--surface); }
+.json { white-space: pre-wrap; overflow-wrap: anywhere; }
+.kv { border-radius: 4px; cursor: default; transition: background-color 0.25s; }
+.kv .k { color: var(--syn-kw); }
+.kv .s { color: var(--syn-str); }
+.kv.on { background: var(--code-mark); outline: 1px solid var(--syn-const); }
+.hint { font-size: 0.88rem; color: var(--ink-3); padding-left: 4px; }
+@media (max-width: 520px) { .cc { --lh: 23px; font-size: 13px; padding: 12px 16px 40px 18px; } .cc-head { font-size: 12px; } .cc-head::after { left: -18px; right: -16px; } }
+
+/* Code panels */
+.code { background: var(--code-bg); color: var(--code-fg); border: 1px solid var(--code-line); border-radius: 12px; overflow: hidden; min-width: 0; }
+.code .bar {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  min-height: 40px; padding: 4px 8px 4px 18px; border-bottom: 1px solid var(--code-line);
+  font: 500 0.78rem/1 var(--f-mono); color: var(--code-dim);
+}
+.code pre { margin: 0; padding: 16px 18px 18px; overflow-x: auto; font: 400 0.86rem/1.68 var(--f-mono); tab-size: 2; }
+.code pre code { font-size: 1em; background: none; padding: 0; color: inherit; }
+.copy {
+  font: 500 0.76rem/1 var(--f-mono); color: var(--code-dim); background: transparent;
+  border: 1px solid var(--code-line); border-radius: 6px; padding: 7px 10px; cursor: pointer;
+}
+.copy:hover { color: var(--code-fg); border-color: var(--code-dim); }
+.term .p { color: var(--code-dim); user-select: none; }
+.term .c { color: var(--code-fg); }
+.term .o { color: var(--code-out); }
+.term .d { color: var(--code-dim); }
+.term .r { color: var(--syn-kw); }
+.term .g { color: var(--syn-const); }
+.hljs-keyword, .hljs-built_in, .hljs-literal { color: var(--syn-kw); }
+.hljs-string, .hljs-regexp { color: var(--syn-str); }
+.hljs-symbol, .hljs-number, .hljs-title.class_, .hljs-type, .hljs-variable.constant_ { color: var(--syn-const); }
+.hljs-comment { color: var(--syn-com); font-style: italic; }
+.hljs-attr { color: var(--syn-str); }
+.hljs-subst { color: var(--code-fg); }
+
+/* Sections */
+.sec { padding-block: clamp(64px, 8vw, 112px); border-top: 1px solid var(--line); }
+.sec-head { display: grid; gap: 14px; max-width: 46rem; margin-bottom: clamp(32px, 4vw, 48px); }
+.eyebrow { font: 600 0.76rem/1 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ruby-ink); }
+h2 { font: 720 clamp(1.95rem, 1.3rem + 2.1vw, 2.9rem)/1.06 var(--f-display); letter-spacing: -0.02em; }
+h3 { font: 680 1.3rem/1.2 var(--f-display); letter-spacing: -0.01em; }
+.sec-head p { color: var(--ink-2); font-size: 1.1rem; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 880px) { .split { grid-template-columns: minmax(0, 1fr); } }
+
+/* How it works */
+.pipe-fig { margin: 0 0 clamp(40px, 5vw, 56px); overflow-x: auto; }
+.pipe-fig svg { display: block; width: 100%; min-width: 620px; max-width: 900px; height: auto; margin-inline: auto; }
+.node rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; }
+.node.side rect { fill: var(--ruby-wash); stroke: var(--ruby); }
+.nt { font: 600 15px var(--f-mono); fill: var(--ink); text-anchor: middle; }
+.ns { font: 400 12.5px var(--f-body); fill: var(--ink-3); text-anchor: middle; }
+.edge { stroke: var(--ink-3); stroke-width: 1.5; fill: none; }
+.edge.side { stroke: var(--ruby); stroke-dasharray: 5 4; }
+.ah { fill: var(--ink-3); }
+.ah.side { fill: var(--ruby); }
+.dots { font: 600 22px var(--f-mono); fill: var(--ink-3); text-anchor: middle; }
+
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-top: 20px; }
+.step { display: grid; gap: 8px; align-content: start; padding: 20px 22px 22px; min-width: 0; }
+.step + .step { border-left: 1px solid var(--line); }
+.step code.name { font: 600 1.15rem/1 var(--f-mono); color: var(--ink); background: none; padding: 0; }
+.step .card { font: 500 0.85rem/1 var(--f-mono); color: var(--ruby-ink); font-variant-numeric: tabular-nums; }
+.step p { color: var(--ink-2); font-size: 0.97rem; }
+@media (max-width: 880px) {
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .step:nth-child(3) { border-left: 0; }
+  .step:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 480px) {
+  .steps { grid-template-columns: minmax(0, 1fr); }
+  .step + .step { border-left: 0; border-top: 1px solid var(--line); }
+}
+.recipes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(20px, 3vw, 40px); margin-top: clamp(40px, 5vw, 56px); }
+.recipe { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.recipe p { color: var(--ink-2); }
+.recipe pre { margin: 0; font: 400 0.82rem/1.6 var(--f-mono); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow-x: auto; }
+@media (max-width: 880px) { .recipes { grid-template-columns: minmax(0, 1fr); } }
+.origin { margin-top: 28px; color: var(--ink-2); max-width: 46rem; }
+
+/* Features */
+.feature-lead { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; margin-bottom: clamp(56px, 7vw, 88px); }
+@media (max-width: 880px) { .feature-lead { grid-template-columns: minmax(0, 1fr); } }
+.feature-lead .txt { display: grid; gap: 14px; }
+.feature-lead .txt p { color: var(--ink-2); }
+.feats { display: grid; gap: clamp(44px, 6vw, 64px); }
+.feat {
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto auto 1fr;
+  gap: 12px clamp(24px, 4vw, 56px); align-content: start; min-width: 0;
+}
+.feat > h3, .feat > p { grid-column: 1; }
+.feat > .code { grid-column: 2; grid-row: 1 / span 3; }
+.feat p { color: var(--ink-2); }
+@media (max-width: 880px) {
+  .feat { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .feat > .code { grid-column: 1; grid-row: auto; margin-top: 6px; }
+}
+
+/* Gems */
+.gems { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 960px) { .gems { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .gems { grid-template-columns: minmax(0, 1fr); } }
+.gem { display: grid; grid-template-rows: auto 1fr auto; gap: 12px; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.gem.core { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 32px; border-color: var(--line-strong); }
+.gem.next { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding-block: 18px; background: transparent; border-style: dashed; border-color: var(--line-strong); }
+.gem.next strong { color: var(--ink); }
+.gem.core .tags { grid-column: 1; }
+.gem.core .more { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+@media (max-width: 600px) { .gem.core { grid-template-columns: minmax(0, 1fr); } .gem.core .more { grid-column: 1; grid-row: auto; } }
+.gem h3 { font: 600 1.05rem/1.2 var(--f-mono); letter-spacing: 0; overflow-wrap: anywhere; }
+.gem p { color: var(--ink-2); font-size: 0.98rem; }
+.gem .body { display: grid; gap: 8px; align-content: start; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.tags li { font: 500 0.76rem/1 var(--f-mono); padding: 5px 8px; border-radius: 6px; background: var(--paper); border: 1px solid var(--line); color: var(--ink-2); }
+.more { font-weight: 700; font-size: 0.95rem; text-decoration: none; }
+.more:hover { text-decoration: underline; }
+.gems-foot { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: center; margin-top: 32px; }
+.gems-foot p { color: var(--ink-2); max-width: 34rem; }
+@media (max-width: 880px) { .gems-foot { grid-template-columns: minmax(0, 1fr); } }
+
+/* MARC + chart */
+.marc { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); gap: clamp(24px, 4vw, 48px); align-items: start; }
+@media (max-width: 960px) { .marc { grid-template-columns: minmax(0, 1fr); } }
+.marc-left, .marc-right { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.marc-right p { color: var(--ink-2); }
+.facts { margin: 0; padding-left: 1.1rem; display: grid; gap: 8px; color: var(--ink-2); }
+.chart { position: relative; margin: clamp(32px, 4vw, 48px) 0 0; padding: clamp(18px, 3vw, 28px); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 18px; min-width: 0; }
+.chart figcaption { display: grid; gap: 6px; }
+.chart figcaption p { color: var(--ink-3); font-size: 0.9rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; list-style: none; margin: 0; padding: 0; font-size: 0.9rem; color: var(--ink-2); }
+.legend li { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.sw.a, .hbar.a { background: var(--chart-a); }
+.sw.b, .hbar.b { background: var(--chart-b); }
+.bars { display: grid; gap: 16px; --max: 70; }
+.grp { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: 4px 14px; align-items: center; }
+.glabel { font-size: 0.9rem; color: var(--ink); grid-row: span 2; }
+.track { display: flex; align-items: center; gap: 6px; border-left: 1px solid var(--line-strong); min-width: 0; }
+.hbar { display: block; height: 14px; width: calc(var(--v) / var(--max) * 100%); border-radius: 0 4px 4px 0; cursor: default; position: relative; }
+.hbar::after { content: ""; position: absolute; inset: -5px -4px; }
+.hbar:focus-visible { outline-offset: 3px; }
+.val { font: 500 0.78rem/1 var(--f-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 520px) { .grp { grid-template-columns: minmax(0, 1fr); } .glabel { grid-row: auto; } }
+.tip {
+  position: absolute; z-index: 3; pointer-events: none; max-width: 260px;
+  padding: 8px 10px; border-radius: 8px; background: var(--ink); color: var(--paper);
+  font-size: 0.82rem; line-height: 1.4; box-shadow: 0 8px 24px -8px var(--shadow);
+}
+.tip strong { display: block; }
+.notes { margin: 0; padding-left: 1.1rem; color: var(--ink-3); font-size: 0.86rem; display: grid; gap: 4px; }
+details.table { font-size: 0.9rem; }
+details.table summary { cursor: pointer; color: var(--ruby-ink); font-weight: 700; }
+.tbl { overflow-x: auto; margin-top: 12px; }
+.tbl table { border-collapse: collapse; width: 100%; min-width: 420px; }
+.tbl th, .tbl td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl td.n, .tbl th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl th { color: var(--ink-3); font-weight: 700; font-size: 0.82rem; }
+
+/* Compare */
+.peers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+@media (max-width: 760px) { .peers { grid-template-columns: minmax(0, 1fr); } }
+.peer { display: grid; gap: 10px; align-content: start; padding: 28px 28px 30px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.peer:nth-child(even) { padding: 28px 0 30px 28px; border-left: 1px solid var(--line); }
+@media (max-width: 760px) { .peer, .peer:nth-child(even) { padding: 24px 0; border-left: 0; } }
+.peer-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.lang { font: 500 0.76rem/1 var(--f-mono); color: var(--ink-3); padding: 4px 7px; border: 1px solid var(--line-strong); border-radius: 5px; }
+.peer p { color: var(--ink-2); }
+.peer p.diff { color: var(--ink); }
+.fit { margin-top: 32px; max-width: 46rem; color: var(--ink-2); }
+
+/* Start */
+.start { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; counter-reset: s; }
+.start > li { display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 4px 18px; counter-increment: s; }
+.start > li::before {
+  content: counter(s); grid-row: span 2;
+  display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%;
+  border: 1.5px solid var(--ruby); color: var(--ruby-ink); font: 700 1.05rem/1 var(--f-display);
+}
+.start .step-body { display: grid; gap: 10px; min-width: 0; }
+.start .step-body > p { color: var(--ink-2); }
+.start h3 { padding-top: 6px; }
+
+/* Docs */
+.docs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 32px; margin: 0; }
+@media (max-width: 880px) { .docs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .docs { grid-template-columns: minmax(0, 1fr); } }
+.doc { padding: 16px 0; border-top: 1px solid var(--line); display: grid; gap: 4px; min-width: 0; }
+.doc a { font-weight: 700; text-decoration: none; }
+.doc a:hover { text-decoration: underline; }
+.doc dt, .doc dd { margin: 0; }
+.doc span { color: var(--ink-3); font-size: 0.93rem; }
+
+/* Footer */
+.foot { border-top: 1px solid var(--line); }
+.foot .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px; padding-block: 36px 44px; color: var(--ink-3); font-size: 0.92rem; }
+.foot nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.foot a { color: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="metacrunch, back to top">metacrunch</a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#gems">Gems</a>
+      <a href="#marc">MARC</a>
+      <a href="#compare">Compare</a>
+      <a href="#start">Get started</a>
+      <a href="#docs">Docs</a>
+    </nav>
+    <a class="gh" href="https://github.com/ubpb/metacrunch">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
+      <div class="hero-text">
+        <div class="status">
+          <span class="pill">metacrunch 5 · in development</span>
+          <span>Released: <a href="https://rubygems.org/gems/metacrunch">4.2.1 on RubyGems</a></span>
+        </div>
+        <h1 id="hero-title">Metadata pipelines in <em>plain Ruby</em></h1>
+        <p class="lead">metacrunch is a small toolkit for data processing and ETL. A job reads records from a source, passes them through steps and writes them to a sink. Rejected and failed records keep their reason, and jobs chain with each other and with <code>jq</code>, <code>grep</code> and <code>sort</code>.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#start">Get started</a>
+          <a class="btn btn-quiet" href="#how">See how it works</a>
+        </div>
+        <div class="install">
+          <pre id="install-line">gem "metacrunch", github: "ubpb/metacrunch"</pre>
+          <button class="copy" type="button" data-copy-target="install-line">Copy</button>
+        </div>
+        <p class="fine">Until the release of metacrunch 5, the gems come from Git with Bundler. Requires Ruby 4.0.</p>
+      </div>
+
+      <div class="demo">
+        <div class="cc" aria-label="A MARC record on a catalog card">
+          <div class="cc-head"><span>records.mrc</span><span>binary MARC · ISO 2709</span></div>
+          <div class="ln" data-tag="LDR"><span class="t">=LDR</span>  00000nam a2200000 i 4500</div>
+          <div class="ln" data-tag="001"><span class="t">=001</span>  b1851</div>
+          <div class="ln" data-tag="020"><span class="t">=020</span>  \\<b>$a</b>9780142437247</div>
+          <div class="ln" data-tag="100"><span class="t">=100</span>  1\<b>$a</b>Melville, Herman<b>$d</b>1819-1891</div>
+          <div class="ln on" data-tag="245"><span class="t">=245</span>  10<b>$a</b>Moby-Dick<b>$b</b>or, The whale</div>
+          <div class="ln" data-tag="264"><span class="t">=264</span>  \1<b>$a</b>New York<b>$b</b>Penguin Books<b>$c</b>2003</div>
+          <div class="ln" data-tag="650"><span class="t">=650</span>  \0<b>$a</b>Whaling<b>$v</b>Fiction</div>
+        </div>
+        <div class="flow" aria-hidden="true"><code>Marc::Reader</code><span>→</span><code>map</code><span>→</span><code>JSON Lines</code></div>
+        <div class="code">
+          <div class="bar"><span>stdout</span></div>
+          <pre class="json" aria-label="The record as one line of JSON">{<span class="kv" data-tags="001" tabindex="0"><span class="k">"id"</span>:<span class="s">"b1851"</span></span>,<span class="kv on" data-tags="245" tabindex="0"><span class="k">"title"</span>:<span class="s">"Moby-Dick : or, The whale"</span></span>,<span class="kv" data-tags="100" tabindex="0"><span class="k">"authors"</span>:[<span class="s">"Melville, Herman"</span>]</span>,<span class="kv" data-tags="020" tabindex="0"><span class="k">"isbns"</span>:[<span class="s">"9780142437247"</span>]</span>}</pre>
+        </div>
+        <p class="hint">Point at a key to see the MARC field it comes from. The job is in <a href="#marc">the MARC section</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">How it works</span>
+        <h2 id="how-title">A job is a Ruby file</h2>
+        <p>Sources, steps and sinks are plain Ruby objects. A source is anything with <code>#each</code>, a sink anything with <code>#write</code>. <code>metacrunch run</code> runs the job and prints a summary.</p>
+      </div>
+
+      <figure class="pipe-fig">
+        <svg viewBox="0 0 760 214" role="img" aria-labelledby="pipe-t pipe-d">
+          <title id="pipe-t">How a job runs</title>
+          <desc id="pipe-d">A source yields records to a chain of steps, and the last step hands them to the sink. Records that a step rejects, or that fail, go to sinks of their own, together with the reason.</desc>
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ah-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah side" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+          <g class="node"><rect x="8" y="30" width="148" height="64" rx="8"/><text class="nt" x="82" y="58">source</text><text class="ns" x="82" y="79">anything with #each</text></g>
+          <g class="node"><rect x="206" y="30" width="124" height="64" rx="8"/><text class="nt" x="268" y="58">step</text><text class="ns" x="268" y="79">map</text></g>
+          <g class="node"><rect x="380" y="30" width="124" height="64" rx="8"/><text class="nt" x="442" y="58">step</text><text class="ns" x="442" y="79">reject</text></g>
+          <text class="dots" x="540" y="68">…</text>
+          <g class="node"><rect x="596" y="30" width="156" height="64" rx="8"/><text class="nt" x="674" y="58">sink</text><text class="ns" x="674" y="79">anything with #write</text></g>
+          <line class="edge" x1="156" y1="62" x2="202" y2="62" marker-end="url(#ah)"/>
+          <line class="edge" x1="330" y1="62" x2="376" y2="62" marker-end="url(#ah)"/>
+          <line class="edge" x1="504" y1="62" x2="522" y2="62"/>
+          <line class="edge" x1="558" y1="62" x2="592" y2="62" marker-end="url(#ah)"/>
+          <path class="edge side" d="M268 94 V130 H442 M442 94 V130"/>
+          <line class="edge side" x1="355" y1="130" x2="355" y2="151" marker-end="url(#ah-side)"/>
+          <g class="node side"><rect x="250" y="156" width="210" height="52" rx="8"/><text class="nt" x="355" y="179">rejects · failures</text><text class="ns" x="355" y="198">each with its reason</text></g>
+        </svg>
+      </figure>
+
+      <div class="split">
+        <div class="code">
+          <div class="bar"><span>numbers.rb</span></div>
+          <pre><code class="language-ruby">Metacrunch.job "numbers" do
+  params do
+    param :factor, Integer, default: 2, desc: "Multiplier"
+    args :numbers, min: 1, desc: "Numbers to process"
+  end
+
+  source params.numbers.map { Integer(it) }
+
+  reject("Negative") { it.negative? }
+  map { it * params.factor }
+end</code></pre>
+        </div>
+        <div class="code">
+          <div class="bar"><span>shell</span></div>
+          <pre class="term"><span class="p">$ </span><span class="c">metacrunch run numbers.rb --factor 3 -- 1 2 -5</span>
+<span class="o">3
+6</span>
+<span class="d">INFO  ok: read 3, written 2, rejected 1 (Negative: 1) in 0.00s</span>
+
+<span class="p">$ </span><span class="c">metacrunch run numbers.rb --help</span>
+<span class="d"># lists --factor and the arguments</span></pre>
+        </div>
+      </div>
+
+      <div class="steps" role="list">
+        <div class="step" role="listitem"><code class="name">map</code><span class="card">1 record → 1</span><p>The block returns the new record.</p></div>
+        <div class="step" role="listitem"><code class="name">filter</code><span class="card">1 record → 0 or 1</span><p>Keeps the record when the block is truthy.</p></div>
+        <div class="step" role="listitem"><code class="name">reject</code><span class="card">1 record → 0 or 1</span><p>Drops the record when the block is truthy. With a reason, it is counted and sent to <code>rejects</code>.</p></div>
+        <div class="step" role="listitem"><code class="name">flat_map</code><span class="card">1 record → 0 to n</span><p>The block returns an Enumerable of records.</p></div>
+      </div>
+
+      <div class="recipes">
+        <div class="recipe">
+          <h3>Jobs</h3>
+          <p>A source, steps and a sink. Without a source a job reads JSON Lines from stdin, without a sink it writes them to stdout.</p>
+          <pre>Metacrunch.job "marc_to_json" do … end</pre>
+        </div>
+        <div class="recipe">
+          <h3>Transforms</h3>
+          <p>Named steps with parameters of their own, which several jobs share with <code>use</code>.</p>
+          <pre>use "normalize", params: {max_length: 40}</pre>
+        </div>
+        <div class="recipe">
+          <h3>Commands</h3>
+          <p>Ruby code that runs jobs, transforms and other commands with <code>invoke</code> and acts on their results: for example, it publishes the new data only when the job ran without errors.</p>
+          <pre>result = invoke "marc_to_json"
+publish if result.ok?   # your code</pre>
+        </div>
+      </div>
+      <p class="origin">metacrunch is developed at <a href="https://www.ub.uni-paderborn.de/">Paderborn University Library</a> and grew out of its metadata work. Nothing in it is specific to library data, though: a record is any Ruby object, usually a Hash.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Features</span>
+        <h2 id="features-title">What comes with every job</h2>
+      </div>
+
+      <div class="feature-lead">
+        <div class="txt">
+          <h3>Trace a job</h3>
+          <p><code>metacrunch trace</code> runs the first records, or the records at a position or with an id, and shows what every step did: the changed keys of a Hash, marks, rejections and failures. It changes nothing: all sinks are replaced, and hooks do not run.</p>
+          <p>The engine counts records per step and per reason, so the summary of a run says why records went missing.</p>
+          <p>The example traces the job <code>books:export</code>: it writes the public titles into a directory, with the steps of the transform <code>books:public</code>.</p>
+        </div>
+        <div class="code">
+          <div class="bar"><span>shell</span></div>
+          <pre class="term"><span class="p">$ </span><span class="c">metacrunch trace -n 1 books:export --output out</span>
+<span class="g">#1  id=t1</span>
+<span class="o">  books:public/reject#1  pass
+  books:public/map#2     </span><span class="r">- "public": true</span>
+<span class="o">  sink                   1 record (not written)</span>
+<span class="d">traced 1 record: 1 to sink</span>
+
+<span class="p">$ </span><span class="c">metacrunch trace --position 3 books:export --output out</span>
+<span class="g">#3  id=t3</span>
+<span class="o">  books:public/reject#1  </span><span class="r">rejected: Not public</span>
+<span class="d">traced 1 record: 0 to sink, 1 rejected</span></pre>
+        </div>
+      </div>
+
+      <div class="feats">
+        <div class="feat">
+          <h3>Unix pipes</h3>
+          <p>Jobs read and write JSON Lines on stdin and stdout, and every stage runs in its own process. Logs and the summary go to stderr.</p>
+          <div class="code">
+            <div class="bar"><span>shell</span></div>
+            <pre class="term"><span class="p">$ </span><span class="c">metacrunch run hello.rb \
+    | jq -c 'select(.name != "Grace")' \
+    | metacrunch run normalize.rb</span>
+<span class="o">{"name":"Ada","greeting":"Hello, Ada!"}
+{"name":"Linus","greeting":"Hello, Linus!"}</span></pre>
+          </div>
+        </div>
+        <div class="feat">
+          <h3>Workers, in source order</h3>
+          <p><code>-w N</code> runs the steps in N processes. Records reach the sinks in source order, so a job gives the same results with and without workers. With about 28 µs of work per record, 8 workers were about 5× as fast; cheap steps run faster inline.</p>
+          <div class="code">
+            <div class="bar"><span>shell</span></div>
+            <pre class="term"><span class="p">$ </span><span class="c">metacrunch run -w 8 books:export --output out</span>
+<span class="p">$ </span><span class="c">metacrunch run -w auto books:export --output out</span>
+<span class="d"># auto: one worker per core but one</span></pre>
+          </div>
+        </div>
+        <div class="feat">
+          <h3>Rejects and failures</h3>
+          <p>Rejected and failed records go to sinks of their own, with their context. A failure policy per job decides whether a failing record stops the run or is skipped; the exit status tells the two apart.</p>
+          <div class="code">
+            <div class="bar"><span>job</span></div>
+            <pre><code class="language-ruby">reject("Not public") { !it["public"] }
+
+rejects  Metacrunch::JsonLines::ContextWriter.new("rejects.jsonl")
+failures Metacrunch::JsonLines::ContextWriter.new("failures.jsonl")
+on_failure :skip   # exit status 3 when records failed</code></pre>
+          </div>
+        </div>
+        <div class="feat">
+          <h3>Parameters, secrets, environments</h3>
+          <p>A value comes from the command line, else from the environment's section of a params file, else from the default. <code>{env: …}</code> reads a variable, <code>{credential: …}</code> the encrypted credentials. A <code>secret</code> stays out of help, messages and logs.</p>
+          <div class="code">
+            <div class="bar"><span>params</span></div>
+            <pre><code class="language-ruby">params do
+  param  :limit, Integer, default: 1000
+  param  :es_url, String, default: {env: "ES_URL"}
+  secret :api_key, String, default: {credential: "es.api_key"}
+  args   :files, min: 1
+end</code></pre>
+          </div>
+        </div>
+        <div class="feat">
+          <h3>Tests with Minitest</h3>
+          <p><code>Metacrunch::Testing.run</code> replaces the source by the records you give and the sinks by memory, so nothing is written. <code>Testing.invoke</code> runs a command and records what it invokes.</p>
+          <div class="code">
+            <div class="bar"><span>test/jobs/books/export_test.rb</span></div>
+            <pre><code class="language-ruby">records = [{"id" =&gt; "t1", "title" =&gt; "A", "public" =&gt; true},
+           {"id" =&gt; "t2", "title" =&gt; "B", "public" =&gt; false}]
+result = Metacrunch::Testing.run(PROJECT, "books:export",
+                                 params: {output: "unused"},
+                                 source: records)
+
+assert_equal [{"id" =&gt; "t1", "title" =&gt; "A"}], result.records</code></pre>
+          </div>
+        </div>
+        <div class="feat">
+          <h3>Projects and generators</h3>
+          <p>A <code>Metacrunchfile</code> gives jobs, transforms and commands names, which run from any directory of the project. <code>generate</code> writes a job, transform, command, source or sink that runs right away, with a test that passes.</p>
+          <div class="code">
+            <div class="bar"><span>shell</span></div>
+            <pre class="term"><span class="p">$ </span><span class="c">metacrunch new book-data</span>
+<span class="p">$ </span><span class="c">metacrunch generate job books:clean</span>
+<span class="p">$ </span><span class="c">metacrunch check books:clean</span>
+<span class="d"># builds the job and binds its parameters, runs nothing</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="gems" aria-labelledby="gems-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Gems</span>
+        <h2 id="gems-title">One core and a growing set of extension gems</h2>
+        <p>JSON Lines is built in. Extension gems read and write other formats and systems. Any other source or sink is a small class of your own.</p>
+      </div>
+      <div class="gems">
+        <article class="gem core">
+          <div class="body">
+            <h3>metacrunch</h3>
+            <p>Jobs, transforms and commands, projects and the command line, and JSON Lines. <code>Metacrunch::Input</code> and <code>Output</code> read gzip, tar and zip and take care of stdin, stdout and pipes, for your own sources and sinks. One runtime dependency: <code>logger</code>.</p>
+          </div>
+          <ul class="tags"><li>JSON Lines</li><li>gzip</li><li>tar</li><li>zip</li><li>stdin/stdout</li></ul>
+          <a class="more" href="https://github.com/ubpb/metacrunch/tree/master/metacrunch">Readme →</a>
+        </article>
+        <article class="gem">
+          <div class="body"><h3>metacrunch-marc</h3><p>MARC 21 on one ordered record model. The reader tells the syntax of each file by its content.</p></div>
+          <ul class="tags"><li>MARCXML</li><li>binary MARC (ISO 2709)</li><li>MARC-in-JSON</li></ul>
+          <a class="more" href="https://github.com/ubpb/metacrunch/tree/master/metacrunch-marc">Readme →</a>
+        </article>
+        <article class="gem">
+          <div class="body"><h3>metacrunch-csv</h3><p>A source and a sink on Ruby's <code>csv</code>. Values stay Strings, so <code>"00123"</code> stays <code>"00123"</code>.</p></div>
+          <ul class="tags"><li>RFC 4180</li><li>Excel exports</li></ul>
+          <a class="more" href="https://github.com/ubpb/metacrunch/tree/master/metacrunch-csv">Readme →</a>
+        </article>
+        <article class="gem">
+          <div class="body"><h3>metacrunch-xlsx</h3><p>Reads the rows of a worksheet as records and writes records as rows. Both stream: memory stays the same for a hundred rows and for a million.</p></div>
+          <ul class="tags"><li>.xlsx</li></ul>
+          <a class="more" href="https://github.com/ubpb/metacrunch/tree/master/metacrunch-xlsx">Readme →</a>
+        </article>
+        <article class="gem">
+          <div class="body"><h3>metacrunch-elasticsearch</h3><p>A source for an index, a bulk sink, lookups for steps, and commands that create indices and switch aliases.</p></div>
+          <ul class="tags"><li>Elasticsearch 8</li><li>Elasticsearch 9</li></ul>
+          <a class="more" href="https://github.com/ubpb/metacrunch/tree/master/metacrunch-elasticsearch">Readme →</a>
+        </article>
+        <article class="gem">
+          <div class="body"><h3>metacrunch-db</h3><p>A source for a table or a query, and a sink that inserts, upserts, updates or deletes rows, on Sequel.</p></div>
+          <ul class="tags"><li>SQLite</li><li>PostgreSQL</li><li>MySQL</li><li>MariaDB</li></ul>
+          <a class="more" href="https://github.com/ubpb/metacrunch/tree/master/metacrunch-db">Readme →</a>
+        </article>
+        <article class="gem">
+          <div class="body"><h3>metacrunch-redis</h3><p>A queue between jobs: producers pause while Redis is full, consumers wait for new entries. Also a source and a sink for keys.</p></div>
+          <ul class="tags"><li>Redis</li><li>Valkey</li></ul>
+          <a class="more" href="https://github.com/ubpb/metacrunch/tree/master/metacrunch-redis">Readme →</a>
+        </article>
+        <div class="gem next">
+          <p><strong>More gems will follow.</strong> Missing a format or a system? Open an issue and say what you need.</p>
+          <a class="more" href="https://github.com/ubpb/metacrunch/issues">Issues →</a>
+        </div>
+      </div>
+      <div class="gems-foot">
+        <p>All gems live in one repository and share one version. Each extension gem requires metacrunch in exactly its own version. Name the gems you need:</p>
+        <div class="code">
+          <div class="bar"><span>Gemfile</span><button class="copy" type="button" data-copy-target="gemfile-gems">Copy</button></div>
+          <pre><code id="gemfile-gems" class="language-ruby">git "https://github.com/ubpb/metacrunch.git" do
+  gem "metacrunch"
+  gem "metacrunch-csv"
+end</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="marc" aria-labelledby="marc-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">metacrunch-marc</span>
+        <h2 id="marc-title">MARC in three syntaxes, on one record model</h2>
+        <p>The reader tells the format of each file by its content, so the same job reads binary MARC (ISO 2709, <code>.mrc</code>), MARCXML and MARC-in-JSON, also gzip-compressed. Parsers keep the data as written and check that values are valid UTF-8 that XML 1.0 can represent.</p>
+      </div>
+      <div class="marc">
+        <div class="marc-left">
+          <div class="code">
+            <div class="bar"><span>jobs/marc2jsonl.rb</span></div>
+            <pre><code class="language-ruby">require "metacrunch/marc"
+
+Metacrunch.job do
+  params { args :files, min: 1 }
+
+  source Metacrunch::Marc::Reader.new(params.files),
+         id: -&gt;(record) { record["001"]&amp;.value }
+
+  map do |record|
+    {
+      "id" =&gt; record["001"]&amp;.value,
+      "title" =&gt; record.field("245")&amp;.join("a", "b", separator: " : "),
+      "authors" =&gt; record.values(["100", "700"], "a"),
+      "isbns" =&gt; record.values("020", "a")
+    }
+  end
+end</code></pre>
+          </div>
+          <div class="code">
+            <div class="bar"><span>shell</span></div>
+            <pre class="term"><span class="p">$ </span><span class="c">metacrunch run jobs/marc2jsonl.rb records.mrc more-records.xml.gz \
+    &gt; records.jsonl</span></pre>
+          </div>
+        </div>
+        <div class="marc-right">
+          <h3>Query, change, write</h3>
+          <p>Queries take tags, ranges and patterns, with indicator filters: <code>record.fields("600".."699")</code>, <code>record.values("650", "a", ind2: "7")</code>. Results are plain Arrays.</p>
+          <p><code>record.to_s</code> shows one line per field, as on the card at the top of this page, so records stay readable in <code>trace</code> and in test failures.</p>
+          <ul class="facts">
+            <li>Reads and writes ISO 2709 (binary MARC, <code>.mrc</code>), MARCXML and MARC-in-JSON.</li>
+            <li>Changes go through <code>add</code>, <code>append</code>, <code>remove</code> and <code>clear</code>, which keep the field index right.</li>
+            <li>One dependency besides metacrunch: Ox, for MARCXML.</li>
+          </ul>
+        </div>
+      </div>
+
+        <figure class="chart" id="bench" aria-labelledby="bench-title">
+          <figcaption>
+            <h3 id="bench-title">Time per record against ruby-marc, in µs</h3>
+            <p>Shorter is faster. 250,000 records of the Library of Congress ("Books All" 2016, part 1), Ruby 4.0 with YJIT on an arm64 Mac.</p>
+          </figcaption>
+          <ul class="legend">
+            <li><i class="sw a" aria-hidden="true"></i>metacrunch-marc</li>
+            <li><i class="sw b" aria-hidden="true"></i>ruby-marc 1.4</li>
+          </ul>
+          <div class="bars">
+            <div class="grp"><span class="glabel">Read ISO 2709</span>
+              <div class="track"><span class="hbar a" style="--v:19" tabindex="0" data-op="Read ISO 2709" data-lib="metacrunch-marc" data-val="19 µs"></span><span class="val">19</span></div>
+              <div class="track"><span class="hbar b" style="--v:33" tabindex="0" data-op="Read ISO 2709" data-lib="ruby-marc 1.4" data-val="33 µs"></span><span class="val">33</span></div>
+            </div>
+            <div class="grp"><span class="glabel">Read MARCXML</span>
+              <div class="track"><span class="hbar a" style="--v:32" tabindex="0" data-op="Read MARCXML" data-lib="metacrunch-marc" data-val="32 µs"></span><span class="val">32</span></div>
+              <div class="track"><span class="hbar b" style="--v:56" tabindex="0" data-op="Read MARCXML" data-lib="ruby-marc 1.4" data-val="56 µs" data-note="with Nokogiri; 213 µs with REXML, its default"></span><span class="val">56*</span></div>
+            </div>
+            <div class="grp"><span class="glabel">Write ISO 2709</span>
+              <div class="track"><span class="hbar a" style="--v:11" tabindex="0" data-op="Write ISO 2709" data-lib="metacrunch-marc" data-val="11 µs"></span><span class="val">11</span></div>
+              <div class="track"><span class="hbar b" style="--v:20" tabindex="0" data-op="Write ISO 2709" data-lib="ruby-marc 1.4" data-val="20 µs"></span><span class="val">20</span></div>
+            </div>
+            <div class="grp"><span class="glabel">Write MARCXML</span>
+              <div class="track"><span class="hbar a" style="--v:24" tabindex="0" data-op="Write MARCXML" data-lib="metacrunch-marc" data-val="24 µs"></span><span class="val">24</span></div>
+              <div class="track"><span class="hbar b" style="--v:21" tabindex="0" data-op="Write MARCXML" data-lib="ruby-marc 1.4" data-val="21 µs" data-note="with fast_but_unsafe: true; 131 µs with REXML"></span><span class="val">21†</span></div>
+            </div>
+            <div class="grp"><span class="glabel">Write MARC-in-JSON</span>
+              <div class="track"><span class="hbar a" style="--v:9" tabindex="0" data-op="Write MARC-in-JSON" data-lib="metacrunch-marc" data-val="9 µs"></span><span class="val">9</span></div>
+              <div class="track"><span class="hbar b" style="--v:12" tabindex="0" data-op="Write MARC-in-JSON" data-lib="ruby-marc 1.4" data-val="12 µs" data-note="JSON.generate(record.to_hash)"></span><span class="val">12</span></div>
+            </div>
+            <div class="grp"><span class="glabel">Query five fields</span>
+              <div class="track"><span class="hbar a" style="--v:2.1" tabindex="0" data-op="Query five fields" data-lib="metacrunch-marc" data-val="2.1 µs" data-note="245 $a, 100 $a, 008 and $a of every 020 and 650"></span><span class="val">2.1</span></div>
+              <div class="track"><span class="hbar b" style="--v:4.7" tabindex="0" data-op="Query five fields" data-lib="ruby-marc 1.4" data-val="4.7 µs" data-note="245 $a, 100 $a, 008 and $a of every 020 and 650"></span><span class="val">4.7</span></div>
+            </div>
+          </div>
+          <ol class="notes">
+            <li>* ruby-marc with Nokogiri; with REXML, its default, 213 µs.</li>
+            <li>† ruby-marc with <code>fast_but_unsafe: true</code>; with REXML, 131 µs.</li>
+          </ol>
+          <details class="table">
+            <summary>Show as table</summary>
+            <div class="tbl">
+              <table>
+                <thead><tr><th scope="col">Per record</th><th scope="col" class="n">metacrunch-marc</th><th scope="col" class="n">ruby-marc 1.4</th></tr></thead>
+                <tbody>
+                  <tr><td>Read ISO 2709</td><td class="n">19 µs</td><td class="n">33 µs</td></tr>
+                  <tr><td>Read MARCXML</td><td class="n">32 µs</td><td class="n">56 µs (Nokogiri), 213 µs (REXML)</td></tr>
+                  <tr><td>Write ISO 2709</td><td class="n">11 µs</td><td class="n">20 µs</td></tr>
+                  <tr><td>Write MARCXML</td><td class="n">24 µs</td><td class="n">131 µs (REXML), 21 µs (fast_but_unsafe)</td></tr>
+                  <tr><td>Write MARC-in-JSON</td><td class="n">9 µs</td><td class="n">12 µs</td></tr>
+                  <tr><td>Query 245 $a, 100 $a, 008, 020 $a, 650 $a</td><td class="n">2.1 µs</td><td class="n">4.7 µs</td></tr>
+                  <tr><td>Memory per record held</td><td class="n">9.0 KB</td><td class="n">10.0 KB</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+          <div class="tip" role="status" hidden></div>
+        </figure>
+    </div>
+  </section>
+
+  <section class="sec" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Compare</span>
+        <h2 id="compare-title">Where metacrunch fits</h2>
+        <p>Other tools cover the same ground, each with its own approach. If you know one of them, this is what is different.</p>
+      </div>
+      <div class="peers">
+        <article class="peer">
+          <div class="peer-head"><h3><a href="https://github.com/LibreCat/Catmandu">Catmandu</a></h3><span class="lang">Perl</span></div>
+          <p>A toolkit for library data with the Fix language and a large set of importers, exporters and stores.</p>
+          <p class="diff">metacrunch has no mapping language of its own. Steps are Ruby blocks, so the whole of Ruby and its gems is at hand.</p>
+        </article>
+        <article class="peer">
+          <div class="peer-head"><h3><a href="https://github.com/metafacture/metafacture-core">Metafacture</a></h3><span class="lang">Java</span></div>
+          <p>A toolkit for semi-structured data with a focus on library metadata, with workflows in Flux and transformations in Fix or the older Metamorph.</p>
+          <p class="diff">In metacrunch, jobs, their parameters and their tests are all Ruby.</p>
+        </article>
+        <article class="peer">
+          <div class="peer-head"><h3><a href="https://github.com/traject/traject">Traject</a></h3><span class="lang">Ruby</span></div>
+          <p>A transformation system for library, archive and museum metadata, MARC and XML, configured with <code>to_field</code> rules and indexing to Solr above all.</p>
+          <p class="diff">metacrunch is general ETL: any source, any sink. MARC is one extension gem among others.</p>
+        </article>
+        <article class="peer">
+          <div class="peer-head"><h3><a href="https://github.com/thbar/kiba">Kiba</a></h3><span class="lang">Ruby</span></div>
+          <p>A lightweight ETL framework for Ruby: sources and destinations are classes, transforms classes or blocks. Its author considers it done and keeps it compatible with new Ruby versions.</p>
+          <p class="diff">metacrunch comes with a command line, projects, parameters and credentials, reject reasons, tracing and workers.</p>
+        </article>
+      </div>
+      <p class="fit">Pick metacrunch when you want to write jobs in Ruby, test them with Minitest and run them like Unix tools.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="start" aria-labelledby="start-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Get started</span>
+        <h2 id="start-title">From an empty directory to a tested job</h2>
+        <p>metacrunch 5 is not released yet, so the gems come from Git. The commands below call <code>metacrunch</code>; with Bundler, prefix them with <code>bundle exec</code>.</p>
+      </div>
+      <ol class="start">
+        <li>
+          <h3>Add the gems</h3>
+          <div class="step-body">
+            <p>Name the gems you need. All of them require Ruby 4.0.</p>
+            <div class="code">
+              <div class="bar"><span>Gemfile</span><button class="copy" type="button" data-copy-target="gs-gemfile">Copy</button></div>
+              <pre><code id="gs-gemfile" class="language-ruby">git "https://github.com/ubpb/metacrunch.git" do
+  gem "metacrunch"
+  gem "metacrunch-marc"
+end</code></pre>
+            </div>
+          </div>
+        </li>
+        <li>
+          <h3>Install and look around</h3>
+          <div class="step-body">
+            <div class="code">
+              <div class="bar"><span>shell</span><button class="copy" type="button" data-copy-target="gs-install" data-copy-text="bundle install&#10;bundle exec metacrunch --help">Copy</button></div>
+              <pre class="term" id="gs-install"><span class="p">$ </span><span class="c">bundle install</span>
+<span class="p">$ </span><span class="c">bundle exec metacrunch --help</span></pre>
+            </div>
+          </div>
+        </li>
+        <li>
+          <h3>Create a project</h3>
+          <div class="step-body">
+            <p><code>new</code> creates the project with a <code>Metacrunchfile</code>, a <code>Gemfile</code>, a <code>Rakefile</code> and a test that every file loads.</p>
+            <div class="code">
+              <div class="bar"><span>shell</span><button class="copy" type="button" data-copy-target="gs-new" data-copy-text="metacrunch new book-data&#10;cd book-data&#10;bundle install">Copy</button></div>
+              <pre class="term" id="gs-new"><span class="p">$ </span><span class="c">metacrunch new book-data</span>
+<span class="p">$ </span><span class="c">cd book-data</span>
+<span class="p">$ </span><span class="c">bundle install</span></pre>
+            </div>
+          </div>
+        </li>
+        <li>
+          <h3>Generate, run and test a job</h3>
+          <div class="step-body">
+            <p>The generated job reads JSON Lines from stdin and rejects records without an <code>id</code>. Its test passes from the start.</p>
+            <div class="code">
+              <div class="bar"><span>shell</span><button class="copy" type="button" data-copy-target="gs-run" data-copy-text="metacrunch generate job books:clean&#10;printf '{&quot;id&quot;:1,&quot;title&quot;:&quot;A&quot;}\n{&quot;title&quot;:&quot;B&quot;}\n' | metacrunch run books:clean&#10;rake test">Copy</button></div>
+              <pre class="term" id="gs-run"><span class="p">$ </span><span class="c">metacrunch generate job books:clean</span>
+<span class="p">$ </span><span class="c">printf '{"id":1,"title":"A"}\n{"title":"B"}\n' | metacrunch run books:clean</span>
+<span class="o">{"id":1,"title":"A"}</span>
+<span class="d">INFO  ok: read 2, written 1, rejected 1 (No id: 1) in 0.00s</span>
+<span class="p">$ </span><span class="c">rake test</span></pre>
+            </div>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec" id="docs" aria-labelledby="docs-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Documentation</span>
+        <h2 id="docs-title">Read on</h2>
+        <p>The documentation lives with the code on GitHub. Each extension gem has a Readme with examples.</p>
+      </div>
+      <dl class="docs">
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/jobs.md">Jobs</a></dt><dd><span>Records, sources, steps, the record context, sinks, failures, hooks, parameters</span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/files.md">Files</a></dt><dd><span>Input and Output for your own sources and sinks: gzip, tar, zip, stdin, pipes</span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/transforms.md">Transforms</a></dt><dd><span><code>use</code>, parameters, step names, testing a transform</span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/projects.md">Projects, commands and gems</a></dt><dd><span>The Metacrunchfile, names, <code>new</code> and <code>generate</code>, <code>invoke</code></span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/testing.md">Testing</a></dt><dd><span><code>Testing.run</code> and <code>Testing.invoke</code></span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/cli.md">The command line</a></dt><dd><span>Commands, options, pipes, <code>check</code> and <code>trace</code>, exit codes</span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/workers.md">Workers</a></dt><dd><span>Parallel steps with <code>-w</code>, and when they pay off</span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/environments.md">Environments</a></dt><dd><span>The default environment, <code>-e</code>, what belongs to an environment</span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/credentials.md">Credentials</a></dt><dd><span>Encrypted secrets for parameters</span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/docs/ruby-api.md">Running jobs from Ruby</a></dt><dd><span><code>Job#run</code> and <code>Project#invoke</code></span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/tree/master/metacrunch/examples">Examples</a></dt><dd><span>Runnable jobs and a project with sample data</span></dd></div>
+        <div class="doc"><dt><a href="https://github.com/ubpb/metacrunch/blob/master/metacrunch/CHANGELOG.md">Changelog</a></dt><dd><span>What changed in metacrunch 5; jobs written for 4.x must be rewritten</span></dd></div>
+      </dl>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>metacrunch is available under the MIT license. This page describes metacrunch 5 on <code>master</code>.</span>
+    <nav aria-label="Project links">
+      <a href="https://github.com/ubpb/metacrunch">GitHub</a>
+      <a href="https://github.com/ubpb/metacrunch/actions/workflows/ci.yml">CI</a>
+      <a href="https://github.com/ubpb/metacrunch/tree/4.x">4.x branch</a>
+      <a href="https://rubygems.org/gems/metacrunch">RubyGems</a>
+    </nav>
+    <nav aria-label="Legal">
+      <a href="https://www.ub.uni-paderborn.de/en/about-us/imprint">Imprint</a>
+      <a href="https://www.ub.uni-paderborn.de/en/datenschutz">Privacy</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="assets/highlight.js/highlight.min.js"></script>
+<script>
+(() => {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Syntax colours for the Ruby blocks. The page reads fine without them.
+  if (window.hljs) {
+    try {
+      document.querySelectorAll('pre code[class*="language-"]').forEach((el) => window.hljs.highlightElement(el));
+    } catch (e) { /* keep plain text */ }
+  }
+
+  // Copy buttons
+  document.querySelectorAll("[data-copy-target]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const el = document.getElementById(btn.dataset.copyTarget);
+      if (!el) return;
+      const text = btn.dataset.copyText ?? el.textContent;
+      const show = (label) => {
+        btn.textContent = label;
+        clearTimeout(btn._t);
+        btn._t = setTimeout(() => { btn.textContent = "Copy"; }, 1600);
+      };
+      const select = () => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        show("Selected");
+      };
+      try {
+        navigator.clipboard.writeText(text).then(() => show("Copied"), select);
+      } catch (e) {
+        select();
+      }
+    });
+  });
+
+  // The card: link each JSON key to the MARC field it comes from.
+  const card = document.querySelector(".cc");
+  const pairs = [...document.querySelectorAll(".json .kv")];
+  const fallback = pairs.find((p) => p.dataset.tags === "245");
+  const activate = (pair) => {
+    pairs.forEach((p) => p.classList.toggle("on", p === pair));
+    card.querySelectorAll(".ln").forEach((ln) => ln.classList.toggle("on", !!pair && pair.dataset.tags.split(" ").includes(ln.dataset.tag)));
+  };
+  let touched = false;
+  const touch = () => { touched = true; };
+  pairs.forEach((p) => {
+    p.addEventListener("pointerenter", () => { touch(); activate(p); });
+    p.addEventListener("pointerleave", () => activate(fallback));
+    p.addEventListener("focus", () => { touch(); activate(p); });
+    p.addEventListener("blur", () => activate(fallback));
+  });
+  card.querySelectorAll(".ln").forEach((ln) => {
+    const pair = pairs.find((p) => p.dataset.tags.split(" ").includes(ln.dataset.tag));
+    if (!pair) return;
+    ln.addEventListener("pointerenter", () => { touch(); activate(pair); });
+    ln.addEventListener("pointerleave", () => activate(fallback));
+  });
+  // One pass through the keys after load, ending on the title.
+  if (!reduce) {
+    const order = ["001", "020", "100", "245"].map((t) => pairs.find((p) => p.dataset.tags === t));
+    order.forEach((p, i) => setTimeout(() => { if (!touched) activate(p); }, 900 + i * 1100));
+  }
+
+  // Chart tooltips
+  const fig = document.getElementById("bench");
+  const tip = fig.querySelector(".tip");
+  const showTip = (bar) => {
+    tip.innerHTML = "";
+    const head = document.createElement("strong");
+    head.textContent = `${bar.dataset.lib}: ${bar.dataset.val}`;
+    tip.append(head, document.createTextNode(bar.dataset.op + (bar.dataset.note ? `, ${bar.dataset.note}` : "")));
+    tip.hidden = false;
+    const f = fig.getBoundingClientRect();
+    const b = bar.getBoundingClientRect();
+    const tw = tip.offsetWidth;
+    let left = b.right - f.left + 10;
+    if (left + tw > f.width - 8) left = Math.max(8, b.right - f.left - tw);
+    tip.style.left = `${left}px`;
+    tip.style.top = `${b.top - f.top - tip.offsetHeight - 8}px`;
+  };
+  const hideTip = () => { tip.hidden = true; };
+  fig.querySelectorAll(".hbar").forEach((bar) => {
+    bar.setAttribute("aria-label", `${bar.dataset.op}, ${bar.dataset.lib}: ${bar.dataset.val}${bar.dataset.note ? ", " + bar.dataset.note : ""}`);
+    bar.addEventListener("pointerenter", () => showTip(bar));
+    bar.addEventListener("pointerleave", hideTip);
+    bar.addEventListener("focus", () => showTip(bar));
+    bar.addEventListener("blur", hideTip);
+  });
+})();
+</script>
+</body>
+</html>
