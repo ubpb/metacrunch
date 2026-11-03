@@ -25,6 +25,59 @@ class HttpTest < Minitest::Test
     assert_equal ["application/json", "yes"], request.headers.values_at("content-type", "x-extra")
   end
 
+  def test_gets_the_body_as_text
+    @api.on("GET", "/v1/hello") { [200, "Hello, world"] }
+
+    assert_equal "Hello, world", http.get("/hello")
+  end
+
+  def test_puts_bytes_with_their_type_and_headers
+    @api.on("PUT", "/v1/files") { [200, [{"size" => it.body.bytesize}]] }
+    answer = http.put("/files", "\xFF\x00pdf".b, content_type: "application/pdf", headers: {"X-Extra" => "yes"})
+    request = @api.requests.first
+
+    assert_equal [{"size" => 5}], answer
+    assert_equal ["application/pdf", "yes", "\xFF\x00pdf".b],
+                 [*request.headers.values_at("content-type", "x-extra"), request.body.b]
+  end
+
+  def test_get_and_put_retry_like_post
+    @api.on("GET", "/v1/hello") { [200, "hi"] }
+    @api.on("GET", "/v1/hello", times: 1) { [503, {}] }
+    @api.on("PUT", "/v1/files") { [200, {}] }
+    @api.on("PUT", "/v1/files", times: 1) { [503, {}] }
+    delays = no_sleep(http)
+
+    assert_equal ["hi", {}], [@http.get("/hello"), @http.put("/files", "x", content_type: "text/plain")]
+    assert_equal [1.0, 1.0], delays
+    assert_includes @log.string, "things: 503, retry 1/5 in 1.0 s"
+  end
+
+  def test_put_keeps_the_query
+    @api.on("PUT", "/v1/files?version=2") { [200, {}] }
+
+    assert_empty http(url: @api.url("/v1?version=2")).put("/files", "x", content_type: "text/plain")
+  end
+
+  def test_put_refuses_malformed_json
+    @api.on("PUT", "/v1/files") { [200, "<html>"] }
+
+    assert_raises(Metacrunch::Ai::ApiError) { http.put("/files", "x", content_type: "text/plain") }
+  end
+
+  def test_get_refusals_raise_api_error
+    @api.on("GET", "/v1/hello") { [404, "no"] }
+    error = assert_raises(Metacrunch::Ai::ApiError) { http.get("/hello") }
+
+    assert_equal "things at #{@api.url("/v1/hello")}: 404: no", error.message
+  end
+
+  def test_get_gives_valid_utf8
+    @api.on("GET", "/v1/hello") { [200, "caf\xC3\xA9 \xFF".b] }
+
+    assert_equal "café �", http.get("/hello")
+  end
+
   def test_keeps_the_query_of_the_url
     @api.on("POST", "/v1/things?version=2") { [200, {}] }
 
@@ -131,7 +184,7 @@ class HttpTest < Minitest::Test
     failing = errors.dup
     client = http(retries: errors.size)
     delays = no_sleep(client)
-    client.define_singleton_method(:post) { |path, json| failing.empty? ? super(path, json) : raise(failing.shift) }
+    client.define_singleton_method(:send_request) { |*args| failing.empty? ? super(*args) : raise(failing.shift) }
 
     assert_equal({"ok" => true}, client.post_json("/things", {}))
     assert_equal errors.size, delays.size

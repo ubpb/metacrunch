@@ -20,8 +20,11 @@ module Metacrunch
       MAX_DELAY = 60
       EXCERPT = 300
 
-      # url: the API base, to which post_json appends its path; its query is
-      # kept. name: for messages and log lines.
+      JSON_HEADERS = {"Content-Type" => "application/json", "Accept" => "application/json"}.freeze
+
+      # url: the API base, to which each request appends its path; its query
+      # is kept. headers: sent with every request, over the defaults of each
+      # method. name: for messages and log lines.
       def initialize(url:, headers: {}, timeout: 60, retries: 5, name: "api")
         @uri = Http.uri(url)
         raise ArgumentError, "headers must be a Hash, got #{headers.inspect}" unless headers.is_a?(Hash)
@@ -32,7 +35,7 @@ module Metacrunch
           raise ArgumentError, "retries must be an Integer of 0 or more, got #{retries.inspect}"
         end
 
-        @headers = {"Content-Type" => "application/json", "Accept" => "application/json"}.merge(headers)
+        @headers = headers
         @timeout = timeout
         @retries = retries
         @name = name
@@ -64,27 +67,50 @@ module Metacrunch
       # POSTs body as JSON to the base path plus path and returns the answer,
       # a Hash.
       def post_json(path, body)
-        json = JSON.generate(body)
+        response = with_retries(path) { send_request(Net::HTTP::Post, path, JSON.generate(body), JSON_HEADERS) }
+        parse(path, response, "a JSON object", Hash)
+      end
+
+      # GETs the base path plus path and returns the body as text, UTF-8.
+      def get(path)
+        response = with_retries(path) { send_request(Net::HTTP::Get, path, nil, {"Accept" => "*/*"}) }
+        response.body.to_s.dup.force_encoding(Encoding::UTF_8).scrub
+      end
+
+      # PUTs bytes of content_type to the base path plus path and returns the
+      # answer, parsed JSON: a Hash or an Array.
+      def put(path, bytes, content_type:, headers: {})
+        response = with_retries(path) do
+          send_request(Net::HTTP::Put, path, bytes,
+                       {"Accept" => "application/json"}, headers.merge("Content-Type" => content_type))
+        end
+        parse(path, response, "JSON", Hash, Array)
+      end
+
+      private
+
+      # Yields until a 2xx answer comes, which it returns; refusals raise at
+      # once, what may pass is retried.
+      def with_retries(path)
         retries = 0
         loop do
-          response = post(path, json)
+          response = yield
         rescue *NETWORK_ERRORS => e
           close
           retries = retry_later(path, retries, e.class.name, error: e)
         else
           status = response.code.to_i
-          return parse(path, response) if status.between?(200, 299)
+          return response if status.between?(200, 299)
 
           refuse(path, status, response) unless RETRYABLE.include?(status)
           retries = retry_later(path, retries, status, response)
         end
       end
 
-      private
-
-      def post(path, json)
-        request = Net::HTTP::Post.new(request_uri(path), @headers)
-        request.body = json
+      # The headers: those of the method, the object's, those of the call.
+      def send_request(type, path, body, defaults, headers = {})
+        request = type.new(request_uri(path), defaults.merge(@headers, headers))
+        request.body = body if body
         connection.request(request)
       end
 
@@ -101,18 +127,20 @@ module Metacrunch
       # The URL of a request for messages, without user info.
       def location(path) = "#{@uri.scheme}://#{@uri.host}:#{@uri.port}#{request_uri(path)}"
 
-      def parse(path, response)
+      # The parsed answer if it is one of types; else ApiError, whose message
+      # says what was expected.
+      def parse(path, response, expected, *types)
         answer = JSON.parse(response.body.to_s)
-        return answer if answer.is_a?(Hash)
+        return answer if types.any? { answer.is_a?(it) }
 
-        malformed(path, response)
+        malformed(path, response, expected)
       rescue JSON::ParserError
-        malformed(path, response)
+        malformed(path, response, expected)
       end
 
-      def malformed(path, response)
+      def malformed(path, response, expected)
         body = excerpt(response.body)
-        raise ApiError.new("#{@name} at #{location(path)}: malformed answer, not a JSON object#{": #{body}" if body}",
+        raise ApiError.new("#{@name} at #{location(path)}: malformed answer, not #{expected}#{": #{body}" if body}",
                            status: response.code.to_i, body:)
       end
 
