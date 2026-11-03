@@ -24,9 +24,10 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
   answer.
 - `Metacrunch::Ai::Extract`, a step that turns a document's content into Markdown text with exchangeable extractors,
   chosen by MIME type: `Html` (the main content of a page, in Ruby with Nokogiri, the gem's new dependency), `Text`
-  (plain text and Markdown as they are) and `Tika` (PDF, office and many other formats through an Apache Tika server,
-  a PDF's text page by page), with `Metacrunch::Ai::TIKA_PARAMS` and `Metacrunch::Ai.tika(params)`. It writes title
-  and language, drops the raw content, and marks documents without text.
+  (plain text and Markdown as they are, with YAML front matter as fields) and `Tika` (PDF, office and many other
+  formats through an Apache Tika server, a PDF's text page by page), with `Metacrunch::Ai::TIKA_PARAMS` and
+  `Metacrunch::Ai.tika(params)`. It writes title, language and further fields an extractor gives, drops the raw
+  content, and marks documents without text.
 - `Metacrunch::Ai::Chunk`, a step for `flat_map` that cuts a document's text into chunk records by its structure,
   recursively, with `size`, `overlap` and an optional length function such as a tokenizer; each chunk has the id of
   its document, its number, its heading path and its pages.

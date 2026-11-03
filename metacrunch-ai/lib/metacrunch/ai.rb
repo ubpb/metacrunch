@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
+require "date"
 require "digest"
 require "json"
 require "nokogiri"
 require "net/http"
 require "openssl"
 require "time"
+require "yaml"
 require "metacrunch"
 require_relative "ai/version"
 require_relative "ai/errors"

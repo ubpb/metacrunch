@@ -7,12 +7,15 @@ module Metacrunch
     #
     # An extractor has types (MIME types, or nil for any) and
     # extract(content, type:), which returns {text:, title:, lang:} (text a
-    # String, or an Array of page Strings) and may add mark:, set on the
-    # record; optional open(context) and close.
+    # String, or an Array of page Strings) and may add fields: (a Hash of
+    # further fields, e.g. from front matter) and mark:, set on the record;
+    # optional open(context) and close.
     #
     # The step takes the content from the field from: and the MIME type from
     # type:, asks the first extractor that takes the type (a record without
-    # a type, the first one), writes the text into into: and title and lang
+    # a type, the first one), merges the fields of the extractor into the
+    # record (they win over its fields), writes the text into into: and
+    # title and lang
     # into the fields title: and lang: (nil turns them off; an existing value
     # is only replaced by a found one), and removes the content, so its
     # bytes are not copied further. A record without content or text passes
@@ -48,7 +51,7 @@ module Metacrunch
         raise ContractError, "Extract needs Hash records, got #{record.class}" unless record.is_a?(Hash)
 
         result = extract(record[@from], media_type(record[@type]))
-        record = record.except(@from).merge(@into => result[:text])
+        record = record.except(@from).merge(result[:fields] || {}, @into => result[:text])
         record[@title] = result[:title] if @title && result[:title]
         record[@lang] = result[:lang] if @lang && result[:lang]
         ctx.mark(result[:mark]) if result[:mark]
@@ -70,9 +73,14 @@ module Metacrunch
         extractor = extractor_for(type)
         result = extractor.extract(content, type:)
         text = result[:text] if result.is_a?(Hash)
-        return result if text.is_a?(String) || text.is_a?(Array)
+        unless text.is_a?(String) || text.is_a?(Array)
+          raise Error, "#{extractor.class} gave no text: #{(text || result).inspect}"
+        end
+        unless result[:fields].nil? || result[:fields].is_a?(Hash)
+          raise Error, "#{extractor.class} gave fields that are no Hash: #{result[:fields].inspect}"
+        end
 
-        raise Error, "#{extractor.class} gave no text: #{(text || result).inspect}"
+        result
       end
 
       def extractor_for(type)

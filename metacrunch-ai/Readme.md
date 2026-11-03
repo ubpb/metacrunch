@@ -223,6 +223,19 @@ Inside it, scripts, styles, `nav`, forms, frames, SVG and hidden elements are re
 line ends; UTF-16 files with a byte order mark are converted. Markdown keeps its headings this way; Tika would read it
 as plain text.
 
+YAML front matter at the start of a file goes into the record: `title` and `lang` as the step's title and language,
+the other keys as fields of their own (dates as ISO 8601 Strings), which win over the fields of the file record. It
+is removed from the text. Front matter that is no valid YAML stays in the text, and the record gets the mark "Front
+matter not read".
+
+```markdown
+---
+title: Library rules
+source: https://www.example.org/rules.pdf
+---
+# Using the library
+```
+
 ### Tika
 
 `Metacrunch::Ai::Tika` sends PDF, office (Word, Excel, PowerPoint, OpenDocument) and many other formats to an
@@ -256,8 +269,8 @@ $ docker run -d -p 9998:9998 apache/tika:3.3.1.0
 ### Other extractors
 
 Any object with `types` (an Array of MIME types, or `nil` for any) and `extract(content, type:)` that returns
-`{text:, title:, lang:}` is an extractor; `text` is a String or an Array of page Strings, and an optional `mark:` is
-set on the record. It may have `open(context)` and `close`.
+`{text:, title:, lang:}` is an extractor; `text` is a String or an Array of page Strings. An optional `fields:` (a
+Hash) is merged into the record, an optional `mark:` is set on it. It may have `open(context)` and `close`.
 
 ## Chunking
 

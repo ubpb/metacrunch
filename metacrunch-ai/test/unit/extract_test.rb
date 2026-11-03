@@ -85,6 +85,21 @@ class ExtractTest < Minitest::Test
     assert_equal({"mime" => "text/html", "plain" => "t", "name" => "T", "language" => "de"}, record)
   end
 
+  def test_fields_of_the_extractor_go_into_the_record
+    extract = Extract.new(Fixed.new(nil, text: "t", fields: {"source" => "https://www.example.org", "type" => "x",
+                                                             "text" => "no"}))
+    record = run_extract(extract, [doc("text/markdown").merge("id" => 1)]).records.first
+
+    assert_equal({"id" => 1, "type" => "x", "source" => "https://www.example.org", "text" => "t"}, record)
+  end
+
+  def test_fields_must_be_a_hash
+    error = run_extract(Extract.new(Fixed.new(nil, fields: ["x"])), [doc("x")]).failures.first.last.error
+
+    assert_equal [Metacrunch::Ai::Error, %(ExtractTest::Fixed gave fields that are no Hash: ["x"])],
+                 [error.class, error.message]
+  end
+
   def test_title_and_lang_off
     extract = Extract.new(Fixed.new(nil, title: "Found", lang: "en"), title: nil, lang: nil)
     record = run_extract(extract, [doc("text/html").merge("title" => "Given")]).records.first
