@@ -52,6 +52,16 @@ class MarkdownTest < Minitest::Test
     assert_equal "| x |  |\n| --- | --- |\n| a | b |", md(html)
   end
 
+  def test_rowspan_keeps_the_columns
+    first = %(<table><tr><td rowspan="2">x</td><td>1</td></tr><tr><td>2</td></tr></table>)
+    middle = %(<table><tr><td>a</td><td rowspan="2">b</td><td>c</td></tr><tr><td>d</td><td>e</td></tr></table>)
+    last = %(<table><tr><td>a</td><td rowspan="3">b</td></tr><tr><td>c</td></tr><tr><td>d</td></tr><tr><td>e</td>) +
+           %(<td>f</td></tr></table>)
+
+    assert_equal ["| x | 1 |\n| --- | --- |\n|  | 2 |", "| a | b | c |\n| --- | --- | --- |\n| d |  | e |",
+                  "| a | b |\n| --- | --- |\n| c |  |\n| d |  |\n| e | f |"], [md(first), md(middle), md(last)]
+  end
+
   def test_short_rows_are_padded
     assert_equal "| a | b |\n| --- | --- |\n| c |  |",
                  md("<table><tr><td>a</td><td>b</td></tr><tr><td>c</td></tr></table>")

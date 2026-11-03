@@ -80,10 +80,12 @@ module Metacrunch
         end.join("\n")
       end
 
-      # Pipe table: the first row is the header; colspan cells are padded
-      # with empty ones and short rows filled up.
+      # Pipe table: the first row is the header; colspan cells are followed
+      # by empty ones, columns that a rowspan cell covers stay empty in the
+      # rows below, and short rows are filled up.
       def table(element)
-        rows = element.css("tr").select { it.ancestors("table").first == element }.map { cells(it) }
+        spans = Hash.new(0)
+        rows = element.css("tr").select { it.ancestors("table").first == element }.map { cells(it, spans) }
         return "" if rows.empty?
 
         width = rows.map(&:size).max
@@ -99,9 +101,30 @@ module Metacrunch
         caption ? inline(caption.children) : ""
       end
 
-      def cells(row)
-        row.element_children.select { CELLS.include?(it.name) }.flat_map do |cell|
-          [cell_text(cell)] + Array.new(cell["colspan"].to_i.clamp(1, nil) - 1, "")
+      # The texts of a row by column. spans: column => rows below that a
+      # rowspan cell still covers, updated for the next row.
+      def cells(row, spans)
+        result = []
+        row.element_children.select { CELLS.include?(it.name) }.each do |cell|
+          spanned(result, spans) { |column| column == result.size }
+          width = cell["colspan"].to_i.clamp(1, nil)
+          rows = cell["rowspan"].to_i
+          width.times { spans[result.size + it] = rows - 1 } if rows > 1
+          result.push(cell_text(cell), *Array.new(width - 1, ""))
+        end
+        spanned(result, spans) { |column| column >= result.size }
+        result
+      end
+
+      # Adds an empty cell for each column covered from above for which the
+      # block is true, in column order, padding up to it.
+      def spanned(result, spans)
+        spans.keys.sort.each do |column|
+          next unless spans[column].positive? && yield(column)
+
+          result << "" while result.size < column
+          spans[column] -= 1
+          result << ""
         end
       end
 
