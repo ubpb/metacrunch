@@ -90,9 +90,11 @@ class FakeApi
     route[:path].is_a?(Regexp) ? route[:path].match?(request.path) : route[:path] == request.path
   end
 
+  # A Content-Type in headers replaces the default application/json.
   def response(status, body, headers)
     text = body.is_a?(Hash) || body.is_a?(Array) ? JSON.generate(body) : body.to_s
-    lines = ["HTTP/1.1 #{status} Status", "Content-Type: application/json", "Content-Length: #{text.bytesize}"]
+    lines = ["HTTP/1.1 #{status} Status", "Content-Length: #{text.bytesize}"]
+    lines << "Content-Type: application/json" unless headers.keys.any? { it.casecmp?("content-type") }
     lines.concat(headers.map { |name, value| "#{name}: #{value}" })
     "#{lines.join("\r\n")}\r\n\r\n#{text}"
   end

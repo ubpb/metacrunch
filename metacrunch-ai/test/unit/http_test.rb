@@ -78,6 +78,46 @@ class HttpTest < Minitest::Test
     assert_equal "café �", http.get("/hello")
   end
 
+  def test_get_raw_passes_statuses_through
+    @api.on("GET", "/v1/gone") { [404, "no", {"X-Reason" => "moved"}] }
+    @api.on("GET", "/v1/away") { [301, "", {"Location" => "/v1/here"}] }
+    raw = http.get_raw("/gone")
+    away = http.get_raw("/away")
+
+    assert_equal [404, "no", "moved"], [raw.status, raw.body, raw.headers["x-reason"]]
+    assert_equal [301, "/v1/here"], [away.status, away.headers["location"]]
+  end
+
+  def test_get_raw_stops_reading_at_max_size
+    @api.on("GET", "/v1/big") { [200, "x" * 11] }
+    @api.on("GET", "/v1/fits") { [200, "x" * 10] }
+    client = http
+    fits = client.get_raw("/fits", max_size: 10)
+    error = assert_raises(Metacrunch::Ai::InvalidInput) { client.get_raw("/big", max_size: 10) }
+    after = client.get_raw("/fits", max_size: 10)
+
+    assert_equal [10, 200, 10], [fits.body.bytesize, error.status, after.body.bytesize]
+    assert_match(/larger than 10 bytes/, error.message)
+  end
+
+  def test_get_raw_retries_like_get
+    @api.on("GET", "/v1/page") { [200, "ok"] }
+    @api.on("GET", "/v1/page", times: 1) { [503, ""] }
+    delays = no_sleep(http)
+    raw = @http.get_raw("/page")
+
+    assert_equal [200, "ok", [1.0]], [raw.status, raw.body, delays]
+  end
+
+  def test_get_raw_sends_headers_and_gives_bytes
+    @api.on("GET", "/v1/file") { [200, "%PDF\xFF".b, {"Content-Type" => "application/pdf"}] }
+    raw = http.get_raw("/file", headers: {"X-Extra" => "yes"})
+
+    assert_equal ["%PDF\xFF".b, Encoding::BINARY, "application/pdf"],
+                 [raw.body, raw.body.encoding, raw.headers["content-type"]]
+    assert_equal "yes", @api.requests.first.headers["x-extra"]
+  end
+
   def test_keeps_the_query_of_the_url
     @api.on("POST", "/v1/things?version=2") { [200, {}] }
 

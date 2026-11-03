@@ -22,6 +22,10 @@ module Metacrunch
 
       JSON_HEADERS = {"Content-Type" => "application/json", "Accept" => "application/json"}.freeze
 
+      # An answer of get_raw: the status, the headers (lower-case names, the
+      # first value of each) and the body as bytes.
+      Raw = Data.define(:status, :headers, :body)
+
       # url: the API base, to which each request appends its path; its query
       # is kept. headers: sent with every request, over the defaults of each
       # method. name: for messages and log lines.
@@ -87,11 +91,25 @@ module Metacrunch
         parse(path, response, "JSON", Hash, Array)
       end
 
+      # GETs the base path plus path and returns the answer whatever its
+      # status (redirects and refusals too), except what is retried (429,
+      # 5xx, network errors). A body over max_size bytes raises InvalidInput.
+      def get_raw(path, headers: {}, max_size: nil)
+        response = with_retries(path, raw: true) do
+          send_request(Net::HTTP::Get, path, nil, {"Accept" => "*/*"}, headers) { read_limited(path, it, max_size) }
+        end
+        Raw.new(status: response.code.to_i, headers: response.to_hash.transform_values(&:first), body: response.body)
+      rescue InvalidInput
+        close
+        raise
+      end
+
       private
 
-      # Yields until a 2xx answer comes, which it returns; refusals raise at
-      # once, what may pass is retried.
-      def with_retries(path)
+      # Yields until an answer comes that is returned: 2xx, or with raw: every
+      # status that is not retried; other refusals raise at once, what may
+      # pass is retried.
+      def with_retries(path, raw: false)
         retries = 0
         loop do
           response = yield
@@ -100,18 +118,33 @@ module Metacrunch
           retries = retry_later(path, retries, e.class.name, error: e)
         else
           status = response.code.to_i
-          return response if status.between?(200, 299)
+          retryable = RETRYABLE.include?(status)
+          return response if status.between?(200, 299) || (raw && !retryable)
 
-          refuse(path, status, response) unless RETRYABLE.include?(status)
+          refuse(path, status, response) unless retryable
           retries = retry_later(path, retries, status, response)
         end
       end
 
-      # The headers: those of the method, the object's, those of the call.
-      def send_request(type, path, body, defaults, headers = {})
+      # The headers: those of the method, the object's, those of the call. A
+      # block reads the body.
+      def send_request(type, path, body, defaults, headers = {}, &)
         request = type.new(request_uri(path), defaults.merge(@headers, headers))
         request.body = body if body
-        connection.request(request)
+        connection.request(request, &)
+      end
+
+      # Reads the body of response in chunks, as bytes, up to max_size.
+      def read_limited(path, response, max_size)
+        body = +"".b
+        response.read_body do |chunk|
+          body << chunk
+          next unless max_size && body.bytesize > max_size
+
+          raise InvalidInput.new("#{@name} at #{location(path)}: larger than #{max_size} bytes",
+                                 status: response.code.to_i)
+        end
+        response.body = body
       end
 
       def connection
