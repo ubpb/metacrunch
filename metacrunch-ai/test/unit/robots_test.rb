@@ -32,6 +32,8 @@ class RobotsTest < Minitest::Test
     ["User-agent: *\nDisallow: /\n", "/anything", false],
     ["User-agent: *\nDisallow: /\n", "/robots.txt", true],
     ["User-agent: *\nDisallow: /%c3%a4\n", "/%C3%A4/x", false],
+    ["User-agent: *\nDisallow: /Bücher/\n", "/B%C3%BCcher/x", false],
+    ["User-agent: *\nDisallow: /a b\n", "/a%20b", false],
     ["﻿User-agent: *\r\nDisallow: /x # comment\r\n# Disallow: /y\r\nnonsense\r\nFoo: bar\r\n", "/x", false],
     ["﻿User-agent: *\r\nDisallow: /x # comment\r\n# Disallow: /y\r\nnonsense\r\nFoo: bar\r\n", "/y", true],
     ["", "/anything", true]

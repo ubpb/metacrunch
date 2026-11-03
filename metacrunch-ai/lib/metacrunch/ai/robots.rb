@@ -71,8 +71,10 @@ module Metacrunch
         groups
       end
 
+      # Non-ASCII characters and spaces in the path are percent-encoded
+      # (UTF-8), as RFC 9309 says and as the URLs are sent.
       def rule(allow, path)
-        path = escapes_up(path)
+        path = escapes_up(path.gsub(/[^\x21-\x7E]/) { |char| char.bytes.map { format("%%%02X", it) }.join })
         anchored = path.end_with?("$")
         source = Regexp.escape(anchored ? path.chop : path).gsub("\\*", ".*")
         Rule.new(allow:, pattern: Regexp.new("\\A#{source}#{"\\z" if anchored}"), length: path.length)
