@@ -64,9 +64,9 @@ module Metacrunch
             next attempt(target, run, &) unless target.is_a?(Site)
 
             named = site_maps(target.url)
-            fallback = "#{origin(target.url)}/sitemap.xml"
+            fallback = "#{Web.origin(target.url)}/sitemap.xml"
             read = named.map { attempt(it, run, &) }.any?
-            attempt(fallback, run, &) unless read || named.include?(fallback)
+            attempt(fallback, run, &) unless read || named.any? { same?(it, fallback) }
           end
           raise InputError, "no sitemap could be read: #{run.failures.join(", ")}" unless run.read
         end
@@ -91,6 +91,12 @@ module Metacrunch
           @web.robots(origin(url)).sitemaps
         rescue Unavailable
           []
+        end
+
+        def same?(url, normalized)
+          Web.normalize(url) == normalized
+        rescue Error
+          false
         end
 
         def origin(url)

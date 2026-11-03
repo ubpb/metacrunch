@@ -143,6 +143,15 @@ class SitemapReaderTest < Minitest::Test
                  Reader.site(@site.url, delay: 0).each.grep_v(Metacrunch::InvalidRecord).map { it["url"] })
   end
 
+  def test_site_asks_for_sitemap_xml_once
+    serve("/robots.txt", "Sitemap: #{@site.url("/sitemap.xml").sub("http:", "HTTP:")}\n", "text/plain")
+    @site.on("GET", "/sitemap.xml") { [404, "gone"] }
+    error = assert_raises(Metacrunch::InputError) { Reader.site(@site.url, delay: 0).each.to_a }
+
+    assert_equal(1, @site.requests.count { it.path == "/sitemap.xml" })
+    assert_equal 1, error.message.scan("/sitemap.xml (").size
+  end
+
   def test_site_with_an_unreachable_robots_txt_tries_sitemap_xml
     @site.on("GET", "/robots.txt") { [503, ""] }
     serve("/sitemap.xml", urlset(["https://www.example.org/a", nil]))
