@@ -27,6 +27,8 @@ It lives in the metacrunch repository, shares metacrunch's version and requires 
 - Vectors: the Readme shows `dense_vector` fields filled by metacrunch-ai, reading vectors back from 9.2
   (`source: {exclude_vectors: false}`), `knn` lookups with `Search`, and `semantic_text` as an alternative;
   integration tests cover them on Elasticsearch 8 and 9.
+- Chunk indices: the Readme shows a mapping for metacrunch-ai's chunk records and a `knn` search that keeps the best
+  passage per document with `collapse` on `parent_id`; an integration test covers it on Elasticsearch 8 and 9.
 
 ### Changes from metacrunch-elasticsearch 5.0.0
 

@@ -278,6 +278,41 @@ the writer sends, and the job stays as it is. Inference endpoints of other servi
 Enterprise license on a self-managed cluster, as far as Elastic's documentation says; check yours. Vectors computed
 by metacrunch work with every license and every vector store, and a job controls their batches, retries and costs.
 
+### Chunk indices
+
+Long documents are embedded passage by passage: metacrunch-ai's `Chunk` step turns a document into chunk records,
+each a document of its own in the index, with the id of its document in `parent_id` (see metacrunch-ai's
+[From documents to a RAG index](../metacrunch-ai#from-documents-to-a-rag-index)):
+
+```jsonc
+// config/chunks.mappings.jsonc
+{
+  "properties": {
+    "parent_id": {"type": "keyword"},
+    "chunk": {"type": "integer"},
+    "headings": {"type": "text"},
+    "pages": {"type": "integer"},
+    "title": {"type": "text"},
+    "text": {"type": "text"},
+    "embedding": {"type": "dense_vector", "dims": 384, "similarity": "cosine"}
+  }
+}
+```
+
+A `knn` search finds the passages nearest to a question's vector; `collapse` on `parent_id` keeps the best passage of
+each document, so that one long document does not fill the hits:
+
+```ruby
+client.search(index: "chunks", body: {
+  knn: {field: "embedding", query_vector: question_vector, k: 10, num_candidates: 100},
+  collapse: {field: "parent_id"},
+  _source: ["parent_id", "chunk", "headings", "pages", "title", "text"]
+})
+```
+
+When documents change, the chunks of a changed or deleted document must go. Until the writer can delete by
+`parent_id`, rebuild: load all documents into a new index and switch the alias, as below.
+
 ## Indices and aliases
 
 A full load writes into a new index and switches an alias to it when the load went well, so readers of the alias
