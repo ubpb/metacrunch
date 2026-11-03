@@ -57,8 +57,9 @@ module Metacrunch
         end
       end
 
+      # A heading on one line, so that it stays one Markdown heading.
       def heading(element)
-        text = inline(element.children)
+        text = squeeze(flat_text(element))
         text.empty? ? [] : ["#{"#" * element.name[1].to_i} #{text}"]
       end
 

@@ -8,6 +8,10 @@ class MarkdownTest < Minitest::Test
     assert_equal "# A\n\nx\n\n### B", md("<h1>A</h1><p>x</p><h3>B</h3>")
   end
 
+  def test_a_line_break_in_a_heading_is_a_space
+    assert_equal "## Opening hours\n\nx", md("<h2>Opening<br>hours</h2><p>x</p>")
+  end
+
   def test_inline_elements_give_their_text
     assert_equal "Read the rules now", md(%(<p>Read <a href="/x">the <em>rules</em></a>  now</p>))
   end
