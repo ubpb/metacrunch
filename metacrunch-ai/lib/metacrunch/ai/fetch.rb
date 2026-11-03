@@ -20,6 +20,14 @@ module Metacrunch
       DISALLOWED = "Disallowed by robots.txt"
       TEXT = ["application/xhtml+xml", "application/xml", "application/json"].freeze
       OCTET_STREAM = "application/octet-stream"
+      # Charset labels of the web (WHATWG Encoding Standard) that Ruby does
+      # not know.
+      CHARSETS = {
+        "latin1" => "ISO-8859-1", "latin-1" => "ISO-8859-1", "l1" => "ISO-8859-1", "iso_8859-1" => "ISO-8859-1",
+        "latin2" => "ISO-8859-2", "l2" => "ISO-8859-2", "latin9" => "ISO-8859-15", "l9" => "ISO-8859-15",
+        "utf8" => "UTF-8", "unicode-1-1-utf-8" => "UTF-8", "x-cp1252" => "Windows-1252", "x-sjis" => "Shift_JIS",
+        "ks_c_5601-1987" => "CP949"
+      }.freeze
 
       # from: the field with the URL; the other options go to Web (user_agent,
       # delay, robots, max_size, redirects, timeout, retries).
@@ -81,7 +89,7 @@ module Metacrunch
       def content(body, type, charset)
         return body unless charset && (type.start_with?("text/") || TEXT.include?(type))
 
-        body.dup.force_encoding(Encoding.find(charset))
+        body.dup.force_encoding(Encoding.find(CHARSETS.fetch(charset.downcase, charset)))
       rescue ArgumentError
         body
       end

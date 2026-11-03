@@ -40,9 +40,14 @@ class FetchTest < Minitest::Test
     @site.on("GET", "/latin") { [200, "\xD6ffnungszeiten".b, {"Content-Type" => "text/html; charset=ISO-8859-1"}] }
     @site.on("GET", "/odd") { [200, "x", {"Content-Type" => "text/plain; charset=nonsense"}] }
     @site.on("GET", "/pdf") { [200, "%PDF".b, {"Content-Type" => "application/pdf; charset=utf-8"}] }
-    encodings = ["/latin", "/odd", "/pdf"].map { fetched({"url" => @site.url(it)})["content"].encoding }
+    @site.on("GET", "/l1") { [200, "Caf\xE9".b, {"Content-Type" => "text/html; charset=Latin1"}] }
+    @site.on("GET", "/utf8") { [200, "Café", {"Content-Type" => "text/plain; charset=utf8"}] }
+    contents = ["/latin", "/odd", "/pdf", "/l1", "/utf8"].map { fetched({"url" => @site.url(it)})["content"] }
 
-    assert_equal [Encoding::ISO_8859_1, Encoding::BINARY, Encoding::BINARY], encodings
+    assert_equal [Encoding::ISO_8859_1, Encoding::BINARY, Encoding::BINARY, Encoding::ISO_8859_1, Encoding::UTF_8],
+                 contents.map(&:encoding)
+    assert_equal(["Café", "Café"], contents.last(2).map { it.encode(Encoding::UTF_8) })
+    Fetch::CHARSETS.each_value { assert_kind_of Encoding, Encoding.find(it) }
   end
 
   def test_no_content_type_is_octet_stream_and_missing_headers_are_left_out
