@@ -49,6 +49,7 @@ require_relative "metacrunch/files"
 require_relative "metacrunch/input"
 require_relative "metacrunch/output"
 require_relative "metacrunch/json_lines"
+require_relative "metacrunch/file_list"
 require_relative "metacrunch/run_options"
 require_relative "metacrunch/invoker"
 

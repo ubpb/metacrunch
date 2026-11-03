@@ -69,6 +69,25 @@ that are not valid JSON or not valid UTF-8. Invalid records fail like a step (th
 job's failure policy. Note that JSON objects with duplicate keys count as invalid, and numbers beyond the Float range
 (`1e400`) are read as `Infinity`, which the writer refuses.
 
+`Metacrunch::FileList::Reader.new(targets, root: nil)` yields one record per file, for documents that are processed
+whole (web pages, PDFs, office files): targets are directories (read recursively), glob patterns or files, or an
+Array of them, with the rules of `Dir.glob` (hidden files only where a pattern names them, symlinked directories not
+followed). Files come sorted by path; a file matched twice is read once.
+
+```ruby
+source Metacrunch::FileList::Reader.new("intranet/**/*.{html,pdf,docx}"), id: ->(file) { file["id"] }
+# {"id" => "handbook/loans.html", "path" => "/data/intranet/handbook/loans.html", "size" => 18342,
+#  "modified" => "2026-10-30T12:04:11Z", "type" => "text/html", "sha256" => "9f2c…", "content" => "<!doctype …"}
+```
+
+`id` is the path relative to `root:`; by default that is the deepest directory that holds all targets (a directory
+itself, a file's directory, a pattern's start up to its last `/` before the first `*?[{`), so different files get
+different ids. `modified` is UTC in ISO 8601, `type` the MIME type by extension (`application/octet-stream` for
+unknown ones), `content` the bytes as they are: nothing is unpacked, and every file is read into memory, so patterns
+should leave out large files that are no documents. A file that cannot be read, whose name is not valid UTF-8 or that
+lies outside an explicit `root:` is an invalid record. A mirrored website gets its URLs with a step:
+`map { it.merge("url" => "https://www.example.org/#{it["id"]}") }`.
+
 ## Steps
 
 | Step | The block returns | Effect |

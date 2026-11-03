@@ -36,6 +36,8 @@ metacrunch-redis live in this repository and share metacrunch's version.
   block, or an object with `call_batch`) and return one result per record; an Exception in the results fails its
   record. They run at the end of every segment (a worker's batch, or as many records inline), at `FLUSH` and at the
   end, so a job gives the same results with and without workers.
+- `Metacrunch::FileList::Reader`, a source that yields one record per file of directories, glob patterns or files:
+  its id relative to a common root, path, size, modification time, MIME type by extension, SHA-256 and bytes.
 - A source that waits for data yields `Metacrunch::FLUSH` to have the records it yielded written at once: the workers
   get their partial batch, the sinks write what they buffer for `batch:`, and sinks with `flush` (the JSON Lines
   writers, `Metacrunch::Output#flush`) write their own buffers.
