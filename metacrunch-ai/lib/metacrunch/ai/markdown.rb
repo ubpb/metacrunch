@@ -130,15 +130,15 @@ module Metacrunch
         blocks(element).join("\n\n").lines(chomp: true).map { it.empty? ? ">" : "> #{it}" }.join("\n")
       end
 
-      # A run of inline nodes as one paragraph; images alone give their alt.
+      # A run of inline nodes as one paragraph; a run without text gives the
+      # alt text of its images, also of images in links or pictures.
       def paragraph(run)
-        content = run.reject { it.text? && it.text.strip.empty? }
-        return content.map { it["alt"].to_s.strip }.reject(&:empty?).join(" ") if image_only?(content)
+        text = inline(run)
+        return text unless text.empty?
 
-        inline(run)
+        images = run.select(&:element?).flat_map { it.name == "img" ? [it] : it.css("img").to_a }
+        images.map { it["alt"].to_s.strip }.reject(&:empty?).join(" ")
       end
-
-      def image_only?(nodes) = !nodes.empty? && nodes.all? { it.element? && it.name == "img" }
 
       def inline(nodes)
         text = nodes.map { inline_text(it) }.join

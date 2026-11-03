@@ -101,6 +101,13 @@ class MarkdownTest < Minitest::Test
     assert_equal "Floor plan\n\nGround floor\n\nx y", md(html)
   end
 
+  def test_a_wrapped_image_alone_gives_its_alt_text
+    html = %(<figure><a href="/plan"><img alt="Floor plan"></a></figure><p><a href="/x"><img alt="icon"></a> text</p>) +
+           %(<p><picture><source srcset="map.webp"><img alt="Map"></picture></p>)
+
+    assert_equal "Floor plan\n\ntext\n\nMap", md(html)
+  end
+
   def test_whitespace_and_empty_blocks
     assert_equal "a\n\nb\n\nc", md("<div><p> a </p>\n\n<div></div><p>b</p><hr><p>\n c\n</p></div>")
   end
