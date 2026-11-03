@@ -99,7 +99,7 @@ module Metacrunch
       def location(path) = "#{@uri.scheme}://#{@uri.host}:#{@uri.port}#{request_uri(path)}"
 
       def parse(path, response)
-        answer = JSON.parse(response.body)
+        answer = JSON.parse(response.body.to_s)
         return answer if answer.is_a?(Hash)
 
         malformed(path, response)
@@ -108,8 +108,9 @@ module Metacrunch
       end
 
       def malformed(path, response)
-        raise ApiError.new("#{@name} at #{location(path)}: malformed answer, not a JSON object: " \
-                           "#{excerpt(response.body)}", status: response.code.to_i, body: excerpt(response.body))
+        body = excerpt(response.body)
+        raise ApiError.new("#{@name} at #{location(path)}: malformed answer, not a JSON object#{": #{body}" if body}",
+                           status: response.code.to_i, body:)
       end
 
       def refuse(path, status, response)

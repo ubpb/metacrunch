@@ -164,6 +164,16 @@ class HttpTest < Minitest::Test
     assert_equal "things at #{@api.url("/v1/things")}: malformed answer, not a JSON object: <html>", error.message
   end
 
+  def test_an_answer_without_a_body_is_an_api_error
+    [204, 200].each do |status|
+      @api.on("POST", "/v1/things", times: 1) { [status, ""] }
+      error = assert_raises(Metacrunch::Ai::ApiError, status.to_s) { http.post_json("/things", {}) }
+
+      assert_equal ["things at #{@api.url("/v1/things")}: malformed answer, not a JSON object", status, nil],
+                   [error.message, error.status, error.body]
+    end
+  end
+
   def test_an_answer_that_is_not_an_object_is_an_api_error
     @api.on("POST", "/v1/things") { [200, [1, 2]] }
 
