@@ -248,7 +248,7 @@ $ docker run -d -p 9998:9998 apache/tika:3.3.1.0
 - When it opens, it asks the server for its greeting, so a wrong URL stops the job before it reads a record.
 - Tika answers also for files it cannot parse. Without text the record fails with `Metacrunch::Ai::InvalidInput`
   ("document is encrypted", or the first line of Tika's error); with text it passes with the mark "Text partly
-  extracted".
+  extracted". A type Tika has no parser for (HTTP 415) fails the record with `InvalidInput` too.
 - Busy or failing servers are retried as [the embedders](#errors-and-retries) do.
 - Scanned PDFs need OCR: the image `apache/tika:3.3.1.0-full` has Tesseract, and the header `X-Tika-PDFOcrStrategy`
   (`auto`, `ocr_only`, `ocr_and_text_extraction`) turns it on. OCR is slow; the tests of this gem do not cover it.

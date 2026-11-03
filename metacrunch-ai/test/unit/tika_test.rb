@@ -108,6 +108,13 @@ class TikaTest < Minitest::Test
     assert_raises(Metacrunch::Ai::InvalidInput) { tika.extract("x") }
   end
 
+  def test_an_unsupported_media_type_is_invalid_input
+    @api.on("PUT", "/rmeta/html") { [415, "Unsupported Media Type"] }
+    error = assert_raises(Metacrunch::Ai::InvalidInput) { tika.extract("x", type: "application/x-unknown") }
+
+    assert_equal [415, "Unsupported Media Type"], [error.status, error.body]
+  end
+
   def test_malformed_answers_are_api_errors
     [{}, [], ["x"]].each do |body|
       @api.on("PUT", "/rmeta/html", times: 1) { [200, body] }

@@ -41,7 +41,7 @@ module Metacrunch
       def close = @http.close
 
       def extract(content, type: nil)
-        answer = @http.put("/rmeta/html", content.to_s.b, content_type: type || "application/octet-stream")
+        answer = put(content, type)
         document = answer.first if answer.is_a?(Array)
         raise ApiError, "tika at #{location}: malformed answer, no document" unless document.is_a?(Hash)
 
@@ -53,6 +53,16 @@ module Metacrunch
       def inspect = "#<#{self.class.name} url=#{base.inspect}>"
 
       private
+
+      # A 415 (a type Tika has no parser for) is the document's fault, as a
+      # 422 is.
+      def put(content, type)
+        @http.put("/rmeta/html", content.to_s.b, content_type: type || "application/octet-stream")
+      rescue ApiError => e
+        raise unless e.instance_of?(ApiError) && e.status == 415
+
+        raise InvalidInput.new(e.message, status: e.status, body: e.body)
+      end
 
       def base
         uri = Http.uri(@url)
