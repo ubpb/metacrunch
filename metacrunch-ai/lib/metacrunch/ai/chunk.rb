@@ -27,7 +27,7 @@ module Metacrunch
       FENCE = /\A {0,3}(`{3,}|~{3,})/
       # The separators inside a block, coarsest first; captured, so the
       # whitespace between pieces is kept.
-      SEPARATORS = [/(\n)/, /(?<=[.!?…])(\s+)/, /(\s+)/].freeze
+      SEPARATORS = [/(\n)/, /(?<=[.!?…])([[:space:]]+)/, /([[:space:]]+)/].freeze
       BLOCK = "\n\n"
 
       Block = Data.define(:text, :page, :level, :title)
@@ -96,12 +96,16 @@ module Metacrunch
       def split(input)
         pages = input.is_a?(Array) ? input.map(&:to_s) : [input.to_s]
         blocks = pages.each_with_index.flat_map do |page, index|
-          page_blocks(page.gsub(/\r\n?/, "\n").split("\n").map(&:rstrip), input.is_a?(Array) ? index + 1 : nil)
+          page_blocks(lines(page), input.is_a?(Array) ? index + 1 : nil)
         end
         merge(sections(blocks))
       end
 
       private
+
+      # The lines of a page without line ends and trailing spaces (also
+      # no-break spaces).
+      def lines(page) = page.gsub(/\r\n?/, "\n").split("\n").map { it.sub(/[[:space:]]+\z/, "") }
 
       def chunk_fields(parent, number, piece)
         fields = {"id" => "#{parent}##{number}", "parent_id" => parent, "chunk" => number, "headings" => piece.headings}

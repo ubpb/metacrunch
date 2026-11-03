@@ -70,7 +70,7 @@ module Metacrunch
       end
 
       def present(text)
-        text = text&.gsub(/\s+/, " ")&.strip
+        text = text&.gsub(/[[:space:]]+/, " ")&.strip
         text unless text.nil? || text.empty?
       end
 

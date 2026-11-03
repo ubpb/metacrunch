@@ -16,6 +16,10 @@ class MarkdownTest < Minitest::Test
     assert_equal "Read the rules now", md(%(<p>Read <a href="/x">the <em>rules</em></a>  now</p>))
   end
 
+  def test_no_break_spaces_are_spaces
+    assert_equal "a b", md("<p>&nbsp;a&nbsp;&nbsp;b&nbsp;</p>")
+  end
+
   def test_line_breaks
     assert_equal "a\nb", md("<p>a<br>b</p>")
   end

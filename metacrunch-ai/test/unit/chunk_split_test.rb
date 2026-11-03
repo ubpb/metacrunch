@@ -77,6 +77,17 @@ class ChunkSplitTest < Minitest::Test
     assert_equal ["aa bb", "cc dd"], texts(chunk(size: 6, overlap: 0), "aa bb\n\ncc dd")
   end
 
+  def test_no_break_spaces_separate_words_and_sentences
+    small = chunk(size: 10, overlap: 0)
+
+    assert_equal ["aaa bbb", "ccc ddd", "eee"], texts(small, "aaa bbb ccc ddd eee")
+    assert_equal(["One. Two.", "Three."], texts(small, "One. Two. Three.").map { it.tr(" ", " ") })
+  end
+
+  def test_a_line_of_no_break_spaces_is_blank
+    assert_equal ["a\n\nb"], texts(chunk, "a \n  \nb")
+  end
+
   def test_a_long_word_is_cut_hard
     assert_equal ["a" * 10, "a" * 10, "a" * 5], texts(chunk(size: 10, overlap: 0), "a" * 25)
   end

@@ -145,7 +145,7 @@ module Metacrunch
         node.children.map { inline_text(it) }.join
       end
 
-      def squeeze(text) = text.gsub(/\s+/, " ").strip
+      def squeeze(text) = text.gsub(/[[:space:]]+/, " ").strip
 
       def skip?(node) = node.comment? || (node.element? && SKIP.include?(node.name))
 

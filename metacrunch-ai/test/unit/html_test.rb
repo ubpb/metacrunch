@@ -65,6 +65,10 @@ class HtmlTest < Minitest::Test
     assert_equal "Opening hours", Html.new.extract("<body><h1> Opening\n hours</h1><p>x</p></body>")[:title]
   end
 
+  def test_no_break_spaces_in_the_title
+    assert_equal "Loans | Library", Html.new.extract("<title>Loans&nbsp;|&nbsp;Library&nbsp;</title>")[:title]
+  end
+
   def test_no_title_and_no_lang
     result = Html.new.extract("<p>x</p>")
 
