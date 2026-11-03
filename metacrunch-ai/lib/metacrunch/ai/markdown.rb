@@ -49,7 +49,7 @@ module Metacrunch
         case element.name
         when *HEADINGS then heading(element)
         when "ul", "ol" then [list(element)]
-        when "table" then [table(element)]
+        when "table" then [caption(element), table(element)]
         when "pre" then [code(element.text)]
         when "blockquote" then [quote(element)]
         when "hr" then []
@@ -82,6 +82,12 @@ module Metacrunch
         lines = rows.map { "| #{it.join(" | ")} |" }
         lines.insert(1, "|#{" --- |" * width}")
         lines.join("\n")
+      end
+
+      # The caption of a table, a paragraph before it; "" without one.
+      def caption(table)
+        caption = table.element_children.find { it.name == "caption" }
+        caption ? inline(caption.children) : ""
       end
 
       def cells(row)

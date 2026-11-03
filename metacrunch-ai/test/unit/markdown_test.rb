@@ -55,6 +55,12 @@ class MarkdownTest < Minitest::Test
     assert_equal "| A |\n| --- |\n| a b c |", md(html)
   end
 
+  def test_a_caption_comes_before_its_table
+    html = "<table><caption>Opening <b>hours</b></caption><tr><th>Day</th></tr><tr><td>Mon</td></tr></table>"
+
+    assert_equal "Opening hours\n\n| Day |\n| --- |\n| Mon |", md(html)
+  end
+
   def test_an_empty_table
     assert_equal "a", md("<table></table><p>a</p>")
   end
