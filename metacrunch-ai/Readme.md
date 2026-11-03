@@ -311,7 +311,9 @@ redirects than `redirects` and a document over `max_size` fail the record under 
   at the same time; choose N and `delay` so that a site gets no more than it should.
 - **Caution:** `Fetch` requests any http(s) URL in the data, also addresses in your own network (`localhost`, servers
   of the intranet). With URLs from data of others, keep only those of the hosts you mean, for example
-  `filter("Not an allowed host") { it["url"].to_s.start_with?("https://www.example.org/") }` before it.
+  `filter("Not an allowed host") { it["url"].to_s.start_with?("https://www.example.org/") }` before it. Such a filter
+  sees the first URL only: a server you allow could still redirect into your network, so run jobs that fetch URLs of
+  others where the own network is out of reach, or with `redirects: 0`.
 
 ### Web pages with a crawler
 
@@ -327,7 +329,10 @@ $ wget --mirror --no-parent --adjust-extension --wait=1 --directory-prefix=mirro
 - `--mirror` follows the links recursively and keeps the server's `Last-Modified` as the file time
   (`--timestamping`), which `FileList::Reader` reads as `modified`; a second run fetches only what changed.
   `--no-parent` stays below the start path. wget honours robots.txt; `--wait=1` waits between requests.
-- `--adjust-extension` gives pages without an extension `.html`, so `Html` takes them.
+- `--adjust-extension` gives pages without an extension `.html`, so `Html` takes them. wget then cannot tell such a
+  file from its URL and fetches it again on every run; only pages whose URLs end in `.html` are skipped when
+  unchanged. Without the option, pages without an extension get the type `application/octet-stream` and go to the
+  last extractor, Tika, unless a `map` sets their `type`.
 
 ```ruby
 source Metacrunch::FileList::Reader.new("mirror/www.example.org"), id: ->(file) { file["id"] }
