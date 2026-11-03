@@ -16,6 +16,7 @@ class RobotsTest < Minitest::Test
     [OWN_AND_ALL, "/private/page", false],
     ["User-agent: MetaCrunch\nDisallow: /x\n", "/x", false],
     ["User-agent: metacrunch-bot\nDisallow: /x\n", "/x", true],
+    ["User-agent: metacrunch/1.0\nDisallow: /x\n", "/x", false],
     ["User-agent: metacrunch\nDisallow: /a\n\nUser-agent: metacrunch\nDisallow: /b\n", "/b", false],
     ["User-agent: other\nUser-agent: metacrunch\nDisallow: /shared\n", "/shared/x", false],
     ["Disallow: /before\nUser-agent: *\nAllow: /\n", "/before", true],

@@ -6,12 +6,13 @@ module Metacrunch
     # robots.txt as RFC 9309 reads it, for one user agent token. Internal; the
     # web client of Fetch and Sitemap::Reader uses it.
     #
-    # The group whose User-agent equals the token (case does not matter;
-    # several such groups are merged) applies, else the * group, else every
-    # path is allowed. Of the Allow and Disallow rules that match a path (its
-    # query included), the longest wins, Allow on a tie; * matches anything,
-    # a $ at the end anchors the end. Percent-escapes are compared in upper
-    # case; unreserved characters written as escapes are not decoded.
+    # The group whose User-agent equals the token (case does not matter, a
+    # version after the token neither; several such groups are merged)
+    # applies, else the * group, else every path is allowed. Of the Allow
+    # and Disallow rules that match a path (its query included), the longest
+    # wins, Allow on a tie; * matches anything, a $ at the end anchors the
+    # end. Percent-escapes are compared in upper case; unreserved characters
+    # written as escapes are not decoded.
     class Robots
 
       Rule = Data.define(:allow, :pattern, :length)
@@ -55,7 +56,7 @@ module Metacrunch
           case field.downcase
           when "user-agent"
             groups << Group.new([], [], nil) unless agents_open
-            groups.last.agents << value.downcase
+            groups.last.agents << token(value)
             agents_open = true
           when "allow", "disallow"
             agents_open = false
@@ -81,6 +82,11 @@ module Metacrunch
       end
 
       def escapes_up(text) = text.gsub(/%[0-9a-f]{2}/i, &:upcase)
+
+      # The product token of a User-agent line in lower case: up to the first
+      # character other than a letter, _ or - (as Google reads it, so that
+      # "metacrunch/1.0" is metacrunch), or *.
+      def token(value) = value.match?(/\A\*(\s|\z)/) ? "*" : value[/\A[a-z_-]*/i].downcase
 
     end
 
