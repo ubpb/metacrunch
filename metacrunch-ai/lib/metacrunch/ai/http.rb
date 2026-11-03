@@ -149,7 +149,7 @@ module Metacrunch
       end
 
       def connection
-        @connection ||= Net::HTTP.new(@uri.host, @uri.port).tap do |http|
+        @connection ||= Net::HTTP.new(@uri.hostname, @uri.port).tap do |http|
           http.use_ssl = @uri.scheme == "https"
           http.open_timeout = http.read_timeout = http.write_timeout = @timeout
           http.start

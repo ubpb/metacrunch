@@ -217,6 +217,13 @@ class HttpTest < Minitest::Test
     @api = FakeApi.new
   end
 
+  def test_connects_to_an_ipv6_address
+    no_sleep(http(url: "http://[::1]:1/v1", retries: 0))
+    error = assert_raises(Metacrunch::Ai::Unavailable) { @http.get("/things") }
+
+    assert_match(/still Errno::ECONNREFUSED/, error.message)
+  end
+
   def test_retries_errors_of_the_network
     @api.on("POST", "/v1/things") { [200, {"ok" => true}] }
     errors = [Errno::ETIMEDOUT, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::ECONNABORTED, IOError,
