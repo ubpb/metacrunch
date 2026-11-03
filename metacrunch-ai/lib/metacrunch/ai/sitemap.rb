@@ -108,10 +108,20 @@ module Metacrunch
           children.each do |child|
             raise NotSitemap, "#{child}: sitemap index deeper than #{DEPTH} levels" if depth >= DEPTH
 
-            read(child, depth + 1, seen, &)
+            read(locate(child, location), depth + 1, seen, &)
           rescue *FAILURES => e
             yield InvalidRecord.new(raw: child, error: e)
           end
+        end
+
+        # A sitemap an index names: for a remote index a URL relative to it
+        # (never a local file: NotHttp for other schemes), for a local index a
+        # URL or a path relative to its directory.
+        def locate(child, parent)
+          return Web.resolve(parent, child) if remote?(parent)
+          return child if remote?(child)
+
+          File.expand_path(child, File.dirname(parent.to_s))
         end
 
         def page(entry, seen)

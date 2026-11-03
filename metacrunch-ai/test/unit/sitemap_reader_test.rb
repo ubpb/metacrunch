@@ -50,6 +50,28 @@ class SitemapReaderTest < Minitest::Test
     assert_equal ["https://www.example.org/a", "https://www.example.org/rules.pdf"], urls(@site.url("/index.xml"))
   end
 
+  def test_children_of_a_remote_index_are_urls_relative_to_it
+    sitemaps = ["pages.xml", "/etc/hosts", "file:///etc/hosts"].map { "<sitemap><loc>#{it}</loc></sitemap>" }
+    serve("/index.xml", "<sitemapindex #{NS}>#{sitemaps.join}</sitemapindex>")
+    serve("/pages.xml", urlset(["https://www.example.org/a", nil]))
+    records = read(@site.url("/index.xml"))
+    invalid = records.grep(Metacrunch::InvalidRecord)
+
+    assert_equal(["https://www.example.org/a"], records.grep(Hash).map { it["url"] })
+    assert_equal([Metacrunch::Ai::ApiError, Metacrunch::Ai::Web::NotHttp], invalid.map { it.error.class })
+    assert_equal(["/etc/hosts"], @site.requests.map(&:path).grep(%r{\A/etc}))
+  end
+
+  def test_children_of_a_local_index_are_relative_to_its_directory
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "index.xml"),
+                 %(<sitemapindex #{NS}><sitemap><loc>pages.xml</loc></sitemap></sitemapindex>))
+      File.write(File.join(dir, "pages.xml"), urlset(["https://www.example.org/a", nil]))
+
+      Dir.chdir(Dir.tmpdir) { assert_equal ["https://www.example.org/a"], urls(File.join(dir, "index.xml")) }
+    end
+  end
+
   def test_nested_index_limit
     serve("/1.xml", index("/2.xml"))
     serve("/2.xml", index("/3.xml"))
