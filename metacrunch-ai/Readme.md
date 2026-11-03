@@ -220,7 +220,8 @@ Inside it, scripts, styles, `nav`, forms, frames, SVG and hidden elements are re
 ### Text
 
 `Metacrunch::Ai::Text.new` takes `text/plain` and `text/markdown` and passes the content as it is, as UTF-8 with LF
-line ends. Markdown keeps its headings this way; Tika would read it as plain text.
+line ends; UTF-16 files with a byte order mark are converted. Markdown keeps its headings this way; Tika would read it
+as plain text.
 
 ### Tika
 

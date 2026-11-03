@@ -12,6 +12,14 @@ class TextTest < Minitest::Test
     assert_equal "# Rules", extract("\xEF\xBB\xBF# Rules".b)[:text]
   end
 
+  def test_utf16_with_a_bom
+    ["UTF-16LE", "UTF-16BE"].each do |encoding|
+      bytes = "﻿Öffnungszeiten\r\n".encode(encoding).b
+
+      assert_equal "Öffnungszeiten\n", extract(bytes)[:text], encoding
+    end
+  end
+
   def test_a_string_in_another_encoding
     assert_equal "Öffnungszeiten", extract("Öffnungszeiten".encode(Encoding::ISO_8859_1))[:text]
   end
