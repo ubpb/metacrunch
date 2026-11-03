@@ -162,9 +162,35 @@ class WebTest < Minitest::Test
                   "https://www.example.org/a%20b"].map { Web.normalize(it) })
   end
 
+  def test_normalizes_host_case_and_default_ports
+    urls = ["HTTPS://WWW.Example.ORG:443/A", "http://www.example.org:80/", "http://User:PW@WWW.example.org:8080/"]
+
+    assert_equal(["https://www.example.org/A", "http://www.example.org/", "http://User:PW@www.example.org:8080/"],
+                 urls.map { Web.normalize(it) })
+  end
+
+  def test_encodes_brackets_in_path_and_query
+    assert_equal "https://www.example.org/a%5B1%5D.pdf?f%5Bt%5D=b",
+                 Web.normalize("https://www.example.org/a[1].pdf?f[t]=b")
+    assert_equal "http://[::1]:8080/a", Web.normalize("http://[::1]:8080/a")
+  end
+
+  def test_encodes_raw_bytes_and_other_encodings
+    urls = ["https://www.example.org/a\xFFb".b, "https://www.example.org/Bücher".encode(Encoding::ISO_8859_1),
+            (+"https://www.example.org/a\x81").force_encoding(Encoding::Windows_1252)]
+
+    assert_equal(["https://www.example.org/a%FFb", "https://www.example.org/B%C3%BCcher",
+                  "https://www.example.org/a%81"], urls.map { Web.normalize(it) })
+  end
+
+  def test_origin_without_default_port
+    assert_equal(["https://www.example.org", "http://www.example.org:8080"],
+                 ["https://WWW.example.org:443/x?y", "http://www.example.org:8080/"].map { Web.origin(it) })
+  end
+
   def test_refuses_other_urls
     ["mailto:desk@example.org", "ftp://www.example.org/a", "www.example.org/a", "https://", nil,
-     "https://exa mple.org/a"].each do |url|
+     "https://exa mple.org/a", "http://www.example.org:80:90/"].each do |url|
       assert_raises(Web::NotHttp, url.inspect) { Web.normalize(url) }
     end
     assert_raises(Web::Idn) { Web.normalize("https://bücher.example/") }

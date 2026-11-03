@@ -14,8 +14,10 @@ module Metacrunch
       REDIRECTS = [301, 302, 303, 307, 308].freeze
       # robots.txt is read up to this size; a larger one counts as missing.
       ROBOTS_SIZE = 500 * 1024
-      # Characters a URL may not hold as they are (RFC 3986): percent-encoded.
-      UNSAFE = %r{[^A-Za-z0-9\-._~:/?\[\]@!$&'()*+,;=%]}
+      # Bytes a path or query may not hold as they are (RFC 3986; brackets
+      # only belong to IPv6 hosts): percent-encoded.
+      UNSAFE = %r{[^A-Za-z0-9\-._~:/?@!$&'()*+,;=%]}n
+      DEFAULT_PORTS = {"http" => 80, "https" => 443}.freeze
 
       # A URL that is not http or https.
       class NotHttp < Error; end
@@ -28,23 +30,54 @@ module Metacrunch
       # and the body as bytes.
       Page = Data.define(:status, :url, :headers, :body)
 
-      # The URL as a browser sends it: without fragment, path and query
-      # percent-encoded (UTF-8) where needed. Raises NotHttp or Idn.
+      # The URL as a browser sends it: without fragment, the host in lower
+      # case, without the scheme's default port, path and query
+      # percent-encoded (UTF-8; bytes that are no UTF-8 as they are) where
+      # needed. Raises NotHttp or Idn.
       def self.normalize(url)
-        text = url.to_s.strip.sub(/#.*\z/m, "")
+        text = bytes(url.to_s).strip.sub(/#.*\z/m, "")
         match = %r{\A(https?)://([^/?#]+)(.*)\z}im.match(text)
         raise NotHttp, "not an http(s) URL: #{url.inspect}" unless match
 
         scheme, authority, rest = match.captures
-        raise Idn, "host name not supported: #{authority}" unless authority.ascii_only?
+        raise Idn, "host name not supported: #{authority.dup.force_encoding(Encoding::UTF_8).scrub}" unless
+          authority.ascii_only?
 
+        scheme = scheme.downcase
         rest = "/#{rest}" unless rest.start_with?("/")
-        normalized = "#{scheme.downcase}://#{authority}#{encode(rest)}"
+        normalized = "#{scheme}://#{authority(scheme, authority)}#{encode(rest)}".force_encoding(Encoding::UTF_8)
         URI(normalized)
         normalized
       rescue URI::InvalidURIError
         raise NotHttp, "not an http(s) URL: #{url.inspect}"
       end
+
+      # scheme://host[:port] of url, normalized, without a default port.
+      def self.origin(url)
+        uri = URI(normalize(url))
+        "#{uri.scheme}://#{uri.host}#{":#{uri.port}" unless uri.port == uri.default_port}"
+      end
+
+      # The user info as written, the host in lower case, the port unless it
+      # is the scheme's default.
+      def self.authority(scheme, text)
+        userinfo, at, hostport = text.rpartition("@")
+        host, port = /\A(\[[^\]]*\]|[^:]*)(?::(\d*))?\z/.match(hostport)&.captures || [hostport, nil]
+        port = nil if port.to_s.empty? || port.to_i == DEFAULT_PORTS[scheme]
+        "#{userinfo}#{at}#{host.downcase}#{":#{port}" if port}"
+      end
+
+      # text as UTF-8 bytes in a binary String; another encoding is converted,
+      # bytes that are no UTF-8 stay as they are.
+      def self.bytes(text)
+        unless [Encoding::UTF_8, Encoding::BINARY, Encoding::US_ASCII].include?(text.encoding)
+          text = text.encode(Encoding::UTF_8)
+        end
+        text.b
+      rescue EncodingError
+        text.b
+      end
+      private_class_method :authority, :bytes
 
       # The URL a Location header names, relative to base, normalized.
       def self.resolve(base, location)
@@ -56,7 +89,7 @@ module Metacrunch
       end
 
       def self.encode(text)
-        text.gsub(/%(?![0-9A-Fa-f]{2})/, "%25").gsub(UNSAFE) { |char| char.bytes.map { format("%%%02X", it) }.join }
+        bytes(text).gsub(/%(?![0-9A-Fa-f]{2})/n, "%25").gsub(UNSAFE) { format("%%%02X", it.ord) }
       end
       private_class_method :encode
 
